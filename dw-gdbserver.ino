@@ -39,14 +39,17 @@
 // Version 0.2 (28-May-21)
 //   - writing to flash works
 //   - loading a file works (using the M command and X commands)
+//
+// Version 0.3 (28-May-21)
+//   - fixed problem with not being able to read the PC after a break
+//   - use LED_BUILTIN to signal system status
+//   - fixed breakpoint address problem (converting from word to byte addresses)
+//   - fixed inconsistent PC addresses (byte vs. word)
+//   - hw breakpoint integrated
 
-//   - missing M(flash) and X(flash) 
-//   - missing: use BUILTIN_LED to signal status
-//   - missing: breakpoint handling tested
-//   - SP appears to be wrong after SIGINT
 
-//#define DEBUG // for debugging the debugger!
-#define VERSION "0.2"
+#define DEBUG // for debugging the debugger!
+#define VERSION "0.3"
 
 // pins
 #define DEBTX    3    // TX line for TXOnlySerial
@@ -69,7 +72,7 @@
 
 // some size restrictions
 #define MAXBUF 255
-#define MAXBREAK 16 // maximum of active breakpoints (we need double as many plus one!)
+#define MAXBREAK 2 // 16 // maximum of active breakpoints (we need double as many plus one!)
 
 // clock rates 
 #define DEBUG_BAUD    115200 // communcation speed with the host
@@ -77,7 +80,8 @@
 
 // signals
 #define SIGINT  2      // Interrupt  - user interrupted the program (UART ISR) 
-#define SIGTRAP 5      // Trace trap  - stopped on a breakpoint 
+#define SIGTRAP 5      // Trace trap  - stopped on a breakpoint
+#define SIGABRT 6
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -88,15 +92,17 @@
 // some GDB variables
 struct breakpoint
 {
-  unsigned long addr;  // word addressing! 
+  unsigned long waddr; // word addressing! 
   unsigned int opcode; // opcode that has been replaced by BREAK
-  boolean active;      // breakpoint is active
-  boolean inflash;       // breakpoint is in flash memory
+  boolean active:1;    // breakpoint is active
+  boolean inflash:1;   // breakpoint is in flash memory
 } bp[MAXBREAK*2+1];
 int bpcnt = 0;
 
+unsigned int hwbp = 0xFFFF; // the one hardware breakpoint
+
 struct context {
-  unsigned long pc; // pc (using word addresses)
+  unsigned long wpc; // pc (using word addresses)
   unsigned int sp; // stack pointer
   byte sreg;    // status reg
   byte regs[32]; // general purpose regs
@@ -177,13 +183,23 @@ char          rpt[16];                // Repeat command buffer
 unsigned int  timeOutDelay;           // Timeout delay (based on baud rate)
 byte lastsignal = 0;
 
+// use LED to signal system state
+// LED off = not connected to target system
+// LED flashing every half second = power-cycle target in order to enable debugWire
+// LED blinking every 1/10 second = could not connect to target board
+// LED constantly on = connected to target and target is halted
+// Led blinks every 1/3 second = target is running
+volatile enum {INIT_STATE, NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, RUN_STATE} state = INIT_STATE;
+const int ontimes[6] =  {1,     0,  50, 100, 16000, 300};
+const int offtimes[6] = {1, 16000, 500, 100,     0, 300};
+
 // communication and memory buffer
-byte membuf[256]; // used for storing sram, flash and eeprom values
+byte membuf[256]; // used for storing sram, flash, and eeprom values
 byte newpage[128]; // one page of flash to program
-byte page[128]; // old page contents that we are going to overwrite
-unsigned int lastpg; // address of last page read
-boolean validpg = false; // if page is valid
-byte buf[MAXBUF+1]; // for gdb and dwire inputs
+byte page[128]; // cached page contents - never overwrite it in the program! 
+unsigned int lastpg; // address of the cached page
+boolean validpg = false; // if cached page contents is valid
+byte buf[MAXBUF+1]; // for gdb i/o
 int buffill; // how much of the buffer is filled up
 
 DEBDECLARE();
@@ -198,6 +214,9 @@ void setup(void) {
   ctx.running = false;
   ctx.targetcon = false;
   mcu.infovalid = false;
+  pinMode(LED_BUILTIN, OUTPUT);
+  OCR0A = 0x80; // interrupt every msec between the millis interrupts
+  TIMSK0 |= _BV(OCIE0A);
 }
 
 
@@ -209,13 +228,39 @@ void loop(void) {
       byte cc = debugWire.read();
       if (cc == 0x55) { // breakpoint reached
 	ctx.running = false;
+	state = CONN_STATE;
+	delay(5); // we need that in order to avoid conflicts on the line
 	targetGetRegisters();
 	gdbSendState(SIGTRAP);
       }
     }
   }
 }
-  
+
+/****************** Interrupt blink routine *********************/
+
+ISR(TIMER0_COMPA_vect)
+{
+  static int cnt, laststate;
+
+  if (state == INIT_STATE) {
+    cnt = 0;
+    state = NOTCONN_STATE;
+    laststate = INIT_STATE;
+  }
+  if (laststate != state) {
+    laststate = state;
+    cnt = ontimes[laststate];
+  }
+  if (cnt == ontimes[state] && cnt) 
+    digitalWrite(LED_BUILTIN, HIGH);
+  else if (cnt == -offtimes[state])
+    cnt = ontimes[state] + 1;
+  else if (cnt == -1)
+    digitalWrite(LED_BUILTIN, LOW);
+  cnt--;
+    
+}
 
 /****************** gdbserver routines **************************/
 
@@ -260,8 +305,9 @@ void gdbHandleCmd(void)
 	gdbDebugMessagePSTR(PSTR("Too many breakpoints in use"));
 	b = gdbReadByte();
       } while (b == '-');
-      gdbSendState(SIGTRAP); // GDB will then remove all breakpoints
+      gdbSendState(SIGABRT); // GDB will then remove all breakpoints
       ctx.running = false;
+      state = CONN_STATE;
     }
     break;
 			 
@@ -281,6 +327,7 @@ void gdbHandleCmd(void)
 	targetGetRegisters();
 	ctx.running = false;
 	gdbSendState(SIGINT);
+	state = CONN_STATE;
       }
     }
     break;
@@ -322,6 +369,7 @@ boolean gdbParsePacket(const byte *buff)
   case 'D':               /* detach the debugger */
     gdbUpdateBreakpoints();  // update breakpoints in memory before exit!
     ctx.targetcon = false;
+    state = NOTCONN_STATE;
     gdbSendReply("OK");
     return false;
   case 'k':               /* kill request */
@@ -329,20 +377,22 @@ boolean gdbParsePacket(const byte *buff)
     gdbReset();
     return false;
   case 'c':               /* continue */
-    gdbUpdateBreakpoints();  // update breakpoints in memory
-    targetSetRegisters();
-    ctx.running = true;
-    targetContinue();
+    if (bpcnt <= MAXBREAK) {   // execute only if not too many breakpoints
+      ctx.running = true;
+      state = RUN_STATE;
+      gdbContinue();
+    }
     return false;
   case 'C':               /* continue with signal */
   case 'S':               /* step with signal */
     gdbSendReply(""); /* not supported */
     break;
   case 's':               /* step */
-    gdbUpdateBreakpoints();  // update breakpoints in memory
-    targetSetRegisters();
-    ctx.running = true;
-    targetStep();
+    if (bpcnt <= MAXBREAK) {   // single-step only if not too many breakpoints
+      ctx.running = true;
+      state = RUN_STATE;
+      gdbStep();
+    }
     return false;
   case 'v':
     if (memcmp_P(buff, (void *)PSTR("vStopped"), 8) == 0) 
@@ -356,7 +406,7 @@ boolean gdbParsePacket(const byte *buff)
     break;
   case 'q':               /* query requests */
     if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) 
-	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+")); // perhaps hwbreak+ ?
+	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+;hwbreak+")); 
     else if (memcmp_P(buf, (void *)PSTR("qRcmd,73746f70"), 14) == 0)   /* stop */
       gdbStop();
     else if  (memcmp_P(buf, (void *)PSTR("qRcmd,696e6974"), 14) == 0)     /* init */
@@ -404,12 +454,14 @@ boolean gdbConnect(void)
   byte b;
   switch (targetConnect()) {
   case -1: // for some reason, we cannot connect;
+    state = ERROR_STATE;
     flushInput();
     gdbSendReply("E05");
     ctx.targetcon = false;
     return false;
     break;
   case 1: // everything OK
+    state = CONN_STATE;
     ctx.targetcon = true;
     gdbDebugMessagePSTR(PSTR("debugWire still enabled"));
     gdbReset();
@@ -418,6 +470,7 @@ boolean gdbConnect(void)
     return true;
     break;
   case 0: // we have changed the fuse and need to powercycle
+    state = PWRCYC_STATE;
     while (retry < 60) {
       if ((retry++)%10 == 0) {
 	do {
@@ -428,6 +481,7 @@ boolean gdbConnect(void)
       }
       delay(1000);
       if (doBreak()) {
+	state = CONN_STATE;
 	gdbReset();
 	flushInput();
 	gdbDebugMessagePSTR(PSTR("debugWire is now enabled"));
@@ -439,6 +493,7 @@ boolean gdbConnect(void)
       }
     }
   }
+  state = ERROR_STATE;
   gdbSendReply("E05");
   return false;
 }
@@ -450,17 +505,77 @@ void gdbStop(void)
     gdbDebugMessagePSTR(PSTR("debugWire is now disabled"));
     gdbSendReply("OK");
     ctx.targetcon = false;
+    state = NOTCONN_STATE;
   } else
     gdbSendReply("E05");
 }
 
-
+// issue reset on target
 void gdbReset(void)
 {
   targetReset();
   gdbInitRegisters();
 }
 
+void gdbStep(void)
+{
+  targetSetRegisters();
+  if (!gdbStepOverBP(true)) // only if not already stepped over BP
+    targetStep();
+}
+
+void gdbContinue(void)
+{
+  gdbStepOverBP(false);    // either step over or remove BP
+  gdbUpdateBreakpoints();  // update breakpoints in memory
+  targetContinue();
+}
+
+// If there is a breakpoint at the current PC
+// location, we may need to execute the instruction offline
+// or remove the BREAK from flash if the instruction is a
+// 4 byte instruction that cannot be executed offline.
+// 
+boolean gdbStepOverBP(boolean onlyonestep)
+{
+  int bpix = gdbFindBreakpoint(ctx.wpc);
+
+  DEBPR(F("bpix in skip: "));
+  DEBLN(bpix);
+  if (bpix >= 0) { // bp at the current pc location
+    DEBLN(F("Found BP at PC loc"));
+    if (bp[bpix].inflash) { // there is a bp in flash!
+      DEBLN(F("In flash!"));
+      if (twoByteInst(bp[bpix].opcode)) { // a two byte instruction
+	DEBLN(F("Two byte instr"));
+	targetSetRegisters(); // set all regs
+	execOffline(bp[bpix].opcode); // execute the instruction offline
+	targetGetRegisters();
+	if (onlyonestep) { // if we do not continue
+	  ctx.running = false; // mark that we are not executing any longer
+	  state = CONN_STATE; 
+	  gdbSendState(SIGTRAP); // and signal that to GDB
+	  return true;
+	}
+      } else { // 4 bytes -> we need to replace the bp in flash!
+	DEBLN(F("Four byte instr"));
+	targetReadFlashPage((bp[bpix].waddr*2));
+	memcpy(newpage, page, mcu.pagesz);
+	newpage[(bp[bpix].waddr*2)%mcu.pagesz] = bp[bpix].opcode&0xFF;
+	newpage[((bp[bpix].waddr*2)+1)%mcu.pagesz] = bp[bpix].opcode>>8;
+	targetWriteFlashPage(bp[bpix].waddr*2, newpage);
+	bp[bpix].inflash = false;
+	if (!bp[bpix].active) bp[bpix].waddr = 0; // delete bp if not active
+	if (!onlyonestep) { // if not only one step, then step in order to be able to continue
+	  targetSetRegisters(); // set all regs
+	  targetStep();         // step over the 4byte instr
+	  targetGetRegisters(); // read out all regs
+	}
+      }
+    }
+  }
+  return false;
+}
 
 
 // Remove inactive and set active breakpoints before execution starts or before reset/kill/detach.
@@ -488,42 +603,52 @@ void gdbUpdateBreakpoints(void)
   
   // find relevant BPs
   for (i=0; i < MAXBREAK*2+1; i++) {
-    if (bp[i].addr) { // only used breakpoints!
+    if (bp[i].waddr) { // only used breakpoints!
       if (bp[i].active) { // active breakpoint
 	if (!bp[i].inflash)  // not in flash yet
-	  relevant[rel++] = bp[i].addr; // remember to be set
+	  relevant[rel++] = bp[i].waddr; // remember to be set
       } else { // inactive bp
 	if (bp[i].inflash) // still in flash 
-	  relevant[rel++] = bp[i].addr; // remember to be removed
+	  relevant[rel++] = bp[i].waddr; // remember to be removed
 	else 
-	  bp[i].addr = 0; // otherwise free BP
+	  bp[i].waddr = 0; // otherwise free BP
       }
     }
   }
+  if (rel == 0) return;
   relevant[rel++] = 0xFFFF; // end marker
+  DEBPR(F("Relevant bps: "));
+  DEBLN(rel);
 
   // sort relevant BPs
   insertionSort(relevant, rel);
+  DEBLN(F("BPs sorted: "));
+  for (i = 0; i < rel; i++) DEBLNF(relevant[i],HEX);
 
   // replace pages that need to be changed
+  // note that the addresses in relevant and bp are all word addresses!
   i = 0;
   while (addr < mcu.flashsz && i < rel-1) {
-    if (relevant[i] >= addr && relevant[i] < addr+mcu.pagesz) {
+    if (relevant[i]*2 >= addr && relevant[i]*2 < addr+mcu.pagesz) {
       j = i;
-      while (relevant[i] < addr+mcu.pagesz) i++;
+      while (relevant[i]*2 < addr+mcu.pagesz) i++;
       targetReadFlashPage(addr);
       memcpy(newpage, page, mcu.pagesz);
       while (j < i) {
-	ix = gdbFindBreakpoint(relevant[j]);
+	ix = gdbFindBreakpoint(relevant[j++]);
+	DEBPR(F("Found BP:"));
+	DEBLN(ix);
 	if (bp[ix].active) { // enabled but not yet in flash
-	  bp[ix].opcode = ((unsigned int)(newpage[bp[ix].addr%mcu.pagesz])<<8)+newpage[(bp[ix].addr+1)%mcu.pagesz];
+	  bp[ix].opcode = (newpage[(bp[ix].waddr*2)%mcu.pagesz])+
+	    (unsigned int)((newpage[((bp[ix].waddr*2)+1)%mcu.pagesz])<<8);
 	  bp[ix].inflash = true;
-	  newpage[bp[ix].addr%mcu.pagesz] = B10011000; // BREAK instruction
-	  newpage[(bp[ix].addr+1)%mcu.pagesz] = B10010101;
+	  newpage[(bp[ix].waddr*2)%mcu.pagesz] = 0x98; // BREAK instruction
+	  newpage[((bp[ix].waddr*2)+1)%mcu.pagesz] = 0x95;
 	} else { // disabled but still in flash
-	  newpage[bp[ix].addr%mcu.pagesz] = bp[ix].opcode>>8;
-	  newpage[(bp[ix].addr+1)%mcu.pagesz] = bp[ix].opcode&0xFF;
-	  bp[ix].addr = 0;
+	  newpage[(bp[ix].waddr*2)%mcu.pagesz] = bp[ix].opcode&0xFF;
+	  newpage[((bp[ix].waddr*2)+1)%mcu.pagesz] = bp[ix].opcode>>8;
+	  bp[ix].waddr = 0;
+	  bp[ix].inflash = false;
 	}
       }
       targetWriteFlashPage(addr, newpage);
@@ -545,31 +670,44 @@ void insertionSort(unsigned int *seq, int len)
 }
 
 
-int gdbFindBreakpoint(unsigned int addr)
+int gdbFindBreakpoint(unsigned int waddr)
 {
   for (byte i=0; i < MAXBREAK*2+1; i++)
-    if (bp[i].addr == addr) return i;
+    if (bp[i].waddr == waddr) return i;
   return -1;
 }
 
 void gdbInsertRemoveBreakpoint(const byte *buff)
 {
-  unsigned long flashaddr, sz;
+  unsigned long wordflashaddr, sz;
   byte len;
 
   if (targetoffline()) return;
 
-  len = parseHex(buff + 3, &flashaddr);
+  len = parseHex(buff + 3, &wordflashaddr);
   parseHex(buff + 3 + len + 1, &sz);
   
   /* get break type */
   switch (buff[1]) {
   case '0': /* software breakpoint */
     if (buff[0] == 'Z')
-      gdbInsertBreakpoint(flashaddr);
+      gdbInsertBreakpoint(wordflashaddr);
     else 
-      gdbRemoveBreakpoint(flashaddr);
+      gdbRemoveBreakpoint(wordflashaddr);
     gdbSendReply("OK");
+    break;
+  case '1': /* hardware breakpoint */
+    if (buff[0] == 'Z') {
+      if (hwbp != 0xFFFF) { // we already have the hardware breakpoint set
+	gdbSendReply("E05");
+      } else {
+	hwbp = wordflashaddr;
+	gdbSendReply("OK");
+      }
+    } else { // remove bp
+      hwbp = 0xFFFF;
+      gdbSendReply("OK");
+    }
     break;
   default:
     gdbSendReply("");
@@ -578,27 +716,35 @@ void gdbInsertRemoveBreakpoint(const byte *buff)
 }
 
 /* insert bp, flash addr is in bytes */
-void gdbInsertBreakpoint(unsigned int addr)
+void gdbInsertBreakpoint(unsigned int waddr)
 {
   int i;
 
   // if bp is already there, but not active, then activate
-  i = gdbFindBreakpoint(addr);
+  i = gdbFindBreakpoint(waddr);
   if (i >= 0) { // existing bp
     if (bp[i].active) return; // should not happen!
     bp[i].active = true;
     bpcnt++;
+    DEBPR(F("New recycled BP: "));
+    DEBPRF(waddr,HEX);
+    DEBPR(F("/ now: "));
+    DEBLN(bpcnt);
     return;
   }
   // if we try to set too many bps, return
   if (bpcnt > MAXBREAK+1) return;
   // find free slot (should be there, even if there are MAXBREAK inactive bps)
   for (i=0; i < MAXBREAK*2+1; i++) {
-    if (bp[i].addr == 0) {
-      bp[i].addr = addr;
+    if (bp[i].waddr == 0) {
+      bp[i].waddr = waddr;
       bp[i].active = true;
       bp[i].inflash = false;
       bpcnt++;
+      DEBPR(F("New BP: "));
+      DEBPRF(waddr,HEX);
+      DEBPR(F("/ now: "));
+      DEBLN(bpcnt);
       return;
     }
   }
@@ -606,13 +752,17 @@ void gdbInsertBreakpoint(unsigned int addr)
 }
 
 // inactivate a bp
-void gdbRemoveBreakpoint(unsigned int addr)
+void gdbRemoveBreakpoint(unsigned int waddr)
 {
   int i;
-  i = gdbFindBreakpoint(addr);
+  i = gdbFindBreakpoint(waddr);
   if (i < 0) return; // not found
   bp[i].active = false;
-  bpcnt++;
+  bpcnt--;
+  DEBPR(F("BP removed: "));
+  DEBPRF(waddr,HEX);
+  DEBPR(F("/ now: "));
+  DEBLN(bpcnt);
 }
 
 
@@ -626,7 +776,7 @@ void gdbInitRegisters(void)
     *ptr++ = 0;
   } while (--a > 0);
   ctx.sreg = 0;
-  ctx.pc = 0;
+  ctx.wpc = 0;
   if (mcu.infovalid) ctx.sp = mcu.rambase+mcu.ramsz-1;
   else ctx.sp = 0;
 }
@@ -639,7 +789,7 @@ void gdbReadRegisters(void)
   byte a;
   unsigned int b;
   char c;
-  unsigned long pc = (unsigned long)ctx.pc << 1;	/* convert word address to byte address used by gdb */
+  unsigned long pc = (unsigned long)ctx.wpc << 1;	/* convert word address to byte address used by gdb */
   byte i = 0;
 
   a = 32;	/* in the loop, send R0 thru R31 */
@@ -714,7 +864,7 @@ void gdbWriteRegisters(const byte *buff)
   pc |= (unsigned long)hex2nib(*buff++) << 16;
   pc |= (unsigned long)hex2nib(*buff++) << 28;
   pc |= (unsigned long)hex2nib(*buff++) << 24;
-  ctx.pc = pc >> 1;	/* drop the lowest bit; PC addresses words */
+  ctx.wpc = pc >> 1;	/* drop the lowest bit; PC addresses words */
   targetSetRegisters();
   gdbSendReply("OK");
 }
@@ -925,7 +1075,7 @@ void gdbSendPSTR(const char pstr[])
 
 void gdbState2Buf(byte signo)
 {
-  unsigned long wpc = (unsigned long)ctx.pc << 1;
+  unsigned long wpc = (unsigned long)ctx.wpc << 1;
 
   /* thread is always 1 */
   /* Real packet sent is e.g. T0520:82;21:fb08;22:021b0000;thread:1;
@@ -933,7 +1083,7 @@ void gdbState2Buf(byte signo)
      Numbers 20, 21,... are number of register in hex in the same order as in read registers
      20 (32 dec) = SREG
      21 (33 dec) = SP
-     22 (34 dec) = PC
+     22 (34 dec) = PC (byte address)
   */
 
   memcpy_P(buf,
@@ -1047,17 +1197,27 @@ void targetBreak(void)
 
 void targetContinue(void)
 {
-  DEBLN(F("Continue"));
+  DEBPR(F("Continue at (word adress) "));
+  DEBLNF(ctx.wpc,HEX);
   delay(10);
-  byte cmd[] = {0x60, 0xD0, (byte)(ctx.pc>>9), (byte)(ctx.pc>>1), 0x30};
+  if (hwbp != 0xFFFF) {
+    setWBp(hwbp);
+    debugWire.sendCmd((const byte []) { 0x61 }, 1);
+    setWBp(hwbp);
+  } else {
+    debugWire.sendCmd((const byte []) { 0x60 }, 1);
+  }
+  byte cmd[] = { 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x30};
   debugWire.sendCmd(cmd, sizeof(cmd));
 }
 
 void targetStep(void)
 {
-  DEBLN(F("Single step"));
-  delay(10);
-  debugWire.sendCmd((const byte[]) {0x31}, 1);
+  DEBPR(F("Single step at (word address):"));
+  DEBLNF(ctx.wpc,HEX);
+  delay(5);
+  byte cmd[] = {0x60, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
+  debugWire.sendCmd(cmd, sizeof(cmd));
 }
 
 boolean targetReset(void)
@@ -1066,7 +1226,7 @@ boolean targetReset(void)
   if (checkCmdOk2()) {
     DEBLN(F("RESET successful"));
     targetGetRegisters();
-    ctx.pc = 0;
+    ctx.wpc = 0;
     return true;
   } else {
     DEBLN(F("RESET failed"));
@@ -1087,7 +1247,7 @@ boolean targetReadFlashPage(unsigned int addr)
     }
   } else {
     DEBPR(F("using cached page at "));
-    DEBLNF(addr,lastpg);
+    DEBLNF(lastpg,HEX);
   }
   return succ;
 }
@@ -1227,23 +1387,105 @@ boolean targetWriteEeprom(unsigned int addr, byte *mem, unsigned int len)
 
 void targetGetRegisters(void)
 {
+#ifdef NEWREGCODE
   byte r;
-  ctx.pc = getPc();
-  ctx.sreg = readSRamByte(0x3F + 0x20);
-  ctx.sp = readSRamByte(0x3D + 0x20);
-  if (mcu.ramsz > 256) ctx.sp |= readSRamByte(0x3E) << 8;
+  byte upper[3];
+  DEBLN(F("get regs"));
+  ctx.wpc = getWPc();
+  DEBPR(F("PC (wa): "));
+  DEBLNF(ctx.wpc,HEX);
+  readSRamBytes(0x3D + 0x20, upper, 3);
+  if (mcu.ramsz <= 256) upper[1] = 0;
+  ctx.sp = upper[0] + (unsigned int)(upper[1]<<8);
+  ctx.sreg = upper[2];
+  DEBPR(F("SREG: "));
+  DEBLNF(ctx.sreg,BIN);
+  DEBPR(F("SP: "));
+  DEBLNF(ctx.sp,HEX);
+#if 0
   for (r = 0; r < 32; r++) 
     ctx.regs[r] = readRegister(r);
+#else
+  readRegisters(&ctx.regs[0]);
+  DEBPR(F("regs: "));
+  for (r = 0; r < 32; r++) {
+    DEBPRF(ctx.regs[r],HEX);
+    DEBPR(" ");
+  }
+  DEBLN("");
+#endif
+#else
+  byte r;
+  ctx.wpc = getWPc();
+  DEBPR(F("PC (word address): "));
+  DEBLNF(ctx.wpc,HEX);
+  ctx.sreg = readSRamByte(0x3F + 0x20);
+  DEBPR(F("SREG: "));
+  DEBLNF(ctx.sreg,BIN);
+  ctx.sp = readSRamByte(0x3D + 0x20);
+  DEBPR(F("SPL: "));
+  DEBLNF(ctx.sp,HEX);
+  if (mcu.ramsz > 256) ctx.sp |= readSRamByte(0x3E + 0x20) << 8;
+  DEBPR(F("SPH: "));
+  DEBLNF((ctx.sp>>8),HEX);  
+  for (r = 0; r < 32; r++) 
+    ctx.regs[r] = readRegister(r);
+#endif
 }
 
 void targetSetRegisters(void)
 {
+#ifdef NEWREGCODE
+  byte r;
+  DEBLN(F("set regs"));
+#if 0
+  for (r = 0; r < 32; r++) 
+    writeRegister(r, ctx.regs[r]);
+#else
+  DEBPR(F("regs: "));
+  for (r = 0; r < 32; r++) {
+    DEBPRF(ctx.regs[r],HEX);
+    DEBPR(" ");
+  }
+  DEBLN("");
+  writeRegisters(&ctx.regs[0]);
+#endif
+  DEBPR(F("SREG: "));
+  DEBLNF(ctx.sreg,BIN);
+  DEBPR(F("SP: "));
+  DEBLNF(ctx.sp,HEX);
+  writeSRamByte(0x3D + 0x20, (byte)ctx.sp&0xFF);
+  if (mcu.ramsz > 256) writeSRamByte(0x3E + 0x20, (byte)(ctx.sp>>8));
+  writeSRamByte(0x3F + 0x20, ctx.sreg);
+  DEBPR(F("PC(wa): "));
+  DEBLNF(ctx.wpc,HEX);
+  setWPc(ctx.wpc);
+#else
   byte r;
   for (r = 0; r < 32; r++) 
     writeRegister(r, ctx.regs[r]);
+  DEBPR(F("SPL: "));
+  DEBLNF((ctx.sp&0xFF),HEX);
   writeSRamByte(0x3D + 0x20, (ctx.sp&0xFF));
+  DEBPR(F("SPH: "));
+  DEBLNF((ctx.sp>>8),HEX);
   if (mcu.ramsz > 256) writeSRamByte(0x3E + 0x20, (ctx.sp>>8)&0xFF);
+  DEBPR(F("SREG: "));
+  DEBLNF(ctx.sreg,BIN);
   writeSRamByte(0x3F + 0x20, ctx.sreg);
+  DEBPR(F("PC(word address): "));
+  DEBLNF(ctx.wpc,HEX);
+  setWPc(ctx.wpc);
+#endif
+}
+
+// check whether an opcode is a 16-bit opcode
+boolean twoByteInst(unsigned int opcode)
+{
+  if (((opcode & 0b1111110000001111) == (unsigned int)0b1001000000000000) || // STS/LDS
+      ((opcode & 0b1111111000001100) == (unsigned int)0b1001010000001100))   // JMP/CALL
+    return false;
+  return true;
 }
 
 /****************** dwbug wire specific functions *************/
@@ -1252,7 +1494,7 @@ void targetSetRegisters(void)
 boolean doBreak () { 
   digitalWrite(RESET, LOW);
   pinMode(RESET, INPUT);
-  delay(100);
+  delay(10);
   debugWire.enable(false);
   unsigned long baud = measureBaud();
   if (baud == 0) {
@@ -1451,6 +1693,20 @@ byte inLow  (byte add, byte reg) {
   return (reg << 4) + (add & 0x0F);
 }
 
+#ifdef NEWREGCODE
+// Write all registers 
+void writeRegisters(byte *regs)
+{
+  byte wrRegs[] = {0x66,              // read/write
+		   0xD0, 0x00, 0x00,  // start reg
+		   0xD1, 0x00, 0x20,  // end reg
+		   0xC2, 0x05,        // write registers
+		   20 };              // go
+  debugWire.sendCmd(wrRegs,  sizeof(wrRegs));
+  debugWire.sendCmd(regs, 32);
+}
+#endif
+
 // Set register <reg> by building and executing an "in <reg>,DWDR" instruction via the CMD_SET_INSTR register
 void writeRegister (byte reg, byte val) {
   byte wrReg[] = {0x64,                                               // Set up for single step using loaded instruction
@@ -1458,6 +1714,20 @@ void writeRegister (byte reg, byte val) {
                   val};                                               // Write value to register via DWDR
   debugWire.sendCmd(wrReg,  sizeof(wrReg));
 }
+
+#ifdef NEWREGCODE
+// Read all registers
+void readRegisters (byte *regs)
+{
+  byte rdRegs[] = {0x66,
+		   0xD0, 0x00, 0x00, // start reg
+		   0xD1, 0x00, 0x20, // end reg
+		   0xC2, 0x01,       // read registers
+		   0x20 };            // start
+      debugWire.sendCmd(rdRegs,  sizeof(rdRegs));
+      getResponse(regs, 32);               // Get value sent as response
+}
+#endif
 
 // Read register <reg> by building and executing an "out DWDR,<reg>" instruction via the CMD_SET_INSTR register
 byte readRegister (byte reg) {
@@ -1638,7 +1908,7 @@ boolean eraseFlashPage(unsigned int addr) {
   writeRegister(30, addr & 0xFF); // load Z reg with addr low
   writeRegister(31, addr >> 8  ); // load Z reg with addr high
   writeRegister(29, 0x03); // PGERS value for SPMCSR
-  setPc(mcu.bootaddr); // so that access of all of flash is possible
+  setWPc(mcu.bootaddr>>1); // so that access of all of flash is possible
   byte eflash[] = { 0x64, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
@@ -1655,7 +1925,7 @@ boolean programFlashPage(unsigned int addr)
   writeRegister(30, addr & 0xFF); // load Z reg with addr low
   writeRegister(31, addr >> 8  ); // load Z reg with addr high
   writeRegister(29, 0x05); //  PGWRT value for SPMCSR
-  setPc(mcu.bootaddr); // so that access of all of flash is possible
+  setWPc(mcu.bootaddr>>1); // so that access of all of flash is possible
   byte eprog[] = { 0x64, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
@@ -1680,7 +1950,7 @@ boolean loadFlashBuffer(unsigned int addr, byte *mem)
   writeRegister(30, addr & 0xFF); // load Z reg with addr low
   writeRegister(31, addr >> 8  ); // load Z reg with addr high
   writeRegister(29, 0x01); //  SPMEN value for SPMCSR
-  setPc(mcu.bootaddr);
+  setWPc(mcu.bootaddr>>1);
   byte ix = 0;
   while (ix < mcu.pagesz) {
     writeRegister(0, mem[ix++]);               // load next word
@@ -1700,7 +1970,7 @@ boolean loadFlashBuffer(unsigned int addr, byte *mem)
 boolean reenableRWW(void)
 {
   if (mcu.bootaddr) {
-    setPc(mcu.bootaddr);
+    setWPc(mcu.bootaddr>>1);
     writeRegister(29, 0x11); //  RWWSRE value for SPMCSR
     byte errw[] = { 0x64, 0xD2,
 		    outHigh(0x37, 29),       // Build "out SPMCSR, r29"
@@ -1723,33 +1993,42 @@ byte readSPMCSR(void)
   return readRegister(30);
 }
 
-unsigned int getPc () {
+unsigned int getWPc () {
   debugWire.sendCmd((const byte[]) {0xF0}, 1);
   unsigned int pc = getWordResponse();
-  return (pc - 1) * 2;
+  return (pc - 1);
 }
 
-unsigned int getBp () {
+// get hardware breakpoint word address 
+unsigned int getWBp () {
   debugWire.sendCmd((const byte[]) {0xF1}, 1);
-  return (getWordResponse() - 1) * 2;
+  return (getWordResponse() - 1);
 }
 
+// get chip signature
 unsigned int DWgetChipId () {
   debugWire.sendCmd((const byte[]) {0xF3}, 1);
   return (getWordResponse()) ;
 }
 
-void setPc (unsigned int pc) {
-  pc = pc / 2;
-  byte cmd[] = {0xD0, (byte)(pc >> 8), (byte)(pc & 0xFF)};
+// set PC (word address)
+void setWPc (unsigned int wpc) {
+  byte cmd[] = {0xD0, (byte)(wpc >> 8), (byte)(wpc & 0xFF)};
   debugWire.sendCmd(cmd, sizeof(cmd));
 }
 
-void setBp (unsigned int bp) {
-
-  bp = bp / 2;
-  byte cmd[] = {0xD1, (byte)(bp >> 8), (byte)(bp & 0xFF)};
+// set hardware breakpoint at word address
+void setWBp (unsigned int wbp) {
+  byte cmd[] = {0xD1, (byte)(wbp >> 8), (byte)(wbp & 0xFF)};
   debugWire.sendCmd(cmd, sizeof(cmd));
+}
+
+
+void execOffline(unsigned int opcode)
+{
+  byte cmd[] = {0xD2, (byte) (opcode >> 8), (byte) (opcode&0xFF), 0x23};
+  debugWire.sendCmd(cmd, sizeof(cmd));
+  delay(1);
 }
 
 /***************************** a little bit of SPI programming ********/
@@ -1789,6 +2068,7 @@ byte ispSend (byte c1, byte c2, byte c3, byte c4) {
 }
 
 boolean enterProgramMode () {
+  TIMSK0 &= ~_BV(OCIE0A); // disable our blink IRQ
   if (progmode) {
     DEBLN(F("Already in progmode"));
     return true;
@@ -1819,6 +2099,7 @@ void leaveProgramMode() {
   disableSpiPins();
   pinMode(RESET, INPUT);
   progmode = false;
+  TIMSK0 |= _BV(OCIE0A); // reenable blink interrupt
 }
   
 
