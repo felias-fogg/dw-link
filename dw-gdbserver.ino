@@ -46,10 +46,16 @@
 //   - fixed breakpoint address problem (converting from word to byte addresses)
 //   - fixed inconsistent PC addresses (byte vs. word)
 //   - hw breakpoint integrated
-
+//
+// Version 0.4 (29-MAY-21)
+//   - use of hw breakpoint as one of the ordinary breakpoints
+//   - new used field in bp struct
+//   - works now in PlatformIO (if one uses a .gdbinit file!)
+//
+//
 
 #define DEBUG // for debugging the debugger!
-#define VERSION "0.3"
+#define VERSION "0.4"
 
 // pins
 #define DEBTX    3    // TX line for TXOnlySerial
@@ -94,8 +100,10 @@ struct breakpoint
 {
   unsigned long waddr; // word addressing! 
   unsigned int opcode; // opcode that has been replaced by BREAK
+  boolean used:1;      // bp is in use
   boolean active:1;    // breakpoint is active
   boolean inflash:1;   // breakpoint is in flash memory
+  boolean hw:1;        // breakpoint is a hardware breakpoint
 } bp[MAXBREAK*2+1];
 int bpcnt = 0;
 
@@ -406,7 +414,7 @@ boolean gdbParsePacket(const byte *buff)
     break;
   case 'q':               /* query requests */
     if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) 
-	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+;hwbreak+")); 
+	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+;")); 
     else if (memcmp_P(buf, (void *)PSTR("qRcmd,73746f70"), 14) == 0)   /* stop */
       gdbStop();
     else if  (memcmp_P(buf, (void *)PSTR("qRcmd,696e6974"), 14) == 0)     /* init */
@@ -565,7 +573,7 @@ boolean gdbStepOverBP(boolean onlyonestep)
 	newpage[((bp[bpix].waddr*2)+1)%mcu.pagesz] = bp[bpix].opcode>>8;
 	targetWriteFlashPage(bp[bpix].waddr*2, newpage);
 	bp[bpix].inflash = false;
-	if (!bp[bpix].active) bp[bpix].waddr = 0; // delete bp if not active
+	if (!bp[bpix].active) bp[bpix].used = false; // delete bp if not active
 	if (!onlyonestep) { // if not only one step, then step in order to be able to continue
 	  targetSetRegisters(); // set all regs
 	  targetStep();         // step over the 4byte instr
@@ -603,15 +611,15 @@ void gdbUpdateBreakpoints(void)
   
   // find relevant BPs
   for (i=0; i < MAXBREAK*2+1; i++) {
-    if (bp[i].waddr) { // only used breakpoints!
+    if (bp[i].used) { // only used breakpoints!
       if (bp[i].active) { // active breakpoint
-	if (!bp[i].inflash)  // not in flash yet
+	if (!bp[i].inflash && !bp[i].hw)  // not in flash yet and not a hw bp
 	  relevant[rel++] = bp[i].waddr; // remember to be set
       } else { // inactive bp
 	if (bp[i].inflash) // still in flash 
 	  relevant[rel++] = bp[i].waddr; // remember to be removed
 	else 
-	  bp[i].waddr = 0; // otherwise free BP
+	  bp[i].used = false; // otherwise free BP
       }
     }
   }
@@ -647,7 +655,7 @@ void gdbUpdateBreakpoints(void)
 	} else { // disabled but still in flash
 	  newpage[(bp[ix].waddr*2)%mcu.pagesz] = bp[ix].opcode&0xFF;
 	  newpage[((bp[ix].waddr*2)+1)%mcu.pagesz] = bp[ix].opcode>>8;
-	  bp[ix].waddr = 0;
+	  bp[ix].used = false;
 	  bp[ix].inflash = false;
 	}
       }
@@ -673,35 +681,36 @@ void insertionSort(unsigned int *seq, int len)
 int gdbFindBreakpoint(unsigned int waddr)
 {
   for (byte i=0; i < MAXBREAK*2+1; i++)
-    if (bp[i].waddr == waddr) return i;
+    if (bp[i].waddr == waddr && bp[i].used) return i;
   return -1;
 }
 
 void gdbInsertRemoveBreakpoint(const byte *buff)
 {
-  unsigned long wordflashaddr, sz;
+  unsigned long byteflashaddr, sz;
   byte len;
 
   if (targetoffline()) return;
 
-  len = parseHex(buff + 3, &wordflashaddr);
+  len = parseHex(buff + 3, &byteflashaddr);
   parseHex(buff + 3 + len + 1, &sz);
   
   /* get break type */
   switch (buff[1]) {
   case '0': /* software breakpoint */
     if (buff[0] == 'Z')
-      gdbInsertBreakpoint(wordflashaddr);
+      gdbInsertBreakpoint(byteflashaddr >> 1);
     else 
-      gdbRemoveBreakpoint(wordflashaddr);
+      gdbRemoveBreakpoint(byteflashaddr >> 1);
     gdbSendReply("OK");
     break;
+#if 0 // we use the only one hw breakpoint as one of the ordinary ones
   case '1': /* hardware breakpoint */
     if (buff[0] == 'Z') {
       if (hwbp != 0xFFFF) { // we already have the hardware breakpoint set
 	gdbSendReply("E05");
       } else {
-	hwbp = wordflashaddr;
+	hwbp = wordflashaddr >> 1;
 	gdbSendReply("OK");
       }
     } else { // remove bp
@@ -709,6 +718,7 @@ void gdbInsertRemoveBreakpoint(const byte *buff)
       gdbSendReply("OK");
     }
     break;
+#endif
   default:
     gdbSendReply("");
     break;
@@ -736,15 +746,22 @@ void gdbInsertBreakpoint(unsigned int waddr)
   if (bpcnt > MAXBREAK+1) return;
   // find free slot (should be there, even if there are MAXBREAK inactive bps)
   for (i=0; i < MAXBREAK*2+1; i++) {
-    if (bp[i].waddr == 0) {
+    if (!bp[i].used) {
+      bp[i].used = true;
       bp[i].waddr = waddr;
       bp[i].active = true;
       bp[i].inflash = false;
+      if (hwbp == 0xFFFF) { // hardware bp unused
+	bp[i].hw = true;
+	hwbp = waddr;
+      } else bp[i].hw = false;
       bpcnt++;
       DEBPR(F("New BP: "));
       DEBPRF(waddr,HEX);
       DEBPR(F("/ now: "));
       DEBLN(bpcnt);
+      if (bp[i].hw) 
+	DEBLN(F("implemented as a HW BP"));
       return;
     }
   }
@@ -758,6 +775,17 @@ void gdbRemoveBreakpoint(unsigned int waddr)
   i = gdbFindBreakpoint(waddr);
   if (i < 0) return; // not found
   bp[i].active = false;
+  if (bp[i].hw) { // a HW BP can be freed
+    bp[i].waddr = 0;
+    bp[i].used = false;
+    bp[i].hw = false;
+    hwbp = 0xFFFF;
+    DEBLN(F("HW BP inactivated"));
+  } else if (!bp[i].inflash) { // a SW BP not in flash can be freed
+    bp[i].waddr = 0;
+    bp[i].used = false;
+    DEBLN(F("SW BP inactivated"));
+  }
   bpcnt--;
   DEBPR(F("BP removed: "));
   DEBPRF(waddr,HEX);
