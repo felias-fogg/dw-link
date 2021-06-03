@@ -74,10 +74,20 @@
 //   - added '*' as an charachter to be escaped in bin2mem; the documentation says that
 //     it only needs to be escaped when comming from the stub, but avr-gdb seems to escape it
 //     anyway.
+//
+// Version 0.6
+//   - added support for ATtiny828 and ATtiny43
+//   - issue an error when a byte is escaped although it should not have been instead
+//     of silently ignoring it
+//   - added gdbRemoveAllBreakpoints in order to avoid leaving active bps before reset etc.
+//   - changed the number of entries of bp from MaXBREAKS*2+1 to one less, because we now
+//     refuse to acknowledge every extra BP above the allowed number
+//   - detach function now really detaches, i.e., continues execution on the target and leaves it alone.
+//   - 
 
-#define DEBUG // for debugging the debugger!
-#define VERSION "0.5"
-//#define FREERAM
+//#define DEBUG // for debugging the debugger!
+#define VERSION "0.6"
+#define FREERAM
 
 // pins
 #define DEBTX    3    // TX line for TXOnlySerial
@@ -100,7 +110,7 @@
 
 // some size restrictions
 #define MAXBUF 255
-#define MAXBREAK 16 // maximum of active breakpoints (we need double as many plus one!)
+#define MAXBREAK 32 // maximum of active breakpoints (we need double as many!)
 
 // clock rates 
 #define DEBUG_BAUD    115200 // communcation speed with the host
@@ -121,20 +131,20 @@
 // some GDB variables
 struct breakpoint
 {
-  unsigned long waddr; // word addressing! 
+  bool used:1;      // bp is in use
+  bool active:1;    // breakpoint is active
+  bool inflash:1;   // breakpoint is in flash memory
+  bool hw:1;        // breakpoint is a hardware breakpoint
+  unsigned int waddr; // word addressing! 
   unsigned int opcode; // opcode that has been replaced by BREAK
-  boolean used:1;      // bp is in use
-  boolean active:1;    // breakpoint is active
-  boolean inflash:1;   // breakpoint is in flash memory
-  boolean hw:1;        // breakpoint is a hardware breakpoint
-} bp[MAXBREAK*2+1];
+} bp[MAXBREAK*2];
 int bpcnt = 0;
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 unsigned int lasthwbp = 0xFFFF; // address we stopped last
 
 struct context {
-  unsigned long wpc; // pc (using word addresses)
+  unsigned int wpc; // pc (using word addresses)
   unsigned int sp; // stack pointer
   byte sreg;    // status reg
   byte regs[32]; // general purpose regs
@@ -155,10 +165,10 @@ struct mcu_type {
   unsigned int dwdr;
   unsigned int pagesz;
   unsigned int bootaddr;
-  unsigned int bootflag;
   unsigned int eecr;
   unsigned int eearh;
   unsigned int dwenfuse;
+  unsigned int cckdiv8;
   unsigned int eedr;
   unsigned int eearl;
   boolean infovalid;
@@ -166,44 +176,48 @@ struct mcu_type {
   
 // mcu attributes (for all AVR mcus supporting debug wire)
 const unsigned int mcu_attr[] PROGMEM = {
-  // sig   io  sram   base eeprom flash  dwdr   pg    boot  bf eecr eearh  DWEN
-  0x9007,  64,   64,  0x60,   64,  1024, 0x2E,  32, 0x0000, 0, 0x1C, 0x1F, 0x04, // ATtiny13  
+  // sig   io  sram   base eeprom flash  dwdr   pg    boot  eecr eearh  DWEN  CKD8
+  0x9007,  64,   64,  0x60,   64,  1024, 0x2E,  32, 0x0000, 0x1C, 0x1F, 0x04, 0x10, // ATtiny13
 
-  0x910A,  64,  128,  0x60,  128,  2048, 0x1f,  32, 0x0000, 0, 0x1C, 0x1F, 0x80, // ATtiny2313
-  0x920D,  64,  256,  0x60,  256,  4096, 0x1f,  64, 0x0000, 0, 0x1C, 0x1F, 0x80, // ATtiny4313
+  0x920C,  64,  256,  0x60,   64,  4096, 0x27,  64, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny43
 
-  0x910B,  64,  128,  0x60,  128,  2048, 0x27,  32, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny24   
-  0x9207,  64,  256,  0x60,  256,  4096, 0x27,  64, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny44
-  0x930C,  64,  512,  0x60,  512,  8192, 0x27,  64, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny84
+  0x910A,  64,  128,  0x60,  128,  2048, 0x1f,  32, 0x0000, 0x1C, 0x1F, 0x80, 0x80, // ATtiny2313
+  0x920D,  64,  256,  0x60,  256,  4096, 0x1f,  64, 0x0000, 0x1C, 0x1F, 0x80, 0x80, // ATtiny4313
+
+  0x910B,  64,  128,  0x60,  128,  2048, 0x27,  32, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny24   
+  0x9207,  64,  256,  0x60,  256,  4096, 0x27,  64, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny44
+  0x930C,  64,  512,  0x60,  512,  8192, 0x27,  64, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny84
   
-  0x9215, 224,  256, 0x100,  256,  4096, 0x27,  16, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny441
-  0x9315, 224,  512, 0x100,  512,  8192, 0x27,  16, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny841
+  0x9215, 224,  256, 0x100,  256,  4096, 0x27,  16, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny441
+  0x9315, 224,  512, 0x100,  512,  8192, 0x27,  16, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny841
   
-  0x9108,  64,  128,  0x60,  128,  2048, 0x22,  32, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny25
-  0x9206,  64,  256,  0x60,  256,  4096, 0x22,  64, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny45
-  0x930B,  64,  512,  0x60,  512,  8192, 0x22,  64, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny85  
+  0x9108,  64,  128,  0x60,  128,  2048, 0x22,  32, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny25
+  0x9206,  64,  256,  0x60,  256,  4096, 0x22,  64, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny45
+  0x930B,  64,  512,  0x60,  512,  8192, 0x22,  64, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny85  
   
-  0x910C,  64,  128,  0x60,  128,  2048, 0x20,  32, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny261
-  0x9208,  64,  256,  0x60,  256,  4096, 0x20,  64, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny461  
-  0x930D,  64,  512,  0x60,  512,  8192, 0x20,  64, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny861
+  0x910C,  64,  128,  0x60,  128,  2048, 0x20,  32, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny261
+  0x9208,  64,  256,  0x60,  256,  4096, 0x20,  64, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny461  
+  0x930D,  64,  512,  0x60,  512,  8192, 0x20,  64, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny861
   
-  0x9387, 224,  512, 0x100,  512,  8192, 0x31, 128, 0x0000, 0, 0x1F, 0x22, 0x40, // ATtiny87,     
-  0x9487, 224,  512, 0x100,  512, 16384, 0x31, 128, 0x0000, 0, 0x1F, 0x22, 0x40, // ATtiny167 
+  0x9387, 224,  512, 0x100,  512,  8192, 0x31, 128, 0x0000, 0x1F, 0x22, 0x40, 0x80, // ATtiny87    
+  0x9487, 224,  512, 0x100,  512, 16384, 0x31, 128, 0x0000, 0x1F, 0x22, 0x40, 0x80, // ATtiny167
+
+  0x9314, 224,  512, 0x100,  256,  8192, 0x31,  64, 0x0F7F, 0x1F, 0x22, 0x40, 0x80, // ATtiny828 
   
-  0x9412,  96, 1024, 0x100,  256, 16384, 0x2E,  32, 0x0000, 0, 0x1C, 0x1F, 0x40, // ATtiny1634
+  0x9412,  96, 1024, 0x100,  256, 16384, 0x2E,  32, 0x0000, 0x1C, 0x1F, 0x40, 0x80, // ATtiny1634
   
-  0x9205, 224,  512, 0x100,  256,  4096, 0x31,  64, 0x0000, 0, 0x1F, 0x22, 0x40, // ATmega48A
-  0x920A, 224,  512, 0x100,  256,  4096, 0x31,  64, 0x0000, 0, 0x1F, 0x22, 0x40, // ATmega48PA
-  0x930A, 224, 1024, 0x100,  512,  8192, 0x31,  64, 0x0F80, 1, 0x1F, 0x22, 0x40, // ATmega88A
-  0x930F, 224, 1024, 0x100,  512,  8192, 0x31,  64, 0x0F80, 1, 0x1F, 0x22, 0x40, // ATmega88PA
-  0x9406, 224, 1024, 0x100,  512, 16384, 0x31, 128, 0x1F80, 1, 0x1F, 0x22, 0x40, // ATmega168A
-  0x940B, 224, 1024, 0x100,  512, 16384, 0x31, 128, 0x1F80, 1, 0x1F, 0x22, 0x40, // ATmega168PA
-  0x9514, 224, 2048, 0x100, 1024, 32768, 0x31, 128, 0x3F00, 2, 0x1F, 0x22, 0x40, // ATmega328
-  0x950F, 224, 2048, 0x100, 1024, 32768, 0x31, 128, 0x3F00, 2, 0x1F, 0x22, 0x40, // ATmega328P
+  0x9205, 224,  512, 0x100,  256,  4096, 0x31,  64, 0x0000, 0x1F, 0x22, 0x40, 0x80, // ATmega48A
+  0x920A, 224,  512, 0x100,  256,  4096, 0x31,  64, 0x0000, 0x1F, 0x22, 0x40, 0x80, // ATmega48PA
+  0x930A, 224, 1024, 0x100,  512,  8192, 0x31,  64, 0x0F80, 0x1F, 0x22, 0x40, 0x80, // ATmega88A
+  0x930F, 224, 1024, 0x100,  512,  8192, 0x31,  64, 0x0F80, 0x1F, 0x22, 0x40, 0x80, // ATmega88PA
+  0x9406, 224, 1024, 0x100,  512, 16384, 0x31, 128, 0x1F80, 0x1F, 0x22, 0x40, 0x80, // ATmega168A
+  0x940B, 224, 1024, 0x100,  512, 16384, 0x31, 128, 0x1F80, 0x1F, 0x22, 0x40, 0x80, // ATmega168PA
+  0x9514, 224, 2048, 0x100, 1024, 32768, 0x31, 128, 0x3F00, 0x1F, 0x22, 0x40, 0x80, // ATmega328
+  0x950F, 224, 2048, 0x100, 1024, 32768, 0x31, 128, 0x3F00, 0x1F, 0x22, 0x40, 0x80, // ATmega328P
   
-  0x9389, 224,  512, 0x100,  512,  8192, 0x31,  64, 0x0000, 0, 0x1F, 0x22, 0x40, // ATmega8U2
-  0x9489, 224,  512, 0x100,  512, 16384, 0x31, 128, 0x0000, 0, 0x1F, 0x22, 0x40, // ATmega16U2
-  0x958A, 224, 1024, 0x100, 1024, 32768, 0x31, 128, 0x0000, 0, 0x1F, 0x22, 0x40, // ATmega32U2
+  0x9389, 224,  512, 0x100,  512,  8192, 0x31,  64, 0x0000, 0x1F, 0x22, 0x40, 0x80, // ATmega8U2
+  0x9489, 224,  512, 0x100,  512, 16384, 0x31, 128, 0x0000, 0x1F, 0x22, 0x40, 0x80, // ATmega16U2
+  0x958A, 224, 1024, 0x100, 1024, 32768, 0x31, 128, 0x0000, 0x1F, 0x22, 0x40, 0x80, // ATmega32U2
   0,
 };
 
@@ -231,8 +245,8 @@ byte lastsignal = 0;
 // LED constantly on = connected to target and target is halted
 // Led blinks every 1/3 second = target is running
 volatile enum {INIT_STATE, NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, RUN_STATE} state = INIT_STATE;
-const int ontimes[6] =  {1,     0,  50, 100, 16000, 300};
-const int offtimes[6] = {1, 16000, 500, 100,     0, 300};
+const int ontimes[6] =  {1,     0,   50, 100, 16000, 500};
+const int offtimes[6] = {1, 16000, 1000, 100,     0, 500};
 
 // communication and memory buffer
 byte membuf[256]; // used for storing sram, flash, and eeprom values
@@ -336,20 +350,7 @@ void gdbHandleCmd(void)
     gdbSendByte('+');
 
     /* parse received buffer (and perhaps start executing) */
-    if (gdbParsePacket(buf))
-      return;
-#if 0 // we reply with an error packet if too many breakpoints 
-    // If two many breakpoints set, we stop immediately 
-    if (bpcnt > MAXBREAK) {
-      do {
-	gdbDebugMessagePSTR(PSTR("Too many breakpoints in use"),-1);
-	b = gdbReadByte();
-      } while (b == '-');
-      gdbSendState(SIGABRT); // GDB will then remove all breakpoints
-      ctx.running = false;
-      state = CONN_STATE;
-    }
-#endif
+    gdbParsePacket(buf);
     break;
 			 
   case '-':  /* NACK, repeat previous reply */
@@ -378,8 +379,8 @@ void gdbHandleCmd(void)
   }
 }
 
-// parse packet, return false when we start execution or detach
-boolean gdbParsePacket(const byte *buff)
+// parse packet and perhaps start executing
+void gdbParsePacket(const byte *buff)
 {
   switch (*buff) {
   case '?':               /* last signal */
@@ -407,26 +408,30 @@ boolean gdbParsePacket(const byte *buff)
     gdbWriteBinMemory(buff + 1); 
     break;
   case 'D':               /* detach the debugger */
+    gdbRemoveAllBreakpoints(); // remove all BPs if there are still ones
     gdbUpdateBreakpoints();  // update breakpoints in memory before exit!
     ctx.targetcon = false;
     validpg = false;
     state = NOTCONN_STATE;
+    targetContinue();      // let the target machine do what it wants to do!
     gdbSendReply("OK");
-    return false;
+    break;
   case 'k':               /* kill request */
+    gdbRemoveAllBreakpoints(); // remove all BPs if there are still ones
     gdbUpdateBreakpoints();  // update breakpoints in memory before exit!
-    gdbReset();
-    return false;
+    pinMode(RESET,INPUT_PULLUP);
+    digitalWrite(RESET,LOW); // hold reset line low so that MCU does not start
+    break;
   case 'c':               /* continue */
     ctx.running = true;
     state = RUN_STATE;
-    gdbContinue();
-    return false;
+    gdbContinue();       /* start executuion on target and continue with ctx.running = true */
+    break;
   case 's':               /* step */
     ctx.running = true;
     state = RUN_STATE;
-    gdbStep();
-    return false;
+    gdbStep();          /* do only one step */
+    break;
   case 'v':
     if (memcmp_P(buff, (void *)PSTR("vStopped"), 8) == 0) 
       gdbSendReply("OK");      
@@ -461,10 +466,11 @@ boolean gdbParsePacket(const byte *buff)
       /* send end of list */
       gdbSendReply("l");
     else if (memcmp_P(buf, (void *)PSTR("qRcmd,7265736574"), 16) == 0) { /* reset */
+      gdbRemoveAllBreakpoints();
       gdbUpdateBreakpoints();  // update breakpoints in memory before reset
       gdbReset();
       gdbSendReply("OK");      
-      return false;
+      break;
     } else 
       gdbSendReply("");  /* not supported */
     break;
@@ -472,7 +478,6 @@ boolean gdbParsePacket(const byte *buff)
     gdbSendReply("");  /* not supported */
     break;
   }
-  return true;
 }
 
 boolean testFlashWrite(unsigned int addr) {
@@ -598,13 +603,6 @@ void gdbContinue(void)
 {
   DEBLN(F("Start continue operation"));
   targetRestoreClobberedRegisters();
-#if 0 // using now error message as a reply to the continue commend
-  if (bpcnt > MAXBREAK) {
-    setWPc(ctx.wpc+1); // set PC!
-    DEBLN(F("Too many bps"));
-    return;
-  }
-#endif
   gdbStepOverBP(false);    // either step over or remove BREAK from flash
   gdbUpdateBreakpoints();  // update breakpoints in memory
   targetRestoreClobberedRegisters();
@@ -636,14 +634,15 @@ boolean gdbStepOverBP(boolean onlyonestep)
 	  return true;
 	}
       } else { // 4 bytes -> we need to replace the bp in flash!
-	DEBLN(F("Four byte instr"));
+	DEBLN(F("Four byte instr or jump"));
 	DEBPR(F("Restore original opcode: "));
 	DEBLNF(bp[bpix].opcode,HEX);
-	targetReadFlashPage((bp[bpix].waddr*2));
+	targetReadFlashPage((bp[bpix].waddr*2) & ~(mcu.pagesz-1));
 	memcpy(newpage, page, mcu.pagesz);
+	DEBLN("");
 	newpage[(bp[bpix].waddr*2)%mcu.pagesz] = bp[bpix].opcode&0xFF;
 	newpage[((bp[bpix].waddr*2)+1)%mcu.pagesz] = bp[bpix].opcode>>8;
-	targetWriteFlashPage(bp[bpix].waddr*2, newpage);
+	targetWriteFlashPage((bp[bpix].waddr*2) & ~(mcu.pagesz-1), newpage);
 	bp[bpix].inflash = false;
 	if (!bp[bpix].active) {
 	  bp[bpix].used = false; // delete bp if not active
@@ -652,7 +651,7 @@ boolean gdbStepOverBP(boolean onlyonestep)
 	if (!onlyonestep) { // if not only one step, then step in order to be able to continue
 	  DEBLN(F("Step over!"));
 	  targetRestoreClobberedRegisters(); // set all regs
-	  targetStep();         // step over the 4byte instr
+	  targetStep();         // step over the 4byte/call instr
 	}
       }
     }
@@ -672,7 +671,7 @@ boolean gdbStepOverBP(boolean onlyonestep)
 // BP is enabled and not in flash -> write to flash
 // BP is disabled but written in flash -> remove from flash, set BP unused
 // BP is disabled and not in flash -> set BP unused
-// order all actionable BPs by increasing address and only then change flash
+// order all actionable BPs by increasing address and only then change flash memory
 // (so that multiple BPs in one page only need one flash change)
 //
 // Further, the hardware breakpoint is assigned dymically. If it is used twice in a row,
@@ -680,13 +679,13 @@ boolean gdbStepOverBP(boolean onlyonestep)
 void gdbUpdateBreakpoints(void)
 {
   int i, j, ix, rel = 0;
-  unsigned int relevant[MAXBREAK*2+2];
+  unsigned int relevant[MAXBREAK*2+1];
   unsigned addr = 0;
 
   DEBPR(F("Update Breakpoints: "));
   DEBPR(bpcnt);
   DEBPR(F(" / lasthwbp: "));
-  DEBLNF(lasthwbp,HEX);
+  DEBLNF(lasthwbp*2,HEX);
   // return immediately if there are too many bps active
   // because in this case we will not start to execute
   if (bpcnt > MAXBREAK) return;
@@ -695,7 +694,7 @@ void gdbUpdateBreakpoints(void)
   if (hwbp != 0xFFFF &&     // hwbp is in use
       hwbp == lasthwbp &&   //  and the same as last one
       bpcnt > 1) {          // and there are others
-    for (i=0; i < MAXBREAK*2+1; i++) {
+    for (i=0; i < MAXBREAK*2; i++) {
       if (bp[i].active &&        // active breakpoint
 	  bp[i].waddr != hwbp && // not the HW breakpoint itself
 	  !bp[i].inflash) {      // and not in flash yet
@@ -718,7 +717,7 @@ void gdbUpdateBreakpoints(void)
   }
   
   // find relevant BPs
-  for (i=0; i < MAXBREAK*2+1; i++) {
+  for (i=0; i < MAXBREAK*2; i++) {
     if (bp[i].used) { // only used breakpoints!
       if (bp[i].active) { // active breakpoint
 	if (!bp[i].inflash && !bp[i].hw)  // not in flash yet and not a hw bp
@@ -802,7 +801,7 @@ int gdbFindBreakpoint(unsigned int waddr)
 {
   measureRam();
 
-  for (byte i=0; i < MAXBREAK*2+1; i++)
+  for (byte i=0; i < MAXBREAK*2; i++)
     if (bp[i].waddr == waddr && bp[i].used) return i;
   return -1;
 }
@@ -824,7 +823,7 @@ void gdbInsertRemoveBreakpoint(const byte *buff)
       if (bpcnt >= MAXBREAK) {
 	DEBPR(F("Too many BPs. Will not insert: "));
 	DEBLNF(byteflashaddr,HEX);
-	gdbSendReply("E09");
+	gdbSendReply("E05");
 	return;
       }
       gdbInsertBreakpoint(byteflashaddr >> 1);
@@ -856,9 +855,9 @@ void gdbInsertBreakpoint(unsigned int waddr)
     return;
   }
   // if we try to set too many bps, return
-  if (bpcnt > MAXBREAK+1) return;
+  if (bpcnt > MAXBREAK) return;
   // find free slot (should be there, even if there are MAXBREAK inactive bps)
-  for (i=0; i < MAXBREAK*2+1; i++) {
+  for (i=0; i < MAXBREAK*2; i++) {
     if (!bp[i].used) {
       bp[i].used = true;
       bp[i].waddr = waddr;
@@ -909,6 +908,30 @@ void gdbRemoveBreakpoint(unsigned int waddr)
   DEBLN(bpcnt);
 }
 
+// remove all active breakpoints before reset etc
+void gdbRemoveAllBreakpoints(void)
+{
+  int cnt = 0;
+  DEBPR(F("Remove all breakpoints. There are still: "));
+  DEBLN(bpcnt);
+  for (byte i=0; i < MAXBREAK*2; i++) {
+    if (bp[i].active) {
+      bp[i].active = false;
+      bp[i].hw = false;
+      if (!bp[i].inflash) bp[i].used = false;
+      cnt++;
+      DEBPR(F("BP removed at: "));
+      DEBLNF(bp[i].waddr*2,HEX);
+    }
+  }
+  if (cnt != bpcnt) {
+    DEBLN(F("Inconsistent bpcnt number: "));
+    DEBPR(cnt);
+    DEBLN(F(" BPs removed!"));
+  }
+  bpcnt = 0;
+  lasthwbp = 0xFFFF;
+}
 
 void gdbInitRegisters(void)
 {
@@ -1088,6 +1111,7 @@ static void gdbWriteMemory(const byte *buff)
 
 static void gdbWriteBinMemory(const byte *buff) {
   unsigned long flag, addr, sz;
+  int memsz;
 
   if (targetoffline()) return;
 
@@ -1098,13 +1122,17 @@ static void gdbWriteBinMemory(const byte *buff) {
   buff += 2;
   
   // convert to binary data by deleting the escapes
-  gdbBin2Mem(buff, membuf, sz);
-
+  memsz = gdbBin2Mem(buff, membuf, sz);
+  if (memsz < 0) { 
+    gdbSendReply("E05");
+    return;
+  }
+  
   flag = addr & MEM_SPACE_MASK;
   addr &= ~MEM_SPACE_MASK;
-  if (flag == SRAM_OFFSET) targetWriteSram(addr, membuf, sz);
-  else if (flag == FLASH_OFFSET) targetWriteFlash(addr, membuf, sz);
-  else if (flag == EEPROM_OFFSET) targetWriteEeprom(addr, membuf, sz);
+  if (flag == SRAM_OFFSET) targetWriteSram(addr, membuf, memsz);
+  else if (flag == FLASH_OFFSET) targetWriteFlash(addr, membuf, memsz);
+  else if (flag == EEPROM_OFFSET) targetWriteEeprom(addr, membuf, memsz);
   else {
     gdbSendReply("E05");
     return;
@@ -1136,7 +1164,7 @@ int gdbBin2Mem(const byte *buf, byte *mem, int count) {
 	escape = 0x20;
 	break;
       default:
-	/* nothing */
+	return -1; // signal error if something has been escaped that shouldn't
 	break;
       }
     }

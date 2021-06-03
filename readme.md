@@ -1,4 +1,4 @@
-# debugWIRE-probe
+# debugWIRE-probe 
 
 This is an Arduino sketch that turns your Arduino Uno or Nano into a hardware debugger that uses the [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) protocol, which enables you to debug the classic ATtinys and some small ATmegas. It acts as a [gdbserver](https://en.wikipedia.org/wiki/Gdbserver), so you can use it to debug your programs running on the target hardware (e.g. an ATtiny) using avr-gdb or any IDE that integrates avr-gdb, e.g., [PlatformIO](https://platformio.org/) or [Eclipse](https://www.eclipse.org/), on the development machine. And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
