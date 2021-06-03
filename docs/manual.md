@@ -159,7 +159,7 @@ attinyx5.menu.debug.disabled=Disabled
 attinyx5.menu.debug.disabled.build.debug=
 attinyx5.menu.debug.enabled=Enabled
 attinyx5.menu.debug.enabled.build.debug=-Og
-``
+```
 
 Now you have to restart the Arduino IDE. If you select `ATtiny25/45/85 (No bootloader)` from the menu of possible MCUs, then you will notice that there is a new menu option `Debug`. This works, of course, also for other board definitions, e.g., for the Arduino Uno. 
 
