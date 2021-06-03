@@ -1,0 +1,976 @@
+
+/var/folders/td/wp923bzj2jv3zwrq5ykhp_qh0000gs/T/arduino_build_12918/tiny85blink.ino.elf:     file format elf32-avr
+
+
+Disassembly of section .text:
+
+00000000 <__vectors>:
+__vectors():
+   0:	1d c0       	rjmp	.+58     	; 0x3c <__ctors_end>
+   2:	2c c0       	rjmp	.+88     	; 0x5c <__bad_interrupt>
+   4:	2b c0       	rjmp	.+86     	; 0x5c <__bad_interrupt>
+   6:	2a c0       	rjmp	.+84     	; 0x5c <__bad_interrupt>
+   8:	29 c0       	rjmp	.+82     	; 0x5c <__bad_interrupt>
+   a:	68 c1       	rjmp	.+720    	; 0x2dc <__vector_5>
+   c:	27 c0       	rjmp	.+78     	; 0x5c <__bad_interrupt>
+   e:	26 c0       	rjmp	.+76     	; 0x5c <__bad_interrupt>
+  10:	25 c0       	rjmp	.+74     	; 0x5c <__bad_interrupt>
+  12:	24 c0       	rjmp	.+72     	; 0x5c <__bad_interrupt>
+  14:	23 c0       	rjmp	.+70     	; 0x5c <__bad_interrupt>
+  16:	22 c0       	rjmp	.+68     	; 0x5c <__bad_interrupt>
+  18:	21 c0       	rjmp	.+66     	; 0x5c <__bad_interrupt>
+  1a:	20 c0       	rjmp	.+64     	; 0x5c <__bad_interrupt>
+  1c:	1f c0       	rjmp	.+62     	; 0x5c <__bad_interrupt>
+
+0000001e <__trampolines_end>:
+__trampolines_start():
+  1e:	00 00       	nop
+  20:	00 00       	nop
+  22:	37 00       	.word	0x0037	; ????
+
+00000024 <port_to_output_PGM>:
+  24:	00 00 00 00 38 00                                   ....8.
+
+0000002a <digital_pin_to_port_PGM>:
+  2a:	02 02 02 02 02 02                                   ......
+
+00000030 <digital_pin_to_bit_mask_PGM>:
+  30:	01 02 04 08 10 20                                   ..... 
+
+00000036 <digital_pin_to_timer_PGM>:
+  36:	01 03 00 00 04 00                                   ......
+
+0000003c <__ctors_end>:
+__dtors_end():
+  3c:	11 24       	eor	r1, r1
+  3e:	1f be       	out	0x3f, r1	; 63
+  40:	cf e5       	ldi	r28, 0x5F	; 95
+  42:	d2 e0       	ldi	r29, 0x02	; 2
+  44:	de bf       	out	0x3e, r29	; 62
+  46:	cd bf       	out	0x3d, r28	; 61
+
+00000048 <__do_clear_bss>:
+__do_clear_bss():
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2441
+  48:	20 e0       	ldi	r18, 0x00	; 0
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2442
+  4a:	a0 e6       	ldi	r26, 0x60	; 96
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2443
+  4c:	b0 e0       	ldi	r27, 0x00	; 0
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2444
+  4e:	01 c0       	rjmp	.+2      	; 0x52 <.do_clear_bss_start>
+
+00000050 <.do_clear_bss_loop>:
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2446
+  50:	1d 92       	st	X+, r1
+
+00000052 <.do_clear_bss_start>:
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2448
+  52:	aa 36       	cpi	r26, 0x6A	; 106
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2449
+  54:	b2 07       	cpc	r27, r18
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2450
+  56:	e1 f7       	brne	.-8      	; 0x50 <.do_clear_bss_loop>
+.do_clear_bss_start():
+  58:	3d d1       	rcall	.+634    	; 0x2d4 <main>
+  5a:	8a c1       	rjmp	.+788    	; 0x370 <_exit>
+
+0000005c <__bad_interrupt>:
+__vector_1():
+  5c:	d1 cf       	rjmp	.-94     	; 0x0 <__vectors>
+
+0000005e <turnOffPWM>:
+turnOffPWM():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:67
+}
+
+static void turnOffPWM(uint8_t timer)
+{
+  #if defined(TCCR0A) && defined(COM0A1)
+    if( timer == TIMER0A){
+  5e:	81 30       	cpi	r24, 0x01	; 1
+  60:	39 f0       	breq	.+14     	; 0x70 <turnOffPWM+0x12>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:73
+      cbi(TCCR0A, COM0A1);
+      //cbi(TCCR0A, COM0A0);
+    } else
+  #endif
+  #if defined(TCCR0A) && defined(COM0B1)
+    if( timer == TIMER0B){
+  62:	82 30       	cpi	r24, 0x02	; 2
+  64:	49 f0       	breq	.+18     	; 0x78 <turnOffPWM+0x1a>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:106
+      //cbi(TCCR1C,COM1D0);
+    } else
+  #else
+    // Timer1 for non-x61/x7
+    #if defined(TCCR1) && defined(COM1A1) // x5
+      if(timer == TIMER1A){
+  66:	83 30       	cpi	r24, 0x03	; 3
+  68:	59 f0       	breq	.+22     	; 0x80 <turnOffPWM+0x22>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:112
+        TCCR1 &= ~(1<<COM1A1);
+        //cbi(TCCR1, COM1A0);
+      } else
+    #endif
+    #if defined(TCCR1) && defined(COM1B1) // x5
+      if( timer == TIMER1B){
+  6a:	84 30       	cpi	r24, 0x04	; 4
+  6c:	69 f0       	breq	.+26     	; 0x88 <turnOffPWM+0x2a>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:134
+    #endif
+  #endif
+  {
+    // dummy block to fill in the else statement
+  }
+}
+  6e:	08 95       	ret
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:68
+
+static void turnOffPWM(uint8_t timer)
+{
+  #if defined(TCCR0A) && defined(COM0A1)
+    if( timer == TIMER0A){
+      cbi(TCCR0A, COM0A1);
+  70:	8a b5       	in	r24, 0x2a	; 42
+  72:	8f 77       	andi	r24, 0x7F	; 127
+  74:	8a bd       	out	0x2a, r24	; 42
+  76:	08 95       	ret
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:74
+      //cbi(TCCR0A, COM0A0);
+    } else
+  #endif
+  #if defined(TCCR0A) && defined(COM0B1)
+    if( timer == TIMER0B){
+      cbi(TCCR0A, COM0B1);
+  78:	8a b5       	in	r24, 0x2a	; 42
+  7a:	8f 7d       	andi	r24, 0xDF	; 223
+  7c:	8a bd       	out	0x2a, r24	; 42
+  7e:	08 95       	ret
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:107
+    } else
+  #else
+    // Timer1 for non-x61/x7
+    #if defined(TCCR1) && defined(COM1A1) // x5
+      if(timer == TIMER1A){
+        TCCR1 &= ~(1<<COM1A1);
+  80:	80 b7       	in	r24, 0x30	; 48
+  82:	8f 7d       	andi	r24, 0xDF	; 223
+  84:	80 bf       	out	0x30, r24	; 48
+  86:	08 95       	ret
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:113
+        //cbi(TCCR1, COM1A0);
+      } else
+    #endif
+    #if defined(TCCR1) && defined(COM1B1) // x5
+      if( timer == TIMER1B){
+        GTCCR &= ~(1<<COM1B1);
+  88:	8c b5       	in	r24, 0x2c	; 44
+  8a:	8f 7d       	andi	r24, 0xDF	; 223
+  8c:	8c bd       	out	0x2c, r24	; 44
+  8e:	ef cf       	rjmp	.-34     	; 0x6e <turnOffPWM+0x10>
+
+00000090 <initToneTimerInternal>:
+initToneTimerInternal():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:958
+    #elif defined(__AVR_ATtiny43__)
+      TCCR1A = 3; //WGM 10=1, WGM11=1
+      TCCR1B = 3; //prescaler of 64
+    #elif (TIMER_TO_USE_FOR_TONE == 1) && defined(TCCR1) // ATtiny x5
+      // Use the Tone Timer for fast PWM as phase correct not supported by this timer
+      GTCCR = (1<<PWM1B);
+  90:	80 e4       	ldi	r24, 0x40	; 64
+  92:	8c bd       	out	0x2c, r24	; 44
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:959
+      OCR1C = 0xFF; //Use 255 as the top to match with the others as this module doesn't have a 8bit PWM mode.
+  94:	8f ef       	ldi	r24, 0xFF	; 255
+  96:	8d bd       	out	0x2d, r24	; 45
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:960
+      TCCR1 = (1<<CTC1) | (1<<PWM1A) | (ToneTimer_Prescale_Index << CS10);
+  98:	87 ec       	ldi	r24, 0xC7	; 199
+  9a:	80 bf       	out	0x30, r24	; 48
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:975
+    #elif (TIMER_TO_USE_FOR_TONE == 1) // x4, x8, x313,
+      // Use the Tone Timer for phase correct PWM
+      TCCR1A = (1<<WGM10);
+      TCCR1B = (0<<WGM12) | (0<<WGM13) | (ToneTimer_Prescale_Index << CS10); //set the clock
+    #endif
+  }
+  9c:	08 95       	ret
+
+0000009e <init>:
+init():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:1138
+*/
+
+  // Use the Millis Timer for fast PWM (unless it doesn't have an output).
+  #if (TIMER_TO_USE_FOR_MILLIS == 0)
+    #if defined(WGM01) // if Timer0 has PWM
+      TCCR0A = (1<<WGM01) | (1<<WGM00);
+  9e:	83 e0       	ldi	r24, 0x03	; 3
+  a0:	8a bd       	out	0x2a, r24	; 42
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:1141
+    #endif
+    #if defined(TCCR0B) //The x61 has a wacky Timer0!
+      TCCR0B = (MillisTimer_Prescale_Index << CS00);
+  a2:	83 bf       	out	0x33, r24	; 51
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:1162
+    TCCR1A = 1<<WGM10;
+    TCCR1B = (1<<WGM12) | (MillisTimer_Prescale_Index << CS10);
+  #endif
+
+  // this needs to be called before setup() or some functions won't work there
+  sei();
+  a4:	78 94       	sei
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:1167
+
+  #ifndef DISABLEMILLIS
+    // Enable the overflow interrupt (this is the basic system tic-toc for millis)
+    #if defined(TIMSK) && defined(TOIE0) && (TIMER_TO_USE_FOR_MILLIS == 0)
+      sbi(TIMSK, TOIE0);
+  a6:	89 b7       	in	r24, 0x39	; 57
+  a8:	82 60       	ori	r24, 0x02	; 2
+  aa:	89 bf       	out	0x39, r24	; 57
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:1205
+      PLLCSR = (1<<PCKE)|(1<<LSM)|(1<<PLLE);
+    }
+  #endif
+  // Initialize the timer used for Tone
+  #if INITIALIZE_SECONDARY_TIMERS
+    initToneTimerInternal();
+  ac:	f1 df       	rcall	.-30     	; 0x90 <initToneTimerInternal>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:1214
+  #if defined( INITIALIZE_ANALOG_TO_DIGITAL_CONVERTER ) && INITIALIZE_ANALOG_TO_DIGITAL_CONVERTER
+    #if defined(ADCSRA)
+      // set a2d prescale factor
+      // ADCSRA = (ADCSRA & ~((1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0))) | (ADC_ARDUINO_PRESCALER << ADPS0) | (1<<ADEN);
+      // dude, this is being called on startup. We know that ADCSRA is 0! Why add a RMW cycle?!
+      ADCSRA = (ADC_ARDUINO_PRESCALER << ADPS0) | (1<<ADEN);
+  ae:	86 e8       	ldi	r24, 0x86	; 134
+  b0:	86 b9       	out	0x06, r24	; 6
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:1219
+      // enable a2d conversions
+      // sbi(ADCSRA, ADEN); //we already set this!!!
+    #endif
+  #endif
+}
+  b2:	08 95       	ret
+
+000000b4 <__empty>:
+__empty():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:512
+  #endif // !CORRECT_EXACT_MICROS
+  }
+
+  static void __empty() {
+    // Empty
+  }
+  b4:	08 95       	ret
+
+000000b6 <micros>:
+micros():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:360
+    unsigned int r; // needed for some frequencies, optimized away otherwise
+    unsigned char f; // temporary storage for millis fraction counter
+    unsigned char q = 0; // record whether an overflow is flagged
+#endif
+    unsigned long m;
+    uint8_t t, oldSREG = SREG;
+  b6:	3f b7       	in	r19, 0x3f	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:362
+
+    cli();
+  b8:	f8 94       	cli
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:367
+#ifdef CORRECT_EXACT_MICROS
+    m = millis_timer_millis;
+    f = millis_timer_fract;
+#else
+    m = millis_timer_overflow_count;
+  ba:	80 91 66 00 	lds	r24, 0x0066	; 0x800066 <millis_timer_overflow_count>
+  be:	90 91 67 00 	lds	r25, 0x0067	; 0x800067 <millis_timer_overflow_count+0x1>
+  c2:	a0 91 68 00 	lds	r26, 0x0068	; 0x800068 <millis_timer_overflow_count+0x2>
+  c6:	b0 91 69 00 	lds	r27, 0x0069	; 0x800069 <millis_timer_overflow_count+0x3>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:370
+#endif
+  #if defined(TCNT0) && (TIMER_TO_USE_FOR_MILLIS == 0) && !defined(TCW0)
+    t = TCNT0;
+  ca:	22 b7       	in	r18, 0x32	; 50
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:389
+      m++;
+    #else
+      q = 1;
+    #endif
+  #elif defined(TIFR) && (TIMER_TO_USE_FOR_MILLIS == 0)
+    if ((TIFR & _BV(TOV0)) && (t < 255))
+  cc:	08 b6       	in	r0, 0x38	; 56
+  ce:	01 fe       	sbrs	r0, 1
+  d0:	05 c0       	rjmp	.+10     	; 0xdc <micros+0x26>
+  d2:	2f 3f       	cpi	r18, 0xFF	; 255
+  d4:	19 f0       	breq	.+6      	; 0xdc <micros+0x26>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:391
+    #ifndef CORRECT_EXACT_MICROS
+      m++;
+  d6:	01 96       	adiw	r24, 0x01	; 1
+  d8:	a1 1d       	adc	r26, r1
+  da:	b1 1d       	adc	r27, r1
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:411
+    #else
+      q = 1;
+    #endif
+  #endif
+
+    SREG = oldSREG;
+  dc:	3f bf       	out	0x3f, r19	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:453
+  #else
+  #if F_CPU < 1000000L
+    return ((m << 8) + t) * MillisTimer_Prescale_Value * (1000000L/F_CPU);
+  #else
+    #if (MillisTimer_Prescale_Value % clockCyclesPerMicrosecond() == 0 && (F_CPU % 1000000 == 0 )) // Can we just do it the naive way? If so great!
+      return ((m << 8) + t) * (MillisTimer_Prescale_Value / clockCyclesPerMicrosecond());
+  de:	ba 2f       	mov	r27, r26
+  e0:	a9 2f       	mov	r26, r25
+  e2:	98 2f       	mov	r25, r24
+  e4:	88 27       	eor	r24, r24
+  e6:	bc 01       	movw	r22, r24
+  e8:	cd 01       	movw	r24, r26
+  ea:	62 0f       	add	r22, r18
+  ec:	71 1d       	adc	r23, r1
+  ee:	81 1d       	adc	r24, r1
+  f0:	91 1d       	adc	r25, r1
+  f2:	66 0f       	add	r22, r22
+  f4:	77 1f       	adc	r23, r23
+  f6:	88 1f       	adc	r24, r24
+  f8:	99 1f       	adc	r25, r25
+  fa:	66 0f       	add	r22, r22
+  fc:	77 1f       	adc	r23, r23
+  fe:	88 1f       	adc	r24, r24
+ 100:	99 1f       	adc	r25, r25
+ 102:	66 0f       	add	r22, r22
+ 104:	77 1f       	adc	r23, r23
+ 106:	88 1f       	adc	r24, r24
+ 108:	99 1f       	adc	r25, r25
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:508
+      //return ((m << 8 )/clockCyclesPerMicrosecond()* MillisTimer_Prescale_Value) + ((t+(((m<<8)%clockCyclesPerMicrosecond())) * MillisTimer_Prescale_Value / clockCyclesPerMicrosecond()));
+      return ((m << 8 )/clockCyclesPerMicrosecond()* MillisTimer_Prescale_Value) + (t * MillisTimer_Prescale_Value / clockCyclesPerMicrosecond());
+    #endif
+  #endif
+  #endif // !CORRECT_EXACT_MICROS
+  }
+ 10a:	08 95       	ret
+
+0000010c <delay>:
+delay():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:516
+    // Empty
+  }
+  void yield(void) __attribute__ ((weak, alias("__empty")));
+
+  void delay(unsigned long ms)
+  {
+ 10c:	cf 92       	push	r12
+ 10e:	df 92       	push	r13
+ 110:	ef 92       	push	r14
+ 112:	ff 92       	push	r15
+ 114:	cf 93       	push	r28
+ 116:	df 93       	push	r29
+ 118:	6b 01       	movw	r12, r22
+ 11a:	7c 01       	movw	r14, r24
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:518
+    #if (F_CPU>=1000000L)
+    uint16_t start = (uint16_t)micros();
+ 11c:	cc df       	rcall	.-104    	; 0xb6 <micros>
+ 11e:	eb 01       	movw	r28, r22
+ 120:	12 c0       	rjmp	.+36     	; 0x146 <delay+0x3a>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:523
+
+    while (ms > 0) {
+      yield();
+      while (((uint16_t)micros() - start) >= 1000 && ms) {
+        ms--;
+ 122:	81 e0       	ldi	r24, 0x01	; 1
+ 124:	c8 1a       	sub	r12, r24
+ 126:	d1 08       	sbc	r13, r1
+ 128:	e1 08       	sbc	r14, r1
+ 12a:	f1 08       	sbc	r15, r1
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:524
+        start += 1000;
+ 12c:	c8 51       	subi	r28, 0x18	; 24
+ 12e:	dc 4f       	sbci	r29, 0xFC	; 252
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:522
+    #if (F_CPU>=1000000L)
+    uint16_t start = (uint16_t)micros();
+
+    while (ms > 0) {
+      yield();
+      while (((uint16_t)micros() - start) >= 1000 && ms) {
+ 130:	c2 df       	rcall	.-124    	; 0xb6 <micros>
+ 132:	6c 1b       	sub	r22, r28
+ 134:	7d 0b       	sbc	r23, r29
+ 136:	68 3e       	cpi	r22, 0xE8	; 232
+ 138:	73 40       	sbci	r23, 0x03	; 3
+ 13a:	28 f0       	brcs	.+10     	; 0x146 <delay+0x3a>
+ 13c:	c1 14       	cp	r12, r1
+ 13e:	d1 04       	cpc	r13, r1
+ 140:	e1 04       	cpc	r14, r1
+ 142:	f1 04       	cpc	r15, r1
+ 144:	71 f7       	brne	.-36     	; 0x122 <delay+0x16>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:520
+  void delay(unsigned long ms)
+  {
+    #if (F_CPU>=1000000L)
+    uint16_t start = (uint16_t)micros();
+
+    while (ms > 0) {
+ 146:	c1 14       	cp	r12, r1
+ 148:	d1 04       	cpc	r13, r1
+ 14a:	e1 04       	cpc	r14, r1
+ 14c:	f1 04       	cpc	r15, r1
+ 14e:	81 f7       	brne	.-32     	; 0x130 <delay+0x24>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:532
+    #else
+    uint32_t start = millis();
+    while((millis() - start) < ms)  /* NOP */yield();
+    return;
+    #endif
+  }
+ 150:	df 91       	pop	r29
+ 152:	cf 91       	pop	r28
+ 154:	ff 90       	pop	r15
+ 156:	ef 90       	pop	r14
+ 158:	df 90       	pop	r13
+ 15a:	cf 90       	pop	r12
+ 15c:	08 95       	ret
+
+0000015e <digitalWrite>:
+digitalWrite():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:137
+    // dummy block to fill in the else statement
+  }
+}
+
+void digitalWrite(uint8_t pin, uint8_t val)
+{
+ 15e:	0f 93       	push	r16
+ 160:	1f 93       	push	r17
+ 162:	cf 93       	push	r28
+ 164:	df 93       	push	r29
+ 166:	16 2f       	mov	r17, r22
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:138
+  if (pin&128) {pin=analogInputToDigitalPin((pin&127));}
+ 168:	88 23       	and	r24, r24
+ 16a:	44 f1       	brlt	.+80     	; 0x1bc <digitalWrite+0x5e>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:139
+  uint8_t timer = digitalPinToTimer(pin);
+ 16c:	28 2f       	mov	r18, r24
+ 16e:	30 e0       	ldi	r19, 0x00	; 0
+ 170:	f9 01       	movw	r30, r18
+ 172:	ea 5c       	subi	r30, 0xCA	; 202
+ 174:	ff 4f       	sbci	r31, 0xFF	; 255
+ 176:	84 91       	lpm	r24, Z
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:140
+  uint8_t bit = digitalPinToBitMask(pin);
+ 178:	f9 01       	movw	r30, r18
+ 17a:	e0 5d       	subi	r30, 0xD0	; 208
+ 17c:	ff 4f       	sbci	r31, 0xFF	; 255
+ 17e:	04 91       	lpm	r16, Z
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:141
+  uint8_t port = digitalPinToPort(pin);
+ 180:	26 5d       	subi	r18, 0xD6	; 214
+ 182:	3f 4f       	sbci	r19, 0xFF	; 255
+ 184:	f9 01       	movw	r30, r18
+ 186:	24 91       	lpm	r18, Z
+ 188:	c2 2f       	mov	r28, r18
+ 18a:	d0 e0       	ldi	r29, 0x00	; 0
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:144
+  volatile uint8_t *out;
+
+  if (port == NOT_A_PIN) return;
+ 18c:	22 23       	and	r18, r18
+ 18e:	89 f0       	breq	.+34     	; 0x1b2 <digitalWrite+0x54>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:148
+
+  // If the pin that support PWM output, we need to turn it off
+  // before doing a digital write.
+  if (timer != NOT_ON_TIMER) turnOffPWM(timer);
+ 190:	81 11       	cpse	r24, r1
+ 192:	24 c0       	rjmp	.+72     	; 0x1dc <digitalWrite+0x7e>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:150
+
+  out = portOutputRegister(port);
+ 194:	fe 01       	movw	r30, r28
+ 196:	ee 0f       	add	r30, r30
+ 198:	ff 1f       	adc	r31, r31
+ 19a:	ec 5d       	subi	r30, 0xDC	; 220
+ 19c:	ff 4f       	sbci	r31, 0xFF	; 255
+ 19e:	a5 91       	lpm	r26, Z+
+ 1a0:	b4 91       	lpm	r27, Z
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:152
+
+  if (val == LOW) {
+ 1a2:	11 23       	and	r17, r17
+ 1a4:	e9 f0       	breq	.+58     	; 0x1e0 <digitalWrite+0x82>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:158
+    uint8_t oldSREG = SREG;
+    cli();
+    *out &= ~bit;
+    SREG = oldSREG;
+  } else {
+    uint8_t oldSREG = SREG;
+ 1a6:	8f b7       	in	r24, 0x3f	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:159
+    cli();
+ 1a8:	f8 94       	cli
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:160
+    *out |= bit;
+ 1aa:	ec 91       	ld	r30, X
+ 1ac:	e0 2b       	or	r30, r16
+ 1ae:	ec 93       	st	X, r30
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:161
+    SREG = oldSREG;
+ 1b0:	8f bf       	out	0x3f, r24	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:163
+  }
+}
+ 1b2:	df 91       	pop	r29
+ 1b4:	cf 91       	pop	r28
+ 1b6:	1f 91       	pop	r17
+ 1b8:	0f 91       	pop	r16
+ 1ba:	08 95       	ret
+ 1bc:	8f 77       	andi	r24, 0x7F	; 127
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:138
+  }
+}
+
+void digitalWrite(uint8_t pin, uint8_t val)
+{
+  if (pin&128) {pin=analogInputToDigitalPin((pin&127));}
+ 1be:	41 f0       	breq	.+16     	; 0x1d0 <digitalWrite+0x72>
+ 1c0:	81 30       	cpi	r24, 0x01	; 1
+ 1c2:	41 f0       	breq	.+16     	; 0x1d4 <digitalWrite+0x76>
+ 1c4:	82 30       	cpi	r24, 0x02	; 2
+ 1c6:	41 f0       	breq	.+16     	; 0x1d8 <digitalWrite+0x7a>
+ 1c8:	83 30       	cpi	r24, 0x03	; 3
+ 1ca:	81 f2       	breq	.-96     	; 0x16c <digitalWrite+0xe>
+ 1cc:	8f ef       	ldi	r24, 0xFF	; 255
+ 1ce:	ce cf       	rjmp	.-100    	; 0x16c <digitalWrite+0xe>
+ 1d0:	85 e0       	ldi	r24, 0x05	; 5
+ 1d2:	cc cf       	rjmp	.-104    	; 0x16c <digitalWrite+0xe>
+ 1d4:	82 e0       	ldi	r24, 0x02	; 2
+ 1d6:	ca cf       	rjmp	.-108    	; 0x16c <digitalWrite+0xe>
+ 1d8:	84 e0       	ldi	r24, 0x04	; 4
+ 1da:	c8 cf       	rjmp	.-112    	; 0x16c <digitalWrite+0xe>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:148
+
+  if (port == NOT_A_PIN) return;
+
+  // If the pin that support PWM output, we need to turn it off
+  // before doing a digital write.
+  if (timer != NOT_ON_TIMER) turnOffPWM(timer);
+ 1dc:	40 df       	rcall	.-384    	; 0x5e <turnOffPWM>
+ 1de:	da cf       	rjmp	.-76     	; 0x194 <digitalWrite+0x36>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:153
+
+  out = portOutputRegister(port);
+
+  if (val == LOW) {
+    uint8_t oldSREG = SREG;
+ 1e0:	8f b7       	in	r24, 0x3f	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:154
+    cli();
+ 1e2:	f8 94       	cli
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:155
+    *out &= ~bit;
+ 1e4:	9c 91       	ld	r25, X
+ 1e6:	e0 2f       	mov	r30, r16
+ 1e8:	e0 95       	com	r30
+ 1ea:	e9 23       	and	r30, r25
+ 1ec:	ec 93       	st	X, r30
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:156
+    SREG = oldSREG;
+ 1ee:	8f bf       	out	0x3f, r24	; 63
+ 1f0:	e0 cf       	rjmp	.-64     	; 0x1b2 <digitalWrite+0x54>
+
+000001f2 <loop>:
+loop():
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:14
+}
+
+// the loop function runs over and over again forever
+void loop() {
+  int i=10;
+  digitalWrite(LED, HIGH);   // turn the LED on (HIGH is the voltage level)
+ 1f2:	61 e0       	ldi	r22, 0x01	; 1
+ 1f4:	84 e0       	ldi	r24, 0x04	; 4
+ 1f6:	b3 df       	rcall	.-154    	; 0x15e <digitalWrite>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:16
+  i++;
+  delay(1000);                       // wait for a second
+ 1f8:	68 ee       	ldi	r22, 0xE8	; 232
+ 1fa:	73 e0       	ldi	r23, 0x03	; 3
+ 1fc:	80 e0       	ldi	r24, 0x00	; 0
+ 1fe:	90 e0       	ldi	r25, 0x00	; 0
+ 200:	85 df       	rcall	.-246    	; 0x10c <delay>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:18
+  i++;
+  digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
+ 202:	60 e0       	ldi	r22, 0x00	; 0
+ 204:	84 e0       	ldi	r24, 0x04	; 4
+ 206:	ab df       	rcall	.-170    	; 0x15e <digitalWrite>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:20
+  i++;
+  delay(1000);                       // wait for a second
+ 208:	68 ee       	ldi	r22, 0xE8	; 232
+ 20a:	73 e0       	ldi	r23, 0x03	; 3
+ 20c:	80 e0       	ldi	r24, 0x00	; 0
+ 20e:	90 e0       	ldi	r25, 0x00	; 0
+ 210:	7d df       	rcall	.-262    	; 0x10c <delay>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:22
+  i++;
+  thisByte++;
+ 212:	60 91 60 00 	lds	r22, 0x0060	; 0x800060 <__DATA_REGION_ORIGIN__>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:23
+  thisByte = thisByte + i;
+ 216:	61 5f       	subi	r22, 0xF1	; 241
+ 218:	60 93 60 00 	sts	0x0060, r22	; 0x800060 <__DATA_REGION_ORIGIN__>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:24
+  delay(thisByte);
+ 21c:	70 e0       	ldi	r23, 0x00	; 0
+ 21e:	90 e0       	ldi	r25, 0x00	; 0
+ 220:	80 e0       	ldi	r24, 0x00	; 0
+ 222:	74 df       	rcall	.-280    	; 0x10c <delay>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:25
+}
+ 224:	08 95       	ret
+
+00000226 <pinMode>:
+pinMode():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:33
+#define ARDUINO_MAIN
+#include "wiring_private.h"
+#include "pins_arduino.h"
+
+void pinMode(uint8_t pin, uint8_t mode)
+{
+ 226:	cf 93       	push	r28
+ 228:	df 93       	push	r29
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:34
+  if (pin&128) {pin=analogInputToDigitalPin((pin&127));}
+ 22a:	88 23       	and	r24, r24
+ 22c:	2c f1       	brlt	.+74     	; 0x278 <__stack+0x19>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:35
+  uint8_t bit = digitalPinToBitMask(pin);
+ 22e:	90 e0       	ldi	r25, 0x00	; 0
+ 230:	fc 01       	movw	r30, r24
+ 232:	e0 5d       	subi	r30, 0xD0	; 208
+ 234:	ff 4f       	sbci	r31, 0xFF	; 255
+ 236:	24 91       	lpm	r18, Z
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:36
+  uint8_t port = digitalPinToPort(pin);
+ 238:	86 5d       	subi	r24, 0xD6	; 214
+ 23a:	9f 4f       	sbci	r25, 0xFF	; 255
+ 23c:	fc 01       	movw	r30, r24
+ 23e:	84 91       	lpm	r24, Z
+ 240:	e8 2f       	mov	r30, r24
+ 242:	f0 e0       	ldi	r31, 0x00	; 0
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:39
+  volatile uint8_t *reg, *out;
+
+  if (port == NOT_A_PIN) return;
+ 244:	88 23       	and	r24, r24
+ 246:	99 f1       	breq	.+102    	; 0x2ae <__stack+0x4f>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:41
+
+  reg = portModeRegister(port);
+ 248:	cf 01       	movw	r24, r30
+ 24a:	88 0f       	add	r24, r24
+ 24c:	99 1f       	adc	r25, r25
+ 24e:	fc 01       	movw	r30, r24
+ 250:	e2 5e       	subi	r30, 0xE2	; 226
+ 252:	ff 4f       	sbci	r31, 0xFF	; 255
+ 254:	a5 91       	lpm	r26, Z+
+ 256:	b4 91       	lpm	r27, Z
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:42
+  out = portOutputRegister(port);
+ 258:	fc 01       	movw	r30, r24
+ 25a:	ec 5d       	subi	r30, 0xDC	; 220
+ 25c:	ff 4f       	sbci	r31, 0xFF	; 255
+ 25e:	c5 91       	lpm	r28, Z+
+ 260:	d4 91       	lpm	r29, Z
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:44
+
+  if (mode == INPUT) {
+ 262:	66 23       	and	r22, r22
+ 264:	c9 f0       	breq	.+50     	; 0x298 <__stack+0x39>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:50
+    uint8_t oldSREG = SREG;
+                cli();
+    *reg &= ~bit;
+    *out &= ~bit;
+    SREG = oldSREG;
+  } else if (mode == INPUT_PULLUP) {
+ 266:	62 30       	cpi	r22, 0x02	; 2
+ 268:	29 f1       	breq	.+74     	; 0x2b4 <__stack+0x55>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:57
+                cli();
+    *reg &= ~bit;
+    *out |= bit;
+    SREG = oldSREG;
+  } else {
+    uint8_t oldSREG = SREG;
+ 26a:	8f b7       	in	r24, 0x3f	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:58
+                cli();
+ 26c:	f8 94       	cli
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:59
+    *reg |= bit;
+ 26e:	ec 91       	ld	r30, X
+ 270:	e2 2b       	or	r30, r18
+ 272:	ec 93       	st	X, r30
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:60
+    SREG = oldSREG;
+ 274:	8f bf       	out	0x3f, r24	; 63
+ 276:	1b c0       	rjmp	.+54     	; 0x2ae <__stack+0x4f>
+ 278:	8f 77       	andi	r24, 0x7F	; 127
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:34
+#include "wiring_private.h"
+#include "pins_arduino.h"
+
+void pinMode(uint8_t pin, uint8_t mode)
+{
+  if (pin&128) {pin=analogInputToDigitalPin((pin&127));}
+ 27a:	41 f0       	breq	.+16     	; 0x28c <__stack+0x2d>
+ 27c:	81 30       	cpi	r24, 0x01	; 1
+ 27e:	41 f0       	breq	.+16     	; 0x290 <__stack+0x31>
+ 280:	82 30       	cpi	r24, 0x02	; 2
+ 282:	41 f0       	breq	.+16     	; 0x294 <__stack+0x35>
+ 284:	83 30       	cpi	r24, 0x03	; 3
+ 286:	99 f2       	breq	.-90     	; 0x22e <pinMode+0x8>
+ 288:	8f ef       	ldi	r24, 0xFF	; 255
+ 28a:	d1 cf       	rjmp	.-94     	; 0x22e <pinMode+0x8>
+ 28c:	85 e0       	ldi	r24, 0x05	; 5
+ 28e:	cf cf       	rjmp	.-98     	; 0x22e <pinMode+0x8>
+ 290:	82 e0       	ldi	r24, 0x02	; 2
+ 292:	cd cf       	rjmp	.-102    	; 0x22e <pinMode+0x8>
+ 294:	84 e0       	ldi	r24, 0x04	; 4
+ 296:	cb cf       	rjmp	.-106    	; 0x22e <pinMode+0x8>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:45
+
+  reg = portModeRegister(port);
+  out = portOutputRegister(port);
+
+  if (mode == INPUT) {
+    uint8_t oldSREG = SREG;
+ 298:	9f b7       	in	r25, 0x3f	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:46
+                cli();
+ 29a:	f8 94       	cli
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:47
+    *reg &= ~bit;
+ 29c:	8c 91       	ld	r24, X
+ 29e:	e2 2f       	mov	r30, r18
+ 2a0:	e0 95       	com	r30
+ 2a2:	8e 23       	and	r24, r30
+ 2a4:	8c 93       	st	X, r24
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:48
+    *out &= ~bit;
+ 2a6:	88 81       	ld	r24, Y
+ 2a8:	e8 23       	and	r30, r24
+ 2aa:	e8 83       	st	Y, r30
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:49
+    SREG = oldSREG;
+ 2ac:	9f bf       	out	0x3f, r25	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:62
+    uint8_t oldSREG = SREG;
+                cli();
+    *reg |= bit;
+    SREG = oldSREG;
+  }
+}
+ 2ae:	df 91       	pop	r29
+ 2b0:	cf 91       	pop	r28
+ 2b2:	08 95       	ret
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:51
+                cli();
+    *reg &= ~bit;
+    *out &= ~bit;
+    SREG = oldSREG;
+  } else if (mode == INPUT_PULLUP) {
+    uint8_t oldSREG = SREG;
+ 2b4:	9f b7       	in	r25, 0x3f	; 63
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:52
+                cli();
+ 2b6:	f8 94       	cli
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:53
+    *reg &= ~bit;
+ 2b8:	3c 91       	ld	r19, X
+ 2ba:	82 2f       	mov	r24, r18
+ 2bc:	80 95       	com	r24
+ 2be:	83 23       	and	r24, r19
+ 2c0:	8c 93       	st	X, r24
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:54
+    *out |= bit;
+ 2c2:	e8 81       	ld	r30, Y
+ 2c4:	e2 2b       	or	r30, r18
+ 2c6:	e8 83       	st	Y, r30
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring_digital.c:55
+    SREG = oldSREG;
+ 2c8:	9f bf       	out	0x3f, r25	; 63
+ 2ca:	f1 cf       	rjmp	.-30     	; 0x2ae <__stack+0x4f>
+
+000002cc <setup>:
+setup():
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:8
+byte thisByte = 0;
+
+// the setup function runs once when you press reset or power the board
+void setup() {
+  // initialize digital pin LED_BUILTIN as an output.
+  pinMode(LED, OUTPUT);
+ 2cc:	61 e0       	ldi	r22, 0x01	; 1
+ 2ce:	84 e0       	ldi	r24, 0x04	; 4
+ 2d0:	aa df       	rcall	.-172    	; 0x226 <pinMode>
+/Users/nebel/Development/arduino/TOOLS/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino:9
+}
+ 2d2:	08 95       	ret
+
+000002d4 <main>:
+main():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/main.cpp:5
+#include <Arduino.h>
+
+int main(void)
+{
+  init();
+ 2d4:	e4 de       	rcall	.-568    	; 0x9e <init>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/main.cpp:7
+
+  setup();
+ 2d6:	fa df       	rcall	.-12     	; 0x2cc <setup>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/main.cpp:10
+
+  for (;;)
+    loop();
+ 2d8:	8c df       	rcall	.-232    	; 0x1f2 <loop>
+ 2da:	fe cf       	rjmp	.-4      	; 0x2d8 <main+0x4>
+
+000002dc <__vector_5>:
+__vector_5():
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:308
+      #error "cannot find Millis() timer overflow vector"
+    #endif
+  #else
+    #error "Millis() timer not defined!"
+  #endif
+  {
+ 2dc:	1f 92       	push	r1
+ 2de:	0f 92       	push	r0
+ 2e0:	0f b6       	in	r0, 0x3f	; 63
+ 2e2:	0f 92       	push	r0
+ 2e4:	11 24       	eor	r1, r1
+ 2e6:	2f 93       	push	r18
+ 2e8:	3f 93       	push	r19
+ 2ea:	8f 93       	push	r24
+ 2ec:	9f 93       	push	r25
+ 2ee:	af 93       	push	r26
+ 2f0:	bf 93       	push	r27
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:311
+    // copy these to local variables so they can be stored in registers
+    // (volatile variables must be read from memory on every access)
+    unsigned long m = millis_timer_millis;
+ 2f2:	80 91 62 00 	lds	r24, 0x0062	; 0x800062 <millis_timer_millis>
+ 2f6:	90 91 63 00 	lds	r25, 0x0063	; 0x800063 <millis_timer_millis+0x1>
+ 2fa:	a0 91 64 00 	lds	r26, 0x0064	; 0x800064 <millis_timer_millis+0x2>
+ 2fe:	b0 91 65 00 	lds	r27, 0x0065	; 0x800065 <millis_timer_millis+0x3>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:312
+    unsigned char f = millis_timer_fract;
+ 302:	30 91 61 00 	lds	r19, 0x0061	; 0x800061 <millis_timer_fract>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:319
+    static unsigned char correct_exact = 0;     // rollover intended
+    if (++correct_exact < CORRECT_EXACT_MANY) {
+      ++f;
+    }
+#endif
+    f += FRACT_INC;
+ 306:	26 e0       	ldi	r18, 0x06	; 6
+ 308:	23 0f       	add	r18, r19
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:321
+
+    if (f >= FRACT_MAX)
+ 30a:	2d 37       	cpi	r18, 0x7D	; 125
+ 30c:	58 f5       	brcc	.+86     	; 0x364 <__vector_5+0x88>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:328
+      f -= FRACT_MAX;
+      m += MILLIS_INC + 1;
+    }
+    else
+    {
+      m += MILLIS_INC;
+ 30e:	02 96       	adiw	r24, 0x02	; 2
+ 310:	a1 1d       	adc	r26, r1
+ 312:	b1 1d       	adc	r27, r1
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:331
+    }
+
+    millis_timer_fract = f;
+ 314:	20 93 61 00 	sts	0x0061, r18	; 0x800061 <millis_timer_fract>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:332
+    millis_timer_millis = m;
+ 318:	80 93 62 00 	sts	0x0062, r24	; 0x800062 <millis_timer_millis>
+ 31c:	90 93 63 00 	sts	0x0063, r25	; 0x800063 <millis_timer_millis+0x1>
+ 320:	a0 93 64 00 	sts	0x0064, r26	; 0x800064 <millis_timer_millis+0x2>
+ 324:	b0 93 65 00 	sts	0x0065, r27	; 0x800065 <millis_timer_millis+0x3>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:334
+#ifndef CORRECT_EXACT_MICROS
+    millis_timer_overflow_count++;
+ 328:	80 91 66 00 	lds	r24, 0x0066	; 0x800066 <millis_timer_overflow_count>
+ 32c:	90 91 67 00 	lds	r25, 0x0067	; 0x800067 <millis_timer_overflow_count+0x1>
+ 330:	a0 91 68 00 	lds	r26, 0x0068	; 0x800068 <millis_timer_overflow_count+0x2>
+ 334:	b0 91 69 00 	lds	r27, 0x0069	; 0x800069 <millis_timer_overflow_count+0x3>
+ 338:	01 96       	adiw	r24, 0x01	; 1
+ 33a:	a1 1d       	adc	r26, r1
+ 33c:	b1 1d       	adc	r27, r1
+ 33e:	80 93 66 00 	sts	0x0066, r24	; 0x800066 <millis_timer_overflow_count>
+ 342:	90 93 67 00 	sts	0x0067, r25	; 0x800067 <millis_timer_overflow_count+0x1>
+ 346:	a0 93 68 00 	sts	0x0068, r26	; 0x800068 <millis_timer_overflow_count+0x2>
+ 34a:	b0 93 69 00 	sts	0x0069, r27	; 0x800069 <millis_timer_overflow_count+0x3>
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:336
+#endif
+  }
+ 34e:	bf 91       	pop	r27
+ 350:	af 91       	pop	r26
+ 352:	9f 91       	pop	r25
+ 354:	8f 91       	pop	r24
+ 356:	3f 91       	pop	r19
+ 358:	2f 91       	pop	r18
+ 35a:	0f 90       	pop	r0
+ 35c:	0f be       	out	0x3f, r0	; 63
+ 35e:	0f 90       	pop	r0
+ 360:	1f 90       	pop	r1
+ 362:	18 95       	reti
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:323
+#endif
+    f += FRACT_INC;
+
+    if (f >= FRACT_MAX)
+    {
+      f -= FRACT_MAX;
+ 364:	29 e8       	ldi	r18, 0x89	; 137
+ 366:	23 0f       	add	r18, r19
+/Users/nebel/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:324
+      m += MILLIS_INC + 1;
+ 368:	03 96       	adiw	r24, 0x03	; 3
+ 36a:	a1 1d       	adc	r26, r1
+ 36c:	b1 1d       	adc	r27, r1
+ 36e:	d2 cf       	rjmp	.-92     	; 0x314 <__vector_5+0x38>
+
+00000370 <_exit>:
+exit():
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2278
+ 370:	f8 94       	cli
+
+00000372 <__stop_program>:
+__stop_program():
+/Users/jenkins/jenkins/workspace/avr-gcc-staging/label/mac-mini/gcc-build/avr/avr25/libgcc/../../../../gcc/libgcc/config/avr/lib1funcs.S:2280
+ 372:	ff cf       	rjmp	.-2      	; 0x372 <__stop_program>
