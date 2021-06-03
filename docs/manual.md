@@ -154,16 +154,16 @@ attinyx5.build.extra_flags={build.millis} -DNEOPIXELPORT=PORTB {build.pllsetting
 
 Now add `{build.debug}` to the end of this line. Before the line, you have to insert the following four lines:
 
-`
+```
 attinyx5.menu.debug.disabled=Disabled
 attinyx5.menu.debug.disabled.build.debug=
 attinyx5.menu.debug.enabled=Enabled
 attinyx5.menu.debug.enabled.build.debug=-Og
-`
+``
 
 Now you have to restart the Arduino IDE. If you select `ATtiny25/45/85 (No bootloader)` from the menu of possible MCUs, then you will notice that there is a new menu option `Debug`. This works, of course, also for other board definitions, e.g., for the Arduino Uno. 
 
-3.2.4 #### Installing avr-gdb
+#### 3.2.4 Installing avr-gdb
 
 Unfortunately, the debugger is not any longer part of the toolchain integrated into the Arduino IDE. This means, you have to download it and install it by yourself:
 
