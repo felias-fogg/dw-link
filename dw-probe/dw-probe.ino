@@ -53,7 +53,7 @@
 //   - works now in PlatformIO (if one uses a .gdbinit file!)
 //   - fixed bp address bug
 //
-// Version 0.5
+// Version 0.5 (31-May-21)
 //   - less register saving and restoring makes single-stepping faster!
 //   - fixed problem with clobbered PC after offline execution of insturuction by
 //     incrementing internal PC twice
@@ -75,7 +75,7 @@
 //     it only needs to be escaped when comming from the stub, but avr-gdb seems to escape it
 //     anyway.
 //
-// Version 0.6
+// Version 0.6 (03-Jun-21)
 //   - added support for ATtiny828 and ATtiny43
 //   - issue an error when a byte is escaped although it should not have been instead
 //     of silently ignoring it
@@ -83,11 +83,13 @@
 //   - changed the number of entries of bp from MaXBREAKS*2+1 to one less, because we now
 //     refuse to acknowledge every extra BP above the allowed number
 //   - detach function now really detaches, i.e., continues execution on the target and leaves it alone.
-//   - 
+//
+// Version 0.7 (03-Jun-21)
+//   - implementation of monitor ckdivX (promised already in the manual) 
 
+#define VERSION "0.7"
 //#define DEBUG // for debugging the debugger!
-#define VERSION "0.6"
-#define FREERAM
+//#define FREERAM
 
 // pins
 #define DEBTX    3    // TX line for TXOnlySerial
@@ -168,7 +170,7 @@ struct mcu_type {
   unsigned int eecr;
   unsigned int eearh;
   unsigned int dwenfuse;
-  unsigned int cckdiv8;
+  unsigned int ckdiv8;
   unsigned int eedr;
   unsigned int eearl;
   boolean infovalid;
@@ -453,9 +455,10 @@ void gdbParsePacket(const byte *buff)
       gdbReportFlashCount();
     else if (memcmp_P(buf, (void *)PSTR("qRcmd,72616d"), 12) == 0)    /* ram */
       gdbReportRamUsage();
-    else if  (memcmp_P(buf, (void *)PSTR("qRcmd,74657374"), 14) == 0)    /* test */
-      if (testFlashWrite(0)) gdbSendReply("OK");
-      else gdbSendReply("E05");
+    else if  (memcmp_P(buf, (void *)PSTR("qRcmd,636b64697638"), 18) == 0)    /* ckdiv8 */
+      gdbSetCkdiv8(true);
+    else if  (memcmp_P(buf, (void *)PSTR("qRcmd,636b64697631"), 18) == 0)    /* ckdiv1 */
+      gdbSetCkdiv8(false);
     else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
       /* current thread is always 1 */
       gdbSendReply("QC01");
@@ -510,6 +513,7 @@ void gdbReportRamUsage(void)
 }
 
 
+// "monitor init"
 // try to enable debugWire
 // this might imply that the user has to power-cycle the target system
 boolean gdbConnect(void)
@@ -580,6 +584,30 @@ void gdbReset(void)
 {
   targetReset();
   gdbInitRegisters();
+}
+
+void gdbSetCkdiv8(boolean program)
+{
+  boolean oldcon = ctx.targetcon;
+  int res; 
+
+  ctx.targetcon = false;
+  res = targetSetCKFuse(program);
+  if (res < 0) {
+    gdbSendReply("E05");
+    return;
+  }
+  if (res == 0) 
+    gdbDebugMessagePSTR(program ? PSTR("Fuse CKDIV8 was already programmed") : PSTR("Fuse CKDIV8 was already unprogrammed"), -1);
+  else
+    gdbDebugMessagePSTR(program ? PSTR("Fuse CKDIV8 is now programmed") : PSTR("Fuse CKDIV8 is now unprogrammed"), -1);
+  delay(200);
+  flushInput();
+  if (oldcon == false) {
+    gdbSendReply("OK");
+    return;
+  }
+  gdbConnect();
 }
 
 void gdbStep(void)
@@ -1358,6 +1386,7 @@ int targetConnect(void)
   return 0;
 }
 
+// disable debugWIRE mode
 boolean targetStop(void)
 {
   if (doBreak()) {
@@ -1378,6 +1407,35 @@ boolean targetStop(void)
     }
   }
   return false;
+}
+
+int targetSetCKFuse(boolean programfuse)
+{
+  byte newfuse, lowfuse;
+  if (doBreak()) {
+    if (setMcuAttr(DWgetChipId())) 
+      debugWire.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
+    else
+      return -1;
+  } else {
+    enterProgramMode();
+    if (!setMcuAttr(SPIgetChipId())) return -1;
+  }
+  if (!enterProgramMode()) return -1;
+  // now we are in ISP mode and know what processor we are dealing with
+  lowfuse = ispSend(0x50, 0x00, 0x00, 0x00);
+  DEBPR(F("Old low fuse: ")); DEBLNF(lowfuse,HEX);
+  if (programfuse) newfuse = lowfuse & ~mcu.ckdiv8;
+  else newfuse = lowfuse | mcu.ckdiv8;
+  DEBPR(F("New fuse: ")); DEBLNF(newfuse,HEX);
+  if (newfuse == lowfuse) {
+    leaveProgramMode();
+    return 0;
+  }
+  else ispSend(0xAC, 0xA0, 0x00, newfuse);
+  DEBLN(F("New fuse programmed"));
+  leaveProgramMode();
+  return 1;
 }
 
 void targetBreak(void)
