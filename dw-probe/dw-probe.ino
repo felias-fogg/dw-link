@@ -90,6 +90,7 @@
 // Version 0.8 (08-Jun-21)
 //   - problem with unsuccessful erase operations fixed: was actually an I/O unsynchronization bug. Forgot to read
 //     the BREAK/'U' after the single-step operation when skipping a SW breakpoint in gdbStepOverBP.
+//   - added message explaining connection error
 //
 // TODO:
 //   - check systematically all ways of continuing and single-stepping
