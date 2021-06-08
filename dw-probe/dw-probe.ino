@@ -85,10 +85,13 @@
 //   - detach function now really detaches, i.e., continues execution on the target and leaves it alone.
 //
 // Version 0.7 (03-Jun-21)
-//   - implementation of monitor ckdivX (promised already in the manual) 
+//   - implementation of monitor ckdivX (promised already in the manual)
+//
+// Version 0.8
+//   - problem with unsuccessful erase operations fixed 
 
-#define VERSION "0.7"
-//#define DEBUG // for debugging the debugger!
+#define VERSION "0.8"
+#define DEBUG // for debugging the debugger!
 //#define FREERAM
 
 // pins
@@ -112,7 +115,7 @@
 
 // some size restrictions
 #define MAXBUF 255
-#define MAXBREAK 32 // maximum of active breakpoints (we need double as many!)
+#define MAXBREAK 2 // 32 // maximum of active breakpoints (we need double as many!)
 
 // clock rates 
 #define DEBUG_BAUD    115200 // communcation speed with the host
@@ -122,7 +125,7 @@
 #define SIGINT  2      // Interrupt  - user interrupted the program (UART ISR) 
 #define SIGILL  4      // Illegal instruction
 #define SIGTRAP 5      // Trace trap  - stopped on a breakpoint
-#define SIGABRT 6
+#define SIGABRT 6      // Abort - when there are too many breakpoints
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -141,6 +144,7 @@ struct breakpoint
   unsigned int opcode; // opcode that has been replaced by BREAK
 } bp[MAXBREAK*2];
 int bpcnt = 0;
+boolean toomanybps = false;
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 unsigned int lasthwbp = 0xFFFF; // address we stopped last
@@ -261,38 +265,6 @@ int buffill; // how much of the buffer is filled up
 
 DEBDECLARE();
 
-/******************* setup & loop ******************************/
-void setup(void) {
-  DEBINIT();
-  debugWire.begin(DWIRE_RATE);    
-  setTimeoutDelay(DWIRE_RATE); 
-  debugWire.enable(true);
-  Serial.begin(DEBUG_BAUD);
-  ctx.running = false;
-  ctx.targetcon = false;
-  mcu.infovalid = false;
-  pinMode(LED_BUILTIN, OUTPUT);
-  OCR0A = 0x80; // interrupt every msec between the millis interrupts
-  TIMSK0 |= _BV(OCIE0A);
-}
-
-
-void loop(void) {
-  if (Serial.available()) {
-      gdbHandleCmd();
-  } else if (ctx.running) {
-    if (debugWire.available()) {
-      byte cc = debugWire.read();
-      if (cc == 0x55) { // breakpoint reached
-	ctx.running = false;
-	state = CONN_STATE;
-	delay(5); // we need that in order to avoid conflicts on the line
-	gdbSendState(SIGTRAP);
-      }
-    }
-  }
-}
-
 /****************** Interrupt blink routine *********************/
 
 ISR(TIMER0_COMPA_vect)
@@ -316,6 +288,39 @@ ISR(TIMER0_COMPA_vect)
     digitalWrite(LED_BUILTIN, LOW);
   cnt--;
     
+}
+
+/******************* setup & loop ******************************/
+void setup(void) {
+  DEBINIT();
+  debugWire.begin(DWIRE_RATE);    
+  setTimeoutDelay(DWIRE_RATE); 
+  debugWire.enable(true);
+  Serial.begin(DEBUG_BAUD);
+  ctx.running = false;
+  ctx.targetcon = false;
+  mcu.infovalid = false;
+  pinMode(LED_BUILTIN, OUTPUT);
+  OCR0A = 0x80; // interrupt every msec between the millis interrupts
+  TIMSK0 |= _BV(OCIE0A);
+}
+
+
+void loop(void) {
+  if (Serial.available()) {
+      gdbHandleCmd();
+  } else if (ctx.running) {
+    if (debugWire.available()) {
+      byte cc = debugWire.read();
+      if (cc == 0x55) { // breakpoint reached
+	DEBLN(F("Execution stopped"));
+	ctx.running = false;
+	state = CONN_STATE;
+	delay(5); // we need that in order to avoid conflicts on the line
+	gdbSendState(SIGTRAP);
+      }
+    }
+  }
 }
 
 /****************** gdbserver routines **************************/
@@ -425,11 +430,13 @@ void gdbParsePacket(const byte *buff)
     digitalWrite(RESET,LOW); // hold reset line low so that MCU does not start
     break;
   case 'c':               /* continue */
+  case 'C':               /* continue with signal - just ignore! */
     ctx.running = true;
     state = RUN_STATE;
     gdbContinue();       /* start executuion on target and continue with ctx.running = true */
     break;
   case 's':               /* step */
+  case 'S':               /* step with signal - haha */
     ctx.running = true;
     state = RUN_STATE;
     gdbStep();          /* do only one step */
@@ -614,6 +621,16 @@ void gdbStep(void)
 {
   DEBLN(F("Start step operation"));
   targetRestoreClobberedRegisters();
+  if (toomanybps) {
+    DEBLN(F("Too many bps"));
+    gdbDebugMessagePSTR(PSTR("Too many active breakpoints!"),-1);
+    delay(100);
+    flushInput();
+    setWPc(ctx.wpc+1); // set PC!
+    ctx.running = false;
+    gdbSendState(SIGABRT);
+    return;
+  }
 #if 0 // using now error message as a reply to the step commend
   if (bpcnt > MAXBREAK) {
     setWPc(ctx.wpc+1); // set PC!
@@ -631,6 +648,16 @@ void gdbContinue(void)
 {
   DEBLN(F("Start continue operation"));
   targetRestoreClobberedRegisters();
+  if (toomanybps) {
+    DEBLN(F("Too many bps"));
+    gdbDebugMessagePSTR(PSTR("Too many active breakpoints!"),-1);
+    delay(100);
+    flushInput();
+    setWPc(ctx.wpc+1); // set PC!
+    ctx.running = false;
+    gdbSendState(SIGABRT);
+    return;
+  }
   gdbStepOverBP(false);    // either step over or remove BREAK from flash
   gdbUpdateBreakpoints();  // update breakpoints in memory
   targetRestoreClobberedRegisters();
@@ -848,12 +875,6 @@ void gdbInsertRemoveBreakpoint(const byte *buff)
   switch (buff[1]) {
   case '0': /* software breakpoint */
     if (buff[0] == 'Z') {
-      if (bpcnt >= MAXBREAK) {
-	DEBPR(F("Too many BPs. Will not insert: "));
-	DEBLNF(byteflashaddr,HEX);
-	gdbSendReply("E05");
-	return;
-      }
       gdbInsertBreakpoint(byteflashaddr >> 1);
     } else 
       gdbRemoveBreakpoint(byteflashaddr >> 1);
@@ -870,10 +891,16 @@ void gdbInsertBreakpoint(unsigned int waddr)
 {
   int i;
 
+  // if we try to set too many bps, return
+  if (bpcnt == MAXBREAK) {
+    DEBLN(F("Too many BPs to be set! Execution will fail!"));
+    toomanybps = true;
+    return;
+  }
   // if bp is already there, but not active, then activate
   i = gdbFindBreakpoint(waddr);
   if (i >= 0) { // existing bp
-    if (bp[i].active) return; // should not happen!
+    if (bp[i].active) return; // should not happen, but can for duplicate bps
     bp[i].active = true;
     bpcnt++;
     DEBPR(F("New recycled BP: "));
@@ -882,8 +909,6 @@ void gdbInsertBreakpoint(unsigned int waddr)
     DEBLN(bpcnt);
     return;
   }
-  // if we try to set too many bps, return
-  if (bpcnt > MAXBREAK) return;
   // find free slot (should be there, even if there are MAXBREAK inactive bps)
   for (i=0; i < MAXBREAK*2; i++) {
     if (!bp[i].used) {
@@ -934,6 +959,7 @@ void gdbRemoveBreakpoint(unsigned int waddr)
   DEBPRF(waddr*2,HEX);
   DEBPR(F(" / now active: "));
   DEBLN(bpcnt);
+  if (bpcnt < MAXBREAK) toomanybps = false;
 }
 
 // remove all active breakpoints before reset etc
@@ -1449,9 +1475,7 @@ void targetContinue(void)
 
   DEBPR(F("Continue at (byte adress) "));
   DEBLNF(ctx.wpc*2,HEX);
-  delay(10);
   if (hwbp != 0xFFFF) {
-    setWBp(hwbp);
     debugWire.sendCmd((const byte []) { 0x61 }, 1);
     setWBp(hwbp);
   } else {
@@ -1918,20 +1942,31 @@ unsigned int getWordResponse () {
 }
 
 boolean checkCmdOk () {
-  byte tmp[2];
-  byte rsp = getResponse(&tmp[0], 1);
-  if (rsp == 1 && tmp[0] == 0x55) {
+  byte tmp[1];
+  byte len = getResponse(&tmp[0], 1);
+  if (len == 1 && tmp[0] == 0x55) {
     return true;
   } else {
+    DEBPR(F("checkCmd Error: len="));
+    DEBPR(len);
+    DEBPR(" tmp[0]=");
+    DEBPRF(tmp[0], HEX);
     return false;
   }
 }
 
 boolean checkCmdOk2 () {
   byte tmp[2];
-  if (getResponse(&tmp[0], 2) == 2 && tmp[0] == 0x00 && tmp[1] == 0x55) {
+  byte len = getResponse(&tmp[0], 2);
+  if ( len == 2 && tmp[0] == 0x00 && tmp[1] == 0x55) {
     return true;
   } else {
+    DEBPR(F("checkCmd2 Error: len="));
+    DEBPR(len);
+    DEBPR(" tmp[0]=");
+    DEBPRF(tmp[0], HEX);
+    DEBPR(" tmp[1]=");
+    DEBLNF(tmp[1], HEX);
     return false;
   }
 }
@@ -2218,6 +2253,8 @@ boolean readFlash (unsigned int addr, byte *mem, unsigned int len) {
 
 // erase entire flash page
 boolean eraseFlashPage(unsigned int addr) {
+  DEBPR(F("Erase: "));
+  DEBLNF(addr,HEX);
   saveTempRegisters();
   writeRegister(30, addr & 0xFF); // load Z reg with addr low
   writeRegister(31, addr >> 8  ); // load Z reg with addr high

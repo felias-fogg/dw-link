@@ -2,35 +2,35 @@
 
 The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notices that a lot of important features are missing. In particular, the IDE does not support any kind of debugging. So what can you do, when you want to debug you Arduino project? The usual way is to insert print statements and see whether the program does the things it is supposed to do.  
 
-When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE, but then you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices), which only runs under Windows (and is not easy to work with). If you want to use open source software, you will notice that there is AVaRICE, however, Atmel-ICE cannot be used under macOS. So, what are the alternatives if you want to develop programs for AVR ATtinys and small ATmegas and you are in need of a debugging tool and do not to spend more than € 100?
+When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE, but then you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices), which only runs under Windows (and is not easy to work with). If you want to use open source software, you will notice that there is AVaRICE, however, Atmel-ICE cannot be used under macOS. So, what are the alternatives if you want to develop programs for AVR ATtinys and small ATmegas and you are in need of a debugging tool and do not want to spend more than € 100?
 
 There exists a software simulator called [SIMAVR](https://github.com/buserror/simavr) and there is a [remote stub](https://sourceware.org/gdb/onlinedocs/gdb/Remote-Stub.html) for some ATmegas, called [AVR8-STUB](https://github.com/jdolinay/avr_debug). Both are integrated into PlatformIO as debuggers. However, using them is not the same as debugging on the hardware where your firmware should finally run. There exists a gdbserver implementation, called [dwire-debug](https://github.com/dcwbrown/dwire-debug), for host systems that uses just the serial interface of the host to talk with a target using the debugWIRE interface. However, only one breakpoint (the hardware breakpoint on the target system) is supported and the particular way of turning a serial interface into a one-wire interface does not seem to work under macOS, as far as I can tell (after some time of experimentation). Finally, there exists an Arduino based hardware debugger called [DebugWireDebuggerProgrammer](https://github.com/wholder/DebugWireDebuggerProgrammer). Unfortunately, it does not provide a gdbserver interface.
 
-So, I took all of the above ideas and put them together in order to come up with a cheap hardware debugger supporting the gdbserver interface that is able to debug the classic ATtinys and some smaller ATmegas (such as the popular ATmega328).
+So, I took all of the above ideas and put them together in order to come up with a cheap hardware debugger supporting the gdbserver interface that is able to debug the classic ATtinys and some smaller ATmegas (such as the popular ATmega328) using the GNU debugger gdb.
 
 ## 1. The debugWIRE interface
 
-The basic idea of *debugWIRE* is that one uses the RESET line as a communication line between the target system (the system you want to debug) and the development machine, which runs a debug program such as GDB. This idea is very clever because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU. 
+The basic idea of *debugWIRE* is that one uses the RESET line as a communication line between the target system (the system you want to debug) and the development machine, which runs a debug program such as GDB. This idea is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU.  
 
 Do not get nervous when your MCU does not react any longer as you expect it, but try to understand, in which state the MCU is. With respect to the debugWIRE protocol there are three states your MCU could be in:
 
 1. The **normal** state in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitionary** state.
 2. The **transitionary** state, in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **DebugWIRE** state.
-3. The **debugWIRE** state is the state in which you can use the debugger to control the target system. If you want to return to the **normal** state, a particular debugWIRE command leads to a transition to the **transitionary** state, from which one can reach the normal state.
+3. The **debugWIRE** state is the state in which you can use the debugger to control the target system. If you want to return to the **normal** state, a particular debugWIRE command leads to a transition to the **transitionary** state, from which one can reach the normal state using ISP programming. 
 
 The hardware debugger will take care of bringing you from state 1 to state 3 in order start debugging by either power-cycling itself or asking you to do it. This is accomplished with the gdb command ```monitor init```. The transition from state 3 to state 1 can be achieved by the gdb command ```monitor stop```.
 
 
 ## 2. Hardware requirements
 
-There are a few constraints on what kind of board you can use as the base for the hardware debugger and some requirements on how to connect the debugger to the target system.
+There are a few constraints on what kind of board you can use as the base for the hardware debugger and some requirements on how to connect the debugger to the target system. Furthermore, there is only a limited set of AVR MCUs that support debugWIRE.
 
 ### 2.1 The debugger
-As mentioned above, as a base for the debugger you can use any ATmega328 based board (or anything compatible with more memory). The clock speed  should be 16MHz, otherwise you may not be able to debug targets that use 16MHz. The basic solution is just to use this board and connect the cables (as it is shown in the example sketch for an ATtiny85 as the target system further down).
+As mentioned above, as a base for the debugger you can use any ATmega328 based board (or anything compatible with more memory). The clock speed  should be 16MHz, otherwise you may not be able to debug targets that use 16MHz. The basic solution is just to use the UNO board and connect the cables as it is shown in the example sketch for an ATtiny85 as the target system further down.
 
 If you want to use the debugger more than once, it may payoff to configure an ISP cable with the RESET line broken out, similar to what has been described by dmjlambert in [his instructables](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). Going one step further, one could break out the Vcc line on ICSP pin 2 as well and 
 
-* connect it to Arduino pin 9 in order to be able to power-cycle the target system automatically when necessary; note that in this case he target system should draw no more than 20 mA;
+* connect it to Arduino pin 9 in order to be able to power-cycle the target system automatically when necessary; note that in this case the target system should draw no more than 20 mA;
 * leave it open when the target system has an external power source;
 * or connect it to Vcc of the Arduino board powering the target system from the Uno.
 
