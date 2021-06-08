@@ -87,11 +87,18 @@
 // Version 0.7 (03-Jun-21)
 //   - implementation of monitor ckdivX (promised already in the manual)
 //
-// Version 0.8
-//   - problem with unsuccessful erase operations fixed 
+// Version 0.8 (08-Jun-21)
+//   - problem with unsuccessful erase operations fixed: was actually an I/O unsynchronization bug. Forgot to read
+//     the BREAK/'U' after the single-step operation when skipping a SW breakpoint in gdbStepOverBP.
+//
+// TODO:
+//   - check systematically all ways of continuing and single-stepping
+//   - check connecting to ATmega168
+//   - implement more intelligent way of allocating the HW BP, in particular when having 4byte/jump-intructions and cond. BPs
+//
 
 #define VERSION "0.8"
-#define DEBUG // for debugging the debugger!
+//#define DEBUG // for debugging the debugger!
 //#define FREERAM
 
 // pins
@@ -115,7 +122,7 @@
 
 // some size restrictions
 #define MAXBUF 255
-#define MAXBREAK 2 // 32 // maximum of active breakpoints (we need double as many!)
+#define MAXBREAK 32 // maximum of active breakpoints (we need double as many!)
 
 // clock rates 
 #define DEBUG_BAUD    115200 // communcation speed with the host
@@ -532,6 +539,8 @@ boolean gdbConnect(void)
   case -1: // for some reason, we cannot connect;
     state = ERROR_STATE;
     flushInput();
+    gdbDebugMessagePSTR(PSTR("Cannot connect: MCU does not support debugWIRE or wiring is incorrect"),-1);
+    flushInput();
     gdbSendReply("E05");
     ctx.targetcon = false;
     return false;
@@ -707,6 +716,7 @@ boolean gdbStepOverBP(boolean onlyonestep)
 	  DEBLN(F("Step over!"));
 	  targetRestoreClobberedRegisters(); // set all regs
 	  targetStep();         // step over the 4byte/call instr
+	  checkCmdOk2();
 	}
       }
     }
