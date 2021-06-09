@@ -401,3 +401,7 @@ There are a few more situations, which might lead to problems. The above mention
 
 If you do one of these things, either you might lose the connection to the target or, in the last two cases, the instruction might do something wrong. 
 
+# 5 Known issues and bugs
+
+* Automatic power-cycling does not yet work. In other words, one should connect Vcc of the ICSP connector to 5V of the UNO and power-cycle manually.x
+* Program loading on ATmegas is untested and does not seem to work yet.
