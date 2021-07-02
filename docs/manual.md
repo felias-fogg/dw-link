@@ -2,11 +2,20 @@
 
 The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notices that a lot of important features are missing. In particular, the IDE does not support any kind of debugging. So what can you do, when you want to debug you Arduino project? The usual way is to insert print statements and see whether the program does the things it is supposed to do.  
 
-When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE, but then you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices), which only runs under Windows (and is not easy to work with). If you want to use open source software, you will notice that there is AVaRICE, however, Atmel-ICE cannot be used under macOS. So, what are the alternatives if you want to develop programs for AVR ATtinys and small ATmegas and you are in need of a debugging tool and do not want to spend more than € 100?
+When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE, but then you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices), which only runs under Windows (and is not easy to work with). If you want to use open source software, you will notice that there is AVaRICE, however, Atmel-ICE cannot be used under macOS. So, what are the alternatives if you want to develop programs for AVR ATtinys and small ATmegas and you are in need of a debugging tool and either want to develop on a Mac or do not want to spend more than € 100 (or both)?
 
 There exists a software simulator called [SIMAVR](https://github.com/buserror/simavr) and there is a [remote stub](https://sourceware.org/gdb/onlinedocs/gdb/Remote-Stub.html) for some ATmegas, called [AVR8-STUB](https://github.com/jdolinay/avr_debug). Both are integrated into PlatformIO as debuggers. However, using them is not the same as debugging on the hardware where your firmware should finally run. There exists a gdbserver implementation, called [dwire-debug](https://github.com/dcwbrown/dwire-debug), for host systems that uses just the serial interface of the host to talk with a target using the debugWIRE interface. However, only one breakpoint (the hardware breakpoint on the target system) is supported and the particular way of turning a serial interface into a one-wire interface does not seem to work under macOS, as far as I can tell (after some time of experimentation). Finally, there exists an Arduino based hardware debugger called [DebugWireDebuggerProgrammer](https://github.com/wholder/DebugWireDebuggerProgrammer). Unfortunately, it does not provide a gdbserver interface.
 
-So, I took all of the above ideas and put them together in order to come up with a cheap hardware debugger supporting the gdbserver interface that is able to debug the classic ATtinys and some smaller ATmegas (such as the popular ATmega328) using the GNU debugger gdb.
+So, I took all of the above ideas and put them together in order to come up with a cheap hardware debugger supporting the gdbserver interface that is able to debug the classic ATtinys and some of the smaller ATmegas (such as the popular ATmega328) using the GNU debugger gdb. 
+
+You just need a ATmega328 based board to get started (e.g., UNO, Nano, or Mini). Actually, the ATmega32U4 systems such as Leonardo and Pro Micro should also work. If you want to debug 3.3 Volt systems, your target system is very power hungry, and/or you want to use your original ISP cable, then you may want to use an additional adapter PCB that provides you with all these features. 
+
+### Warning
+
+* Do not try to debug systems that run with **16 MHz** yet. You may switch the MCU into the debugWIRE mode, but you might not be able to switch back to normal!
+* Read Section 2.3 carefully before trying to debug a target system.
+
+You might very well "brick" your MCU. The only way to recover is to use high-voltage programming.
 
 ## 1. The debugWIRE interface
 
@@ -58,8 +67,11 @@ In general, most ATtiny MCUs except for the most recent ones and the ATmegaXX8 s
 
 I believe that the list is complete. However, if you happen to know MCUs with debugWIRE not covered here, drop me a note. I will then make it possible to also debug them.
 
+Note that currently only those MCUs without bootloader memory are supported. 
 
+<a name="section23"></a>
 ### 2.3 Requirements concerning the RESET line of the target system 
+
 
 Since the RESET line of the target system is used as an asynchronous serial communication line, one has to make sure that there is no capacitive load on the line when it is used in debugWIRE mode. On an Arduino Uno and similar boards, there is unfortunately a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the board any longer with the Arduino IDE. A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper.
 
@@ -100,7 +112,7 @@ There are basically 5 states, the debugger can be in and each is signaled by a d
 * waiting for power-cycling the target (LED flashes every second)
 * connected and target is stopped (LED is on)
 * connected and target is running (LED blinks every half second)
-* error state, i.e., not possible to connect to target (LED blinks furiously every 100 ms)
+* error state, i.e., not possible to connect to target or other internal error (LED blinks furiously every 100 ms)
 
 ### 3.2 Arduino IDE and avr-gdb
 
@@ -110,7 +122,7 @@ Assuming that you are working with the Arduino IDE, the simplest way of starting
 
 Since ATtinys are not supported by default, one needs to download and install [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md). After you have done that, you need to create a ```platform.local.txt``` file in the right directory and might want to add some lines to the ```boards.txt``` file. 
 
-#### 3.2.2 Modifications of platform.txt
+#### 3.2.2 Modifications of platform.local.txt
 
 When you have chosen the **Boards Manager Installation**, then you will find the ATTinyCore configuration files under the following directories:
 
@@ -178,7 +190,7 @@ Unfortunately, the debugger is not any longer part of the toolchain integrated i
 
 #### 3.2.5 Example session with avr-gdb
 
-Now we are ready to start a debug session. So compile the example `tiny85blink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `tiny85blink.ino.elf` in the sketch directory. Then connect your Uno to you computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment: 
+Now we are ready to start a debug session. So compile the example `tiny85blink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `tiny85blink.ino.elf` in the sketch directory. Then connect your Uno to your computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment: 
 
 ```
 > avr-gdb
@@ -336,7 +348,7 @@ But, of course, this is not the real thing. No LED is blinking. So close the win
 * `platformio.ini`
 * `extra_script.py`
 
-You can use the `platformio.ini` configuration as blueprint for other projects, where you want to use the hardware debugger. Note one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
+You can use the `platformio.ini` configuration as a blueprint for other projects, where you want to use the hardware debugger. Note one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
 
 After having copied the two files into the project directory and reopened the project window, you should be able to debug your project as described above. Only now you are debugging the program on the target system, i.e., the LED blinks!
 
@@ -369,7 +381,7 @@ Fifth, when reprogramming of a flash page is requested, *dw-probe* first checks 
 With all of that in mind, you do not have to worry too much about flash memory wear when debugging. As a general rule, you should not make massive changes of the breakpoints each time the MCU stops executing. If you are really paranoid about flash memory wear, you should only have one active breakpoint at a time. Finally, Microchip recommends that chips that have been used for debugging using debugWIRE should not been shipped to customers. 
 
 
-
+<a name="section42"></a>
 ### 4.2 Slow responses when loading or single-stepping
 
 Sometimes, in particular when using 1MHz clock speed, the responses from the MCU are quite sluggish, in particular when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 128, which is roughly 8000 Baud in case of a 1MHz MCU clock. In theory it is possible to choose higher speeds. However, I was not able to establish a reliable connection in this case. So, the only workaround is setting the MCU clock frequency to 8MHz. Indeed, the [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
@@ -380,12 +392,13 @@ Sometimes, in particular when using 1MHz clock speed, the responses from the MCU
 
 ### 4.3 Limited number of breakpoints
 
-The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints are supported. If you set more than those, it will not be possible to start execution. Instead one will get the warning message `Cannot insert breakpoint X`. Currently, the interaction between PlatformIO and avr-gdb then leads to a state where PlatformIO thinks that the program runs and it cannot be stopped. In this case, you have to restart the debug session completely. Further, because gdb sometimes uses temporary breakpoints, the error may also happen when you only use one less than the maximum. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
+The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints are supported. If you set more than those, it will not be possible to start execution. Instead one will get the warning message `Too many active breakpoints` and the signal `SIGABRT`. You have to delete or disable breakpoints until there are less than 33 active breakpoints before program execution can continue. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
 
 ### 4.4 Power saving is not operational 
 
-When you activate sleep mode, the power consumed by the MCU goes significantly down, e.g., to 100 nA. When debugWIRE is active, this is not the case. So, validate power consumption when debugWIRE is inactive.
+When you activate sleep mode, the power consumed by the MCU goes significantly down, e.g., to 100 nA. When debugWIRE is active, this is not the case. So, validate power consumption only when debugWIRE is disabled.
 
+<a name="section45"></a>
 ### 4.5 MCU operations interfering with debugWIRE
 
 There are a few more situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) mentions the following:
@@ -401,7 +414,62 @@ There are a few more situations, which might lead to problems. The above mention
 
 If you do one of these things, either you might lose the connection to the target or, in the last two cases, the instruction might do something wrong. 
 
-# 5 Known issues and bugs
+## 5 Trouble shooting
 
-* Automatic power-cycling does not yet work. In other words, one should connect Vcc of the ICSP connector to 5V of the UNO and power-cycle manually.x
-* Program loading on ATmegas is untested and does not seem to work yet.
+#### Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*
+
+Something in the `platformio.ini` file is not quite right. Perhaps a missing declaration of the `debug_port`. Sometimes an additional line of information is given that identifies the problem.
+
+One common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the `platformio.ini` file accordingly.
+
+#### Problem: You get the message *Cannot connect: Check wiring* 
+The debugger is not able to connect to the target system using ISP commands. Most probably the wiring is wrong. 
+
+#### Problem: You get the message *Cannot connect: Unsupported MCU type* 
+
+Sorry, but the target system is (very probably) debugWIRE incompatible. If you believe that this message is in error, please drop me a line.
+
+#### Problem: You get the message *Cannot connect: MCU type not yet supported*
+
+All the MCU that support boot loaders (e.g., ATmega328P) are not yet supported. Will hopefully come soon.  
+
+#### Problem: You get the message *Cannot connect: Lock bits are set* 
+Some of the lock bits are set and for this reason it is not possible to debug the MCU. You need to erase the entire device before you can continue.
+
+#### Problem: You get the *power-cycle* message a couple of times, then the debugger stops and blinks furiously
+
+When the *power-cycle* message is displayed, you have to power-cycle the target system. If you do not do that, after a while the debugger will go into the error state (LED blinking) and stop. If you have power-cycled the target system (or the debugger has done that automatically), but you still get the message, it could be possible that the RESET line of the target system has no pullup, a pullup that is too strong, or a  capacitive load (see [Section 2.3](#section23)). Be aware: the target system is now in debugWIRE mode and the **only** way to bring it back to normal mode is to solve the problems with the RESET line, e.g., by removing the capacitor!
+
+#### Problem: The debugger responses are very sluggish   
+
+One reason for that could be that the target is run with a clock of 1 MHz. Since the debugWIRE communication speed is CPU clock/128, the communication speed is roughly 8000 Baud in this case. It is recommended to run the MCU at 8 MHz for this reason (see [Section 4.2](#section42)).
+
+<a name="lost"></a>
+#### Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*
+
+The reason is most probably that the communication connection to the target system has been lost. The reason might be that the electrical conditions on the RESET line of the target system do not meet the requirements (see [Section 2.3](#section23)). Other reasons for loosing the connection are listed in [Section 4.5](#section45). You have to restart the debug session (and should try to identify the reason why the debugger lost connection before).
+
+#### Problem: You get the message *Connection to target lost* when trying to start execution
+
+The target is not responsive any longer. Possible reasons for such a loss of connectivity are listed [above](#lost). It could be that the RESET line of the target system does not satisfy the electrical requirements (see [Section 2.3](#section23)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 4.5](#section45)). Try to identify the reason, eliminate it and then restart the debug session.
+
+#### Problem: You get the message ****Fatal internal debugger error: n* when trying to start execution
+
+In this case some serious internal error happened. You have to stop the current debug session and restart. Please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem! 
+
+#### Problem: You get the message *Too many active breakpoints* when trying to start execution
+
+You have set more than 32 breakpoints. This does not make much sense anyway! Reduce them to a reasonable number, e.g., ten. Otherwise, you will not be able to continue the execution of the program.
+
+#### Problem: The debugger does not stop at the line the breakpoint was set
+
+Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, `-Og` is recommended, which does a number of optimizations but tries to give a good debugging experience at the same time. This is also the default for PlatformIO and the Arduino IDE. You can change that to `-O0` which does no optimization at all, but will need more flash memory. 
+
+#### Problem: In PlatformIO, the global variables are not displayed
+
+I have no idea, why that is the case. If you want to see the value of a global variable, you can set a `watchpoint`.
+
+#### Problem: The disassembly cannot be displayed
+
+Older versions of avr-gdb had a problem with dissasembly: [https://sourceware.org/bugzilla/show_bug.cgi?id=13519](https://sourceware.org/bugzilla/show_bug.cgi?id=13519). In the current version the problem has been fixed, though. So, you might want ti get hold of a current version.
+

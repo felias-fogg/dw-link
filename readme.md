@@ -10,4 +10,6 @@ This repository contains the following directories:
 * **examples**: Contains a tiny Arduino sketch and a PlatformIO project
 * **docs**: Contains the documentation, in particular the [manual](docs/manual.md)
 
-Note that the debugger is an alpha release and may contain bugs. If you encounter behavior that you think is wrong, try to be as specific as possible so that I can reproduce the behavior. For that I need a description of the problem, the source code that leads to the behavior, the way one reproduces the problem, and the type of target chip you used. Current isssues and known bugs are listed in Section 5 of the [manual](docs/manual.md).
+Note that the debugger is an alpha release and may contain bugs. If you encounter behavior that you think is wrong, try to be as specific as possible so that I can reproduce the behavior. For that I need a description of the problem, the source code that leads to the behavior, the way one reproduces the problem, and the type of target chip you used. 
+
+Note that currently (Version 0.9.1), only MCU without bootloader memory are supported. So, ATmega328, ATmega168, ATmega88, and ATtiny828 are not supported yet. *In addition, do not attempt to debug target systems running faster than 8 MHz.*

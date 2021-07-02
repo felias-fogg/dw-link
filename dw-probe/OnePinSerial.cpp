@@ -58,8 +58,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD |= 0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    //    __asm__ __volatile__("nop\n\t": : :"memory");
+    //    __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     tunedDelay(_rx_delay_intrabit);
@@ -69,8 +69,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD &= ~0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     tunedDelay(_rx_delay_intrabit);
@@ -80,8 +80,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD |= 0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     tunedDelay(_rx_delay_intrabit);
@@ -91,8 +91,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD &= ~0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     tunedDelay(_rx_delay_intrabit);
@@ -102,8 +102,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD |= 0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     tunedDelay(_rx_delay_intrabit);
@@ -113,8 +113,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD &= ~0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     tunedDelay(_rx_delay_intrabit);
@@ -124,8 +124,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD |= 0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     tunedDelay(_rx_delay_intrabit);
@@ -135,8 +135,8 @@ void OnePinSerial::recv()
 #if SCOPE_TIMING
     PORTD &= ~0x04;
 #else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
+    // __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
     
     // if buffer full, set the overflow flag and return
