@@ -32,12 +32,6 @@ private:
   uint8_t _pcint_maskvalue;
   uint8_t _pcint_clrMask;
 
-  // Expressed as 1-cycle delays (must never be 0!)
-  uint16_t _rx_delay_centering;
-  uint16_t _rx_delay_intrabit;
-  uint16_t _rx_delay_stopbit;
-  uint16_t _tx_delay;
-
   // static data
   static uint8_t _receive_buffer[_SS_MAX_RX_BUFF]; 
   static volatile uint8_t _receive_buffer_tail;
@@ -57,6 +51,13 @@ private:
   static inline void startInterval(void);
 
 public:
+  // Expressed as 1-cycle delays (must never be 0!)
+  uint16_t _rx_delay_centering;
+  uint16_t _rx_delay_intrabit;
+  uint16_t _rx_delay_stopbit;
+  uint16_t _tx_delay;
+
+
   // public methods
   OnePinSerial(uint8_t ioPin);
   void begin(long speed);

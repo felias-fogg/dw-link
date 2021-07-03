@@ -14,7 +14,7 @@
 #include <Arduino.h>
 #include "OnePinSerial.h"
 
-#define SCOPE_TIMING  0
+#define SCOPE_TIMING  1
 //
 // Statics
 //
@@ -57,8 +57,8 @@ void OnePinSerial::recv()
     nexttime = _rx_delay_centering;
     waitUntil(nexttime);
 #if SCOPE_TIMING
-    PORTD |= 0x04;
-    PORTD &= ~0x04;
+    PORTC |= 0x04;
+    PORTC &= ~0x04;
 #endif
 
     // read all bits
@@ -70,8 +70,8 @@ void OnePinSerial::recv()
       if (rx_pin_read())
         d |= 0x80;
 #if SCOPE_TIMING
-      PORTD |= 0x04;
-      PORTD &= ~0x04;
+      PORTC |= 0x04;
+      PORTC &= ~0x04;
 #endif
     }
     
@@ -87,6 +87,10 @@ void OnePinSerial::recv()
     // skip the stop bit
     nexttime += _rx_delay_stopbit;
     waitUntil(nexttime);
+#if SCOPE_TIMING
+      PORTC |= 0x04;
+      PORTC &= ~0x04;
+#endif
 
     // Re-enable interrupts when we're sure to be inside the stop bit
     setRxIntMsk(true);
@@ -167,9 +171,8 @@ uint16_t OnePinSerial::subtract_cap(uint16_t num, uint16_t sub) {
 void OnePinSerial::begin(long speed)
 {
 #if SCOPE_TIMING
-  DDRD |= 0x0C;
-  PORTD |= ~(0x08);
-  PORTD &= ~(0x04);
+  DDRC |= 0x04;
+  PORTC &= ~(0x04);
 #endif
   _rx_delay_centering = _rx_delay_intrabit = _rx_delay_stopbit = _tx_delay = 0;
 
@@ -191,7 +194,7 @@ void OnePinSerial::begin(long speed)
   // We want to have a total delay of 1.5 bit time. Inside the loop,
   // we already wait for 1 bit time - 23 cycles, so here we wait for
   // 0.5 bit time - (71 + 18 - 22) cycles.
-  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 75 + 17 - 23));
+  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 75 + 17 - 23 + (4*16)));
 
   _rx_delay_intrabit = bit_delay;
 
@@ -212,17 +215,6 @@ void OnePinSerial::begin(long speed)
   _rx_delay_stopbit = bit_delay * 3 / 4;
 #endif
 
-#if SCOPE_TIMING
-  Serial.print(F("_rx_delay_centering: "));
-  Serial.print(_rx_delay_centering, DEC);
-  Serial.println();
-  Serial.print(F("_rx_delay_intrabit:  "));
-  Serial.print(_rx_delay_intrabit, DEC);
-  Serial.println();
-  Serial.print(F("_rx_delay_stopbit:   "));
-  Serial.print(_rx_delay_stopbit, DEC);
-  Serial.println();
-#endif
 
   // Enable the PCINT for the entire port here, but never disable it
   // (others might also need it, so we disable the interrupt by using

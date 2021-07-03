@@ -5,7 +5,7 @@
 // NOTE: The RESET line of the target should have a 10k pull-up resistor and there
 //       should not be capacitative load on the RESET line. So, when you want
 //       to debug standard Arduino Uno boards, you have to disconnect the capacitor needed
-//       for auto reset. On the original Uno boards there is a bridge labeled "RESET EN"IG
+//       for auto reset. On the original Uno boards there is a bridge labeled "RESET EN"
 //       that you can cut. This does not apply to the Pro Mini boards! For Pro Mini
 //       boards you have to make sure that only the TX/RX as well as the Vcc/GND
 //       pins are connected. 
@@ -109,8 +109,10 @@
 // Version 0.9.2
 //   - show speed of connection
 //   - initialize all vars when gdb reconnects (i.e., when gdb sends a qSupported packet)
-//   - we can now also write flash memory in the ATmegas
-//   - now we use TIMER1 for measuring the delay instead in OnePinSerial
+//   - finally, we can now also write flash memory in the ATmegas!
+//   - now we use TIMER1 for measuring the delay instead of couting execution cycles in OnePinSerial
+//   - since this is still not enough, the millis and the status blinking interrupts have been disabled (we
+//     now use _delay_ms and _delay_us)
 //
 // TODO:
 //   - be aware: communicating with the ATmega328 I noted a couple of times when the
@@ -138,6 +140,7 @@
 #include <string.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <util/delay.h>
 #include "OnePinSerial.h"
 #ifdef DEBUG
 #include <TXOnlySerial.h> // only needed for (meta-)debuging
@@ -350,7 +353,7 @@ ISR(TIMER0_COMPA_vect)
 void setup(void) {
   pinMode(VCC, OUTPUT);
   digitalWrite(VCC, HIGH); // power target
-  delay(100); // give target time to power up
+  _delay_ms(100); // give target time to power up
   DEBINIT(); 
   debugWire.begin(DWIRE_RATE);    
   setTimeoutDelay(DWIRE_RATE); 
@@ -358,7 +361,7 @@ void setup(void) {
   Serial.begin(GDB_BAUD);
   pinMode(LED_BUILTIN, OUTPUT);
   OCR0A = 0x80; // interrupt every msec between the millis interrupts
-  TIMSK0 |= _BV(OCIE0A);
+  // TIMSK0 |= _BV(OCIE0A);
   initSession();
 }
 
@@ -391,7 +394,7 @@ void loop(void) {
 	DEBLN(F("Execution stopped"));
 	ctx.running = false;
 	state = CONN_STATE;
-	delay(5); // we need that in order to avoid conflicts on the line
+	_delay_ms(5); // we need that in order to avoid conflicts on the line
 	gdbSendState(SIGTRAP);
       }
     }
@@ -600,7 +603,7 @@ void testFlashWrite(unsigned int addr) {
 void gdbReportFlashCount(void)
 {
   gdbDebugMessagePSTR(PSTR("Number of flash write operations: "), flashcnt);
-  delay(5);
+  _delay_ms(5);
   flushInput();
   gdbSendReply("OK");
 }
@@ -609,7 +612,7 @@ void gdbReportRamUsage(void)
 {
 #ifdef FREERAM
   gdbDebugMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
-  delay(5);
+  _delay_ms(5);
   flushInput();
   gdbSendReply("OK");
 #else
@@ -660,9 +663,9 @@ boolean gdbConnect(void)
     while (retry < 60) {
       if (retry%5 == 0) { // try to power-cycle
 	digitalWrite(VCC, LOW); // cutoff power to target
-	delay(500);
+	_delay_ms(500);
 	digitalWrite(VCC, HIGH); // power target again
-	delay(200); // wait for target to startup
+	_delay_ms(200); // wait for target to startup
       }
       if ((retry++)%10 == 0 && retry >= 20) {
 	do {
@@ -671,13 +674,13 @@ boolean gdbConnect(void)
 	  b = gdbReadByte();
 	} while (b == '-');
       }
-      delay(1000);
+      _delay_ms(1000);
       if (doBreak()) {
 	state = CONN_STATE;
 	gdbReset();
 	flushInput();
 	gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps:"),ctx.baud);
-	delay(100);
+	_delay_ms(100);
 	flushInput();
 	gdbSendReply("OK");
 	ctx.targetcon = true;
@@ -727,7 +730,7 @@ void gdbSetCkdiv8(boolean program)
     gdbDebugMessagePSTR(program ? PSTR("Fuse CKDIV8 was already programmed") : PSTR("Fuse CKDIV8 was already unprogrammed"), -1);
   else
     gdbDebugMessagePSTR(program ? PSTR("Fuse CKDIV8 is now programmed") : PSTR("Fuse CKDIV8 is now unprogrammed"), -1);
-  delay(200);
+  _delay_ms(200);
   flushInput();
   if (oldcon == false) {
     gdbSendReply("OK");
@@ -784,7 +787,7 @@ void gdbExecProblem(byte fatal)
     gdbDebugMessagePSTR(PSTR("Too many active breakpoints!"),-1);
     state = CONN_STATE;
   }
-  delay(100);
+  _delay_ms(100);
   flushInput();
   setWPc(ctx.wpc+1); // set PC!
   ctx.running = false;
@@ -1585,7 +1588,7 @@ boolean targetStop(void)
   if (doBreak()) {
     if (setMcuAttr(DWgetChipId())) {
       debugWire.sendCmd((const byte[]) {0x06}, 1); // leave debugWireMode
-      delay(50);
+      _delay_ms(50);
       enterProgramMode();
       byte highfuse = ispSend(0x58, 0x08, 0x00, 0x00);
       byte newfuse;
@@ -1661,7 +1664,7 @@ void targetStep(void)
 
   DEBPR(F("Single step at (byte address):"));
   DEBLNF(ctx.wpc*2,HEX);
-  // delay(5);
+  // _delay_ms(5);
   byte cmd[] = {0x60, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
   debugWire.sendCmd(cmd, sizeof(cmd));
 }
@@ -1748,14 +1751,14 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   DEBLN(F("changed"));
 #ifdef DEBUG
   for (unsigned int i=0; i<mcu.pagesz; i++) {
-    if (page[i] != mem[i]) {
+    //   if (page[i] != mem[i]) {
       DEBPR(i);
       DEBPR(":");
       DEBPRF(page[i], HEX);
       DEBPR(" ");
       DEBPRF(mem[i], HEX);
       DEBLN("");
-    }
+   // }
   }
 #endif
   
@@ -1985,7 +1988,7 @@ boolean noJumpInstr(unsigned int opcode)
 boolean doBreak () { 
   digitalWrite(RESET, LOW);
   pinMode(RESET, INPUT);
-  delay(10);
+  _delay_ms(10);
   debugWire.enable(false);
   ctx.baud = measureBaud();
   if (ctx.baud == 0) {
@@ -1997,6 +2000,14 @@ boolean doBreak () {
   DEBLN(F(" bps"));
   debugWire.enable(true);
   debugWire.begin(ctx.baud);                        // Set computed baud rate
+  DEBPR(F("_rx_delay_centering="));
+  DEBLN(debugWire._rx_delay_centering);
+  DEBPR(F("_rx_delay_intrabit="));
+  DEBLN(debugWire._rx_delay_intrabit);
+  DEBPR(F("_rx_delay_stopbit="));
+  DEBLN(debugWire._rx_delay_stopbit);
+  DEBPR(F("_tx_delay"));
+  DEBLN(debugWire._tx_delay);
   setTimeoutDelay(DWIRE_RATE);                      // Set timeout based on baud rate
   DEBLN(F("Sending BREAK: "));
   debugWire.sendBreak();
@@ -2029,7 +2040,7 @@ unsigned long measureBaud(void)
   overflow = 0;
   
   debugWire.sendBreak();                        // send break
-  delayMicroseconds(10);                        // give some leeway
+  _delay_us(10);                        // give some leeway
 
   TCNT1 = 0;                                    // clear counter
   TIFR1  = _BV(ICF1) | _BV(TOV1);               // clear capture and interrupt flags
@@ -2053,11 +2064,11 @@ unsigned long measureBaud(void)
 }
 
 
-byte getResponse (int unsigned expected) {
+unsigned int getResponse (int unsigned expected) {
   return getResponse(&buf[0], expected);
 }
 
-byte getResponse (byte *data, unsigned int expected) {
+unsigned int getResponse (byte *data, unsigned int expected) {
   unsigned int idx = 0;
   byte timeout = 0;
 
@@ -2069,7 +2080,8 @@ byte getResponse (byte *data, unsigned int expected) {
         return expected;
       }
     } else {
-      delayMicroseconds(timeOutDelay);
+      //      delayMicroseconds(timeOutDelay);
+      _delay_ms(2); // for the slowest baud rate
       timeout++;
     }
   } while (timeout < 50 && idx < sizeof(buf));
@@ -2295,7 +2307,7 @@ boolean readSRamBytes (unsigned int addr, byte *mem, byte len) {
       break;
     } else {
       // Wait and retry read
-      delay(5);
+      _delay_ms(5);
     }
   }
   reportTimeout = true;
@@ -2370,15 +2382,15 @@ void writeEepromByte (unsigned int addr, byte val) {
 //
 //  Read len bytes from flash memory area at <addr> into data[] buffer
 //
-boolean readFlash (unsigned int addr, byte *mem, unsigned int len) {
+boolean readFlash(unsigned int addr, byte *mem, unsigned int len) {
   // Read len bytes form flash page at <addr>
-  byte rsp;
+  unsigned int rsp;
   DEBPR(F("Read flash "));
   DEBPRF(addr,HEX);
   DEBPR("-");
   DEBLNF(addr+len-1, HEX);
   saveTempRegisters();
-  reportTimeout = false;
+  //  reportTimeout = false;
   unsigned int lenx2 = len * 2;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdFlash[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
@@ -2393,11 +2405,15 @@ boolean readFlash (unsigned int addr, byte *mem, unsigned int len) {
                       0x20};                                              // Go
     debugWire.sendCmd(rdFlash, sizeof(rdFlash));
     rsp = getResponse(mem, len);                                         // Read len bytes
-     if (rsp ==len) {
+    DEBPR(F("Bytes expected: "));
+    DEBLN(len);
+    DEBPR(F("Bytes received: "));
+    DEBLN(rsp);
+    if (rsp ==len) {
       break;
     } else {
       // Wait and retry read
-      delay(5);
+      _delay_ms(5);
     }
   }
   reportTimeout = true;
@@ -2445,7 +2461,7 @@ boolean programFlashPage(unsigned int addr)
     return checkCmdOk2(); // simply return
   } else { // bootloader: wait for spm to finish
     while ((readSPMCSR() & 0x1F) != 0) { 
-      delayMicroseconds(100);
+      _delay_us(100);
       DEBPR("."); // wait
     }
     return true;
@@ -2579,11 +2595,11 @@ byte transfer (byte val) {
   for (byte ii = 0; ii < 8; ++ii) {
     digitalWrite(MOSI, (val & 0x80) ? HIGH : LOW);
     digitalWrite(SCK, HIGH);
-    delayMicroseconds(4);
+    _delay_us(4);
     val = (val << 1) + digitalRead(MISO);
     digitalWrite(SCK, LOW);
     
-    delayMicroseconds(4);
+    _delay_us(4);
   }
   return val;
 }
@@ -2596,7 +2612,7 @@ byte ispSend (byte c1, byte c2, byte c3, byte c4) {
 }
 
 boolean enterProgramMode () {
-  TIMSK0 &= ~_BV(OCIE0A); // disable our blink IRQ
+  // TIMSK0 &= ~_BV(OCIE0A); // disable our blink IRQ
   if (progmode) {
     DEBLN(F("Already in progmode"));
     return true;
@@ -2607,9 +2623,9 @@ boolean enterProgramMode () {
   enableSpiPins();
   pinMode(RESET, OUTPUT);
   digitalWrite(RESET, LOW);
-  delay(50);
+  _delay_ms(50);
   do {
-    delay(50);
+    _delay_ms(50);
     ispSend(0xAC, 0x53, 0x00, 0x00);
     rsp = ispSend(0x30, 0x00, 0x00, 0x00);
   } while (rsp != 0x1E && ++timeout < 5);
@@ -2629,7 +2645,7 @@ void leaveProgramMode() {
   disableSpiPins();
   pinMode(RESET, INPUT);
   progmode = false;
-  TIMSK0 |= _BV(OCIE0A); // reenable blink interrupt
+  // TIMSK0 |= _BV(OCIE0A); // reenable blink interrupt
 }
   
 
