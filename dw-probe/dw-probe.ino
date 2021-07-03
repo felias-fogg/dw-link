@@ -2278,7 +2278,7 @@ boolean readSRamBytes (unsigned int addr, byte *mem, byte len) {
   unsigned int len2 = len * 2;
   byte rsp;
   saveTempRegisters();
-  reportTimeout = false;
+  //reportTimeout = false;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdSRam[] = {0x66,                                            // Set up for read/write using repeating simulated instructions
                      0xD0, 0x00, 0x1E,                                // Set Start Reg number (r30)
