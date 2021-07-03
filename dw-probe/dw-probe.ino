@@ -122,7 +122,7 @@
 //
 
 #define VERSION "0.9.2"
-//#define DEBUG // for debugging the debugger!
+#define DEBUG // for debugging the debugger!
 //#define FREERAM
 
 // pins
@@ -1746,12 +1746,17 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     return;
   }
   DEBLN(F("changed"));
+
 #ifdef DEBUG
   for (unsigned int i=0; i<mcu.pagesz; i++) {
-    DEBPRF(page[i], HEX);
-    DEBPR(" ");
-    DEBPRF(mem[i], HEX);
-    DEBLN("");
+    if (page[i] != mem[i]) {
+      DEBPR(i);
+      DEBPR(":");
+      DEBPRF(page[i], HEX);
+      DEBPR(" ");
+      DEBPRF(mem[i], HEX);
+      DEBLN("");
+    }
   }
 #endif
   
