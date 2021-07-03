@@ -31,9 +31,8 @@ private:
   volatile uint8_t *_pcint_maskreg;
   uint8_t _pcint_maskvalue;
   uint8_t _pcint_clrMask;
-  bool  _fastRate;
 
-  // Expressed as 4-cycle delays (must never be 0!)
+  // Expressed as 1-cycle delays (must never be 0!)
   uint16_t _rx_delay_centering;
   uint16_t _rx_delay_intrabit;
   uint16_t _rx_delay_stopbit;
@@ -54,7 +53,8 @@ private:
   static uint16_t subtract_cap(uint16_t num, uint16_t sub);
 
   // private static method for timing
-  static inline void tunedDelay(uint16_t delay);
+  static inline void waitUntil(uint16_t release);
+  static inline void startInterval(void);
 
 public:
   // public methods

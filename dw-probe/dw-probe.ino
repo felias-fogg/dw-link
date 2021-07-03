@@ -110,19 +110,19 @@
 //   - show speed of connection
 //   - initialize all vars when gdb reconnects (i.e., when gdb sends a qSupported packet)
 //   - we can now also write flash memory in the ATmegas
+//   - now we use TIMER1 for measuring the delay instead in OnePinSerial
 //
 // TODO:
 //   - be aware: communicating with the ATmega328 I noted a couple of times when the
 //     debugger read a high bit where there was none, i.e., the delay added up to more than
 //     permissible
-//   - use TIMER1 for measuring the delay instead of code that is even interrubtable
 //   - check systematically all ways of continuing and single-stepping
 //   - implement more intelligent way of allocating the HW BP,
 //     in particular when having 4byte/jump-intructions and cond. BPs
 //
 
 #define VERSION "0.9.2"
-//#define DEBUG // for debugging the debugger!
+#define DEBUG // for debugging the debugger!
 //#define FREERAM
 
 // pins
@@ -1748,10 +1748,14 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   DEBLN(F("changed"));
 #ifdef DEBUG
   for (unsigned int i=0; i<mcu.pagesz; i++) {
-    DEBPRF(page[i], HEX);
-    DEBPR(" ");
-    DEBPRF(mem[i], HEX);
-    DEBLN("");
+    if (page[i] != mem[i]) {
+      DEBPR(i);
+      DEBPR(":");
+      DEBPRF(page[i], HEX);
+      DEBPR(" ");
+      DEBPRF(mem[i], HEX);
+      DEBLN("");
+    }
   }
 #endif
   
@@ -1992,9 +1996,9 @@ boolean doBreak () {
   DEBPRF(ctx.baud, DEC);
   DEBLN(F(" bps"));
   debugWire.enable(true);
-  debugWire.begin(ctx.baud);                            // Set computed baud rate
+  debugWire.begin(ctx.baud);                        // Set computed baud rate
   setTimeoutDelay(DWIRE_RATE);                      // Set timeout based on baud rate
-//  DEBLN(F("Sending BREAK: "));
+  DEBLN(F("Sending BREAK: "));
   debugWire.sendBreak();
   if (checkCmdOk()) {
     DEBLN(F("debugWire Enabled"));

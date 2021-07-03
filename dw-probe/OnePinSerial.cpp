@@ -1,7 +1,9 @@
 /*
  * OnePinSerial.cpp (based on SoftwareSerial.cpp, formerly NewSoftSerial.cpp)
- *  2/17/2018 - Added sedCmd() function which calls one of two write() functions
+ *  2/17/2018 - Added sendCmd() function which calls one of two write() functions
  *  depending upon baud rate.
+ *
+ * 3-Jul-2021 Changed delay functions to use TIMER1 
 */
 
 // 
@@ -10,7 +12,6 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <Arduino.h>
-#include <util/delay_basic.h>
 #include "OnePinSerial.h"
 
 #define SCOPE_TIMING  0
@@ -26,9 +27,12 @@ volatile uint8_t OnePinSerial::_receive_buffer_head = 0;
 // Private methods
 //
 
-/* static */ 
-inline void OnePinSerial::tunedDelay(uint16_t delay) { 
-  _delay_loop_2(delay);
+inline void OnePinSerial::waitUntil(uint16_t release) { 
+  while (TCNT1 < release) __asm__ __volatile__("nop\n\t": : :"memory");
+}
+
+inline void OnePinSerial::startInterval(void) {
+  TCNT1 = 0;
 }
 
 //
@@ -37,6 +41,7 @@ inline void OnePinSerial::tunedDelay(uint16_t delay) {
 void OnePinSerial::recv()
 {
   uint8_t d = 0;
+  uint16_t nexttime;
 
   // If RX line is high, then we don't see any start bit
   // so interrupt is probably not for us
@@ -47,97 +52,28 @@ void OnePinSerial::recv()
     // cause problems at higher baudrates.
     setRxIntMsk(false);
 
-    // Wait approximately 1/2 of a bit width to "center" the sample in the start bit
-    tunedDelay(_rx_delay_centering);
-    
-    // Unroll read loop for more consistent timing at high baud rates
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
+    // Start timer and then wait for half a bit to reach center of start bit 
+    startInterval();
+    nexttime = _rx_delay_centering;
+    waitUntil(nexttime);
 #if SCOPE_TIMING
     PORTD |= 0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
-#endif
-    
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
-#if SCOPE_TIMING
     PORTD &= ~0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
 #endif
-    
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
+
+    // read all bits
+    for (uint8_t i=8; i > 0; --i)
+    {
+      nexttime += _rx_delay_intrabit;
+      waitUntil(nexttime);
+      d >>= 1;
+      if (rx_pin_read())
+        d |= 0x80;
 #if SCOPE_TIMING
-    PORTD |= 0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
+      PORTD |= 0x04;
+      PORTD &= ~0x04;
 #endif
-    
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
-#if SCOPE_TIMING
-    PORTD &= ~0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
-#endif
-    
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
-#if SCOPE_TIMING
-    PORTD |= 0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
-#endif
-    
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
-#if SCOPE_TIMING
-    PORTD &= ~0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
-#endif
-    
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
-#if SCOPE_TIMING
-    PORTD |= 0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
-#endif
-    
-    tunedDelay(_rx_delay_intrabit);
-    d >>= 1;
-    if (rx_pin_read())
-      d |= 0x80;
-#if SCOPE_TIMING
-    PORTD &= ~0x04;
-#else
-    __asm__ __volatile__("nop\n\t": : :"memory");
-    __asm__ __volatile__("nop\n\t": : :"memory");
-#endif
+    }
     
     // if buffer full, set the overflow flag and return
     uint8_t next = (_receive_buffer_tail + 1) % _SS_MAX_RX_BUFF;
@@ -149,11 +85,11 @@ void OnePinSerial::recv()
     } 
 
     // skip the stop bit
-    tunedDelay(_rx_delay_stopbit);
+    nexttime += _rx_delay_stopbit;
+    waitUntil(nexttime);
 
     // Re-enable interrupts when we're sure to be inside the stop bit
     setRxIntMsk(true);
-
   }
 }
 
@@ -237,22 +173,9 @@ void OnePinSerial::begin(long speed)
 #endif
   _rx_delay_centering = _rx_delay_intrabit = _rx_delay_stopbit = _tx_delay = 0;
 
-  // Precalculate the various delays, in number of 4-cycle delays
-  uint16_t bit_delay;
-  _fastRate = speed > 100000;
-  if (_fastRate) {
-    // If > 100000, assume target clock is 16 MHz and tweak to suit
-    bit_delay = (F_CPU / 124000) / 4;
-  } else {
-    bit_delay = (F_CPU / speed) / 4;
-  }
-
-  // 12 (gcc 4.8.2) or 13 (gcc 4.3.2) cycles from start bit to first bit,
-  // 15 (gcc 4.8.2) or 16 (gcc 4.3.2) cycles between bits,
-  // 12 (gcc 4.8.2) or 14 (gcc 4.3.2) cycles from last bit to stop bit
-  // These are all close enough to just use 15 cycles, since the inter-bit
-  // timings are the most critical (deviations stack 8 times)
-  _tx_delay = subtract_cap(bit_delay, 15 / 4);
+  uint16_t bit_delay = (F_CPU / speed); // The number of ticks for one bit
+ 
+  _tx_delay = bit_delay;
     
 #if GCC_VERSION > 40800   // Arduino 1.8.5 is 40902
   // Timings counted from gcc 4.8.2 output. This works up to 115200 on
@@ -268,10 +191,9 @@ void OnePinSerial::begin(long speed)
   // We want to have a total delay of 1.5 bit time. Inside the loop,
   // we already wait for 1 bit time - 23 cycles, so here we wait for
   // 0.5 bit time - (71 + 18 - 22) cycles.
-  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 75 + 17 - 23) / 4);
+  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 75 + 17 - 23));
 
-  // There are 23 cycles in each loop iteration (excluding the delay)
-  _rx_delay_intrabit = subtract_cap(bit_delay, 23 / 4);
+  _rx_delay_intrabit = bit_delay;
 
   // There are 37 cycles from the last bit read to the start of
   // stopbit delay and 11 cycles from the delay until the interrupt
@@ -280,14 +202,14 @@ void OnePinSerial::begin(long speed)
   // delay will be at 1/4th of the stopbit. This allows some extra
   // time for ISR cleanup, which makes 115200 baud at 16Mhz work more
   // reliably
-  _rx_delay_stopbit = subtract_cap(bit_delay * 3 / 4, (37 + 11) / 4);
+  _rx_delay_stopbit = bit_delay * 3 / 4;
 #else // Timings counted from gcc 4.3.2 output
  // Note that this code is a _lot_ slower, mostly due to bad register
   // allocation choices of gcc. This works up to 57600 on 16Mhz and
   // 38400 on 8Mhz.
-  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 97 + 29 - 11) / 4);
-  _rx_delay_intrabit = subtract_cap(bit_delay, 11 / 4);
-  _rx_delay_stopbit = subtract_cap(bit_delay * 3 / 4, (44 + 17) / 4);
+  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 97 + 29 - 11));
+  _rx_delay_intrabit = bit_delay;
+  _rx_delay_stopbit = bit_delay * 3 / 4;
 #endif
 
 #if SCOPE_TIMING
@@ -314,11 +236,13 @@ void OnePinSerial::begin(long speed)
   // Masked used to clear a pending pin change interrupt
    _pcint_clrMask = _BV(digitalPinToPCICRbit(_ioPin));
 
-  tunedDelay(_tx_delay); // if we were low this establishes the end
-    
-  // Activate receive function
-	_receive_buffer_head = _receive_buffer_tail = 0;
-	setRxIntMsk(true);
+   TCCR1A = 0; // normal operation
+   TCCR1B = _BV(CS10); // no prescaler
+   TIMSK1 = 0; // no TIMER1 interrupts
+
+   // Activate receive function
+   _receive_buffer_head = _receive_buffer_tail = 0;
+   setRxIntMsk(true);
 }
 
 void OnePinSerial::setRxIntMsk(bool enable)
@@ -354,12 +278,14 @@ void OnePinSerial::sendBreak()
   uint8_t inv_mask = ~_transmitBitMask;
   uint8_t clrMask = _pcint_clrMask;
   uint8_t oldSREG = SREG;
-  uint16_t delay = _tx_delay;
+  uint16_t nexttime = _tx_delay;
   cli();                        // turn off interrupts for a clean txmit
 
+  startInterval();
   *reg |= reg_mask;             // send 0 (DDR becomes output)
   for (uint8_t i = 0; i < 15; i++) {
-    tunedDelay(delay);
+    waitUntil(nexttime);
+    nexttime += _tx_delay;
   }
   *reg &= inv_mask;           // send 1 (DDR becomes input with pull up)
   
@@ -368,17 +294,16 @@ void OnePinSerial::sendBreak()
 }
 
 void OnePinSerial::enable (bool enable) {
+  if (enable) {
+    TCCR1A = 0; // normal operation
+    TCCR1B = _BV(CS10); // no prescaler
+    TIMSK1 = 0; // no TIMER1 interrupts
+  }
   setRxIntMsk(enable);
 }
 
 void OnePinSerial::sendCmd(const uint8_t loc[], uint8_t len) {
-  if (_fastRate) {
-    write(loc, len);
-  } else {
-    for (byte ii = 0; ii < len; ii++) {
-      write(loc[ii]);
-    }
-  }
+  write(loc, len);
 } 
 
 void OnePinSerial::write(const uint8_t loc[], uint8_t len)
@@ -392,17 +317,20 @@ void OnePinSerial::write(const uint8_t loc[], uint8_t len)
   uint8_t inv_mask = ~_transmitBitMask;
   uint8_t clrMask = _pcint_clrMask;
   uint8_t oldSREG = SREG;
-  uint16_t delay = _tx_delay;
+  uint16_t nexttime;
   
   cli();  // turn off interrupts for a clean txmit
   
   for (byte ii = 0; ii < len; ii++) {
     uint8_t b = loc[ii];
-    
+
+    startInterval();
+    nexttime = _tx_delay;
     // Write the start bit
     *reg |= reg_mask;       // send 0 (DDR becomes output)
     
-    tunedDelay(delay);
+    waitUntil(nexttime);
+    nexttime += _tx_delay;
     
     // Write each of the 8 bits
     for (uint8_t i = 8; i > 0; --i) {
@@ -411,14 +339,16 @@ void OnePinSerial::write(const uint8_t loc[], uint8_t len)
       } else {
         *reg |= reg_mask;         // send 0 (DDR becomes output)
       }
-      tunedDelay(delay);
+      waitUntil(nexttime);
+      nexttime += _tx_delay;
       b >>= 1;
     }
     // restore pin to natural state
     *reg &= inv_mask;             // send stop bit (1) (DDR becomes input with pull up)
     if (ii < (len - 1)) {
-      tunedDelay(delay);
-      tunedDelay(delay);
+      waitUntil(nexttime);
+      nexttime += _tx_delay;
+      waitUntil(nexttime);
     }
   }
   
@@ -437,14 +367,16 @@ void OnePinSerial::write(uint8_t b)
   uint8_t inv_mask = ~_transmitBitMask;
   uint8_t clrMask = _pcint_clrMask;
   uint8_t oldSREG = SREG;
-  uint16_t delay = _tx_delay;
+  uint16_t nexttime = _tx_delay;
 
   cli();  // turn off interrupts for a clean txmit
 
   // Write the start bit
   *reg |= reg_mask; 			// send 0 (DDR becomes output)
 
-  tunedDelay(delay);
+  startInterval();
+  waitUntil(nexttime);
+  nexttime += _tx_delay;
 
   // Write each of the 8 bits
   for (uint8_t i = 8; i > 0; --i)
@@ -454,7 +386,8 @@ void OnePinSerial::write(uint8_t b)
     else
       *reg |= reg_mask;         // send 0 (DDR becomes output)
 
-    tunedDelay(delay);
+    waitUntil(nexttime);
+    nexttime += _tx_delay;
     b >>= 1;
   }
 
@@ -465,6 +398,6 @@ void OnePinSerial::write(uint8_t b)
   PCIFR |= clrMask;           // clear any outstanding pin change interrupt
   SREG = oldSREG;             // turn interrupts back on
 
-  tunedDelay(delay);
+  waitUntil(nexttime);
 }
 
