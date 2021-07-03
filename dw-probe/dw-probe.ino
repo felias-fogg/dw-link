@@ -106,14 +106,22 @@
 //   - added code to detect when lock bits are set
 //   - excluded all MCUs with bootloader memory
 //
+// Version 0.9.2
+//   - show speed of connection
+//   - initialize all vars when gdb reconnects (i.e., when gdb sends a qSupported packet)
+//   - we can now also write flash memory in the ATmegas
+//
 // TODO:
+//   - be aware: communicating with the ATmega328 I noted a couple of times when the
+//     debugger read a high bit where there was none, i.e., the delay added up to more than
+//     permissible
+//   - use TIMER1 for measuring the delay instead of code that is even interrubtable
 //   - check systematically all ways of continuing and single-stepping
-//   - check connecting to ATmega168/328
 //   - implement more intelligent way of allocating the HW BP,
 //     in particular when having 4byte/jump-intructions and cond. BPs
 //
 
-#define VERSION "0.9.1"
+#define VERSION "0.9.2"
 //#define DEBUG // for debugging the debugger!
 //#define FREERAM
 
@@ -142,7 +150,7 @@
 
 // clock rates 
 #define GDB_BAUD      115200 // communcation speed with the host
-#define DWIRE_RATE    (1000000 / 128) // Set default baud rate (1 MHz / 128) 
+#define DWIRE_RATE    (500000 / 128) // Set default baud rate (1 MHz / 128) 
 
 // signals
 #define SIGINT  2      // Interrupt  - user interrupted the program (UART ISR) 
@@ -203,7 +211,8 @@ struct context {
   boolean running:1;    // whether target is running
   boolean targetcon:1;  // whether target is connected
   boolean clobbered:1;  // some of the regs are clobbered (0-1, 28-31)
-  boolean saved:1; // all of the regs have been saved 
+  boolean saved:1; // all of the regs have been saved
+  long baud; // comm speed of dwire interface
 } ctx;
 
 //  MCU parameters
@@ -347,16 +356,30 @@ void setup(void) {
   setTimeoutDelay(DWIRE_RATE); 
   debugWire.enable(true);
   Serial.begin(GDB_BAUD);
-  ctx.running = false;
-  ctx.targetcon = false;
-  mcu.infovalid = false;
   pinMode(LED_BUILTIN, OUTPUT);
   OCR0A = 0x80; // interrupt every msec between the millis interrupts
   TIMSK0 |= _BV(OCIE0A);
-  DEBPR(F("fatalerror="));
-  DEBLN(fatalerror);
+  initSession();
 }
 
+void initSession(void)
+{
+  ctx.running = false;
+  ctx.targetcon = false;
+  mcu.infovalid = false;
+  bpcnt = 0;
+  toomanybps = false;
+  hwbp = 0xFFFF;
+  lasthwbp = 0xFFFF;
+  flashcnt = 0;
+  reportTimeout = true;
+  progmode = false;
+  lastsignal = 0;
+  validpg = false;
+  buffill = 0;
+  fatalerror = NO_FATAL;
+  state = INIT_STATE;
+}
 
 void loop(void) {
   if (Serial.available()) {
@@ -519,9 +542,10 @@ void gdbParsePacket(const byte *buff)
   case 'q':               /* query requests */
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"), 6) == 0)   /* monitor command */
 	gdbParseMonitorPacket(buf+6);
-    else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) 
+    else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
 	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+")); 
-    else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
+	initSession(); // init all vars when gdb (re-)connects
+    } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
       /* current thread is always 1 */
       gdbSendReply("QC01");
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
@@ -554,7 +578,7 @@ void gdbParseMonitorPacket(const byte *buf)
   else if  (memcmp_P(buf, (void *)PSTR("636b64697631"), 12) == 0)    /* ckdiv1 */
     gdbSetCkdiv8(false);
   else if  (memcmp_P(buf, (void *)PSTR("74657374"), 8) == 0)     /* test */
-    testFlashWrite(0x100);
+    testFlashWrite(0x200);
   else if (memcmp_P(buf, (void *)PSTR("7265736574"), 10) == 0) { /* reset */
     gdbRemoveAllBreakpoints();
     gdbUpdateBreakpoints();  // update breakpoints in memory before reset
@@ -565,11 +589,11 @@ void gdbParseMonitorPacket(const byte *buf)
 
 
 void testFlashWrite(unsigned int addr) {
-  unsigned int len = 104;
+  unsigned int len = 128;
   for (byte i = 0; i < len; i++) {
     membuf[i] = i;
   }
-  targetWriteFlash(addr+0x20, membuf, len);
+  targetWriteFlash(addr, membuf, len);
 }
 
 // report on how many flash pages have been written
@@ -625,7 +649,7 @@ boolean gdbConnect(void)
   case 1: // everything OK
     state = CONN_STATE;
     ctx.targetcon = true;
-    gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled"),-1);
+    gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.baud);
     gdbReset();
     flushInput();
     gdbSendReply("OK");
@@ -652,7 +676,7 @@ boolean gdbConnect(void)
 	state = CONN_STATE;
 	gdbReset();
 	flushInput();
-	gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled"),-1);
+	gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps:"),ctx.baud);
 	delay(100);
 	flushInput();
 	gdbSendReply("OK");
@@ -1540,7 +1564,7 @@ int targetConnect(void)
   sig = SPIgetChipId();
   if (sig == 0) return -1;
   if (!setMcuAttr(sig)) return -2;
-  if (mcu.bootaddr) return -4; // sorry - these MCUs do not work yet
+//  if (mcu.bootaddr) return -4; // sorry - these MCUs do not work yet
   byte lockbits = ispSend(0x58, 0x00, 0x00, 0x00);
   if (lockbits != 0xFF) return -3;
   byte highfuse = ispSend(0x58, 0x08, 0x00, 0x00);
@@ -1706,7 +1730,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   DEBPRF(addr, HEX);
   DEBPR("-");
   DEBPRF(addr+mcu.pagesz-1,HEX);
-  DEBPR(":");
+  DEBLN(":");
   if (addr != (addr & ~(mcu.pagesz-1))) {
     DEBLN(F("\n***Page address error when writing"));
     reportFatalError(WRITE_PAGE_ADDR_FATAL);
@@ -1722,12 +1746,20 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     return;
   }
   DEBLN(F("changed"));
+#ifdef DEBUG
+  for (unsigned int i=0; i<mcu.pagesz; i++) {
+    DEBPRF(page[i], HEX);
+    DEBPR(" ");
+    DEBPRF(mem[i], HEX);
+    DEBLN("");
+  }
+#endif
   
   // check whether we need to erase the page
   boolean dirty = false;
   for (byte i=0; i < mcu.pagesz; i++) 
     if (~page[i] & mem[i]) {
-      dirty = true;;
+      dirty = true;
       break;
     }
 
@@ -1951,16 +1983,16 @@ boolean doBreak () {
   pinMode(RESET, INPUT);
   delay(10);
   debugWire.enable(false);
-  unsigned long baud = measureBaud();
-  if (baud == 0) {
+  ctx.baud = measureBaud();
+  if (ctx.baud == 0) {
     DEBLN(F("No response from debugWire on sending break"));
     return false;
   }
   DEBPR(F("Speed: "));
-  DEBPRF(baud, DEC);
+  DEBPRF(ctx.baud, DEC);
   DEBLN(F(" bps"));
   debugWire.enable(true);
-  debugWire.begin(baud);                            // Set computed baud rate
+  debugWire.begin(ctx.baud);                            // Set computed baud rate
   setTimeoutDelay(DWIRE_RATE);                      // Set timeout based on baud rate
 //  DEBLN(F("Sending BREAK: "));
   debugWire.sendBreak();
@@ -1976,7 +2008,6 @@ boolean doBreak () {
 // Measure debugWire baud rate by sending BREAK commands and measuring pulse length
 unsigned long measureBaud(void)
 {
-#ifndef OLDCALIBRATE
   // We use TIMER1 for measuring the number of ticks between falling
   // edges and will wait for the fifth falling edge, which will give us the
   // length of a byte in intervals of 1/16us = 62.5ns. 
@@ -2015,42 +2046,6 @@ unsigned long measureBaud(void)
   for (byte i=0; i < 5; i++) { DEBPR(stamp[i]); DEBPR(":"); DEBLN(i>0 ? stamp[i] - stamp[i-1] : 0);  }
   if (edgecnt < 5) return 0;  // if there were less than 5 edge, we did not see a 'U'
   return 8UL*16000000UL/(stamp[4]-stamp[0]); // we measured the length of 8 bits with 16MHz ticks
-#else
-  // We use pulseIn in order to measure the high and low intervals. Turns out
-  // that in particular for high clock rates this is not very reliable.
-  uint8_t oldSREG = SREG;
-  unsigned int pulselen[5];
-  byte i, off;
-  unsigned long pulse = 0;
-
-  for (byte rep=0; rep < 4; rep++) {
-    debugWire.sendBreak();
-    cli();                      // turn off interrupts for timing
-    delayMicroseconds(20);
-    for (i = 0; i < 5; i++) {   // sometimes the first measurement seems to be wrong
-      pulselen[i] = pulseIn(RESET, HIGH, 20000); // so we take the first 5 intervalls
-    }
-    if (pulselen[0] == 0) {
-      SREG = oldSREG;             // turn interrupts back on
-      return 0;
-    }
-    DEBLN(pulselen[0]);    DEBLN(pulselen[1]);    DEBLN(pulselen[2]);    DEBLN(pulselen[3]);    DEBLN(pulselen[4]);
-    sei();
-    if (pulselen[4] == 0) off = 0; // last one is empty, add the 4 first pulses
-    else off = 1; // otherwise ignore first pulse and add up the 4 last ones
-    for (i = 0; i < 4; i++) pulse += pulselen[off + i];
-    delay(2); 
-    debugWire.sendBreak();
-    delayMicroseconds(20); 
-    cli();
-    for (i = 0; i < 4; i++) {
-      pulse += pulseIn(RESET, LOW, 20000);
-    }
-    DEBLN(pulse);
-    SREG = oldSREG;             // turn interrupts back on
-    return 8000000/pulse;       // we measured 8 bit intervalls by 1us ticks
-  }
-#endif
 }
 
 
@@ -2413,7 +2408,7 @@ boolean eraseFlashPage(unsigned int addr) {
   writeRegister(30, addr & 0xFF); // load Z reg with addr low
   writeRegister(31, addr >> 8  ); // load Z reg with addr high
   writeRegister(29, 0x03); // PGERS value for SPMCSR
-  setWPc(mcu.bootaddr>>1); // so that access of all of flash is possible
+  setWPc(mcu.bootaddr); // so that access of all of flash is possible
   byte eflash[] = { 0x64, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
@@ -2432,7 +2427,7 @@ boolean programFlashPage(unsigned int addr)
   writeRegister(30, addr & 0xFF); // load Z reg with addr low
   writeRegister(31, addr >> 8  ); // load Z reg with addr high
   writeRegister(29, 0x05); //  PGWRT value for SPMCSR
-  setWPc(mcu.bootaddr>>1); // so that access of all of flash is possible
+  setWPc(mcu.bootaddr); // so that access of all of flash is possible
   byte eprog[] = { 0x64, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
@@ -2440,6 +2435,8 @@ boolean programFlashPage(unsigned int addr)
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8, 0x33 }; // execute SPM
   debugWire.sendCmd(eprog, sizeof(eprog));
+  return checkCmdOk2();
+  
   if (!mcu.bootaddr) { // no bootloader
     return checkCmdOk2(); // simply return
   } else { // bootloader: wait for spm to finish
@@ -2459,11 +2456,11 @@ boolean loadFlashBuffer(unsigned int addr, byte *mem)
   writeRegister(30, addr & 0xFF); // load Z reg with addr low
   writeRegister(31, addr >> 8  ); // load Z reg with addr high
   writeRegister(29, 0x01); //  SPMEN value for SPMCSR
-  setWPc(mcu.bootaddr>>1);
   byte ix = 0;
   while (ix < mcu.pagesz) {
     writeRegister(0, mem[ix++]);               // load next word
     writeRegister(1, mem[ix++]);
+    setWPc(mcu.bootaddr);
     byte eload[] = { 0x64, 0xD2,
 		     outHigh(0x37, 29),       // Build "out SPMCSR, r29"
 		     outLow(0x37, 29),
@@ -2481,7 +2478,7 @@ void reenableRWW(void)
   saveTempRegisters();
   if (mcu.bootaddr) {
     DEBLN(F("reenableRWW"));
-    setWPc(mcu.bootaddr>>1);
+    setWPc(mcu.bootaddr);
     writeRegister(29, 0x11); //  RWWSRE value for SPMCSR
     byte errw[] = { 0x64, 0xD2,
 		    outHigh(0x37, 29),       // Build "out SPMCSR, r29"
