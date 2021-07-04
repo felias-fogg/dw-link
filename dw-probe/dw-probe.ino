@@ -107,17 +107,18 @@
 //   - excluded all MCUs with bootloader memory
 //
 // Version 0.9.2
-//   - show speed of connection
+//   - show speed of connection when calling "monitor init"
 //   - initialize all vars when gdb reconnects (i.e., when gdb sends a qSupported packet)
-//   - finally, we can now also write flash memory in the ATmegas!
-//   - now we use TIMER1 for measuring the delay instead of couting execution cycles in OnePinSerial
+//   - finally, we can now also write flash memory in the ATmegas, so the exclusion of the bootloader MCUs has been revoked
+//   - now we use TIMER1 for measuring the delay instead of counting execution cycles in OnePinSerial: much more
+//     accurate!
 //   - since this is still not enough, the millis and the status blinking interrupts have been disabled (we
-//     now use _delay_ms and _delay_us)
+//     now use _delay_ms and _delay_us). And no blinking anymore. Well let's think about it.
+//   - in order to get the center of the first bit, we now wait for 1,5 bits after the first edge (minus the time
+//     used in the program for serving the IRQ etc - which is empirically determined);
+//     this will hopefully make reliable communication with 125K Baud possible (not tested yet)
 //
 // TODO:
-//   - be aware: communicating with the ATmega328 I noted a couple of times when the
-//     debugger read a high bit where there was none, i.e., the delay added up to more than
-//     permissible
 //   - check systematically all ways of continuing and single-stepping
 //   - implement more intelligent way of allocating the HW BP,
 //     in particular when having 4byte/jump-intructions and cond. BPs
@@ -2000,13 +2001,13 @@ boolean doBreak () {
   DEBLN(F(" bps"));
   debugWire.enable(true);
   debugWire.begin(ctx.baud);                        // Set computed baud rate
-  DEBPR(F("_rx_delay_centering="));
-  DEBLN(debugWire._rx_delay_centering);
+  DEBPR(F("_rx_delay_1st_centering="));
+  DEBLN(debugWire._rx_delay_1st_centering);
   DEBPR(F("_rx_delay_intrabit="));
   DEBLN(debugWire._rx_delay_intrabit);
   DEBPR(F("_rx_delay_stopbit="));
   DEBLN(debugWire._rx_delay_stopbit);
-  DEBPR(F("_tx_delay"));
+  DEBPR(F("_tx_delay="));
   DEBLN(debugWire._tx_delay);
   setTimeoutDelay(DWIRE_RATE);                      // Set timeout based on baud rate
   DEBLN(F("Sending BREAK: "));
@@ -2080,24 +2081,27 @@ unsigned int getResponse (byte *data, unsigned int expected) {
         return expected;
       }
     } else {
-      //      delayMicroseconds(timeOutDelay);
-      _delay_ms(2); // for the slowest baud rate
+      delay_micros(timeOutDelay);
       timeout++;
     }
-  } while (timeout < 50 && idx < sizeof(buf));
+  } while (timeout < 100);
   if (reportTimeout) {
     DEBPR(F("Timeout: received: "));
     DEBPR(idx);
     DEBPR(F(" expected: "));
     DEBLN(expected);
   }
-  buffill = idx;
   return idx;
 }
 
 void setTimeoutDelay (unsigned int rate) {
 
   timeOutDelay = F_CPU / rate;
+}
+
+static inline void delay_micros(unsigned int n)
+{
+  while (n--) _delay_us(1);
 }
 
 unsigned int getWordResponse () {

@@ -52,7 +52,7 @@ private:
 
 public:
   // Expressed as 1-cycle delays (must never be 0!)
-  uint16_t _rx_delay_centering;
+  uint16_t _rx_delay_1st_centering;
   uint16_t _rx_delay_intrabit;
   uint16_t _rx_delay_stopbit;
   uint16_t _tx_delay;

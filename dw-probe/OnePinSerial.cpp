@@ -41,8 +41,9 @@ inline void OnePinSerial::startInterval(void) {
 void OnePinSerial::recv()
 {
   uint8_t d = 0;
-  uint16_t nexttime;
+  uint16_t nexttime =  _rx_delay_1st_centering;
 
+  startInterval();
   // If RX line is high, then we don't see any start bit
   // so interrupt is probably not for us
   if (!rx_pin_read())
@@ -53,19 +54,17 @@ void OnePinSerial::recv()
     setRxIntMsk(false);
 
     // Start timer and then wait for half a bit to reach center of start bit 
-    startInterval();
-    nexttime = _rx_delay_centering;
-    waitUntil(nexttime);
 #if SCOPE_TIMING
     PORTC |= 0x04;
     PORTC &= ~0x04;
 #endif
 
+
     // read all bits
     for (uint8_t i=8; i > 0; --i)
     {
-      nexttime += _rx_delay_intrabit;
       waitUntil(nexttime);
+      nexttime += _rx_delay_intrabit;
       d >>= 1;
       if (rx_pin_read())
         d |= 0x80;
@@ -85,7 +84,7 @@ void OnePinSerial::recv()
     } 
 
     // skip the stop bit
-    nexttime += _rx_delay_stopbit;
+    nexttime = nexttime - _rx_delay_intrabit + _rx_delay_stopbit;
     waitUntil(nexttime);
 #if SCOPE_TIMING
       PORTC |= 0x04;
@@ -138,7 +137,7 @@ ISR(PCINT3_vect, ISR_ALIASOF(PCINT0_vect));
 // Constructor
 //
 OnePinSerial::OnePinSerial(uint8_t ioPin) : 
-  _rx_delay_centering(0),
+  _rx_delay_1st_centering(0),
   _rx_delay_intrabit(0),
   _rx_delay_stopbit(0),
   _tx_delay(0)
@@ -170,50 +169,19 @@ uint16_t OnePinSerial::subtract_cap(uint16_t num, uint16_t sub) {
 
 void OnePinSerial::begin(long speed)
 {
-#if SCOPE_TIMING
+ #if SCOPE_TIMING
   DDRC |= 0x04;
   PORTC &= ~(0x04);
 #endif
-  _rx_delay_centering = _rx_delay_intrabit = _rx_delay_stopbit = _tx_delay = 0;
-
   uint16_t bit_delay = (F_CPU / speed); // The number of ticks for one bit
  
   _tx_delay = bit_delay;
     
-#if GCC_VERSION > 40800   // Arduino 1.8.5 is 40902
-  // Timings counted from gcc 4.8.2 output. This works up to 115200 on
-  // 16Mhz and 57600 on 8Mhz.
-  //
-  // When the start bit occurs, there are 3 or 4 cycles before the
-  // interrupt flag is set, 4 cycles before the PC is set to the right
-  // interrupt vector address and the old PC is pushed on the stack,
-  // and then 75 cycles of instructions (including the RJMP in the
-  // ISR vector table) until the first delay. After the delay, there
-  // are 17 more cycles until the pin value is read (excluding the
-  // delay in the loop).
-  // We want to have a total delay of 1.5 bit time. Inside the loop,
-  // we already wait for 1 bit time - 23 cycles, so here we wait for
-  // 0.5 bit time - (71 + 18 - 22) cycles.
-  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 75 + 17 - 23 + (4*16)));
+  _rx_delay_1st_centering = subtract_cap(bit_delay + bit_delay / 2, 120); // This is an empirically determind number!
 
   _rx_delay_intrabit = bit_delay;
 
-  // There are 37 cycles from the last bit read to the start of
-  // stopbit delay and 11 cycles from the delay until the interrupt
-  // mask is enabled again (which _must_ happen during the stopbit).
-  // This delay aims at 3/4 of a bit time, meaning the end of the
-  // delay will be at 1/4th of the stopbit. This allows some extra
-  // time for ISR cleanup, which makes 115200 baud at 16Mhz work more
-  // reliably
   _rx_delay_stopbit = bit_delay * 3 / 4;
-#else // Timings counted from gcc 4.3.2 output
- // Note that this code is a _lot_ slower, mostly due to bad register
-  // allocation choices of gcc. This works up to 57600 on 16Mhz and
-  // 38400 on 8Mhz.
-  _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 97 + 29 - 11));
-  _rx_delay_intrabit = bit_delay;
-  _rx_delay_stopbit = bit_delay * 3 / 4;
-#endif
 
 
   // Enable the PCINT for the entire port here, but never disable it
