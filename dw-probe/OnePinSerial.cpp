@@ -14,7 +14,7 @@
 #include <Arduino.h>
 #include "OnePinSerial.h"
 
-#define SCOPE_TIMING  1
+#define SCOPE_TIMING  0
 //
 // Statics
 //
@@ -41,8 +41,10 @@ inline void OnePinSerial::startInterval(void) {
 void OnePinSerial::recv()
 {
   uint8_t d = 0;
-  uint16_t nexttime =  _rx_delay_1st_centering;
-
+  uint16_t nexttime =  _rx_delay_1st_centering; 
+#if SCOPE_TIMING
+   PORTC |= 0x10;
+#endif
   startInterval();
   // If RX line is high, then we don't see any start bit
   // so interrupt is probably not for us
@@ -53,12 +55,10 @@ void OnePinSerial::recv()
     // cause problems at higher baudrates.
     setRxIntMsk(false);
 
-    // Start timer and then wait for half a bit to reach center of start bit 
 #if SCOPE_TIMING
     PORTC |= 0x04;
     PORTC &= ~0x04;
 #endif
-
 
     // read all bits
     for (uint8_t i=8; i > 0; --i)
@@ -81,7 +81,12 @@ void OnePinSerial::recv()
       // save new data in buffer: tail points to where byte goes
       _receive_buffer[_receive_buffer_tail] = d; // save new byte
       _receive_buffer_tail = next;
-    } 
+    } else {
+#if SCOPE_TIMING
+      PORTC |= 0x04;
+      PORTC &= ~0x04;
+#endif
+    }
 
     // skip the stop bit
     nexttime = nexttime - _rx_delay_intrabit + _rx_delay_stopbit;
@@ -94,6 +99,9 @@ void OnePinSerial::recv()
     // Re-enable interrupts when we're sure to be inside the stop bit
     setRxIntMsk(true);
   }
+#if SCOPE_TIMING
+   PORTC &= ~0x10;
+#endif
 }
 
 uint8_t OnePinSerial::rx_pin_read()
@@ -170,18 +178,18 @@ uint16_t OnePinSerial::subtract_cap(uint16_t num, uint16_t sub) {
 void OnePinSerial::begin(long speed)
 {
  #if SCOPE_TIMING
-  DDRC |= 0x04;
-  PORTC &= ~(0x04);
+  DDRC |= 0x17;
+  PORTC &= ~(0x17);
 #endif
   uint16_t bit_delay = (F_CPU / speed); // The number of ticks for one bit
  
   _tx_delay = bit_delay;
     
-  _rx_delay_1st_centering = subtract_cap(bit_delay + bit_delay / 2, 120); // This is an empirically determind number!
+  _rx_delay_1st_centering = subtract_cap(bit_delay + bit_delay / 2, 120); // This is an empirically determind number using a scope
 
   _rx_delay_intrabit = bit_delay;
 
-  _rx_delay_stopbit = bit_delay * 3 / 4;
+  _rx_delay_stopbit = bit_delay * 3 / 4 - 20;
 
 
   // Enable the PCINT for the entire port here, but never disable it
@@ -216,6 +224,10 @@ void OnePinSerial::setRxIntMsk(bool enable)
 // Read data from buffer
 int OnePinSerial::read()
 {
+#if SCOPE_TIMING
+  PORTC |= 0x01;
+  PORTC &= ~0x01;
+#endif
   // Empty buffer?
   if (_receive_buffer_head == _receive_buffer_tail)
     return -1;
@@ -223,11 +235,19 @@ int OnePinSerial::read()
   // Read from "head"
   uint8_t d = _receive_buffer[_receive_buffer_head]; // grab next byte
   _receive_buffer_head = (_receive_buffer_head + 1) % _SS_MAX_RX_BUFF;
+#if SCOPE_TIMING
+  PORTC |= 0x01;
+  PORTC &= ~0x01;
+#endif
   return d;
 }
 
 int OnePinSerial::available()
 {
+#if SCOPE_TIMING
+  PORTC |= 0x02;
+  PORTC &= ~0x02;
+#endif
   return (_receive_buffer_tail + _SS_MAX_RX_BUFF - _receive_buffer_head) % _SS_MAX_RX_BUFF;
 }
 
@@ -262,11 +282,11 @@ void OnePinSerial::enable (bool enable) {
   setRxIntMsk(enable);
 }
 
-void OnePinSerial::sendCmd(const uint8_t loc[], uint8_t len) {
+void OnePinSerial::sendCmd(const uint8_t *loc, uint8_t len) {
   write(loc, len);
 } 
 
-void OnePinSerial::write(const uint8_t loc[], uint8_t len)
+void OnePinSerial::write(const uint8_t *loc, uint8_t len)
 {
   // By declaring these as local variables, the compiler will put them
   // in registers _before_ disabling interrupts and entering the

@@ -64,9 +64,9 @@ public:
   void enable(bool);
   void sendBreak();
 
-  virtual void sendCmd(const uint8_t buf[], uint8_t len);
+  virtual void sendCmd(const uint8_t *buf, uint8_t len);
   virtual void write(uint8_t buf);
-  virtual void write(const uint8_t buf[], uint8_t len);
+  virtual void write(const uint8_t *buf, uint8_t len);
   virtual int read();
   virtual int available();
   operator bool() { return true; }
