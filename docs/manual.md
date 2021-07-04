@@ -106,13 +106,12 @@ We are now good to go and 'only' need to install the additional debugging softwa
 
 #### 3.1.1 States of the hardware debugger
 
-There are basically 5 states, the debugger can be in and each is signaled by a different blink pattern of the builtin LED:
+There are basically 4 states, the debugger can be in and each is signaled by a different blink pattern of the builtin LED:
 
 * inactive state (LED is off)
-* waiting for power-cycling the target (LED flashes every second)
-* connected and target is stopped (LED is on)
-* connected and target is running (LED blinks every half second)
-* error state, i.e., not possible to connect to target or other internal error (LED blinks furiously every 100 ms)
+* waiting for power-cycling the target (LED flashes every second for 50 ms)
+* target is connected (LED is on)
+* error state, i.e., not possible to connect to target, connection has been lost, or other internal error (LED blinks furiously every 100 ms)
 
 ### 3.2 Arduino IDE and avr-gdb
 
