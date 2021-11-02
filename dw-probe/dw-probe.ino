@@ -17,7 +17,7 @@
 //       the ISP interface. The program has to be loaded using the debug load command.
 //       With the gdb command "monitor stop", one can switch the MCU back to normal behavior
 //       using this hardware debugger.
-// Some of the code is inspired  by
+// Some of the code is inspired and/or copied  by/from
 // - dwire-debugger (https://github.com/dcwbrown/dwire-debug)
 // - DebugWireDebuggerProgrammer (https://github.com/wholder/DebugWireDebuggerProgrammer/),
 // - AVR-GDBServer (https://github.com/rouming/AVR-GDBServer),  and
@@ -123,14 +123,25 @@
 //     not depended on the baud rate, but it is constant 75ms;
 //   - finally, we can now also write flash memory in the ATmegas, so the exclusion of the bootloader MCUs has been revoked
 //
+// Version 0.9.3 (04-Jul-21)
+//   - Now it seems to work with targets running at 16 MHz. With SCOPE_TIMING enabled in OnePinSerial, it worked beautifully;
+//     without, there were a number of glitches when reading. So I put in some NOPs when SCOPE_TIMING is disabled ... and it
+//     works. The only problem is, I do not know why, and this makes me nervous.
+//
+// Version 0.9.4 (02-Nov-21)
+//   - Instead of OnePinSerial, we use now dwSerial, which uses in turn the base class SingleWireSerial. Two orders of magnitude
+//     more accurate and robust!
+//   - Timeout in getResponse is now done using the number of cycle iterations, which is roughly 2-3us. Meaning we should wait
+//     roughly 40,000 iterations.
+//
 // TODO:
 //   - check systematically all ways of continuing and single-stepping
 //   - implement more intelligent way of allocating the HW BP,
 //     in particular when having 4byte/jump-intructions and cond. BPs
 //
 
-#define VERSION "0.9.2"
-#define DEBUG // for debugging the debugger!
+#define VERSION "0.9.4"
+//#define DEBUG // for debugging the debugger!
 //#define FREERAM
 
 // pins
@@ -147,19 +158,24 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
-#include "OnePinSerial.h"
+#include "dwSerial.h"
 #ifdef DEBUG
 #include <TXOnlySerial.h> // only needed for (meta-)debuging
 #endif
 #include "debug.h" // some (meta-)debug macros
 
 // some size restrictions
+
 #define MAXBUF 255
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many!)
 
 // clock rates 
 #define GDB_BAUD      115200 // communcation speed with the host
-#define DWIRE_RATE    (500000 / 128) // Set default baud rate (1 MHz / 128) 
+#define DWIRE_RATE    (1000000 / 128) // Set default baud rate (1 MHz / 128)
+
+// timeout for waiting for response, should be > 70ms
+// cycle time is roughly 2-3us, so 40,000 should do.
+#define WAITLIMIT 40000UL 
 
 // signals
 #define SIGINT  2      // Interrupt  - user interrupted the program (UART ISR) 
@@ -301,7 +317,7 @@ int freeram = 2048; // minimal amount of free memory (only if enabled)
 #endif
 
 // communcation interface to target
-OnePinSerial  debugWire(RESET);
+dwSerial  dw;
 boolean       reportTimeout = true;   // If true, report read timeout errors
 boolean       progmode = false;
 char          rpt[16];                // Repeat command buffer
@@ -344,20 +360,10 @@ ISR(TIMER0_COMPA_vect)
   }
   if (cnt == ontimes[sysstate] && cnt) {
     digitalWrite(LED_BUILTIN, HIGH);
-#ifdef DEBUG
-  PORTC |= 0x04;
-#endif    
   } else if (cnt <= -offtimes[sysstate]) {
     cnt = ontimes[sysstate] + 1;
-#ifdef DEBUG
-  PORTC |= 0x01;
-  PORTC &= ~0x01;
-#endif    
   } else if (cnt == -1) {
     digitalWrite(LED_BUILTIN, LOW);
-#ifdef DEBUG
-  PORTC &= ~0x04;
-#endif
   }
   cnt--;
 }
@@ -368,24 +374,20 @@ void setup(void) {
   digitalWrite(VCC, HIGH); // power target
   _delay_ms(100); // give target time to power up
   DEBINIT(); 
-  debugWire.begin(DWIRE_RATE);    
-  setTimeoutDelay(DWIRE_RATE); 
-  debugWire.enable(true);
+  dw.begin(DWIRE_RATE);    
+  dw.enable(true);
   Serial.begin(GDB_BAUD);
   pinMode(LED_BUILTIN, OUTPUT);
   TIMSK0 = 0; // no millis interrupts
   initSession();
-#ifdef DEBUG
-  DDRC |= 0x17;
-#endif
 }
 
 void loop(void) {
   if (Serial.available()) {
       gdbHandleCmd();
   } else if (ctx.running) {
-    if (debugWire.available()) {
-      byte cc = debugWire.read();
+    if (dw.available()) {
+      byte cc = dw.read();
       if (cc == 0x55) { // breakpoint reached
 	DEBLN(F("Execution stopped"));
 	ctx.running = false;
@@ -939,7 +941,7 @@ void gdbUpdateBreakpoints(void)
   // because in this case we will not start to execute
   if (bpcnt > MAXBREAK) return;
 
-  // reassign HW BP if used twice and if  possible 
+  // reassign HW BP if not assigned to 4-byte instr, if used twice and if  possible 
   if (hwbp != 0xFFFF &&     // hwbp is in use
       hwbp == lasthwbp &&   //  and the same as last one
       bpcnt > 1) {          // and there are others
@@ -1646,7 +1648,7 @@ boolean targetStop(void)
 {
   if (doBreak()) {
     if (setMcuAttr(DWgetChipId())) {
-      debugWire.sendCmd((const byte[]) {0x06}, 1); // leave debugWireMode
+      dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWireMode
       _delay_ms(50);
       enterProgramMode();
       byte highfuse = ispSend(0x58, 0x08, 0x00, 0x00);
@@ -1671,7 +1673,7 @@ int targetSetCKFuse(boolean programfuse)
   unsigned int sig;
   if (doBreak()) {
     if (setMcuAttr(DWgetChipId())) 
-      debugWire.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
+      dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
     else
       return -1;
   } else {
@@ -1705,7 +1707,7 @@ int targetSetCKFuse(boolean programfuse)
 
 void targetBreak(void)
 {
-  debugWire.sendBreak();
+  dw.sendBreak();
 }
 
 void targetContinue(void)
@@ -1715,13 +1717,13 @@ void targetContinue(void)
   DEBPR(F("Continue at (byte adress) "));
   DEBLNF(ctx.wpc*2,HEX);
   if (hwbp != 0xFFFF) {
-    debugWire.sendCmd((const byte []) { 0x61 }, 1);
+    dw.sendCmd((const byte []) { 0x61 }, 1);
     setWBp(hwbp);
   } else {
-    debugWire.sendCmd((const byte []) { 0x60 }, 1);
+    dw.sendCmd((const byte []) { 0x60 }, 1);
   }
   byte cmd[] = { 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x30};
-  debugWire.sendCmd(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
 }
 
 void targetStep(void)
@@ -1732,16 +1734,16 @@ void targetStep(void)
   DEBLNF(ctx.wpc*2,HEX);
   // _delay_ms(5);
   byte cmd[] = {0x60, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
-  debugWire.sendCmd(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
 }
 
 boolean targetReset(void)
 {
   int timeout = 100;
 
-  debugWire.sendCmd((const byte[]) {0x07}, 1);
+  dw.sendCmd((const byte[]) {0x07}, 1);
   while (timeout--)
-    if (debugWire.available()) break;
+    if (dw.available()) break;
     else _delay_ms(1);
   if (checkCmdOk2()) {
     DEBLN(F("RESET successful"));
@@ -2054,15 +2056,15 @@ boolean noJumpInstr(unsigned int opcode)
   return true;
 }
 
-/****************** dwbug wire specific functions *************/
+/****************** debugWIRE specific functions *************/
 
 // send a break on the RESET line, check for response and calibrate 
 boolean doBreak () { 
   digitalWrite(RESET, LOW);
   pinMode(RESET, INPUT);
   _delay_ms(10);
-  debugWire.enable(false);
-  ctx.baud = measureBaud();
+  dw.enable(false);
+  ctx.baud = dw.calibrate();
   if (ctx.baud == 0) {
     DEBLN(F("No response from debugWire on sending break"));
     return false;
@@ -2070,23 +2072,10 @@ boolean doBreak () {
   DEBPR(F("Speed: "));
   DEBPRF(ctx.baud, DEC);
   DEBLN(F(" bps"));
-  debugWire.enable(true);
-  debugWire.begin(ctx.baud);                        // Set computed baud rate
-#if 0
-  DEBPR(F("_rx_delay_1st_centering="));
-  DEBLN(debugWire._rx_delay_1st_centering);
-  DEBPR(F("_rx_delay_intrabit="));
-  DEBLN(debugWire._rx_delay_intrabit);
-  DEBPR(F("_rx_delay_stopbit="));
-  DEBLN(debugWire._rx_delay_stopbit);
-  DEBPR(F("_tx_delay="));
-  DEBLN(debugWire._tx_delay);
-#endif
-  setTimeoutDelay(ctx.baud);                      // Set timeout based on baud rate
-  DEBPR(F("timeOutDelay: "));
-  DEBLN(timeOutDelay);
+  dw.enable(true);
+  dw.begin(ctx.baud);                        // Set computed baud rate
   DEBLN(F("Sending BREAK: "));
-  debugWire.sendBreak();
+  dw.sendBreak();
   if (checkCmdOk()) {
     DEBLN(F("debugWire Enabled"));
     return true;
@@ -2096,97 +2085,30 @@ boolean doBreak () {
   return false;
 }
 
-// Measure debugWire baud rate by sending BREAK commands and measuring pulse length
-unsigned long measureBaud(void)
-{
-  // We use TIMER1 for measuring the number of ticks between falling
-  // edges and will wait for the fifth falling edge, which will give us the
-  // length of a byte in intervals of 1/16us = 62.5ns. 
-  // We do not use interrupts, but use polling to capture event times and overflows.
-  // Important: here we need to use Arduino pin 8 as the reset line for the target (or as an additional input)
-  unsigned long capture, overflow = 0;
-  unsigned long stamp[5];
-  byte edgecnt = 0;
-  const unsigned long timeout = 50000UL*16UL; // 50 msec is max
-  
-
-  TCCR1A = 0;                                   // normal operation
-  TCCR1B = _BV(ICNC1) | _BV(CS10);              // input filter, falling edge, no prescaler (=16MHz)
-  TIMSK1 = 0;                                   // no Timer1 interrupts
-  overflow = 0;
-  
-  debugWire.sendBreak();                        // send break
-  _delay_us(10);                        // give some leeway
-
-  TCNT1 = 0;                                    // clear counter
-  TIFR1  = _BV(ICF1) | _BV(TOV1);               // clear capture and interrupt flags
-  while (edgecnt < 5 && (overflow << 16) + TCNT1 < timeout) { // wait for fifth edge or timeout
-    if (TIFR1 & _BV(ICF1)) { // input capture
-      capture = ICR1;
-      if ((TIFR1 & _BV(TOV1)) && capture < 30000) // if additionally overflow and low count, we missed the overflow
-	stamp[edgecnt++] = capture + ((overflow+1) << 16); 
-      else
-	stamp[edgecnt++] = capture + ((overflow) << 16); // if the capture value is very high, the overflow must have occured later than the capture
-      TIFR1 |= _BV(ICF1); // clear capture flag
-    }
-    if (TIFR1 & _BV(TOV1)) { // after an overflow has occured
-      overflow++;            // count it
-      TIFR1 |= _BV(TOV1);    // and clear flag
-    }
-  }
-  for (byte i=0; i < 5; i++) { DEBPR(stamp[i]); DEBPR(":"); DEBLN(i>0 ? stamp[i] - stamp[i-1] : 0);  }
-  if (edgecnt < 5) return 0;  // if there were less than 5 edge, we did not see a 'U'
-  return 8UL*16000000UL/(stamp[4]-stamp[0]); // we measured the length of 8 bits with 16MHz ticks
-}
-
-
 unsigned int getResponse (int unsigned expected) {
   return getResponse(&buf[0], expected);
 }
 
 unsigned int getResponse (byte *data, unsigned int expected) {
   unsigned int idx = 0;
-  unsigned int timeout = 0;
+  unsigned long timeout = 0;
 
   do {
-    if (debugWire.available()) {
-      data[idx++] = debugWire.read();
+    if (dw.available()) {
+      data[idx++] = dw.read();
       timeout = 0;
       if (expected > 0 && idx == expected) {
         return expected;
       }
-    } else {
-      delay_micros(timeOutDelay/20);
-      timeout++;
     }
-  } while (timeout < 1000);
-  if (reportTimeout) {
+  } while (timeout++ < WAITLIMIT);
+  if (reportTimeout && expected > 0) {
     DEBPR(F("Timeout: received: "));
     DEBPR(idx);
     DEBPR(F(" expected: "));
     DEBLN(expected);
   }
   return idx;
-}
-
-void setTimeoutDelay (unsigned long rate) {
-  DEBPR(F("F_CPU="));
-  DEBLN(F_CPU);
-  DEBPR(F("rate="));
-  DEBLN(rate);
-  timeOutDelay = F_CPU / rate;
-}
-
-static inline void delay_micros(unsigned int n)
-{
-#ifdef DEBUG
-  PORTC |= 0x01;
-#endif
-  while (n--) _delay_us(1);
-  //  delayMicroseconds(n);
-#ifdef DEBUG
-  PORTC &= ~0x01;
-#endif
 }
 
 unsigned int getWordResponse () {
@@ -2290,8 +2212,8 @@ void writeRegisters(byte *regs)
 		   0xD1, 0x00, 0x20,  // end reg
 		   0xC2, 0x05,        // write registers
 		   20 };              // go
-  debugWire.sendCmd(wrRegs,  sizeof(wrRegs));
-  debugWire.sendCmd(regs, 32);
+  dw.sendCmd(wrRegs,  sizeof(wrRegs));
+  dw.sendCmd(regs, 32);
 }
 #endif
 
@@ -2302,7 +2224,7 @@ void writeRegister (byte reg, byte val) {
                   val};                                               // Write value to register via DWDR
   measureRam();
 
-  debugWire.sendCmd(wrReg,  sizeof(wrReg));
+  dw.sendCmd(wrReg,  sizeof(wrReg));
 }
 
 #ifdef NEWREGCODE
@@ -2316,7 +2238,7 @@ void readRegisters (byte *regs)
 		   0x20 };            // start
   measureRam();
 
-  debugWire.sendCmd(rdRegs,  sizeof(rdRegs));
+  dw.sendCmd(rdRegs,  sizeof(rdRegs));
   getResponse(regs, 32);               // Get value sent as response
 }
 #endif
@@ -2329,7 +2251,7 @@ byte readRegister (byte reg) {
                   0x23};                                              // Execute loaded instruction
   measureRam();
 
-  debugWire.sendCmd(rdReg,  sizeof(rdReg));
+  dw.sendCmd(rdReg,  sizeof(rdReg));
   getResponse(&res, 1);                                                     // Get value sent as response
   return res;
 }
@@ -2350,7 +2272,7 @@ void writeSRamByte (unsigned int addr, byte val) {
                    val};
   measureRam();
 
-  debugWire.sendCmd(wrSRam, sizeof(wrSRam));
+  dw.sendCmd(wrSRam, sizeof(wrSRam));
 }
 
 // Read one byte from SRAM address space using an SRAM-based value for <addr>, not an I/O address
@@ -2367,7 +2289,7 @@ byte readSRamByte (unsigned int addr) {
                    0xC2, 0x00,                                        // Set simulated "ld r?,Z+; out DWDR,r?" insrtuctions
                    0x20};                                             // Go
   saveTempRegisters();
-  debugWire.sendCmd(rdSRam, sizeof(rdSRam));
+  dw.sendCmd(rdSRam, sizeof(rdSRam));
   getResponse(&res,1);
   return res;
 }
@@ -2390,7 +2312,7 @@ boolean readSRamBytes (unsigned int addr, byte *mem, byte len) {
                      0xD1, (byte)(len2 >> 8), (byte)(len2 & 0xFF),    // Set repeat count = len * 2
                      0xC2, 0x00,                                      // Set simulated "ld r?,Z+; out DWDR,r?" instructions
                      0x20};                                           // Go
-    debugWire.sendCmd(rdSRam, sizeof(rdSRam));
+    dw.sendCmd(rdSRam, sizeof(rdSRam));
     rsp = getResponse(mem, len);
     if (rsp == len) {
       break;
@@ -2438,8 +2360,8 @@ byte readEepromByte (unsigned int addr) {
                     0xD2, inHigh(mcu.eedr, 29), inLow(mcu.eedr, 29), 0x23,      // in  r29,EEDR   Read data from EEDR
                     0xD2, outHigh(mcu.dwdr, 29), outLow(mcu.dwdr, 29), 0x23};   // out DWDR,r29   Send data back via DWDR reg
   saveTempRegisters();
-  debugWire.sendCmd(setRegs, sizeof(setRegs));
-  debugWire.sendCmd(doRead, sizeof(doRead));
+  dw.sendCmd(setRegs, sizeof(setRegs));
+  dw.sendCmd(doRead, sizeof(doRead));
   getResponse(&retval,1);                                                       // Read data from EEPROM location
   return retval;
 }
@@ -2464,8 +2386,8 @@ void writeEepromByte (unsigned int addr, byte val) {
                     0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,      // out EECR,r28   EECR = 04 (EEPROM Master Program Enable)
                     0xD2, outHigh(mcu.eecr, 29), outLow(mcu.eecr, 29), 0x23};     // out EECR,r29   EECR = 02 (EEPROM Program Enable)
   saveTempRegisters();
-  debugWire.sendCmd(setRegs, sizeof(setRegs));
-  debugWire.sendCmd(doWrite, sizeof(doWrite));
+  dw.sendCmd(setRegs, sizeof(setRegs));
+  dw.sendCmd(doWrite, sizeof(doWrite));
 }
 
 //
@@ -2492,12 +2414,8 @@ boolean readFlash(unsigned int addr, byte *mem, unsigned int len) {
                       0xD1, (byte)(lenx2 >> 8),(byte)(lenx2),             // Set end = repeat count = sizeof(flashBuf) * 2
                       0xC2, 0x02,                                         // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
                       0x20};                                              // Go
-    debugWire.sendCmd(rdFlash, sizeof(rdFlash));
+    dw.sendCmd(rdFlash, sizeof(rdFlash));
     rsp = getResponse(mem, len);                                         // Read len bytes
-    DEBPR(F("Bytes expected: "));
-    DEBLN(len);
-    DEBPR(F("Bytes received: "));
-    DEBLN(rsp);
     if (rsp ==len) {
       break;
     } else {
@@ -2524,7 +2442,7 @@ boolean eraseFlashPage(unsigned int addr) {
 		    outLow(0x37, 29), 
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8, 0x33 }; // execute SPM
-  debugWire.sendCmd(eflash, sizeof(eflash));
+  dw.sendCmd(eflash, sizeof(eflash));
   return checkCmdOk2();
 }
 		    
@@ -2543,7 +2461,7 @@ boolean programFlashPage(unsigned int addr)
 		    outLow(0x37, 29), 
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8, 0x33 }; // execute SPM
-  debugWire.sendCmd(eprog, sizeof(eprog));
+  dw.sendCmd(eprog, sizeof(eprog));
   return checkCmdOk2();
   
   if (!mcu.bootaddr) { // no bootloader
@@ -2577,7 +2495,7 @@ boolean loadFlashBuffer(unsigned int addr, byte *mem)
 		     0xD2, 0x95, 0xE8, 0x23, // spm
 		     0xD2, 0x96, 0x32, 0x23, // addiw Z,2
     };
-    debugWire.sendCmd(eload, sizeof(eload));
+    dw.sendCmd(eload, sizeof(eload));
   }
   return true;
 }
@@ -2594,7 +2512,7 @@ void reenableRWW(void)
 		    outLow(0x37, 29),
 		    0x23,                    // execute
 		    0xD2, 0x95, 0xE8, 0x23 }; // spm
-    debugWire.sendCmd(errw, sizeof(errw));
+    dw.sendCmd(errw, sizeof(errw));
   }
 }
 
@@ -2605,38 +2523,38 @@ byte readSPMCSR(void)
 		inHigh(0x37, 30),  // build "in 30, SPMCSR"
 		inLow(0x37, 30),
 		0x23 };             // execute
-  debugWire.sendCmd(sc, sizeof(sc));
+  dw.sendCmd(sc, sizeof(sc));
   return readRegister(30);
 }
 
 unsigned int getWPc () {
-  debugWire.sendCmd((const byte[]) {0xF0}, 1);
+  dw.sendCmd((const byte[]) {0xF0}, 1);
   unsigned int pc = getWordResponse();
   return (pc - 1);
 }
 
 // get hardware breakpoint word address 
 unsigned int getWBp () {
-  debugWire.sendCmd((const byte[]) {0xF1}, 1);
+  dw.sendCmd((const byte[]) {0xF1}, 1);
   return (getWordResponse() - 1);
 }
 
 // get chip signature
 unsigned int DWgetChipId () {
-  debugWire.sendCmd((const byte[]) {0xF3}, 1);
+  dw.sendCmd((const byte[]) {0xF3}, 1);
   return (getWordResponse()) ;
 }
 
 // set PC (word address)
 void setWPc (unsigned int wpc) {
   byte cmd[] = {0xD0, (byte)(wpc >> 8), (byte)(wpc & 0xFF)};
-  debugWire.sendCmd(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
 }
 
 // set hardware breakpoint at word address
 void setWBp (unsigned int wbp) {
   byte cmd[] = {0xD1, (byte)(wbp >> 8), (byte)(wbp & 0xFF)};
-  debugWire.sendCmd(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
 }
 
 
@@ -2652,7 +2570,7 @@ boolean execOffline(unsigned int opcode)
     // Fatal error wil be raised by the calling routine
     return false;
   }
-  debugWire.sendCmd(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
   setWPc(ctx.wpc+2); // and set it higher by two - it will be decremented after execution
   return true;
 }

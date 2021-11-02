@@ -12,10 +12,7 @@ You just need a ATmega328 based board to get started (e.g., UNO, Nano, or Mini).
 
 ### Warning
 
-* Do not try to debug systems that run with **16 MHz** yet. You may switch the MCU into the debugWIRE mode, but you might not be able to switch back to normal!
-* Read Section 2.3 carefully before trying to debug a target system.
-
-You might very well "brick" your MCU. The only way to recover is to use high-voltage programming.
+Read Section 2.3 carefully before trying to debug a target system. You might very well "brick" your MCU. The only way to unbrick the MCU is to use high-voltage programming.
 
 ## 1. The debugWIRE interface
 
@@ -24,7 +21,7 @@ The basic idea of *debugWIRE* is that one uses the RESET line as a communication
 Do not get nervous when your MCU does not react any longer as you expect it, but try to understand, in which state the MCU is. With respect to the debugWIRE protocol there are three states your MCU could be in:
 
 1. The **normal** state in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitionary** state.
-2. The **transitionary** state, in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **DebugWIRE** state.
+2. The **transitionary** state, in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** state.
 3. The **debugWIRE** state is the state in which you can use the debugger to control the target system. If you want to return to the **normal** state, a particular debugWIRE command leads to a transition to the **transitionary** state, from which one can reach the normal state using ISP programming. 
 
 The hardware debugger will take care of bringing you from state 1 to state 3 in order start debugging by either power-cycling itself or asking you to do it. This is accomplished with the gdb command ```monitor init```. The transition from state 3 to state 1 can be achieved by the gdb command ```monitor stop```.
@@ -67,7 +64,7 @@ In general, most ATtiny MCUs except for the most recent ones and the ATmegaXX8 s
 
 I believe that the list is complete. However, if you happen to know MCUs with debugWIRE not covered here, drop me a note. I will then make it possible to also debug them.
 
-Note that currently only those MCUs without bootloader memory are supported. 
+I myself have only tested the debugger with an ATtiny85 and an ATmega328P so far. While the other probably will work, I cannot give a guarantee, because there are always surprises, in particular with undocumented features such as debugWIRE.
 
 <a name="section23"></a>
 ### 2.3 Requirements concerning the RESET line of the target system 
@@ -212,7 +209,7 @@ debugWire is now enabled                      # now we are connected to the MCU 
 Loading section .text, size 0x374 lma 0x0
 Start address 0x00000000, load size 884
 Transfer rate: 621 bytes/sec, 221 bytes/write.
-(gdb) breakpoint loop                         # set breakpoint at start of loop
+(gdb) break loop                              # set breakpoint at start of loop
 Breakpoint 1 at 0x1f2: file /.../tiny85blink/tiny85blink.ino, line 39.
 (gdb) br 42                                   # set breakpoint at line 42 or later
 Breakpoint 2 at 0x202: file /.../tiny85blink/tiny85blink.ino, line 43.
@@ -319,7 +316,7 @@ mo[nitor] flashcount | reports on how many flash-page write operation have taken
 mo[nitor] ckdiv8 | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator)
 mo[nitor] ckdiv1 | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
 tu[i] e[nable] | enable text window user interface
-tu[i] d[isable] | diable text window user interface
+tu[i] d[isable] | disable text window user interface
 
 The two last commands are particularly interesting because you get a nicer user interface, which can show the source code, disassembled code and the registers (see [manual](https://sourceware.org/gdb/onlinedocs/gdb/TUI-Commands.html#TUI-Commands)).
 
@@ -441,7 +438,7 @@ When the *power-cycle* message is displayed, you have to power-cycle the target 
 
 #### Problem: The debugger responses are very sluggish   
 
-One reason for that could be that the target is run with a clock of 1 MHz. Since the debugWIRE communication speed is CPU clock/128, the communication speed is roughly 8000 Baud in this case. It is recommended to run the MCU at 8 MHz for this reason (see [Section 4.2](#section42)).
+One reason for that could be that the target is run with a clock of 1 MHz. Since the debugWIRE communication speed is MCU clock/128, the communication speed is roughly 8000 Baud in this case. It is recommended to run the MCU at 8 MHz for this reason (see [Section 4.2](#section42)).
 
 <a name="lost"></a>
 #### Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*
@@ -450,7 +447,7 @@ The reason is most probably that the communication connection to the target syst
 
 #### Problem: You get the message *Connection to target lost* when trying to start execution
 
-The target is not responsive any longer. Possible reasons for such a loss of connectivity are listed [above](#lost). It could be that the RESET line of the target system does not satisfy the electrical requirements (see [Section 2.3](#section23)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 4.5](#section45)). Try to identify the reason, eliminate it and then restart the debug session.
+The target is not responsive any longer. Possible reasons for such a loss of connectivity are listed [above](#lost). It could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 2.3](#section23)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 4.5](#section45)). Try to identify the reason, eliminate it and then restart the debug session.
 
 #### Problem: You get the message ****Fatal internal debugger error: n* when trying to start execution
 
