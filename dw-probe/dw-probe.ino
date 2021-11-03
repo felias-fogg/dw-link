@@ -80,7 +80,7 @@
 //   - issue an error when a byte is escaped although it should not have been instead
 //     of silently ignoring it
 //   - added gdbRemoveAllBreakpoints in order to avoid leaving active bps before reset etc.
-//   - changed the number of entries of bp from MaXBREAKS*2+1 to one less, because we now
+//   - changed the number of entries of bp from MAXBREAKS*2+1 to one less, because we now
 //     refuse to acknowledge every extra BP above the allowed number
 //   - detach function now really detaches, i.e., continues execution on the target and leaves it alone.
 //
@@ -88,15 +88,18 @@
 //   - implementation of monitor ckdivX (promised already in the manual)
 //
 // Version 0.8 (08-Jun-21)
-//   - problem with unsuccessful erase operations fixed: was actually an I/O unsynchronization bug. Forgot to read
-//     the BREAK/'U' after the single-step operation when skipping a SW breakpoint in gdbStepOverBP.
+//   - problem with unsuccessful erase operations fixed: was actually an I/O unsynchronization bug.
+//     Forgot to read the BREAK/'U' after the single-step operation when skipping a SW breakpoint
+//     in gdbStepOverBP.
 //   - added message explaining connection error
 //
 // Version 0.9 (30-Jun-21)
 //   - make distinction between wiring error and unsupported MCU type when connecting
 //   - implement automatic power-cycling
-//   - waiting longer after trying to power-cycle before requesting it in order to avoid the message to "power-cycle" 
-//   - not confusing the user by saying that dW is "still enabled". You always get that it is "now enabled"
+//   - waiting longer after trying to power-cycle before requesting it in order to avoid
+//   - the message to "power-cycle" 
+//   - not confusing the user by saying that dW is "still enabled". You always get that it is
+//     "now enabled"
 //   
 // Version 0.9.1 (02-Jul-21)
 //   - added "defensive code" into the debugger that detects fatal errors
@@ -109,40 +112,57 @@
 // Version 0.9.2 (04-Jul-21)
 //   - show speed of connection when calling "monitor init"
 //   - initialize all vars when gdb reconnects (i.e., when gdb sends a qSupported packet)
-//   - now we use TIMER1 for measuring the delay instead of counting execution cycles in OnePinSerial: much more
-//     accurate!
-//   - since this is still not enough, the millis and the status blinking interrupts have been disabled (we
-//     now use _delay_ms and _delay_us); actually, the blink IRQ is now only used for error blinking and for power-cycle
-//     flashing -- all other interrupts are disabled, except, of course, for the PCI interrupt for the debugWIRE line
-//     and the interrupt for the serial line;
-//   - in order to get the center of the first bit, we now wait for 1,5 bits after the first edge (minus the time
-//     used in the program for serving the IRQ etc - which is empirically determined);
+//   - now we use TIMER1 for measuring the delay instead of counting execution cycles in
+//     OnePinSerial: much more accurate!
+//   - since this is still not enough, the millis and the status blinking interrupts have been
+//     disabled (we now use _delay_ms and _delay_us); actually, the blink IRQ is now only used
+//     for error blinking and for power-cycle
+//     flashing -- all other interrupts are disabled, except, of course, for the
+//     PCI interrupt for the debugWIRE line and the interrupt for the serial line;
+//   - in order to get the center of the first bit, we now wait for 1,5 bits after the first edge
+//     (minus the time used in the program for serving the IRQ etc - which is empirically determined);
 //   - changed setTimeoutDelay(DWIRE_RATE) to setTimeoutDelay(ctx.baud) in order to minimize the delay
-//     in the getResponse loop; it used to be 4ms, which was ridiculous and showed badly with the new OnePinSerial class;
-//   - in addition, the targetReset routine needed a seperate delay loop because the delay to the response is
-//     not depended on the baud rate, but it is constant 75ms;
-//   - finally, we can now also write flash memory in the ATmegas, so the exclusion of the bootloader MCUs has been revoked
+//     in the getResponse loop; it used to be 4ms, which was ridiculous and showed badly with the
+//     new OnePinSerial class;
+//   - in addition, the targetReset routine needed a seperate delay loop because the delay to the
+//     response is not depended on the baud rate, but it is constant 75ms;
+//   - finally, we can now also write flash memory in the ATmegas, so the exclusion of the
+//     bootloader MCUs has been revoked
 //
 // Version 0.9.3 (04-Jul-21)
-//   - Now it seems to work with targets running at 16 MHz. With SCOPE_TIMING enabled in OnePinSerial, it worked beautifully;
-//     without, there were a number of glitches when reading. So I put in some NOPs when SCOPE_TIMING is disabled ... and it
+//   - Now it seems to work with targets running at 16 MHz. With SCOPE_TIMING enabled in OnePinSerial,
+//     it worked beautifully; without, there were a number of glitches when reading.
+//     So I put in some NOPs when SCOPE_TIMING is disabled ... and it
 //     works. The only problem is, I do not know why, and this makes me nervous.
 //
 // Version 0.9.4 (02-Nov-21)
-//   - Instead of OnePinSerial, we use now dwSerial, which uses in turn the base class SingleWireSerial. Two orders of magnitude
-//     more accurate and robust!
-//   - Timeout in getResponse is now done using the number of cycle iterations, which is roughly 2-3us. Meaning we should wait
-//     roughly 40,000 iterations.
+//   - Instead of OnePinSerial, we use now dwSerial, which uses in turn the base class SingleWireSerial.
+//     One order of magnitude more accurate and robust! Works up to 250 kbps without a hickup
+//     (if the millis interrupt is disabled).
+//   - Timeout in getResponse is now done using the number of cycle iterations, which is roughly 2-3us.
+//     Meaning we should wait roughly 40,000 iterations (works so far).
 //
-// TODO:
-//   - check systematically all ways of continuing and single-stepping
-//   - implement more intelligent way of allocating the HW BP,
-//     in particular when having 4byte/jump-intructions and cond. BPs
-//
+// Version 0.9.5
+//   - changed Debug bps to 57600
+//   - decreased timeout for "power-cycle" to 3 seconds in order to supress "timeout" message by gdb 
+//   - removed saveTempRegs from the low level debugWIRE functions, moved it to targetGetAllCOntrolRegs
+//   - all basic debugWIRE functions have now a DW prefix
+//   - created also "monitor testtg" and "monitor testbp" for unit testing the target functions
+//     and the breakpoint functions
+//   - inserted "unit test" code for low level DebugWIRE functions, can be called using "monitor testdw"
+//     and found one bug (20 instead of 0x20 in DWreadRegisters).
+//   - registers are only saved (right after start or after a break) and restored (before execution or single-stepping)
+//     no more partial saves etc.
+//   - no more noJumpInstr since jumps can actually be executed offline
+//   - dw.sendCmd replaced by sendCommand, which now waits for Serial output to be finished in order to
+//     avoid any output interrupt, which can take up to 8.75 us and by that confuse SingleWireSerial. It
+//     can withstand 6.6 us, but 8.75 us is too much! 
 
-#define VERSION "0.9.4"
-//#define DEBUG // for debugging the debugger!
-//#define FREERAM
+
+#define VERSION "0.9.5"
+#define DEBUG    0  // for debugging the debugger!
+#define FREERAM  0  // for checking how much memory is left on the stack
+#define UNITTESTS 1  // unit testing
 
 // pins
 #define DEBTX    3    // TX line for TXOnlySerial
@@ -173,8 +193,8 @@
 #define GDB_BAUD      115200 // communcation speed with the host
 #define DWIRE_RATE    (1000000 / 128) // Set default baud rate (1 MHz / 128)
 
-// timeout for waiting for response, should be > 70ms
-// cycle time is roughly 2-3us, so 40,000 should do.
+// timeout for waiting for response, should be > 70ms for RESET response
+// loop time in the the getResponse routine is roughly 2-3us, so 40,000 should do.
 #define WAITLIMIT 40000UL 
 
 // signals
@@ -235,9 +255,8 @@ struct context {
   byte regs[32]; // general purpose regs
   boolean running:1;    // whether target is running
   boolean targetcon:1;  // whether target is connected
-  boolean clobbered:1;  // some of the regs are clobbered (0-1, 28-31)
   boolean saved:1; // all of the regs have been saved
-  long baud; // comm speed of dwire interface
+  unsigned long bps; // communication speed
 } ctx;
 
 //  MCU parameters
@@ -309,7 +328,7 @@ const unsigned int mcu_attr[] PROGMEM = {
 
 // some statistics
 long flashcnt = 0; // number of flash writes 
-#ifdef FREERAM
+#if FREERAM
 int freeram = 2048; // minimal amount of free memory (only if enabled)
 #define measureRam() freeRamMin()
 #else
@@ -321,8 +340,7 @@ dwSerial  dw;
 boolean       reportTimeout = true;   // If true, report read timeout errors
 boolean       progmode = false;
 char          rpt[16];                // Repeat command buffer
-unsigned long  timeOutDelay;           // Timeout delay (based on baud rate)
-byte lastsignal = 0;
+byte          lastsignal = 0;
 
 // use LED to signal system state
 // LED off = not connected to target system
@@ -384,7 +402,7 @@ void setup(void) {
 
 void loop(void) {
   if (Serial.available()) {
-      gdbHandleCmd();
+    gdbHandleCmd();
   } else if (ctx.running) {
     if (dw.available()) {
       byte cc = dw.read();
@@ -414,7 +432,7 @@ void initSession(void)
   flashcnt = 0;
   reportTimeout = true;
   progmode = false;
-  lastsignal = 0;
+    lastsignal = 0;
   validpg = false;
   buffill = 0;
   fatalerror = NO_FATAL;
@@ -567,10 +585,10 @@ void gdbParsePacket(const byte *buff)
   case 'C':               /* continue with signal - just ignore signal! */
     ctx.running = true;
     setSysState(RUN_STATE);
-    gdbContinue();       /* start executuion on target and continue with ctx.running = true */
+    gdbContinue();       /* start execution on target and continue with ctx.running = true */
     break;
   case 's':               /* step */
-  case 'S':               /* step with signal - haha */
+  case 'S':               /* step with signal - just ignore signal */
     ctx.running = true;
     setSysState(RUN_STATE);
     gdbStep();          /* do only one step */
@@ -617,15 +635,21 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbConnect();
   else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e74"), 20) == 0) /* flashcount */
     gdbReportFlashCount();
-  else if (memcmp_P(buf, (void *)PSTR("72616d"), 6) == 0)    /* ram */
+  else if (memcmp_P(buf, (void *)PSTR("72616d"), 6) == 0)            /* ram */
     gdbReportRamUsage();
   else if  (memcmp_P(buf, (void *)PSTR("636b64697638"), 12) == 0)    /* ckdiv8 */
     gdbSetCkdiv8(true);
   else if  (memcmp_P(buf, (void *)PSTR("636b64697631"), 12) == 0)    /* ckdiv1 */
     gdbSetCkdiv8(false);
-  else if  (memcmp_P(buf, (void *)PSTR("74657374"), 8) == 0)     /* test */
-    test();
-  else if (memcmp_P(buf, (void *)PSTR("7265736574"), 10) == 0) { /* reset */
+#if UNITTESTS
+  else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)    /* testdw */
+    DWtests();
+  else if  (memcmp_P(buf, (void *)PSTR("746573747467"), 12) == 0)    /* testtg */
+    targetTests();
+  else if  (memcmp_P(buf, (void *)PSTR("746573746270"), 12) == 0)    /* testbp */
+    BPtests();
+#endif
+  else if (memcmp_P(buf, (void *)PSTR("7265736574"), 10) == 0) {     /* reset */
     gdbRemoveAllBreakpoints();
     gdbUpdateBreakpoints();  // update breakpoints in memory before reset
     gdbReset();
@@ -633,24 +657,6 @@ void gdbParseMonitorPacket(const byte *buf)
   } else gdbSendReply("");
 }
 
-
-void test(void) {
-  DEBPR(F("Reading 64 bytes from flash: "));
-  DEBLN(readFlash(0, buf, 64));
-  DEBPR(F("Reading 100 bytes from flash: "));
-  DEBLN(readFlash(0, buf, 100));
-  DEBPR(F("Reading 127 bytes from flash: "));
-  DEBLN(readFlash(0, buf, 127));
-  DEBPR(F("Reading 128 bytes from flash: "));
-  DEBLN(readFlash(0, buf, 128));
-  DEBPR(F("Reading 129 bytes from flash: "));
-  DEBLN(readFlash(0, buf, 129));
-  DEBPR(F("Reading 130 bytes from flash: "));
-  DEBLN(readFlash(0, buf, 130));
-  DEBPR(F("Reading 250 bytes from flash: "));
-  DEBLN(readFlash(0, buf, 250));
-  gdbSendReply("OK");
-}
 
 // report on how many flash pages have been written
 void gdbReportFlashCount(void)
@@ -663,7 +669,7 @@ void gdbReportFlashCount(void)
 
 void gdbReportRamUsage(void)
 {
-#ifdef FREERAM
+#if FREERAM
   gdbDebugMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
   _delay_ms(5);
   flushInput();
@@ -705,7 +711,7 @@ boolean gdbConnect(void)
   case 1: // everything OK
     setSysState(CONN_STATE);
     ctx.targetcon = true;
-    gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.baud);
+    gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
     gdbReset();
     flushInput();
     gdbSendReply("OK");
@@ -720,7 +726,7 @@ boolean gdbConnect(void)
 	digitalWrite(VCC, HIGH); // power target again
 	_delay_ms(200); // wait for target to startup
       }
-      if ((retry++)%10 == 0 && retry >= 10) {
+      if ((retry++)%3 == 0 && retry >= 3) {
 	do {
 	  flushInput();
 	  gdbDebugMessagePSTR(PSTR("Please power-cycle the target system"),-1);
@@ -732,7 +738,7 @@ boolean gdbConnect(void)
 	setSysState(CONN_STATE);
 	gdbReset();
 	flushInput();
-	gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps:"),ctx.baud);
+	gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps:"),ctx.bps);
 	_delay_ms(100);
 	flushInput();
 	gdbSendReply("OK");
@@ -762,7 +768,7 @@ void gdbStop(void)
 void gdbReset(void)
 {
   targetReset();
-  gdbInitRegisters();
+  targetInitRegisters();
 }
 
 void gdbSetCkdiv8(boolean program)
@@ -795,13 +801,13 @@ void gdbSetCkdiv8(boolean program)
 void gdbStep(void)
 {
   DEBLN(F("Start step operation"));
-  targetRestoreClobberedRegisters();
+  targetRestoreRegisters();
   if (toomanybps || fatalerror) {
     gdbExecProblem(fatalerror);
     return;
   }
   if (!gdbStepOverBP(true)) { // only if not already stepped over BP
-    targetRestoreClobberedRegisters();
+    targetRestoreRegisters();
     targetStep();
   }
 }
@@ -809,14 +815,14 @@ void gdbStep(void)
 void gdbContinue(void)
 {
   DEBLN(F("Start continue operation"));
-  targetRestoreClobberedRegisters();
+  targetRestoreRegisters();
   if (toomanybps || fatalerror || !ctx.targetcon) {
     gdbExecProblem(fatalerror || !ctx.targetcon);
     return;
   }
   gdbStepOverBP(false);    // either step over or remove BREAK from flash
   gdbUpdateBreakpoints();  // update breakpoints in memory
-  targetRestoreClobberedRegisters();
+  targetRestoreRegisters();
   targetContinue();
 }
 
@@ -842,7 +848,7 @@ void gdbExecProblem(byte fatal)
   }
   _delay_ms(100);
   flushInput();
-  setWPc(ctx.wpc+1); // set PC!
+  DWsetWPc(ctx.wpc+1); // set PC!
   ctx.running = false;
   gdbSendState(fatal ? SIGSTOP : SIGABRT);
 }
@@ -861,10 +867,10 @@ boolean gdbStepOverBP(boolean onlyonestep)
     DEBLN(F("Found BP at PC loc"));
     if (bp[bpix].inflash) { // there is a bp in flash!
       DEBLN(F("In flash!"));
-      if (twoByteInstr(bp[bpix].opcode) && noJumpInstr(bp[bpix].opcode)) { // a two byte instruction
+      if (twoByteInstr(bp[bpix].opcode)) { // a two byte instruction
 	DEBLN(F("Two byte instr / noJump"));
-	targetRestoreClobberedRegisters(); // set all regs
-	execsucc = execOffline(bp[bpix].opcode); // execute the instruction offline
+	targetRestoreRegisters(); // set all regs
+	execsucc = DWexecOffline(bp[bpix].opcode); // execute the instruction offline
 	if (!execsucc) {
 	  DEBLN(F("***Offline execution error when single-stepping"));
 	  reportFatalError(NO_EXEC_FATAL);
@@ -894,7 +900,7 @@ boolean gdbStepOverBP(boolean onlyonestep)
 	}
 	if (!onlyonestep) { // if not only one step, then step in order to be able to continue
 	  DEBLN(F("Step over!"));
-	  targetRestoreClobberedRegisters(); // set all regs
+	  targetRestoreRegisters(); // set all regs
 	  targetStep();         // step over the 4byte/call instr
 	  if (!checkCmdOk2()) { 
 	    reportFatalError(NO_SINGLESTEP_FATAL);
@@ -1189,20 +1195,10 @@ void gdbRemoveAllBreakpoints(void)
   lasthwbp = 0xFFFF;
 }
 
-void gdbInitRegisters(void)
-{
-  byte a;
-  a = 32;	/* in the loop, send R0 thru R31 */
-  byte *ptr = &(ctx.regs[0]);
-  measureRam();
-
-  do {
-    *ptr++ = a;
-  } while (--a > 0);
-  ctx.sreg = 0;
-  ctx.wpc = 0;
-  ctx.sp = 0x1234;
+void BPtests(void) {
+  gdbSendReply("OK");
 }
+
 
 // GDB wants to see the 32 8-bit registers (r00 - r31), the
 // 8-bit SREG, the 16-bit SP and the 32-bit PC,
@@ -1215,7 +1211,6 @@ void gdbReadRegisters(void)
   unsigned long pc = (unsigned long)ctx.wpc << 1;	/* convert word address to byte address used by gdb */
   byte i = 0;
 
-  targetGetAllRegisters();
   a = 32;	/* in the loop, send R0 thru R31 */
   b = (unsigned int) &(ctx.regs);
   
@@ -1289,7 +1284,6 @@ void gdbWriteRegisters(const byte *buff)
   pc |= (unsigned long)hex2nib(*buff++) << 28;
   pc |= (unsigned long)hex2nib(*buff++) << 24;
   ctx.wpc = pc >> 1;	/* drop the lowest bit; PC addresses words */
-  targetSetAllRegisters();
   gdbSendReply("OK");
 }
 
@@ -1566,7 +1560,7 @@ void gdbState2Buf(byte signo)
 
 void gdbSendState(byte signo)
 {
-  targetGetAllControlRegisters();
+  targetSaveRegisters();
   gdbState2Buf(signo);
   gdbSendBuff(buf, buffill);
   lastsignal = signo;
@@ -1602,10 +1596,12 @@ void gdbDebugMessagePSTR(const char pstr[],long num) {
 
 /****************** target functions *************/
 
-// enable DebugWire
-// returns -1 if we cannot connect
-// returns 0 if we need to powercycle
-// returns 1 if we are connected 
+// enable DebugWire, returns
+//   1 if we are in debugWIRE mode and connected 
+//   0 if we need to powercycle
+//   -1 if we cannot connect
+//   -2 if unknown MCU type
+//   -3 if lock bits set
 int targetConnect(void)
 {
   unsigned int sig;
@@ -1628,7 +1624,6 @@ int targetConnect(void)
     leaveProgramMode();
     return -2;
   }
-//  if (mcu.bootaddr) return -4; // sorry - these MCUs do not work yet
   byte lockbits = ispSend(0x58, 0x00, 0x00, 0x00);
   if (lockbits != 0xFF) return -3;
   byte highfuse = ispSend(0x58, 0x08, 0x00, 0x00);
@@ -1648,7 +1643,7 @@ boolean targetStop(void)
 {
   if (doBreak()) {
     if (setMcuAttr(DWgetChipId())) {
-      dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWireMode
+      sendCommand((const byte[]) {0x06}, 1); // leave debugWireMode
       _delay_ms(50);
       enterProgramMode();
       byte highfuse = ispSend(0x58, 0x08, 0x00, 0x00);
@@ -1667,13 +1662,20 @@ boolean targetStop(void)
   return false;
 }
 
+// set the CKDIV fuse (true for CHKDIV8 to be programmed), returns
+// 1 - if programmed
+// 0 - if no change is necessary
+// -1 - if we cannot enter programming mode or sig is not readable
+// -2 - if unknown MCU type
+ 
+
 int targetSetCKFuse(boolean programfuse)
 {
   byte newfuse, lowfuse;
   unsigned int sig;
   if (doBreak()) {
     if (setMcuAttr(DWgetChipId())) 
-      dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
+      sendCommand((const byte[]) {0x06}, 1); // leave debugWIRE mode
     else
       return -1;
   } else {
@@ -1705,11 +1707,13 @@ int targetSetCKFuse(boolean programfuse)
   return 1;
 }
 
+// send break in order to sop execution asynchronously
 void targetBreak(void)
 {
   dw.sendBreak();
 }
 
+// start to execute
 void targetContinue(void)
 {
   measureRam();
@@ -1717,15 +1721,16 @@ void targetContinue(void)
   DEBPR(F("Continue at (byte adress) "));
   DEBLNF(ctx.wpc*2,HEX);
   if (hwbp != 0xFFFF) {
-    dw.sendCmd((const byte []) { 0x61 }, 1);
-    setWBp(hwbp);
+    sendCommand((const byte []) { 0x61 }, 1);
+    DWsetWBp(hwbp);
   } else {
-    dw.sendCmd((const byte []) { 0x60 }, 1);
+    sendCommand((const byte []) { 0x60 }, 1);
   }
   byte cmd[] = { 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x30};
-  dw.sendCmd(cmd, sizeof(cmd));
+  sendCommand(cmd, sizeof(cmd));
 }
 
+// make a single step
 void targetStep(void)
 {
   measureRam();
@@ -1734,14 +1739,15 @@ void targetStep(void)
   DEBLNF(ctx.wpc*2,HEX);
   // _delay_ms(5);
   byte cmd[] = {0x60, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
-  dw.sendCmd(cmd, sizeof(cmd));
+  sendCommand(cmd, sizeof(cmd));
 }
 
+// reset the MCU
 boolean targetReset(void)
 {
   int timeout = 100;
 
-  dw.sendCmd((const byte[]) {0x07}, 1);
+  sendCommand((const byte[]) {0x07}, 1);
   while (timeout--)
     if (dw.available()) break;
     else _delay_ms(1);
@@ -1756,6 +1762,9 @@ boolean targetReset(void)
   }
 }
 
+// read one flash page with base address 'addr' into the global 'page' buffer,
+// do this only if the page has not been read already,
+// remember that page has been read and that the buffer is valid
 void targetReadFlashPage(unsigned int addr)
 {
   DEBPR(F("Reading flash page starting at: "));
@@ -1775,31 +1784,41 @@ void targetReadFlashPage(unsigned int addr)
   }
 }
 
+// read some portion of flash memory to the buffer pointed at by *mem'
 void targetReadFlash(unsigned int addr, byte *mem, unsigned int len)
 {
-  if (!readFlash(addr, mem, len)) {
+  if (!DWreadFlash(addr, mem, len)) {
     reportFatalError(FLASH_READ_FATAL);
     DEBPR(F("***Error reading flash memory at "));
     DEBLNF(addr,HEX);
   }
 }
 
+// read some portion of SRAM into buffer pointed at by *mem
 void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
 {
-  if (!readSRamBytes(addr, mem, len)) {
+  if (!DWreadSRamBytes(addr, mem, len)) {
     reportFatalError(SRAM_READ_FATAL);
     DEBPR(F("***Error reading SRAM at "));
     DEBLNF(addr,HEX);
   }
 }
 
+// read some portion of EEPROM
 void targetReadEeprom(unsigned int addr, byte *mem, unsigned int len)
 {
   for (unsigned int i=0; i < len; i++) {
-    mem[i] = readEepromByte(addr++);
+    mem[i] = DWreadEepromByte(addr++);
   }
 }
 
+// write a flash page,
+// check whether the data is already in this flash page,
+// if so, do nothing,
+// check whether we can get away with simply overwriting,
+// if not erase page,
+// and finally write page
+// rmember page content in 'page' buffer
 void targetWriteFlashPage(unsigned int addr, byte *mem)
 {
   DEBPR(F("Write flash ... "));
@@ -1812,7 +1831,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     reportFatalError(WRITE_PAGE_ADDR_FATAL);
     return;
   }
-  reenableRWW();
+  DWreenableRWW();
   // read old page contents
   targetReadFlashPage(addr);
   // check whether something changed
@@ -1849,10 +1868,10 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   // erase page when dirty
   if (dirty) {
     DEBPR(F(" erasing ..."));
-    if (!eraseFlashPage(addr)) {
-      // ERASE_FAILURE_FATAL
+    if (!DWeraseFlashPage(addr)) {
+      reportFatalError(ERASE_FAILURE_FATAL);
       DEBLN(F(" not possible"));
-      reenableRWW();
+      DWreenableRWW();
       return;
     } else {
       DEBPR(F(" will overwrite ..."));
@@ -1862,13 +1881,13 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     memset(page, 0xFF, mcu.pagesz);
     if (memcmp(mem, page, mcu.pagesz) == 0) {
       DEBLN(" nothing to write");
-      reenableRWW();
+      DWreenableRWW();
       validpg = true;
       return;
     }
   }
-  if (!loadFlashBuffer(addr, mem)) {
-    reenableRWW();
+  if (!DWloadFlashBuffer(addr, mem)) {
+    DWreenableRWW();
     reportFatalError(NO_LOAD_FLASH_FATAL);
     DEBPR(F("\n***Cannot load page buffer "));
     return;
@@ -1876,8 +1895,8 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     DEBPR(F(" flash buffer loaded"));
   }
     
-  boolean succ = programFlashPage(addr);
-  reenableRWW();
+  boolean succ = DWprogramFlashPage(addr);
+  DWreenableRWW();
   if (succ) {
     memcpy(page, mem, mcu.pagesz);
     validpg = true;
@@ -1889,6 +1908,9 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   }
 }
 
+// write some chunk of data to flash,
+// break it up into pages and flash also the
+// the partial pages in the beginning and in the end
 void targetWriteFlash(unsigned int addr, byte *mem, unsigned int len)
 {
   unsigned int pageoffmsk = mcu.pagesz-1;
@@ -1926,110 +1948,58 @@ void targetWriteFlash(unsigned int addr, byte *mem, unsigned int len)
   }
 }
 
+// write SRAM chunk
 void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 {
   for (unsigned int i=0; i < len; i++) 
-    writeSRamByte(addr+i, mem[i]);
+    DWwriteSRamByte(addr+i, mem[i]);
 }
 
+// write EEPROM chunk
 void targetWriteEeprom(unsigned int addr, byte *mem, unsigned int len)
 {
   for (unsigned int i=0; i < len; i++) 
-    writeEepromByte(addr+i, mem[i]);
+    DWwriteEepromByte(addr+i, mem[i]);
 }
 
-void targetGetAllControlRegisters(void)
+// initialize registers (after RESET)
+void targetInitRegisters(void)
 {
-  //  DEBPR(F("ctx.clobbered="));
-  //  DEBLN(ctx.clobbered);
-  //  DEBLN(F("Get Ctrl Regs"));
-  ctx.wpc = getWPc();
-  DEBPR(F("PC (byte address) after stop: "));
-  DEBLNF(ctx.wpc*2,HEX);
-  ctx.sreg = readSRamByte(0x3F + 0x20);
-  // DEBPR(F("SREG: "));
-  // DEBLNF(ctx.sreg,BIN);
-  ctx.sp = readSRamByte(0x3D + 0x20);
-  // DEBPR(F("SPL: "));
-  // DEBLNF(ctx.sp,HEX);
-  if (mcu.ramsz > 256) ctx.sp |= readSRamByte(0x3E + 0x20) << 8;
-  // DEBPR(F("SPH: "));
-  // DEBLNF((ctx.sp>>8),HEX);
-}
+  byte a;
+  a = 32;	/* in the loop, send R0 thru R31 */
+  byte *ptr = &(ctx.regs[0]);
+  measureRam();
 
-void targetGetAllRegisters(void)
-{
-  byte r;
-  //  DEBLN(F("Get ALL regs"));
-  if (!ctx.targetcon) {
-    // DEBLN(F("not connected yet"));
-    gdbInitRegisters();
-    ctx.saved = true;
-  }
-  if (ctx.saved) {
-    // DEBLN(F("Already done"));
-    return; // no need to read them twice
-  }
-#ifdef NEWREGCODE
-  readRegisters(&ctx.regs[0]);
-#else
-  if (ctx.clobbered) {
-    /// DEBLN(F("Only 2-27"));
-  }
-  for (r = (ctx.clobbered ? 2 : 0); r < (ctx.clobbered ? 28 : 32); r++) 
-    ctx.regs[r] = readRegister(r);
-#endif
-#if 0 // we never have to read the ctrl regs, since we do that immediately after each stop
-  ctx.wpc = getWPc();
-  DEBPR(F("PC (word address): "));
-  DEBLNF(ctx.wpc,HEX);
-  ctx.sreg = readSRamByte(0x3F + 0x20);
-  DEBPR(F("SREG: "));
-  DEBLNF(ctx.sreg,BIN);
-  ctx.sp = readSRamByte(0x3D + 0x20);
-  DEBPR(F("SPL: "));
-  DEBLNF(ctx.sp,HEX);
-  if (mcu.ramsz > 256) ctx.sp |= readSRamByte(0x3E + 0x20) << 8;
-  DEBPR(F("SPH: "));
-  DEBLNF((ctx.sp>>8),HEX);
-#endif
+  do {
+    *ptr++ = a;
+  } while (--a > 0);
+  ctx.sreg = 0;
+  ctx.wpc = 0;
+  ctx.sp = 0x1234;
   ctx.saved = true;
 }
 
-void targetSetAllRegisters(void)
+// read all registers from target and save them
+void targetSaveRegisters(void)
 {
-  byte r;
-  // DEBLN(F("Set all regs"));
-  // DEBPR(F("SPL: "));
-  // DEBLNF((ctx.sp&0xFF),HEX);
-  writeSRamByte(0x3D + 0x20, (ctx.sp&0xFF));
-  // DEBPR(F("SPH: "));
-  // DEBLNF((ctx.sp>>8),HEX);
-  if (mcu.ramsz > 256) writeSRamByte(0x3E + 0x20, (ctx.sp>>8)&0xFF);
-  // DEBPR(F("SREG: "));
-  // DEBLNF(ctx.sreg,BIN);
-  writeSRamByte(0x3F + 0x20, ctx.sreg);
-#ifdef NEWREGCODE
-  writeRegisters(&ctx.regs[0]);
-#else
-  for (r = 0; r < 32; r++) // needs to be done AFTER calling writeSRamByte
-    writeRegister(r, ctx.regs[r]);
-#endif
-  ctx.clobbered = false;
+  if (ctx.saved) return; // If the regs have been saved, then the machine regs are clobbered, so do not load again!
+  ctx.wpc = DWgetWPc(); // needs to be done first, because the PC is advanced when executing instrs in the instr reg
+  DWreadRegisters(&ctx.regs[0]); // now get all GP registers
+  ctx.sreg = DWreadIOReg(0x3F);
+  ctx.sp = DWreadIOReg(0x3D);
+  if (mcu.ramsz > 256) ctx.sp |= DWreadIOReg(0x3E) << 8;
   ctx.saved = true;
 }
 
-void targetRestoreClobberedRegisters(void)
+// restore all registers on target (before execution continues)
+void targetRestoreRegisters(void)
 {
-  byte r;
-  ctx.saved = false;
-  if (!ctx.clobbered) return;
-  // DEBLN(F("Restore clobbered"));
-  for (r = 0; r < 2 ; r++) 
-    writeRegister(r, ctx.regs[r]);
-  for (r = 28; r < 32; r++) 
-    writeRegister(r, ctx.regs[r]);
-  ctx.clobbered = false;
+  if (!ctx.saved) return; // if not in saved state, do not restore!
+  DWwriteIOReg(0x3D, (ctx.sp&0xFF));
+  if (mcu.ramsz > 256) DWwriteIOReg(0x3E, (ctx.sp>>8)&0xFF);
+  DWwriteIOReg(0x3F, ctx.sreg);
+  DWwriteRegisters(&ctx.regs[0]);
+  ctx.saved = false; // now, we can save them again and be sure to get the right values
 }
 
 // check whether an opcode is a 16-bit opcode
@@ -2043,18 +2013,10 @@ boolean twoByteInstr(unsigned int opcode)
   return true;
 }
 
-// check whether the instr does not change the PC
-boolean noJumpInstr(unsigned int opcode)
-{
-  measureRam();
-
-  if (((opcode & 0b1111100000000000) == (unsigned int)0b1111000000000000) || // Branch
-      ((opcode & 0b1110000000000000) == (unsigned int)0b1100000000000000) || // RJMP/RCALL
-      ((opcode & 0b1111111011111111) == (unsigned int)0b1001010000001001) || // IJMP/ICALL
-      ((opcode & 0b1111111111101111) == (unsigned int)0b1001010100001000))   // RET/RETI
-    return false;
-  return true;
+void targetTests(void) {
+  gdbSendReply("OK");
 }
+
 
 /****************** debugWIRE specific functions *************/
 
@@ -2064,16 +2026,16 @@ boolean doBreak () {
   pinMode(RESET, INPUT);
   _delay_ms(10);
   dw.enable(false);
-  ctx.baud = dw.calibrate();
-  if (ctx.baud == 0) {
+  ctx.bps = dw.calibrate();
+  if (ctx.bps == 0) {
     DEBLN(F("No response from debugWire on sending break"));
     return false;
   }
   DEBPR(F("Speed: "));
-  DEBPRF(ctx.baud, DEC);
+  DEBPRF(ctx.bps, DEC);
   DEBLN(F(" bps"));
   dw.enable(true);
-  dw.begin(ctx.baud);                        // Set computed baud rate
+  dw.begin(ctx.bps);                        // Set computed bit rate
   DEBLN(F("Sending BREAK: "));
   dw.sendBreak();
   if (checkCmdOk()) {
@@ -2085,10 +2047,19 @@ boolean doBreak () {
   return false;
 }
 
+// send a command
+void sendCommand(const uint8_t *buf, uint8_t len)
+{
+  Serial.flush(); // wait until everything has been written in order to avoid interrupts
+  dw.write(buf, len);
+}
+
+// wait for response and store in buf
 unsigned int getResponse (int unsigned expected) {
   return getResponse(&buf[0], expected);
 }
 
+// wait for response and store in some data area
 unsigned int getResponse (byte *data, unsigned int expected) {
   unsigned int idx = 0;
   unsigned long timeout = 0;
@@ -2111,12 +2082,14 @@ unsigned int getResponse (byte *data, unsigned int expected) {
   return idx;
 }
 
+// wait for response that should be word, MSB first
 unsigned int getWordResponse () {
   byte tmp[2];
   getResponse(&tmp[0], 2);
   return ((unsigned int) tmp[0] << 8) + tmp[1];
 }
 
+// wait for a 0x55 response
 boolean checkCmdOk () {
   byte tmp[1];
   byte len = getResponse(&tmp[0], 1);
@@ -2131,6 +2104,7 @@ boolean checkCmdOk () {
   }
 }
 
+// wait for a BREAK/0x55 response
 boolean checkCmdOk2 () {
   byte tmp[2];
   byte len = getResponse(&tmp[0], 2);
@@ -2186,50 +2160,31 @@ byte inLow  (byte add, byte reg) {
   return (reg << 4) + (add & 0x0F);
 }
 
-void saveTempRegisters(void)
-{
-  measureRam();
-
-  //  DEBPR(F("Check clobbered: "));
-  //  DEBLN(ctx.clobbered);
-  if (ctx.clobbered) return; // the registers have already been saved
-  ctx.clobbered = true;
-  //  DEBPR(F("Check saved: "));
-  //  DEBLN(ctx.saved);
-  if (ctx.saved) return; // nothing to do
-  // DEBLN(F("Save temporary regs"));
-  for (byte r=0; r < 32; r++)
-    if (r < 2 || r > 27)
-      ctx.regs[r] = readRegister(r);
-}
-
-#ifdef NEWREGCODE
 // Write all registers 
-void writeRegisters(byte *regs)
+void DWwriteRegisters(byte *regs)
 {
   byte wrRegs[] = {0x66,              // read/write
 		   0xD0, 0x00, 0x00,  // start reg
 		   0xD1, 0x00, 0x20,  // end reg
 		   0xC2, 0x05,        // write registers
-		   20 };              // go
-  dw.sendCmd(wrRegs,  sizeof(wrRegs));
-  dw.sendCmd(regs, 32);
+		   0x20 };              // go
+  measureRam();
+  sendCommand(wrRegs,  sizeof(wrRegs));
+  sendCommand(regs, 32);
 }
-#endif
 
 // Set register <reg> by building and executing an "in <reg>,DWDR" instruction via the CMD_SET_INSTR register
-void writeRegister (byte reg, byte val) {
+void DWwriteRegister (byte reg, byte val) {
   byte wrReg[] = {0x64,                                               // Set up for single step using loaded instruction
                   0xD2, inHigh(mcu.dwdr, reg), inLow(mcu.dwdr, reg), 0x23,    // Build "in reg,DWDR" instruction
                   val};                                               // Write value to register via DWDR
   measureRam();
 
-  dw.sendCmd(wrReg,  sizeof(wrReg));
+  sendCommand(wrReg,  sizeof(wrReg));
 }
 
-#ifdef NEWREGCODE
 // Read all registers
-void readRegisters (byte *regs)
+void DWreadRegisters (byte *regs)
 {
   byte rdRegs[] = {0x66,
 		   0xD0, 0x00, 0x00, // start reg
@@ -2237,28 +2192,24 @@ void readRegisters (byte *regs)
 		   0xC2, 0x01,       // read registers
 		   0x20 };            // start
   measureRam();
-
-  dw.sendCmd(rdRegs,  sizeof(rdRegs));
+  sendCommand(rdRegs,  sizeof(rdRegs));
   getResponse(regs, 32);               // Get value sent as response
 }
-#endif
 
 // Read register <reg> by building and executing an "out DWDR,<reg>" instruction via the CMD_SET_INSTR register
-byte readRegister (byte reg) {
+byte DWreadRegister (byte reg) {
   byte res;
   byte rdReg[] = {0x64,                                               // Set up for single step using loaded instruction
                   0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg),        // Build "out DWDR, reg" instruction
                   0x23};                                              // Execute loaded instruction
   measureRam();
-
-  dw.sendCmd(rdReg,  sizeof(rdReg));
+  sendCommand(rdReg,  sizeof(rdReg));
   getResponse(&res, 1);                                                     // Get value sent as response
   return res;
 }
 
 // Write one byte to SRAM address space using an SRAM-based value for <addr>, not an I/O address
-void writeSRamByte (unsigned int addr, byte val) {
-  saveTempRegisters();
+void DWwriteSRamByte (unsigned int addr, byte val) {
   byte wrSRam[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
                    0xD0, 0x00, 0x1E,                                  // Set Start Reg number (r30)
                    0xD1, 0x00, 0x20,                                  // Set End Reg number (r31) + 1
@@ -2267,16 +2218,27 @@ void writeSRamByte (unsigned int addr, byte val) {
 		   (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
                    0xD0, 0x00, 0x01,
                    0xD1, 0x00, 0x03,
-                   0xC2, 0x04,                                        // Set simulated "in r?,DWDR; st Z+,r?" insrtuctions
+                   0xC2, 0x04,                                        // Set simulated "in r?,DWDR; st Z+,r?" instructions
                    0x20,                                              // Go
                    val};
   measureRam();
+  sendCommand(wrSRam, sizeof(wrSRam));
+}
 
-  dw.sendCmd(wrSRam, sizeof(wrSRam));
+// Write one byte to IO register (via R0)
+void DWwriteIOReg (byte ioreg, byte val)
+{
+  byte wrIOReg[] = {0x64,                                               // Set up for single step using loaded instruction
+		    0xD2, inHigh(mcu.dwdr, 0), inLow(mcu.dwdr, 0), 0x23,    // Build "in reg,DWDR" instruction
+		    val,                                                // load val into r0
+		    0xD2, outHigh(ioreg, 0), outLow(ioreg, 0),          // now store from r0 into ioreg
+		    0x23};
+  measureRam();
+  sendCommand(wrIOReg, sizeof(wrIOReg));
 }
 
 // Read one byte from SRAM address space using an SRAM-based value for <addr>, not an I/O address
-byte readSRamByte (unsigned int addr) {
+byte DWreadSRamByte (unsigned int addr) {
   byte res;
   byte rdSRam[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
                    0xD0, 0x00, 0x1E,                                  // Set Start Reg number (r30)
@@ -2286,20 +2248,34 @@ byte readSRamByte (unsigned int addr) {
                    (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
                    0xD0, 0x00, 0x00,                                  // 
                    0xD1, 0x00, 0x02,                                  // 
-                   0xC2, 0x00,                                        // Set simulated "ld r?,Z+; out DWDR,r?" insrtuctions
+                   0xC2, 0x00,                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
                    0x20};                                             // Go
-  saveTempRegisters();
-  dw.sendCmd(rdSRam, sizeof(rdSRam));
+  measureRam();
+  sendCommand(rdSRam, sizeof(rdSRam));
+  getResponse(&res,1);
+  return res;
+}
+
+// Read one byte from IO register (via R0)
+byte DWreadIOReg (byte ioreg)
+{
+  byte res;
+  byte rdIOReg[] = {0x64,                                               // Set up for single step using loaded instruction
+		    0xD2, inHigh(ioreg, 0), inLow(ioreg, 0),        // Build "out DWDR, reg" instruction
+		    0x23,
+		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0),        // Build "out DWDR, 0" instruction
+		    0x23};
+  measureRam();
+  sendCommand(rdIOReg, sizeof(rdIOReg));
   getResponse(&res,1);
   return res;
 }
 
 // Read <len> bytes from SRAM address space into buf[] using an SRAM-based value for <addr>, not an I/O address
 // Note: can't read addresses that correspond to  r28-31 (Y & Z Regs) because Z is used for transfer (not sure why Y is clobbered) 
-boolean readSRamBytes (unsigned int addr, byte *mem, byte len) {
+boolean DWreadSRamBytes (unsigned int addr, byte *mem, byte len) {
   unsigned int len2 = len * 2;
   byte rsp;
-  saveTempRegisters();
   //reportTimeout = false;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdSRam[] = {0x66,                                            // Set up for read/write using repeating simulated instructions
@@ -2312,7 +2288,8 @@ boolean readSRamBytes (unsigned int addr, byte *mem, byte len) {
                      0xD1, (byte)(len2 >> 8), (byte)(len2 & 0xFF),    // Set repeat count = len * 2
                      0xC2, 0x00,                                      // Set simulated "ld r?,Z+; out DWDR,r?" instructions
                      0x20};                                           // Go
-    dw.sendCmd(rdSRam, sizeof(rdSRam));
+    measureRam();
+    sendCommand(rdSRam, sizeof(rdSRam));
     rsp = getResponse(mem, len);
     if (rsp == len) {
       break;
@@ -2345,7 +2322,7 @@ boolean readSRamBytes (unsigned int addr, byte *mem, byte len) {
 //   Read one byte from EEPROM
 //   
 
-byte readEepromByte (unsigned int addr) {
+byte DWreadEepromByte (unsigned int addr) {
   byte retval;
   byte setRegs[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
                     0xD0, 0x00, 0x1C,                                   // Set Start Reg number (r28(
@@ -2359,9 +2336,9 @@ byte readEepromByte (unsigned int addr) {
                     0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,    // out EECR,r28   EERE = 01 (EEPROM Read Enable)
                     0xD2, inHigh(mcu.eedr, 29), inLow(mcu.eedr, 29), 0x23,      // in  r29,EEDR   Read data from EEDR
                     0xD2, outHigh(mcu.dwdr, 29), outLow(mcu.dwdr, 29), 0x23};   // out DWDR,r29   Send data back via DWDR reg
-  saveTempRegisters();
-  dw.sendCmd(setRegs, sizeof(setRegs));
-  dw.sendCmd(doRead, sizeof(doRead));
+  measureRam();
+  sendCommand(setRegs, sizeof(setRegs));
+  sendCommand(doRead, sizeof(doRead));
   getResponse(&retval,1);                                                       // Read data from EEPROM location
   return retval;
 }
@@ -2370,7 +2347,7 @@ byte readEepromByte (unsigned int addr) {
 //   Write one byte to EEPROM
 //   
 
-void writeEepromByte (unsigned int addr, byte val) {
+void DWwriteEepromByte (unsigned int addr, byte val) {
   byte setRegs[] = {0x66,                                                 // Set up for read/write using repeating simulated instructions
                     0xD0, 0x00, 0x1C,                                     // Set Start Reg number (r30)
                     0xD1, 0x00, 0x20,                                     // Set End Reg number (r31) + 1
@@ -2385,22 +2362,21 @@ void writeEepromByte (unsigned int addr, byte val) {
                     0xD2, outHigh(mcu.eedr, 30), outLow(mcu.eedr, 30), 0x23,      // out EEDR,r30   EEDR = data
                     0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,      // out EECR,r28   EECR = 04 (EEPROM Master Program Enable)
                     0xD2, outHigh(mcu.eecr, 29), outLow(mcu.eecr, 29), 0x23};     // out EECR,r29   EECR = 02 (EEPROM Program Enable)
-  saveTempRegisters();
-  dw.sendCmd(setRegs, sizeof(setRegs));
-  dw.sendCmd(doWrite, sizeof(doWrite));
+  measureRam();
+  sendCommand(setRegs, sizeof(setRegs));
+  sendCommand(doWrite, sizeof(doWrite));
 }
 
 //
 //  Read len bytes from flash memory area at <addr> into data[] buffer
 //
-boolean readFlash(unsigned int addr, byte *mem, unsigned int len) {
+boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   // Read len bytes form flash page at <addr>
   unsigned int rsp;
   DEBPR(F("Read flash "));
   DEBPRF(addr,HEX);
   DEBPR("-");
   DEBLNF(addr+len-1, HEX);
-  saveTempRegisters();
   //  reportTimeout = false;
   unsigned int lenx2 = len * 2;
   for (byte ii = 0; ii < 4; ii++) {
@@ -2414,7 +2390,7 @@ boolean readFlash(unsigned int addr, byte *mem, unsigned int len) {
                       0xD1, (byte)(lenx2 >> 8),(byte)(lenx2),             // Set end = repeat count = sizeof(flashBuf) * 2
                       0xC2, 0x02,                                         // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
                       0x20};                                              // Go
-    dw.sendCmd(rdFlash, sizeof(rdFlash));
+    sendCommand(rdFlash, sizeof(rdFlash));
     rsp = getResponse(mem, len);                                         // Read len bytes
     if (rsp ==len) {
       break;
@@ -2423,51 +2399,52 @@ boolean readFlash(unsigned int addr, byte *mem, unsigned int len) {
       _delay_ms(5);
     }
   }
+  measureRam();
   reportTimeout = true;
   return rsp==len;
 }
 
 // erase entire flash page
-boolean eraseFlashPage(unsigned int addr) {
+boolean DWeraseFlashPage(unsigned int addr) {
   DEBPR(F("Erase: "));
   DEBLNF(addr,HEX);
-  saveTempRegisters();
-  writeRegister(30, addr & 0xFF); // load Z reg with addr low
-  writeRegister(31, addr >> 8  ); // load Z reg with addr high
-  writeRegister(29, 0x03); // PGERS value for SPMCSR
-  setWPc(mcu.bootaddr); // so that access of all of flash is possible
+  DWwriteRegister(30, addr & 0xFF); // load Z reg with addr low
+  DWwriteRegister(31, addr >> 8  ); // load Z reg with addr high
+  DWwriteRegister(29, 0x03); // PGERS value for SPMCSR
+  DWsetWPc(mcu.bootaddr); // so that access of all of flash is possible
   byte eflash[] = { 0x64, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		    outLow(0x37, 29), 
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8, 0x33 }; // execute SPM
-  dw.sendCmd(eflash, sizeof(eflash));
+  sendCommand(eflash, sizeof(eflash));
+  measureRam();
   return checkCmdOk2();
 }
 		    
 // now move the page from temp memory to flash
-boolean programFlashPage(unsigned int addr)
+boolean DWprogramFlashPage(unsigned int addr)
 {
+  measureRam();
   flashcnt++;
-  saveTempRegisters();
-  writeRegister(30, addr & 0xFF); // load Z reg with addr low
-  writeRegister(31, addr >> 8  ); // load Z reg with addr high
-  writeRegister(29, 0x05); //  PGWRT value for SPMCSR
-  setWPc(mcu.bootaddr); // so that access of all of flash is possible
+  DWwriteRegister(30, addr & 0xFF); // load Z reg with addr low
+  DWwriteRegister(31, addr >> 8  ); // load Z reg with addr high
+  DWwriteRegister(29, 0x05); //  PGWRT value for SPMCSR
+  DWsetWPc(mcu.bootaddr); // so that access of all of flash is possible
   byte eprog[] = { 0x64, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		    outLow(0x37, 29), 
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8, 0x33 }; // execute SPM
-  dw.sendCmd(eprog, sizeof(eprog));
+  sendCommand(eprog, sizeof(eprog));
   return checkCmdOk2();
   
   if (!mcu.bootaddr) { // no bootloader
     return checkCmdOk2(); // simply return
   } else { // bootloader: wait for spm to finish
-    while ((readSPMCSR() & 0x1F) != 0) { 
+    while ((DWreadSPMCSR() & 0x1F) != 0) { 
       _delay_us(100);
       DEBPR("."); // wait
     }
@@ -2477,17 +2454,17 @@ boolean programFlashPage(unsigned int addr)
 }
 
 // load bytes into temp memory
-boolean loadFlashBuffer(unsigned int addr, byte *mem)
+boolean DWloadFlashBuffer(unsigned int addr, byte *mem)
 {
-  saveTempRegisters();
-  writeRegister(30, addr & 0xFF); // load Z reg with addr low
-  writeRegister(31, addr >> 8  ); // load Z reg with addr high
-  writeRegister(29, 0x01); //  SPMEN value for SPMCSR
+  measureRam();
+  DWwriteRegister(30, addr & 0xFF); // load Z reg with addr low
+  DWwriteRegister(31, addr >> 8  ); // load Z reg with addr high
+  DWwriteRegister(29, 0x01); //  SPMEN value for SPMCSR
   byte ix = 0;
   while (ix < mcu.pagesz) {
-    writeRegister(0, mem[ix++]);               // load next word
-    writeRegister(1, mem[ix++]);
-    setWPc(mcu.bootaddr);
+    DWwriteRegister(0, mem[ix++]);               // load next word
+    DWwriteRegister(1, mem[ix++]);
+    DWsetWPc(mcu.bootaddr);
     byte eload[] = { 0x64, 0xD2,
 		     outHigh(0x37, 29),       // Build "out SPMCSR, r29"
 		     outLow(0x37, 29),
@@ -2495,70 +2472,70 @@ boolean loadFlashBuffer(unsigned int addr, byte *mem)
 		     0xD2, 0x95, 0xE8, 0x23, // spm
 		     0xD2, 0x96, 0x32, 0x23, // addiw Z,2
     };
-    dw.sendCmd(eload, sizeof(eload));
+    sendCommand(eload, sizeof(eload));
   }
   return true;
 }
 
-void reenableRWW(void)
+void DWreenableRWW(void)
 {
-  saveTempRegisters();
   if (mcu.bootaddr) {
-    DEBLN(F("reenableRWW"));
-    setWPc(mcu.bootaddr);
-    writeRegister(29, 0x11); //  RWWSRE value for SPMCSR
+    DEBLN(F("DWreenableRWW"));
+    DWsetWPc(mcu.bootaddr);
+    DWwriteRegister(29, 0x11); //  RWWSRE value for SPMCSR
     byte errw[] = { 0x64, 0xD2,
 		    outHigh(0x37, 29),       // Build "out SPMCSR, r29"
 		    outLow(0x37, 29),
 		    0x23,                    // execute
 		    0xD2, 0x95, 0xE8, 0x23 }; // spm
-    dw.sendCmd(errw, sizeof(errw));
+    measureRam();
+    sendCommand(errw, sizeof(errw));
   }
 }
 
-byte readSPMCSR(void)
+byte DWreadSPMCSR(void)
 {
-  saveTempRegisters();
   byte sc[] = { 0x64, 0xD2,        // setup for single step and load instr reg 
 		inHigh(0x37, 30),  // build "in 30, SPMCSR"
 		inLow(0x37, 30),
 		0x23 };             // execute
-  dw.sendCmd(sc, sizeof(sc));
-  return readRegister(30);
+  measureRam();
+  sendCommand(sc, sizeof(sc));
+  return DWreadRegister(30);
 }
 
-unsigned int getWPc () {
-  dw.sendCmd((const byte[]) {0xF0}, 1);
+unsigned int DWgetWPc () {
+  sendCommand((const byte[]) {0xF0}, 1);
   unsigned int pc = getWordResponse();
   return (pc - 1);
 }
 
 // get hardware breakpoint word address 
-unsigned int getWBp () {
-  dw.sendCmd((const byte[]) {0xF1}, 1);
-  return (getWordResponse() - 1);
+unsigned int DWgetWBp () {
+  sendCommand((const byte[]) {0xF1}, 1);
+  return (getWordResponse());
 }
 
 // get chip signature
 unsigned int DWgetChipId () {
-  dw.sendCmd((const byte[]) {0xF3}, 1);
+  sendCommand((const byte[]) {0xF3}, 1);
   return (getWordResponse()) ;
 }
 
 // set PC (word address)
-void setWPc (unsigned int wpc) {
+void DWsetWPc (unsigned int wpc) {
   byte cmd[] = {0xD0, (byte)(wpc >> 8), (byte)(wpc & 0xFF)};
-  dw.sendCmd(cmd, sizeof(cmd));
+  sendCommand(cmd, sizeof(cmd));
 }
 
 // set hardware breakpoint at word address
-void setWBp (unsigned int wbp) {
+void DWsetWBp (unsigned int wbp) {
   byte cmd[] = {0xD1, (byte)(wbp >> 8), (byte)(wbp & 0xFF)};
-  dw.sendCmd(cmd, sizeof(cmd));
+  sendCommand(cmd, sizeof(cmd));
 }
 
 
-boolean execOffline(unsigned int opcode)
+boolean DWexecOffline(unsigned int opcode)
 {
   byte cmd[] = {0xD2, (byte) (opcode >> 8), (byte) (opcode&0xFF), 0x23};
   measureRam();
@@ -2570,10 +2547,180 @@ boolean execOffline(unsigned int opcode)
     // Fatal error wil be raised by the calling routine
     return false;
   }
-  dw.sendCmd(cmd, sizeof(cmd));
-  setWPc(ctx.wpc+2); // and set it higher by two - it will be decremented after execution
+  sendCommand(cmd, sizeof(cmd));
   return true;
 }
+
+int testResult(bool succ)
+{
+  if (succ) {
+    gdbDebugMessagePSTR(PSTR("  -> succeeded"), -1);
+    return 0;
+  } else {
+    gdbDebugMessagePSTR(PSTR("  -> failed ***"), -1);
+    return 1;
+  }
+}
+ 
+void DWtests(void)
+{
+  int failed = 0;
+  bool succ;
+  int testnum = 1;
+
+  gdbDebugMessagePSTR(PSTR("Test (Reg read/write): "), testnum++);
+  DWwriteRegister(0, 0x55);
+  DWwriteRegister(15, 0x9F);
+  DWwriteRegister(31, 0xFF);
+  failed += testResult(DWreadRegister(0) == 0x55 && DWreadRegister(15) == 0x9F && DWreadRegister(31) == 0xFF);
+
+  gdbDebugMessagePSTR(PSTR("Test (All Regs read/write): "), testnum++);
+  for (byte i=0; i < 32; i++) membuf[i] = i*2+1;
+  DWwriteRegisters(membuf);
+  for (byte i=0; i < 32; i++) membuf[i] = 0;
+  DWreadRegisters(membuf);
+  succ = true;
+  for (byte i=0; i < 32; i++) {
+    if (membuf[i] != i*2+1) {
+      succ = false;
+      break;
+    }
+  }
+  failed += testResult(succ);
+
+  gdbDebugMessagePSTR(PSTR("Test (SREG as IO reg read/write): "), testnum++);
+  DWwriteIOReg(0x3F, 0x55);
+  failed += testResult(DWreadIOReg(0x3F) == 0x55);
+
+
+  gdbDebugMessagePSTR(PSTR("Test (write SRam / read IOReg): "), testnum++);
+  DWwriteSRamByte(0x3F+0x20, 0x66);
+  failed += testResult(DWreadIOReg(0x3F) == 0x66);
+
+  gdbDebugMessagePSTR(PSTR("Test (write  IOreg/ read SRam): "), testnum++);
+  DWwriteIOReg(0x3F, 0xF2);
+  failed += testResult(DWreadSRamByte(0x3F+0x20) == 0xF2);
+
+    gdbDebugMessagePSTR(PSTR("Test (SRam read/write): "), testnum++);
+  for (byte i=0; i < 32; i++) DWwriteSRamByte(0x100+i, i+1);
+  succ = true;
+  for (byte i=0; i < 32; i++) {
+    if (DWreadSRamByte(0x100+i) != i+1) {
+      succ = false;
+      break;
+    }
+  }
+  failed += testResult(succ);
+
+  gdbDebugMessagePSTR(PSTR("Test (SRam chunk read): "), testnum++);
+  DWreadSRamBytes(0x100, membuf, 32);
+  succ = true;
+  for (byte i=0; i < 32; i++) {
+    if (membuf[i] != i+1) {
+      succ = false;
+      break;
+    }
+  }
+  failed += testResult(succ);
+
+  gdbDebugMessagePSTR(PSTR("Test (write/read EEPROM): "), testnum++);
+  const int eeaddr = 0x15;
+  succ = true;
+  DWwriteEepromByte(eeaddr, 0x38);
+  if (DWreadEepromByte(eeaddr) != 0x38) succ = false;
+  DWwriteEepromByte(eeaddr, 0xFF);
+  if (DWreadEepromByte(eeaddr) != 0xFF) succ = false;
+  failed += testResult(succ);
+
+  gdbDebugMessagePSTR(PSTR("Test (erase flash page): "), testnum++);
+  const int flashaddr = 0x100;
+  failed += testResult(DWeraseFlashPage(flashaddr));
+
+  gdbDebugMessagePSTR(PSTR("Test (read empty flash page): "), testnum++);
+  succ = true;
+  DWreenableRWW();
+  DWreadFlash(flashaddr, membuf, mcu.pagesz);
+  for (byte i=0; i < mcu.pagesz; i++) {
+    if (membuf[i] != 0xFF) succ = false;
+  }
+  failed += testResult(succ);
+    
+  gdbDebugMessagePSTR(PSTR("Test  (write flash temp buffer): "), testnum++);
+  for (byte i=0; i < mcu.pagesz; i++) membuf[i] = 255-i;
+  failed += testResult(DWloadFlashBuffer(flashaddr, membuf));
+
+  gdbDebugMessagePSTR(PSTR("Test  (program flash page from temp buffer): "), testnum++);
+  failed += testResult(DWprogramFlashPage(flashaddr));
+  
+  gdbDebugMessagePSTR(PSTR("Test  (read programmed flash page): "), testnum++);
+  for (byte i=0; i < mcu.pagesz; i++) membuf[i] = 0;
+  succ = true;
+  DWreenableRWW();
+  DWreadFlash(flashaddr, membuf, mcu.pagesz);
+  for (byte i=0; i < mcu.pagesz; i++) {
+    if (membuf[i] != 255-i) {
+      succ = false;
+      
+    }
+  }
+  failed += testResult(succ);
+
+  gdbDebugMessagePSTR(PSTR("Test  (flashing in boot section): "), testnum++);
+  succ = true;
+  if (mcu.bootaddr != 0) {
+    succ = DWeraseFlashPage(mcu.bootaddr);
+    if (succ) 
+      succ = DWloadFlashBuffer(mcu.bootaddr, membuf);
+    if (succ)
+      succ = DWprogramFlashPage(mcu.bootaddr);
+    if (succ) {
+      DWreenableRWW();
+      DWreadFlash(flashaddr, membuf, mcu.pagesz);
+      for (byte i=0; i < mcu.pagesz; i++) {
+	if (membuf[i] != 255-i) {
+	  succ = false;
+	}
+      }
+    }
+  }
+  failed += testResult(succ);
+  
+  gdbDebugMessagePSTR(PSTR("Test  (set/get WPC): "), testnum++);
+  const int pc = 0x3F; 
+  DWsetWPc(pc);
+  failed += testResult(DWgetWPc() == pc - 1);
+
+  gdbDebugMessagePSTR(PSTR("Test  (set/get WBP): "), testnum++);
+  DWsetWBp(pc);
+  failed += testResult(DWgetWBp() == pc);
+
+  gdbDebugMessagePSTR(PSTR("Test  (exec offline: eor r1,r1 at WPC=0x003F): "), testnum++);
+  DWwriteIOReg(0x3F, 0); // write SREG
+  DWwriteRegister(0x55, 1);
+  DWsetWPc(pc);
+  DWexecOffline(0x2411);
+  succ = false;
+  if (pc + 1 == DWgetWPc()) // PC advanced by one, then +1 for break, but this is autmatically subtracted
+    if (DWreadRegister(1) == 0)  // reg 1 should be zero now
+      if (DWreadIOReg(0x3F) == 0x02) // in SREG, only zero bit should be set
+	succ = true;
+  failed += testResult(succ);
+
+  gdbDebugMessagePSTR(PSTR("Test  (exec offline: rjmp 0x002E at WPC=0x0001 (word addresses)): "), testnum++);
+  DWsetWPc(0x01);
+  DWexecOffline(0xc02C);
+  failed += testResult(DWgetWPc() == 0x2E); // = byte addr 0x005C
+  
+  if (failed) {
+    gdbDebugMessagePSTR(PSTR("\n****Failed tests:"), failed);
+    gdbSendReply("E00");
+  } else {
+    gdbDebugMessagePSTR(PSTR("\nAll tests succeeded"), -1);
+    gdbSendReply("OK");
+  }
+}
+
+
 
 /***************************** a little bit of SPI programming ********/
 
@@ -2739,7 +2886,7 @@ static void convNum(byte numbuf[10], long num)
   numbuf[i] = '\0';
 }
 
-#ifdef FREERAM
+#if FREERAM
 void freeRamMin(void)
 {
   int f = freeRam();
@@ -2760,7 +2907,7 @@ int freeRam(void)
     free_memory = (int) &stack_here - (int) &__heap_start;
   else
     free_memory = (int) &stack_here - (int) __brkval; 
-
   return (free_memory);
 }
 #endif
+

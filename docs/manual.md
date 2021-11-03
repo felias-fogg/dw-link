@@ -8,7 +8,7 @@ There exists a software simulator called [SIMAVR](https://github.com/buserror/si
 
 So, I took all of the above ideas and put them together in order to come up with a cheap hardware debugger supporting the gdbserver interface that is able to debug the classic ATtinys and some of the smaller ATmegas (such as the popular ATmega328) using the GNU debugger gdb. 
 
-You just need a ATmega328 based board to get started (e.g., UNO, Nano, or Mini). Actually, the ATmega32U4 systems such as Leonardo and Pro Micro should also work. If you want to debug 3.3 Volt systems, your target system is very power hungry, and/or you want to use your original ISP cable, then you may want to use an additional adapter PCB that provides you with all these features. 
+You just need a ATmega328 based board to get started (e.g., UNO, Nano, or Mini). Actually, the ATmega32U4 systems such as Leonardo and Pro Micro should also work. If you want to debug 3.3 Volt systems, if your target system is very power hungry, and/or you want to use your original ISP cable, then you may want to use an additional adapter PCB that provides you with all these features. 
 
 ### Warning
 

@@ -1,8 +1,8 @@
 
 /* Debug macros */
-#ifdef DEBUG
+#if DEBUG
 #define DEBDECLARE() TXOnlySerial deb(DEBTX)
-#define DEBINIT() deb.begin(19200)
+#define DEBINIT() deb.begin(57600)
 #define DEBPR(str) deb.print(str)
 #define DEBPRF(str,frm) deb.print(str,frm)
 #define DEBLN(str) deb.println(str)
