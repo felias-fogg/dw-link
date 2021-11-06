@@ -22,8 +22,9 @@
 // - DebugWireDebuggerProgrammer (https://github.com/wholder/DebugWireDebuggerProgrammer/),
 // - AVR-GDBServer (https://github.com/rouming/AVR-GDBServer),  and
 // - avr_debug (https://github.com/jdolinay/avr_debug).
-// And, of course, all of it would not have been possible without the work of Rue Mohr's
-// attempts on reverse enginering of the debugWire protocol: http://www.ruemohr.org/docs/debugwire.html
+// And, of course, all of it would have not been possible without the work of Rue Mohr's
+// attempts on reverse enginering of the debugWire protocol:
+// http://www.ruemohr.org/docs/debugwire.html
 //
 // Version 0.1 (27-May-21)
 //   - initial version with only a minimal amount of coverage
@@ -147,24 +148,49 @@
 //   - changed the TXOnlySerial bps to 57600
 //   - decreased timeout for "power-cycle" to 3 seconds in order to supress "timeout" message by gdb 
 //   - all basic debugWIRE functions have now a DW prefix
-//   - created "monitor testtg" and "monitor testbp" for unit testing the target functions
-//     and the breakpoint functions, but have to come up with unit tests for them
-//   - inserted "unit test" code for low level DebugWIRE functions, which can be called using "monitor testdw"
-//   - registers are only saved (right after start or after a break) and restored (before execution or single-stepping)
+//   - created "monitor testtg" and "monitor testgdb" for unit testing the target functions
+//     and the gdb functions, but have to come up with unit tests for them
+//   - inserted "unit test" code for low level DebugWIRE functions, which can be called using
+//     "monitor testdw"
+//   - registers are only saved (right after start or after a break) and restored (before
+//     execution or single-stepping)
 //     no more partial saves etc. Is much faster since we use the bulk register transfer.
 //   - no more noJumpInstr() since jumps can actually be executed offline
 //   - calls to dw.sendCmd replaced by calls to new function sendCommand, which now waits for
-//     Serial output to be finished in order to avoid any output interrupt, which can take up to 8.75 us
-//     and by that confuse SingleWireSerial. It can withstand 6.6 us, but 8.75 us is too much at 125 kbps!
+//     Serial output to be finished in order to avoid any output interrupt, which can
+//     take up to 8.75 us
+//     and by that confuse SingleWireSerial. It can withstand 6.6 us, but 8.75 us is too
+//     much at 125 kbps!
 //
 // Version 0.9.6 (04-Nov-21)
-//   - reshuffeld code in gdbConnect without external effects. Added a case for "unknown reason" of a connection error.
+//   - reshuffeld code in gdbConnect without external effects. Added a case for "unknown reason"
+//     for a connection error.
 //   - added more DW test cases and streamlined DW unit tests
 //   - added target unit tests 
 //   - added a 'monitor testall' command that executes all unit tests
+//
+// Version 0.9.7
+//   - new HWBP policy: most recently inserted BP will become a HWBP,
+//     i.e., it will steal the property from BPs earlier introduced
+//   - cleaned up gdbUpdateBreakpoints (no hwbp assignment anymore)
+//   - streamlined BP removal function, no early freeing of BPs
+//   - in InsertBreakpoint we may steal the HWBP from another breakpoint
+//   - new function gdbBreakpointPresent, which returns true if a BREAK instruction
+//     has been inserted by us and then gives back opcode and 2nd word, if necessary
+//   - redesign of gbdStepOverBP and renaming it to gdbBreakDetour:
+//     for 2-byte instructions, we execute offline (using debugWIRE)
+//     for 4-byte instructions, we simulate the execution
+//   - unit tests for breakpoint management, single-step, and execution
+//   - removed gdbRemoveAllBreakpoints and replaced it by a check
+//     for remaining breakpoints (there shouldn't be any)
+//   - hide inactive breakpoints in memory to the eyes of gdb when
+//     gdb asks for flash memory contents
+//   - introduced bpused (number of used BPs) as a  second BP counter  (in order
+//     to speed up processing when nothing is there)
 
-#define VERSION "0.9.6"
-#define DEBUG    0  // for debugging the debugger!
+
+#define VERSION "0.9.7"
+#define DEBUG    1  // for debugging the debugger!
 #define FREERAM  0  // for checking how much memory is left on the stack
 #define UNITTESTS 1  // unit testing
 
@@ -175,6 +201,11 @@
 #define MOSI    11    // Target Pin 5 - MOSI
 #define MISO    12    // Target Pin 6 - MISO
 #define SCK     13    // Target Pin 7 - SCK
+
+// System LED
+// change, if you want a different port for state signaling
+#define LEDPORT PORTB  // port register of BUILTIN_LED
+#define LEDPIN  PB5    // pin 
 
 #include <stddef.h>
 #include <stdio.h>
@@ -210,25 +241,30 @@
 
 // types of fatal errors
 #define NO_FATAL 0
-#define NO_STOP_FATAL 1 // Cannot stop execution by Ctrl-C
-#define NO_EXEC_FATAL 2 // Error in executing intruction offline
-#define NO_SINGLESTEP_FATAL 3 // error in single stepping
-#define BREAK_FATAL 4 // saved BREAK instruction in BP slot
-#define NO_FREE_SLOT_FATAL 5 // no free slot in BP structure
-#define INCONS_BP_FATAL 6 // inonconsistency in BP counting
-#define PACKET_LEN_FATAL 7 // packet length too large
-#define WRONG_MEM_FATAL 8 // wrong memory type
-#define NEG_SIZE_FATAL 9 // negative size of buffer
-#define RESET_FAILED_FATAL 10 // reset failed
-#define READ_PAGE_ADDR_FATAL 11 // an address that does not point to start of a page 
-#define FLASH_READ_FATAL 12 // error when reading from flash memory
-#define SRAM_READ_FATAL 13 //  error when reading from sram memory
-#define WRITE_PAGE_ADDR_FATAL 14 // wrong page address when writing
-#define ERASE_FAILURE_FATAL 15 // error when erasing flash memory
-#define NO_LOAD_FLASH_FATAL 16 // error when loading page into flash buffer
-#define PROGRAM_FLASH_FAIL_FATAL 17 // error when programming flash page
-#define REENABLERWW_FAILED_FATAL 18 // Could not reenable RWW
-#define EXEC_BREAK_FATAL 19 // Tried to execute the BREAK instruction offline
+#define NO_EXEC_FATAL 1 // Error in executing instruction offline
+#define BREAK_FATAL 2 // saved BREAK instruction in BP slot
+#define NO_FREE_SLOT_FATAL 3 // no free slot in BP structure
+#define INCONS_BP_FATAL 4 // inconsistency in BP counting
+#define PACKET_LEN_FATAL 5 // packet length too large
+#define WRONG_MEM_FATAL 6 // wrong memory type
+#define NEG_SIZE_FATAL 7 // negative size of buffer
+#define RESET_FAILED_FATAL 8 // reset failed
+#define READ_PAGE_ADDR_FATAL 9 // an address that does not point to start of a page 
+#define FLASH_READ_FATAL 10 // error when reading from flash memory
+#define SRAM_READ_FATAL 11 //  error when reading from sram memory
+#define WRITE_PAGE_ADDR_FATAL 12 // wrong page address when writing
+#define ERASE_FAILURE_FATAL 13 // error when erasing flash memory
+#define NO_LOAD_FLASH_FATAL 14 // error when loading page into flash buffer
+#define PROGRAM_FLASH_FAIL_FATAL 15 // error when programming flash page
+#define REENABLERWW_FAILED_FATAL 16 // Could not reenable RWW
+#define EXEC_BREAK_FATAL 17 // Tried to execute the BREAK instruction offline
+#define HWBP_ASSIGNMENT_INCONSISTENT_FATAL 18 // HWBP assignemnt is inconsistent
+#define SELF_BLOCKING_FATAL 19 // there shouldn't be a BREAK instruction in the code
+#define FLASH_READ_WRONG_ADDR_FATAL 20 // trying to read a flash word at a non-even address
+#define NO_STEP_FATAL 21 // could not do a single-step operation
+#define REMAINING_BREAKPOINTS_FATAL 22 // there are still some active BPs that shouldn't be there
+#define REMOVE_NON_EXISTING_BP_FATAL 23 // tried to remove non-existing BP
+#define RELEVANT_BP_NOT_PRESENT 24 // identified relevant BP not present any longer 
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -239,18 +275,19 @@
 // some GDB variables
 struct breakpoint
 {
-  bool used:1;      // bp is in use, i.e., has been set before; will be freed when not activated before next execution
-  bool active:1;    // breakpoint is active, i.e., has been set by GDB
-  bool inflash:1;   // breakpoint is in flash memory, i.e., BREAK instr has been set in memory
-  bool hw:1;        // breakpoint is a hardware breakpoint, i.e., not set in memory, but HWBP is used
-  unsigned int waddr; // word address of breakpoint
+  bool used:1;         // bp is in use, i.e., has been set before; will be freed when not activated before next execution
+  bool active:1;       // breakpoint is active, i.e., has been set by GDB
+  bool inflash:1;      // breakpoint is in flash memory, i.e., BREAK instr has been set in memory
+  bool hw:1;           // breakpoint is a hardware breakpoint, i.e., not set in memory, but HWBP is used
+  unsigned int waddr;  // word address of breakpoint
   unsigned int opcode; // opcode that has been replaced by BREAK (in little endian mode)
 } bp[MAXBREAK*2];
-int bpcnt = 0;        // number of ACTIVE breakpoints (there may be as many as MAXBREAK used ones from the last execution!)
+
+int bpcnt;             // number of ACTIVE breakpoints (there may be as many as MAXBREAK used ones from the last execution!)
+int bpused;            // number of USED breakpoints, which may not all be active
 boolean toomanybps = false;
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
-unsigned int lasthwbp = 0xFFFF; // address we stopped last
 
 struct context {
   unsigned int wpc; // pc (using word addresses)
@@ -283,7 +320,7 @@ struct mcu_type {
   boolean infovalid;
 } mcu;
   
-// mcu attributes (for all AVR mcus supporting debug wire)
+// mcu attributes (for all AVR mcus supporting debugWIRE)
 const unsigned int mcu_attr[] PROGMEM = {
   // sig   io  sram   base eeprom flash  dwdr   pg    boot  eecr eearh  DWEN  CKD8
   0x9007,  64,   64,  0x60,   64,  1024, 0x2E,  32, 0x0000, 0x1C, 0x1F, 0x04, 0x10, // ATtiny13
@@ -353,10 +390,11 @@ byte          lastsignal = 0;
 // LED constantly on = connected to target and target is halted
 // Led blinks every 1/3 second = target is running
 typedef  enum {INIT_STATE, NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, RUN_STATE} statetype;
-volatile statetype sysstate = INIT_STATE;
-volatile statetype laststate;
-const int ontimes[6] =  {1,     0,   50, 100, 16000, 500};
-const int offtimes[6] = {1, 16000, 1000, 100,     0, 500};
+statetype sysstate = INIT_STATE;
+const unsigned int ontimes[6] =  {0, 0,  150, 150, 1, 700};
+const unsigned int offtimes[6] = {1, 1, 1000, 150, 0, 700};
+volatile unsigned int ontime; // number of ms on
+volatile unsigned int offtime; // number of ms off
 
 // communication and memory buffer
 byte membuf[256]; // used for storing sram, flash, and eeprom values
@@ -374,24 +412,31 @@ DEBDECLARE();
 
 ISR(TIMER0_COMPA_vect)
 {
-  static int cnt;
+  // worst case 55 cycles = 3.4 us (OK with SingleWireSerial)
+  // only active during power-cycle wait, error, and when running
+  // when running, ^C and "U" could collide, but this does not matter
+  // since ^C is always recognized.
+  static unsigned int cnt = 1;
 
-  if (laststate != sysstate) {
-    laststate = sysstate;
-    cnt = ontimes[sysstate];
+  if (LEDPORT & _BV(LEDPIN)) {
+    cnt--;
+    if (!cnt) {
+      cnt = offtime;
+      LEDPORT &= ~_BV(LEDPIN);
+    }
+  } else {
+    if (!cnt) {
+      cnt = ontime;
+      LEDPORT |= _BV(LEDPIN);
+    }
   }
-  if (cnt == ontimes[sysstate] && cnt) {
-    digitalWrite(LED_BUILTIN, HIGH);
-  } else if (cnt <= -offtimes[sysstate]) {
-    cnt = ontimes[sysstate] + 1;
-  } else if (cnt == -1) {
-    digitalWrite(LED_BUILTIN, LOW);
-  }
-  cnt--;
 }
 
 /******************* setup & loop ******************************/
 void setup(void) {
+  TIMSK0 = 0; // no millis interrupts
+  
+  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(VCC, OUTPUT);
   digitalWrite(VCC, HIGH); // power target
   _delay_ms(100); // give target time to power up
@@ -399,8 +444,6 @@ void setup(void) {
   dw.begin(DWIRE_RATE);    
   dw.enable(true);
   Serial.begin(GDB_BAUD);
-  pinMode(LED_BUILTIN, OUTPUT);
-  TIMSK0 = 0; // no millis interrupts
   initSession();
 }
 
@@ -411,7 +454,7 @@ void loop(void) {
     if (dw.available()) {
       byte cc = dw.read();
       if (cc == 0x55) { // breakpoint reached
-	DEBLN(F("Execution stopped"));
+	//DEBLN(F("Execution stopped"));
 	ctx.running = false;
 	setSysState(CONN_STATE);
 	_delay_ms(5); // we need that in order to avoid conflicts on the line
@@ -430,9 +473,9 @@ void initSession(void)
   ctx.targetcon = false;
   mcu.infovalid = false;
   bpcnt = 0;
+  bpused = 0;
   toomanybps = false;
   hwbp = 0xFFFF;
-  lasthwbp = 0xFFFF;
   flashcnt = 0;
   reportTimeout = true;
   progmode = false;
@@ -454,25 +497,21 @@ void reportFatalError(byte errnum)
 }
 
 // change system state
-// switch on blink IRQ when error or power-cycle state
+// switch on blink IRQ when run, error, or power-cycle state
 void setSysState(statetype newstate)
 {
-  DEBPR(F("setSysState: "));
-  DEBLN(newstate);
-  if (newstate == INIT_STATE) {
-    sysstate = INIT_STATE;
-    newstate = NOTCONN_STATE;
-  }
-  laststate = sysstate;
+  //  DEBPR(F("setSysState: "));
+  //  DEBLN(newstate);
+  TIMSK0 &= ~_BV(OCIE0A); // switch off!
   sysstate = newstate;
-  if (newstate == PWRCYC_STATE || newstate == ERROR_STATE) {
+  if (ontimes[newstate] == 0) LEDPORT &= ~_BV(LEDPIN);
+  else if (offtimes[newstate] == 0) LEDPORT |= _BV(LEDPIN);
+  else {
+    ontime = ontimes[newstate];
+    offtime = offtimes[newstate];
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
-  } else {
-    TIMSK0 &= ~_BV(OCIE0A);
-    if (newstate == NOTCONN_STATE) digitalWrite(LED_BUILTIN, LOW);
-    else digitalWrite(LED_BUILTIN, HIGH);
-  }
+  }    
 }
 
 /****************** gdbserver routines **************************/
@@ -565,13 +604,15 @@ void gdbParsePacket(const byte *buff)
     gdbReadMemory(buff + 1);
     break;
   case 'M':               /* write memory */
+    gdbUpdateBreakpoints(); // remove all inactive breakpoints before loading anything into flash
     gdbWriteMemory(buff + 1);
     break;
   case 'X':               /* write memory from binary data */
+    gdbUpdateBreakpoints(); // remove all inactive breakpoints before loading anything into flash
     gdbWriteBinMemory(buff + 1); 
     break;
   case 'D':               /* detach the debugger */
-    gdbRemoveAllBreakpoints(); // remove all BPs if there are still ones
+    gdbCheckForRemainingBreakpoints(); // check if there are still BPs 
     gdbUpdateBreakpoints();  // update breakpoints in memory before exit!
     ctx.targetcon = false;
     validpg = false;
@@ -580,7 +621,7 @@ void gdbParsePacket(const byte *buff)
     gdbSendReply("OK");
     break;
   case 'k':               /* kill request */
-    gdbRemoveAllBreakpoints(); // remove all BPs if there are still ones
+    gdbCheckForRemainingBreakpoints(); // check if there are still BPs 
     gdbUpdateBreakpoints();  // update breakpoints in memory before exit!
     pinMode(RESET,INPUT_PULLUP);
     digitalWrite(RESET,LOW); // hold reset line low so that MCU does not start
@@ -593,10 +634,8 @@ void gdbParsePacket(const byte *buff)
     break;
   case 's':               /* step */
   case 'S':               /* step with signal - just ignore signal */
-    ctx.running = true;
-    setSysState(RUN_STATE);
-    gdbStep();          /* do only one step */
-    break;
+    gdbSendSignal(gdbStep()); /* do only one step, we do not go into RUN_STATE, but stay in CONN_STATE */
+    break;              
   case 'v':
     if (memcmp_P(buff, (void *)PSTR("vStopped"), 8) == 0) 
       gdbSendReply("OK");      
@@ -605,7 +644,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'z':               /* remove break/watch point */
   case 'Z':               /* insert break/watch point */
-    gdbInsertRemoveBreakpoint(buf);
+    gdbHandleBreakpointCommand(buf);
     break;
   case 'q':               /* query requests */
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"), 6) == 0)   /* monitor command */
@@ -652,13 +691,13 @@ void gdbParseMonitorPacket(const byte *buf)
     DWtests(para);
   else if  (memcmp_P(buf, (void *)PSTR("746573747467"), 12) == 0)    /* testtg */
     targetTests(para);
-  else if  (memcmp_P(buf, (void *)PSTR("746573746270"), 12) == 0)    /* testbp */
-    BPtests(para);
+  else if  (memcmp_P(buf, (void *)PSTR("74657374676462"), 14) == 0)    /* testgdb */
+    gdbTests(para);
   else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)   /* testall */
     alltests();
 #endif
   else if (memcmp_P(buf, (void *)PSTR("7265736574"), 10) == 0) {     /* reset */
-    gdbRemoveAllBreakpoints();
+    gdbCheckForRemainingBreakpoints(); // check if there are still BPs 
     gdbUpdateBreakpoints();  // update breakpoints in memory before reset
     gdbReset();
     gdbSendReply("OK");
@@ -674,7 +713,7 @@ void alltests(void)
 
   failed += DWtests(testnum);
   failed += targetTests(testnum);
-  failed += BPtests(testnum);
+  failed += gdbTests(testnum);
 
   testSummary(failed);
   gdbSendReply("OK");
@@ -819,124 +858,160 @@ void gdbSetCkdiv8(boolean program)
   gdbConnect();
 }
 
-void gdbStep(void)
+// check whether there should be a BREAK instruction at the current PC address 
+// if so, give back original instruction and second word, if it is a 4-word instructions
+boolean gdbBreakPresent(unsigned int &opcode, unsigned int &addr)
 {
+  int bpix = gdbFindBreakpoint(ctx.wpc);
+  opcode = 0;
+  addr = 0;
+  if (bpix < 0) return false;
+  if (!bp[bpix].inflash) return false;
+  opcode = bp[bpix].opcode;
+  if (fourByteInstr(opcode)) {
+    DEBPR(F("fourByte/waddr="));
+    DEBLNF(bp[bpix].waddr+1,HEX);
+    addr = targetReadFlashWord((bp[bpix].waddr+1)<<1);
+    DEBLNF(addr,HEX);
+  }
+  return true;
+}
+
+
+// If there is a BREAK instruction (a not yet restored SW BP) at the current PC
+// location, we may need to execute the original instruction offline
+// (if it is a 2-byte instruction) or simulate the original instruction
+// (if it is a 4-byte instruction).
+// Call this function in case this is necessary and provide it with the
+// instruction word and the argument word (if necessary). The function gdbBreakPresent
+// will check the condition and provide the two arguments.
+// gdbBreakDetour will start with registers in a saved state and return with it
+// in a saved state, provided the third (optional) argument is false.
+// If true, all registers are already setup in the target.
+void gdbBreakDetour(unsigned int opcode, unsigned int addr, boolean contexec = false)
+{
+  byte reg, val;
+  DEBLN(F("gdbBreakDetour"));
+  if (!fourByteInstr(opcode)) { // just do an offline execution
+    DEBLN(F("offline execution"));
+    targetRestoreRegisters();
+    if (!DWexecOffline(opcode)) reportFatalError(NO_EXEC_FATAL);
+    if (!contexec) targetSaveRegisters();
+  } else { // this is a 4-byte instruction JMP, CALL, LDS, or STS: simulate
+    DEBLN(F("simulation"));
+    if ((opcode & ~0x1F0) == 0x9000) {   // lds 
+      reg = (opcode & 0x1F0) >> 4;
+      val = DWreadSramByte(addr);
+      ctx.regs[reg] = val;
+      ctx.wpc += 2;
+    } else if ((opcode & ~0x1F0) == 0x9200) { // sts 
+      reg = (opcode & 0x1F0) >> 4;
+      DEBPR(F("Reg="));
+      DEBLN(reg);
+      DEBPR(F("addr="));
+      DEBLNF(addr,HEX);
+      DWwriteSramByte(addr,ctx.regs[reg]);
+      ctx.wpc += 2;
+    } else if ((opcode & 0x0FE0E) == 0x940C) { // jmp 
+      // since debugWIRE works only on MCUs with a flash address space <= 64 kwords
+      // we do not need to use the bits from the opcode
+      ctx.wpc = addr;
+    } else if  ((opcode & 0x0FE0E) == 0x940E) { // call
+      DWwriteSramByte(ctx.sp, (byte)((ctx.wpc+2) & 0xff)); // save return address on stack
+      DWwriteSramByte(ctx.sp-1, (byte)((ctx.wpc+2)>>8));
+      ctx.sp -= 2; // decrement stack pointer
+      ctx.wpc = addr; // the new PC value
+    }
+    if (contexec) targetRestoreRegisters(); 
+  }
+}
+
+// check whether an opcode is a 32-bit opcode
+boolean fourByteInstr(unsigned int opcode)
+{
+  return(((opcode & ~0x1F0) == 0x9000) || ((opcode & ~0x1F0) == 0x9200) || ((opcode & 0x0FE0E) == 0x940C) || ((opcode & 0x0FE0E) == 0x940E));
+}
+
+
+// do one step
+// start with saved registers and return with saved regs
+// it will return a signal, which in case of success is SIGTRAP
+byte gdbStep(void)
+{
+  unsigned int opcode, arg;
   DEBLN(F("Start step operation"));
   if (toomanybps || fatalerror|| !ctx.targetcon) {
-    targetRestoreRegisters();
-    gdbExecProblem(fatalerror || !ctx.targetcon);
-    return;
+    DEBLN(F("Too many BPs, fatal error, or not connected"));
+    return gdbExecProblem(fatalerror || !ctx.targetcon);
   }
-  if (!gdbStepOverBP(true)) { // only if not already stepped over BP
+  if (gdbBreakPresent(opcode, arg)) { // we have a break instruction inserted here
+    gdbBreakDetour(opcode, arg, false);
+  } else { // just single-step in flash
     targetRestoreRegisters();
     targetStep();
+    if (!checkCmdOk2()) {
+      ctx.saved = true; // just reinstantiate the old state
+      reportFatalError(NO_STEP_FATAL);
+      return gdbExecProblem(fatalerror);
+    } else {
+      targetSaveRegisters();
+    }
   }
+  return SIGTRAP;
 }
 
 void gdbContinue(void)
 {
-  DEBLN(F("Start continue operation"));
-  targetRestoreRegisters();
+  byte sig;
+  unsigned int opcode, arg;
+  //DEBLN(F("Start continue operation"));
   if (toomanybps || fatalerror || !ctx.targetcon) {
-    gdbExecProblem(fatalerror || !ctx.targetcon);
+    sig = gdbExecProblem(fatalerror || !ctx.targetcon);
+    _delay_ms(100);
+    flushInput();
+    ctx.running = false;
+    gdbSendState(sig);
     return;
   }
-  gdbStepOverBP(false);    // either step over or remove BREAK from flash
-  gdbUpdateBreakpoints();  // update breakpoints in memory
+  gdbUpdateBreakpoints();  // update breakpoints in flash memory
+  if (gdbBreakPresent(opcode, arg)) { // we have a break instruction inserted here
+    reportFatalError(SELF_BLOCKING_FATAL);
+    sig = gdbExecProblem(fatalerror);
+    _delay_ms(100);
+    flushInput();
+    ctx.running = false;
+    gdbSendState(sig);
+    return;
+  }
   targetRestoreRegisters();
   targetContinue();
 }
 
-void gdbExecProblem(byte fatal)
+// check for major problems, issue a debuf message,
+// and return either STOP signal (fatal error or disconnect)
+// or ABORT signal (too many BPS or disconnect)
+byte gdbExecProblem(byte fatal)
 {
   if (fatal) {
     flushInput();
     targetBreak(); // check whether we lost connection
     if (checkCmdOk()) { // still connected, must be fatal error
-      DEBLN(F("Fatal error: No restart"));
+      //DEBLN(F("Fatal error: No restart"));
       gdbDebugMessagePSTR(PSTR("***Fatal internal debugger error: "),fatalerror);
       setSysState(ERROR_STATE);
     } else {
-      DEBLN(F("Connection lost"));
+      //DEBLN(F("Connection lost"));
       gdbDebugMessagePSTR(PSTR("Connection to target lost"),-1);
       setSysState(NOTCONN_STATE);
       ctx.targetcon = false;
     }
   } else {
-    DEBLN(F("Too many bps"));
+    //DEBLN(F("Too many bps"));
     gdbDebugMessagePSTR(PSTR("Too many active breakpoints!"),-1);
     setSysState(CONN_STATE);
   }
-  _delay_ms(100);
-  flushInput();
-  DWsetWPc(ctx.wpc+1); // set to PC to current PC+1 because the 1 will be subtracted when reading the registers
-  ctx.running = false;
-  gdbSendState(fatal ? SIGSTOP : SIGABRT);
+  return(fatal ? SIGSTOP : SIGABRT);
 }
-
-// If there is a breakpoint at the current PC
-// location, we may need to execute the instruction offline
-// or remove the BREAK from flash if the instruction is a
-// 4 byte instruction that cannot be executed offline.
-// onlystep = true means that there is just one step to do
-// True is returned if the step was done, false if one still has to do it
-boolean gdbStepOverBP(boolean onlyonestep)
-{
-  int bpix = gdbFindBreakpoint(ctx.wpc);
-  boolean execsucc;
-  if (bpix >= 0) { // bp at the current pc location
-    DEBLN(F("Found BP at PC loc"));
-    if (bp[bpix].inflash) { // there is a bp in flash!
-      DEBLN(F("In flash!"));
-      if (twoByteInstr(bp[bpix].opcode)) { // a two byte instruction
-	DEBLN(F("Two byte instr / noJump"));
-	targetRestoreRegisters(); // set all regs
-	execsucc = DWexecOffline(bp[bpix].opcode); // execute the instruction offline
-	if (!execsucc) {
-	  DEBLN(F("***Offline execution error when single-stepping"));
-	  reportFatalError(NO_EXEC_FATAL);
-	  ctx.running = false; // mark that we are not executing any longer
-	  gdbSendState(SIGSTOP);
-	  return true;
-	} else if (onlyonestep) { // if we do not continue
-	  ctx.running = false; // mark that we are not executing any longer
-	  setSysState(CONN_STATE);
-	  gdbSendState(SIGTRAP); // and signal that to GDB
-	  return true;
-	}
-      } else { // 4 bytes -> we need to replace the bp in flash!
-	DEBLN(F("Four byte instr or jump"));
-	DEBPR(F("Restore original opcode: "));
-	DEBLNF(bp[bpix].opcode,HEX);
-	targetReadFlashPage((bp[bpix].waddr*2) & ~(mcu.pagesz-1));
-	memcpy(newpage, page, mcu.pagesz);
-	DEBLN("");
-	newpage[(bp[bpix].waddr*2)%mcu.pagesz] = bp[bpix].opcode&0xFF;
-	newpage[((bp[bpix].waddr*2)+1)%mcu.pagesz] = bp[bpix].opcode>>8;
-	targetWriteFlashPage((bp[bpix].waddr*2) & ~(mcu.pagesz-1), newpage);
-	bp[bpix].inflash = false;
-	if (!bp[bpix].active) {
-	  bp[bpix].used = false; // delete bp if not active
-	  DEBLN(F("BP removed"));
-	}
-	if (!onlyonestep) { // if not only one step, then step in order to be able to continue
-	  DEBLN(F("Step over!"));
-	  targetRestoreRegisters(); // set all regs
-	  targetStep();         // step over the 4byte/call instr
-	  if (!checkCmdOk2()) { 
-	    reportFatalError(NO_SINGLESTEP_FATAL);
-	    DEBLN(F("***Single step error"));
-	    ctx.running = false; // mark that we are not executing any longer
-	    gdbSendState(SIGSTOP);
-	    return true;
-	  }
-	}
-      }
-    }
-  }
-  return false;
-}
-
 
 // Remove inactive and set active breakpoints before execution starts or before reset/kill/detach.
 // Note that GDB sets breakpoints immediately before it issues a step or continue command and
@@ -945,55 +1020,26 @@ boolean gdbStepOverBP(boolean onlyonestep)
 // from flash immediately. Only just before the target starts to execute, we will update flash memory
 // according to the status of a breakpoint:
 // BP is unused (addr = 0) -> do nothing
-// BP is enabled and already in flash -> do nothing
-// BP is enabled and not in flash -> write to flash
-// BP is disabled but written in flash -> remove from flash, set BP unused
-// BP is disabled and not in flash -> set BP unused
-// order all actionable BPs by increasing address and only then change flash memory
+// BP is used, active and already in flash or hwbp -> do nothing
+// BP is used, active, not hwbp, and not in flash -> write to flash
+// BP is used, but not active and in flash -> remove from flash, set BP unused
+// BP is used and not in flash -> set BP unused
+// BP is used, active and hwbp -> do nothing, will be taken care of when executing
+// Order all actionable BPs by increasing address and only then change flash memory
 // (so that multiple BPs in one page only need one flash change)
 //
-// Further, the hardware breakpoint is assigned dymically. If it is used twice in a row,
-// then we look for a new breakpoint and will mark the old one for writing to flash.
 void gdbUpdateBreakpoints(void)
 {
   int i, j, ix, rel = 0;
   unsigned int relevant[MAXBREAK*2+1];
-  unsigned addr = 0;
+  unsigned int addr = 0;
 
-  DEBPR(F("Update Breakpoints: "));
-  DEBPR(bpcnt);
-  DEBPR(F(" / lasthwbp: "));
-  DEBLNF(lasthwbp*2,HEX);
+  DEBPR(F("Update Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
   // return immediately if there are too many bps active
   // because in this case we will not start to execute
-  if (bpcnt > MAXBREAK) return;
+  // if there are no used entries, we also can return immediately
+  if (toomanybps || bpused == 0) return;
 
-  // reassign HW BP if not assigned to 4-byte instr, if used twice and if  possible 
-  if (hwbp != 0xFFFF &&     // hwbp is in use
-      hwbp == lasthwbp &&   //  and the same as last one
-      bpcnt > 1) {          // and there are others
-    for (i=0; i < MAXBREAK*2; i++) {
-      if (bp[i].active &&        // active breakpoint
-	  bp[i].waddr != hwbp && // not the HW breakpoint itself
-	  !bp[i].inflash) {      // and not in flash yet
-	j = gdbFindBreakpoint(hwbp);
-	if (j < 0) {
-	  DEBPR(F("Did not find HWBP for addr "));
-	  DEBLN(hwbp*2);
-	  break; // should not happen!
-	}
-	DEBPR(F("Reassign HW BP from "));
-	DEBPRF(hwbp*2,HEX);
-	DEBPR(F(" to "));
-	DEBLNF(bp[i].waddr*2, HEX);
-	bp[j].hw = false;
-	bp[i].hw =true;
-	hwbp = bp[i].waddr;
-	break;
-      }
-    }
-  }
-  
   // find relevant BPs
   for (i=0; i < MAXBREAK*2; i++) {
     if (bp[i].used) { // only used breakpoints!
@@ -1001,21 +1047,25 @@ void gdbUpdateBreakpoints(void)
 	if (!bp[i].inflash && !bp[i].hw)  // not in flash yet and not a hw bp
 	  relevant[rel++] = bp[i].waddr; // remember to be set
       } else { // inactive bp
-	if (bp[i].inflash) // still in flash 
+	if (bp[i].inflash) { // still in flash 
 	  relevant[rel++] = bp[i].waddr; // remember to be removed
-	else 
-	  bp[i].used = false; // otherwise free BP
+	} else {
+	  bp[i].used = false; // otherwise free BP already now
+	  if (bp[i].hw) { // if hwbp, then free HWBP
+	    bp[i].hw = false;
+	    hwbp = 0xFFFF;
+	  }
+	  bpused--;
+	}
       }
     }
   }
   relevant[rel++] = 0xFFFF; // end marker
-  DEBPR(F("Relevant bps: "));
-  DEBLN(rel-1);
+  DEBPR(F("Relevant bps: "));  DEBLN(rel-1);
 
   // sort relevant BPs
   insertionSort(relevant, rel);
-  DEBLN(F("BPs sorted: "));
-  for (i = 0; i < rel-1; i++) DEBLNF(relevant[i]*2,HEX);
+  DEBLN(F("BPs sorted: ")); for (i = 0; i < rel-1; i++) DEBLNF(relevant[i]*2,HEX);
 
   // replace pages that need to be changed
   // note that the addresses in relevant and bp are all word addresses!
@@ -1027,41 +1077,37 @@ void gdbUpdateBreakpoints(void)
       targetReadFlashPage(addr);
       memcpy(newpage, page, mcu.pagesz);
       while (j < i) {
+	DEBPR(F("RELEVANT: ")); DEBLNF(relevant[j],HEX);
 	ix = gdbFindBreakpoint(relevant[j++]);
-	DEBPR(F("Found BP:"));
-	DEBLN(ix);
+	if (ix < 0) reportFatalError(RELEVANT_BP_NOT_PRESENT);
+	DEBPR(F("Found BP:")); DEBLN(ix);
 	if (bp[ix].active) { // enabled but not yet in flash
 	  bp[ix].opcode = (newpage[(bp[ix].waddr*2)%mcu.pagesz])+
 	    (unsigned int)((newpage[((bp[ix].waddr*2)+1)%mcu.pagesz])<<8);
-	  DEBPR(F("Replace op in flash "));
-	  DEBPRF(bp[ix].opcode,HEX);
-	  DEBPR(F(" with BREAK at byte addr "));
-	  DEBLNF(bp[ix].waddr*2,HEX);
+	  DEBPR(F("Replace op ")); DEBPRF(bp[ix].opcode,HEX); DEBPR(F(" with BREAK at byte addr ")); DEBLNF(bp[ix].waddr*2,HEX);
 	  if (bp[ix].opcode == 0x9598) { 
-	    DEBLN(F("***Saved BREAK instruction in bp struct! This SHOULDN'T happen!"));
 	    reportFatalError(BREAK_FATAL);
 	  }
 	  bp[ix].inflash = true;
 	  newpage[(bp[ix].waddr*2)%mcu.pagesz] = 0x98; // BREAK instruction
 	  newpage[((bp[ix].waddr*2)+1)%mcu.pagesz] = 0x95;
 	} else { // disabled but still in flash
-	  DEBPR(F("Restore original op "));
-	  DEBPRF(bp[ix].opcode,HEX);
-	  DEBPR(F(" at byte addr "));
-	  DEBLNF(bp[ix].waddr*2,HEX);
+	  DEBPR(F("Restore original op ")); DEBPRF(bp[ix].opcode,HEX); DEBPR(F(" at byte addr ")); DEBLNF(bp[ix].waddr*2,HEX);
 	  newpage[(bp[ix].waddr*2)%mcu.pagesz] = bp[ix].opcode&0xFF;
 	  newpage[((bp[ix].waddr*2)+1)%mcu.pagesz] = bp[ix].opcode>>8;
 	  bp[ix].used = false;
 	  bp[ix].inflash = false;
+	  bpused--; 
 	}
       }
       targetWriteFlashPage(addr, newpage);
     }
     addr += mcu.pagesz;
   }
-  lasthwbp = hwbp;
+  DEBPR(F("After updating Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
 }
 
+// sort breakpoints so that they can be changed together when they are on the same page
 void insertionSort(unsigned int *seq, int len)
 {
   unsigned int tmp;
@@ -1075,17 +1121,19 @@ void insertionSort(unsigned int *seq, int len)
   }
 }
 
-
+// find the breakpoint at a given word address
 int gdbFindBreakpoint(unsigned int waddr)
 {
   measureRam();
 
+  if (bpused == 0) return -1; // shortcut: if no bps used
   for (byte i=0; i < MAXBREAK*2; i++)
     if (bp[i].waddr == waddr && bp[i].used) return i;
   return -1;
 }
 
-void gdbInsertRemoveBreakpoint(const byte *buff)
+
+void gdbHandleBreakpointCommand(const byte *buff)
 {
   unsigned long byteflashaddr, sz;
   byte len;
@@ -1095,7 +1143,7 @@ void gdbInsertRemoveBreakpoint(const byte *buff)
   len = parseHex(buff + 3, &byteflashaddr);
   parseHex(buff + 3 + len + 1, &sz);
   
-  /* get break type */
+  /* break type */
   switch (buff[1]) {
   case '0': /* software breakpoint */
     if (buff[0] == 'Z') {
@@ -1113,24 +1161,27 @@ void gdbInsertRemoveBreakpoint(const byte *buff)
 /* insert bp, flash addr is in words */
 void gdbInsertBreakpoint(unsigned int waddr)
 {
-  int i;
+  int i,j;
 
+  // check for duplicates
+  i = gdbFindBreakpoint(waddr);
+  if (i >= 0)
+    if (bp[i].active)  // this is a BP set twice, can be ignored!
+      return;
+  
   // if we try to set too many bps, return
   if (bpcnt == MAXBREAK) {
-    DEBLN(F("Too many BPs to be set! Execution will fail!"));
+    // DEBLN(F("Too many BPs to be set! Execution will fail!"));
     toomanybps = true;
     return;
   }
+
   // if bp is already there, but not active, then activate
   i = gdbFindBreakpoint(waddr);
   if (i >= 0) { // existing bp
-    if (bp[i].active) return; //  can happen if duplicate bp
     bp[i].active = true;
     bpcnt++;
-    DEBPR(F("New recycled BP: "));
-    DEBPRF(waddr*2,HEX);
-    DEBPR(F(" / now active: "));
-    DEBLN(bpcnt);
+    DEBPR(F("New recycled BP: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
     return;
   }
   // find free slot (should be there, even if there are MAXBREAK inactive bps)
@@ -1143,15 +1194,19 @@ void gdbInsertBreakpoint(unsigned int waddr)
       if (hwbp == 0xFFFF) { // hardware bp unused
 	bp[i].hw = true;
 	hwbp = waddr;
-      } else bp[i].hw = false;
-      bpcnt++;
-      DEBPR(F("New BP: "));
-      DEBPRF(waddr*2,HEX);
-      DEBPR(F(" / now active: "));
-      DEBLN(bpcnt);
-      if (bp[i].hw) {
-	DEBLN(F("implemented as a HW BP"));
+      } else { // we steal it from other bp since the most recent should be a hwbp
+	j = gdbFindBreakpoint(hwbp);
+	if (j >= 0 && bp[j].hw) {
+	  DEBLN(F("Stealing HWBP from other BP"));
+	  bp[j].hw = false;
+	  bp[i].hw = true;
+	  hwbp = waddr;
+	} else reportFatalError(HWBP_ASSIGNMENT_INCONSISTENT_FATAL);
       }
+      bpcnt++;
+      bpused++;
+      DEBPR(F("New BP: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
+      if (bp[i].hw) { DEBLN(F("implemented as a HW BP")); }
       return;
     }
   }
@@ -1159,51 +1214,35 @@ void gdbInsertBreakpoint(unsigned int waddr)
   DEBLN(F("***No free slot in bp array"));
 }
 
-// inactivate a bp
+// inactivate a bp 
 void gdbRemoveBreakpoint(unsigned int waddr)
 {
   int i;
   i = gdbFindBreakpoint(waddr);
-  if (i < 0) return; // not found, could happen for duplicate bps
-  DEBPR(F("Remove BP: "));
-  DEBLNF(bp[i].waddr*2,HEX);
-  bp[i].active = false;
-  if (bp[i].hw) { // a HW BP can be freed
-    bp[i].waddr = 0;
-    bp[i].used = false;
-    bp[i].hw = false;
-    hwbp = 0xFFFF;
-    DEBLN(F("HW BP inactivated & freed"));
-  } else {
-    DEBLN(F("SW BP inactivated"));
-    if (!bp[i].inflash) { // a SW BP not in flash can be freed
-      bp[i].waddr = 0;
-      bp[i].used = false;
-      DEBLN(F("SW BP freed"));
-    }
+  if (i < 0) {
+    reportFatalError(REMOVE_NON_EXISTING_BP_FATAL);
+    return;
   }
+  if (!bp[i].active) return; // not active, could happen for duplicate bps 
+  DEBPR(F("Remove BP: ")); DEBLNF(bp[i].waddr*2,HEX);
+  bp[i].active = false;
   bpcnt--;
-  DEBPR(F("BP removed: "));
-  DEBPRF(waddr*2,HEX);
-  DEBPR(F(" / now active: "));
-  DEBLN(bpcnt);
+  DEBPR(F("BP removed: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
   if (bpcnt < MAXBREAK) toomanybps = false;
 }
 
 // remove all active breakpoints before reset etc
+// should not be necessary - and will not be used any longer!
+// instead we will use the next function
 void gdbRemoveAllBreakpoints(void)
 {
   int cnt = 0;
-  DEBPR(F("Remove all breakpoints. There are still: "));
-  DEBLN(bpcnt);
+  DEBPR(F("Remove all breakpoints. There are still: "));  DEBLN(bpcnt);
   for (byte i=0; i < MAXBREAK*2; i++) {
     if (bp[i].active) {
       bp[i].active = false;
-      bp[i].hw = false;
-      if (!bp[i].inflash) bp[i].used = false;
+      DEBPR(F("BP removed at: ")); DEBLNF(bp[i].waddr*2,HEX);
       cnt++;
-      DEBPR(F("BP removed at: "));
-      DEBLNF(bp[i].waddr*2,HEX);
     }
   }
   if (cnt != bpcnt) {
@@ -1213,14 +1252,20 @@ void gdbRemoveAllBreakpoints(void)
     reportFatalError(INCONS_BP_FATAL);
   }
   bpcnt = 0;
-  lasthwbp = 0xFFFF;
 }
 
-int BPtests(int &num) {
-  (void)(num);
-  return 0;
+void gdbCheckForRemainingBreakpoints(void)
+{
+  int cnt = 0;
+  for (byte i=0; i < MAXBREAK*2; i++) {
+    if (bp[i].active) {
+      DEBPR(F("Active BP found at: ")); DEBLNF(bp[i].waddr*2,HEX);
+      cnt++;
+    }
+  }
+  if (bpcnt != 0 || cnt != 0)
+    reportFatalError(REMAINING_BREAKPOINTS_FATAL);
 }
-
 
 // GDB wants to see the 32 8-bit registers (r00 - r31), the
 // 8-bit SREG, the 16-bit SP and the 32-bit PC,
@@ -1331,12 +1376,14 @@ void gdbReadMemory(const byte *buff)
   flag = addr & MEM_SPACE_MASK;
   addr &= ~MEM_SPACE_MASK;
   if (flag == SRAM_OFFSET) targetReadSram(addr, membuf, sz);
-  else if (flag == FLASH_OFFSET) targetReadFlash(addr, membuf, sz);
-  else if (flag == EEPROM_OFFSET) targetReadEeprom(addr, membuf, sz);
+  else if (flag == FLASH_OFFSET) {
+    targetReadFlash(addr, membuf, sz);
+    gdbHideBREAKs(addr, membuf, sz);
+  } else if (flag == EEPROM_OFFSET) targetReadEeprom(addr, membuf, sz);
   else {
     gdbSendReply("E05");
     reportFatalError(WRONG_MEM_FATAL);
-    DEBLN(F("***Wrong memory type in gdbReadMemory"));
+    //DEBLN(F("***Wrong memory type in gdbReadMemory"));
     return;
   }
   for (i = 0; i < sz; ++i) {
@@ -1346,6 +1393,26 @@ void gdbReadMemory(const byte *buff)
   }
   buffill = sz * 2;
   gdbSendBuff(buf, buffill);
+}
+
+// hide BREAK instructions that are not supposed to be there (i.e., those not yet removed)
+void gdbHideBREAKs(unsigned int startaddr, byte membuf[], int size)
+{
+  int bpix;
+  unsigned int addr;
+  
+  for (addr = startaddr; addr < startaddr+size; addr++) {
+    if ((addr & 1) && membuf[addr-startaddr] == 0x95) { // uneven address and match with MSB of BREAK
+      bpix = gdbFindBreakpoint((addr-1)/2);
+      if (bpix >= 0 && bp[bpix].inflash && !bp[bpix].active) 
+	membuf[addr-startaddr] = bp[bpix].opcode>>8; // replace with MSB of opcode
+    }
+    if (((addr&1) == 0) && membuf[addr-startaddr] == 0x98) { // even address and match with LSB of BREAK
+      bpix = gdbFindBreakpoint(addr/2);
+      if (bpix >= 0 && bp[bpix].inflash  && !bp[bpix].active)
+	membuf[addr-startaddr] = bp[bpix].opcode&0xFF;
+    }
+  }
 }
 
 // write to target memory
@@ -1375,7 +1442,7 @@ void gdbWriteMemory(const byte *buff)
   else {
     gdbSendReply("E05"); 
     reportFatalError(WRONG_MEM_FATAL);
-    DEBLN(F("***Wrong memory type in gdbWriteMemory"));
+    //DEBLN(F("***Wrong memory type in gdbWriteMemory"));
     return;
   }
   gdbSendReply("OK");
@@ -1398,7 +1465,7 @@ static void gdbWriteBinMemory(const byte *buff) {
   if (memsz < 0) { 
     gdbSendReply("E05");
     reportFatalError(NEG_SIZE_FATAL);
-    DEBLN(F("***Negative packet size"));
+    //DEBLN(F("***Negative packet size"));
     return;
   }
   
@@ -1410,7 +1477,7 @@ static void gdbWriteBinMemory(const byte *buff) {
   else {
     gdbSendReply("E05"); 
     reportFatalError(WRONG_MEM_FATAL);
-    DEBLN(F("***Wrong memory type in gdbWriteBinMemory"));
+    //DEBLN(F("***Wrong memory type in gdbWriteBinMemory"));
     return;
   }
   gdbSendReply("OK");
@@ -1458,6 +1525,209 @@ boolean targetoffline(void)
   gdbSendReply("E05");
   return true;
 }
+
+int gdbTests(int &num) {
+  int failed = 0;
+  bool succ;
+  int testnum;
+  unsigned int oldsp;
+
+  if (num >= 1) testnum = num;
+  else testnum = 1;
+
+  /* We do not test the I/O functions. They have been taken over from avr_gdb and
+   * seem to work quite robustly. We only test the breakpoint and execution functions.
+   * The tests build on each other, so do not rearrange.
+   */
+  
+  setupTestCode(); // insert the test code into memory
+  /* Testcode - for checking execution related functions (to loaded into to target memory)
+     bADDR      wADDR
+     1aa:	d5:   00 00       	nop
+     1ac:	d6:   00 00       	nop
+     1ae:	d7:   00 00       	nop
+     1b0:	d8:   ff cf       	rjmp	.-2      	; 0x1b0 <DL>
+     1b2:	d9:   29 e4       	ldi	r18, 0x49	; 73
+     1b4:	da:   20 93 00 01 	sts	0x0100, r18	; 0x800100 <goal>
+     1b8:	dc:   00 91 00 01 	lds	r16, 0x0100	; 0x800100 <goal>
+     1bc:	de:   05 d0       	rcall	.+10     	; 0x1c8 <SUBR>
+     1be:	df:   f5 cf       	rjmp	.-22     	; 0x1aa <START>
+     1c0:	e0:   0e 94 e4 00 	call	0x1c8	        ; 0x1c8 <SUBR>
+     1c4:	e2:   0c 94 d5 00 	jmp	0x1aa	        ; 0x1aa <START>
+     1c8:	e4:   11 e9       	ldi	r17, 0x91	; 145
+     1ca:	e5:   08 95       	ret 
+  */
+
+  // insert 4 BPs (one of it is a duplicate) 
+  gdbDebugMessagePSTR(PSTR("Test gdbInsertBreakpoint: "), testnum++);
+  gdbInsertBreakpoint(0xe4);
+  gdbInsertBreakpoint(0xd5);
+  gdbInsertBreakpoint(0xda);
+  gdbInsertBreakpoint(0xd5);
+  failed += testResult(bpcnt == 3 && bpused == 3 && hwbp == 0xda && bp[0].waddr == 0xe4
+		       && bp[1].waddr == 0xd5 && bp[2].waddr == 0xda && bp[2].hw);
+
+  // call v: will insert two software breakpoints and the most recent one is a hardware breakpoint
+  gdbDebugMessagePSTR(PSTR("Test gdbUpdateBreakpoints: "), testnum++);
+  gdbUpdateBreakpoints();
+  failed += testResult(bp[0].inflash && bp[0].used && bp[0].active  && bp[1].inflash
+		       && bp[1].opcode == 0 && !bp[2].inflash && bp[0].opcode == 0xe911
+		       && targetReadFlashWord(0xe4*2) == 0x9598
+		       && targetReadFlashWord(0xd5*2) == 0x9598
+		       && targetReadFlashWord(0xda*2) == 0x9320);
+
+  // remove all breakpoints (the software breakpoints will still be in flash memory)
+  gdbDebugMessagePSTR(PSTR("Test gdbRemoveBreakpoints: "), testnum++);
+  gdbRemoveBreakpoint(0xd5);
+  gdbRemoveBreakpoint(0xe4);
+  gdbRemoveBreakpoint(0xda);
+  gdbRemoveBreakpoint(0xd5);
+  gdbRemoveBreakpoint(0xd5);
+  failed += testResult(bpcnt == 0 && bpused == 3 && hwbp == 0xda && bp[0].inflash && bp[0].used
+		       && !bp[0].active && bp[1].inflash && bp[1].used && !bp[1].active
+		       && !bp[2].inflash && bp[2].used && !bp[2].active && bp[2].hw);
+
+  // insert two new breakpoints: they will 'steal' the hardware breakpoint from the former breakpoint entry 2
+  gdbDebugMessagePSTR(PSTR("Test gdbInsertBreakpoint (with old inactive BPs): "), testnum++);
+  gdbInsertBreakpoint(0xe0); // CALL instruction
+  gdbInsertBreakpoint(0xd6); // second NOP instruction, should become hwbp!
+  failed += testResult(bpcnt == 2 && bpused == 5 && hwbp == 0xd6 && !bp[2].inflash && bp[2].used
+		       && !bp[2].active && !bp[2].hw  && !bp[3].inflash && bp[3].used 
+		       && bp[3].active && !bp[3].hw && bp[3].waddr == 0xe0
+		       && !bp[4].inflash && bp[4].used 
+		       && bp[4].active && bp[4].hw && bp[4].waddr == 0xd6);
+  
+  // "reinsert" two of the former breakpoints (in particular the former hardware breakpoint)
+  // Then call gdbUpdateBreakpoints: the former hardware breakpoint now is a software breakpoint and therefore
+  // a BREAK instruction is inserted at this point
+  // All in all: 3 active BPs
+  gdbDebugMessagePSTR(PSTR("Test gdbUpdateBreakpoint (after reinserting 2 of 3 inactive BPs): "), testnum++);
+  gdbInsertBreakpoint(0xe4);
+  gdbInsertBreakpoint(0xda);
+  gdbUpdateBreakpoints();
+  failed += testResult(bpcnt == 4 && bpused == 4 && hwbp == 0xd6 && bp[0].inflash
+		       && bp[0].used && bp[0].active && bp[0].inflash && bp[0].waddr == 0xe4
+		       && !bp[1].used && !bp[1].active &&  targetReadFlashWord(0xd5*2) == 0
+		       && bp[2].inflash && bp[2].used && bp[2].active && !bp[2].hw
+		          && bp[2].waddr == 0xda && targetReadFlashWord(0xda*2) == 0x9598
+		       && bp[3].inflash && bp[3].used && bp[3].active && !bp[3].hw
+		          && bp[3].waddr == 0xe0 && targetReadFlashWord(0xe0*2) == 0x9598
+		       && !bp[4].inflash && bp[4].used && bp[4].active && bp[4].hw && bp[4].waddr == 0xd6 && hwbp == 0xd6);
+
+  // execute starting at 0xd5 (word address) with a NOP and run to the hardware breakpoint (next instruction)
+  gdbDebugMessagePSTR(PSTR("Test gdbContinue (with HWBP): "), testnum++);
+  targetInitRegisters();
+  ctx.sp = mcu.ramsz+mcu.rambase-1;
+  ctx.wpc = 0xd5;
+  gdbContinue();
+  succ = checkCmdOk2();
+  if (!succ) {
+    targetBreak();
+    checkCmdOk();
+  }
+  targetSaveRegisters();
+  failed += testResult(succ && ctx.wpc == 0xd6);
+
+  // execute starting at 0xdc (an RCALL instruction) and stop at the software breakpoint at 0xe4
+  gdbDebugMessagePSTR(PSTR("Test gdbContinue (with software breakpoint): "), testnum++);
+  ctx.wpc = 0xdc;
+  oldsp = ctx.sp;
+  gdbContinue();
+  succ = checkCmdOk2();
+  if (!succ) {
+    targetBreak();
+    checkCmdOk();
+  }
+  targetSaveRegisters();
+  targetReadSram(ctx.sp+1,membuf,2); // return addr
+  failed += testResult(succ && ctx.wpc == 0xe4 && ctx.sp == oldsp - 2
+		       && (membuf[0]<<8)+membuf[1] == 0xDF);
+  
+  // remove the first 3 breakpoints from being active (they are still marked as used and the BREAK
+  // instruction is still in flash)
+  gdbDebugMessagePSTR(PSTR("Test gdbRemoveBtreakpoint (3): "), testnum++);
+  gdbRemoveBreakpoint(0xe4);
+  gdbRemoveBreakpoint(0xda);
+  gdbRemoveBreakpoint(0xd6);
+  failed += testResult(bpcnt == 1 && bpused == 4 && hwbp == 0xd6 && bp[0].used && !bp[0].active 
+		       && !bp[1].used && bp[2].used && !bp[2].active && bp[3].used && bp[3].active
+		       && bp[4].used && !bp[4].active);
+
+  // perform  a single step at location 0xda at which a BREAK instruction has been inserted,
+  // replacing the first word of a STS __,r18 instruction. Execution happens using
+  // simulation.
+  gdbDebugMessagePSTR(PSTR("Test gdbStep on 4-byte instruction (STS) hidden by BREAK: "), testnum++);
+  ctx.regs[18] = 0x42;
+  ctx.wpc = 0xda;
+  membuf[0] = 0xFF;
+  targetWriteSram(0x100, membuf, 1);
+  gdbStep();
+  targetReadSram(0x100, membuf, 1);
+  DEBLNF(membuf[0],HEX);
+  DEBLNF(ctx.wpc,HEX);
+  failed += testResult(membuf[0] == 0x42 && ctx.wpc == 0xdc);
+
+  // perform  a single step at location 0xda at which a BREAK instruction has been inserted,
+  // replacing the first word of a STS __,r18 instruction; execution happens using
+  // simulation (so even on small ATtinys!)
+  gdbDebugMessagePSTR(PSTR("Test gdbStep on 4-byte instruction (CALL) hidden by BREAK: "), testnum++);
+  ctx.wpc = 0xe0;
+  oldsp = ctx.sp;
+  gdbStep();
+  targetSaveRegisters();
+  targetReadSram(ctx.sp+1,membuf,2); // return addr
+  failed += testResult(ctx.wpc == 0xe4 && ctx.sp == oldsp - 2
+		       && (membuf[0]<<8)+membuf[1] == 0xe2);
+
+  // perform a single stop at location 0xe5 at which a BREAK instruction has been inserted,
+  // replacing a "ldi r17, 0x91" instruction
+  // execution is done via offline execution in debugWIRE
+  gdbDebugMessagePSTR(PSTR("Test gdbStep on 2-byte hidden by BREAK: "), testnum++);
+  ctx.regs[17] = 0xFF;
+  ctx.wpc = 0xe4;
+  gdbStep();
+  failed += testResult(ctx.wpc == 0xe5 && ctx.regs[17] == 0x91);
+
+  // perform a single step at location 0xe5 on instruction RET
+  gdbDebugMessagePSTR(PSTR("Test gdbStep on normal instruction (2-byte): "), testnum++);
+  ctx.wpc = 0xe5;
+  oldsp = ctx.sp;
+  gdbStep();
+  failed += testResult(ctx.sp == oldsp + 2 && ctx.wpc == 0xe2);
+
+  // perform single step at location 0xdc on the instruction LDS r16, 0x100
+  gdbDebugMessagePSTR(PSTR("Test gdbStep on normal instruction (4-byte): "), testnum++);
+  ctx.regs[16] = 0;
+  ctx.wpc = 0xdc;
+  gdbStep();
+  failed += testResult(ctx.regs[16] == 0x42 && ctx.wpc == 0xde);
+
+  // check the "BREAK hiding" feature by loading part of the flash memory and
+  // replacing BREAKs with the original instructions in the buffer to be sent to gdb
+  gdbDebugMessagePSTR(PSTR("Test gdbHideBREAKs: "), testnum++);
+  targetReadFlash(0x1ad, membuf, 0x1C); // from 0x1ad (uneven) to 0x1e4 (even)
+  succ = (membuf[0x1ad-0x1ad] == 0x00 && membuf[0x1b4-0x1ad] == 0x98
+	  && membuf[0x1b4-0x1ad+1] == 0x95 && membuf[0x1c8-0x1ad] == 0x98);
+  gdbHideBREAKs(0x1ad, membuf, 0x1C);
+  failed += testResult(succ && membuf[0x1ad-0x1ad] == 0x00 && membuf[0x1b4-0x1ad] == 0x20
+		       && membuf[0x1b4-0x1ad+1] == 0x93 && membuf[0x1c8-0x1ad] == 0x11);
+  // cleanup
+  
+  gdbDebugMessagePSTR(PSTR("Test delete remaining BP and call update: "), testnum++);
+  gdbRemoveBreakpoint(0xe0);
+  gdbUpdateBreakpoints();
+  failed += testResult(bpcnt == 0 && bpused == 0 && hwbp == 0xFFFF);
+
+  if (num >= 1) {
+    num = testnum;
+    return failed;
+  } else {
+    testSummary(failed);
+    gdbSendReply("OK");
+    return 0;
+  }
+}
+
 
 /****************** some GDB I/O functions *************/
 // clear input buffer
@@ -1616,6 +1886,7 @@ void gdbDebugMessagePSTR(const char pstr[],long num) {
   gdbSendBuff(buf, i);
 }
 
+
 /****************** target functions *************/
 
 // enable DebugWire, returns
@@ -1673,7 +1944,7 @@ boolean targetStop(void)
       newfuse = highfuse | mcu.dwenfuse;
       if (newfuse != highfuse) {
 	ispSend(0xAC, 0xA8, 0x00, newfuse);
-	DEBLN(F("DWEN disabled"));
+	//DEBLN(F("DWEN disabled"));
 	leaveProgramMode();
 	return true;
       }
@@ -1715,16 +1986,16 @@ int targetSetCKFuse(boolean programfuse)
   if (!enterProgramMode()) return -1;
   // now we are in ISP mode and know what processor we are dealing with
   lowfuse = ispSend(0x50, 0x00, 0x00, 0x00);
-  DEBPR(F("Old low fuse: ")); DEBLNF(lowfuse,HEX);
+  //DEBPR(F("Old low fuse: ")); DEBLNF(lowfuse,HEX);
   if (programfuse) newfuse = lowfuse & ~mcu.ckdiv8;
   else newfuse = lowfuse | mcu.ckdiv8;
-  DEBPR(F("New fuse: ")); DEBLNF(newfuse,HEX);
+  //DEBPR(F("New fuse: ")); DEBLNF(newfuse,HEX);
   if (newfuse == lowfuse) {
     leaveProgramMode();
     return 0;
   }
   else ispSend(0xAC, 0xA0, 0x00, newfuse);
-  DEBLN(F("New fuse programmed"));
+  //DEBLN(F("New fuse programmed"));
   leaveProgramMode();
   return 1;
 }
@@ -1735,10 +2006,9 @@ int targetSetCKFuse(boolean programfuse)
 // remember that page has been read and that the buffer is valid
 void targetReadFlashPage(unsigned int addr)
 {
-  DEBPR(F("Reading flash page starting at: "));
-  DEBLNF(addr,HEX);
+  //DEBPR(F("Reading flash page starting at: "));DEBLNF(addr,HEX);
   if (addr != (addr & ~(mcu.pagesz-1))) {
-    DEBLN(F("***Page address error when reading"));
+    // DEBLN(F("***Page address error when reading"));
     reportFatalError(READ_PAGE_ADDR_FATAL);
     return;
   }
@@ -1747,9 +2017,17 @@ void targetReadFlashPage(unsigned int addr)
     lastpg = addr;
     validpg = true;
   } else {
-    DEBPR(F("using cached page at "));
-    DEBLNF(lastpg,HEX);
+    DEBPR(F("using cached page at ")); DEBLNF(lastpg,HEX);
   }
+}
+
+// read one word of flash (must be an even address!)
+unsigned int targetReadFlashWord(unsigned int addr)
+{
+  byte temp[2];
+  if (addr & 1) reportFatalError(FLASH_READ_WRONG_ADDR_FATAL);
+  if (!DWreadFlash(addr, temp, 2)) reportFatalError(FLASH_READ_FATAL);
+  return temp[0] + ((unsigned int)(temp[1]) << 8);
 }
 
 // read some portion of flash memory to the buffer pointed at by *mem'
@@ -1758,8 +2036,7 @@ void targetReadFlash(unsigned int addr, byte *mem, unsigned int len)
 {
   if (!DWreadFlash(addr, mem, len)) {
     reportFatalError(FLASH_READ_FATAL);
-    DEBPR(F("***Error reading flash memory at "));
-    DEBLNF(addr,HEX);
+    // DEBPR(F("***Error reading flash memory at ")); DEBLNF(addr,HEX);
   }
 }
 
@@ -1768,8 +2045,7 @@ void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
 {
   if (!DWreadSramBytes(addr, mem, len)) {
     reportFatalError(SRAM_READ_FATAL);
-    DEBPR(F("***Error reading SRAM at "));
-    DEBLNF(addr,HEX);
+    // DEBPR(F("***Error reading SRAM at ")); DEBLNF(addr,HEX);
   }
 }
 
@@ -1796,7 +2072,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   DEBPRF(addr+mcu.pagesz-1,HEX);
   DEBLN(":");
   if (addr != (addr & ~(mcu.pagesz-1))) {
-    DEBLN(F("\n***Page address error when writing"));
+    //DEBLN(F("\n***Page address error when writing"));
     reportFatalError(WRITE_PAGE_ADDR_FATAL);
     return;
   }
@@ -1804,12 +2080,12 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   // read old page contents
   targetReadFlashPage(addr);
   // check whether something changed
-  DEBPR(F("Check for change: "));
+  // DEBPR(F("Check for change: "));
   if (memcmp(mem, page, mcu.pagesz) == 0) {
-    DEBLN(F("unchanged"));
+    //DEBLN(F("unchanged"));
     return;
   }
-  DEBLN(F("changed"));
+  // DEBLN(F("changed"));
 
 #ifdef DEBUG
   for (unsigned int i=0; i<mcu.pagesz; i++) {
@@ -1836,20 +2112,20 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   
   // erase page when dirty
   if (dirty) {
-    DEBPR(F(" erasing ..."));
+    // DEBPR(F(" erasing ..."));
     if (!DWeraseFlashPage(addr)) {
       reportFatalError(ERASE_FAILURE_FATAL);
-      DEBLN(F(" not possible"));
+      // DEBLN(F(" not possible"));
       DWreenableRWW();
       return;
     } else {
-      DEBPR(F(" will overwrite ..."));
+      // DEBPR(F(" will overwrite ..."));
     }
     
     // maybe the new page is also empty?
     memset(page, 0xFF, mcu.pagesz);
     if (memcmp(mem, page, mcu.pagesz) == 0) {
-      DEBLN(" nothing to write");
+      // DEBLN(" nothing to write");
       DWreenableRWW();
       validpg = true;
       return;
@@ -1858,10 +2134,10 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   if (!DWloadFlashPageBuffer(addr, mem)) {
     DWreenableRWW();
     reportFatalError(NO_LOAD_FLASH_FATAL);
-    DEBPR(F("\n***Cannot load page buffer "));
+    // DEBPR(F("\n***Cannot load page buffer "));
     return;
   } else {
-    DEBPR(F(" flash buffer loaded"));
+    // DEBPR(F(" flash buffer loaded"));
   }
     
   boolean succ = DWprogramFlashPage(addr);
@@ -1870,9 +2146,9 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     memcpy(page, mem, mcu.pagesz);
     validpg = true;
     lastpg = addr;
-    DEBLN(F(" page flashed"));
+    // DEBLN(F(" page flashed"));
   } else {
-    DEBLN(F("\n***Could not program flash memory"));
+    // DEBLN(F("\n***Could not program flash memory"));
     reportFatalError(PROGRAM_FLASH_FAIL_FATAL);
   }
 }
@@ -1983,8 +2259,7 @@ void targetContinue(void)
 {
   measureRam();
 
-  DEBPR(F("Continue at (byte adress) "));
-  DEBLNF(ctx.wpc*2,HEX);
+  // DEBPR(F("Continue at (byte adress) "));  DEBLNF(ctx.wpc*2,HEX);
   if (hwbp != 0xFFFF) {
     sendCommand((const byte []) { 0x61 }, 1);
     DWsetWBp(hwbp);
@@ -2000,8 +2275,7 @@ void targetStep(void)
 {
   measureRam();
 
-  DEBPR(F("Single step at (byte address):"));
-  DEBLNF(ctx.wpc*2,HEX);
+  // DEBPR(F("Single step at (byte address):")); DEBLNF(ctx.wpc*2,HEX);
   // _delay_ms(5);
   byte cmd[] = {0x60, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
   sendCommand(cmd, sizeof(cmd));
@@ -2017,25 +2291,14 @@ boolean targetReset(void)
     if (dw.available()) break;
     else _delay_ms(1);
   if (checkCmdOk2()) {
-    DEBLN(F("RESET successful"));
+    // DEBLN(F("RESET successful"));
     ctx.wpc = 0;
     return true;
   } else {
-    DEBLN(F("***RESET failed"));
+    // DEBLN(F("***RESET failed"));
     reportFatalError(RESET_FAILED_FATAL);
     return false;
   }
-}
-
-// check whether an opcode is a 16-bit opcode
-boolean twoByteInstr(unsigned int opcode)
-{
-  measureRam();
-
-  if (((opcode & 0b1111110000001111) == (unsigned int)0b1001000000000000) || // STS/LDS
-      ((opcode & 0b1111111000001100) == (unsigned int)0b1001010000001100))   // JMP/CALL
-    return false;
-  return true;
 }
 
 
@@ -2054,7 +2317,7 @@ boolean twoByteInstr(unsigned int opcode)
  1c0:	e0: 0e 94 e4 00 	call	0x1c8	        ; 0x1c8 <SUBR>
  1c4:	e2: 0c 94 d5 00 	jmp	0x1aa	        ; 0x1aa <START>
  1c8:	e4: 11 e9       	ldi	r17, 0x91	; 145
- 1ca:	e5: 08 95       	ret
+ 1ca:	e5: 08 95       	ret 
 */
 
 const byte testcode[] PROGMEM = {
@@ -2093,15 +2356,6 @@ int targetTests(int &num) {
 
   if (num >= 1) testnum = num;
   else testnum = 1;
-
-  gdbDebugMessagePSTR(PSTR("Test targetStop (not possible): "), testnum++);
-  failed += testResult(ctx.targetcon);
-
-  gdbDebugMessagePSTR(PSTR("Test targetConnect: "), testnum++);
-  failed += testResult(targetConnect() == 1);
-
-  gdbDebugMessagePSTR(PSTR("Test targetSetCKFuse (not possible): "), testnum++);
-  failed += testResult(ctx.targetcon);
 
   gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage: "), testnum++);
   const int flashaddr = 0x80;
@@ -2143,9 +2397,7 @@ int targetTests(int &num) {
   validpg = false;
   succ = true;
   targetReadFlashPage(flashaddr);
-  DEBLN(F("Values:"));
   for (i=0; i < mcu.pagesz; i++) {
-    DEBLN(page[i]);
     if (page[i] != i) succ = false;
   }
   failed += testResult(fatalerror == NO_FATAL && succ);
@@ -2252,10 +2504,6 @@ int targetTests(int &num) {
   targetBreak(); // DW responds with 0x55 on break
   if (!checkCmdOk()) succ = false;
   targetSaveRegisters();
-  DEBLN(F("Values:"));
-  DEBLN(succ);
-  DEBLNF(ctx.wpc,HEX);
-  DEBLNF(ctx.regs[17],HEX);
   failed += testResult(succ && ctx.wpc == 0xd8 && ctx.regs[17] == 0x91);
 
   gdbDebugMessagePSTR(PSTR("Test targetReset: "), testnum++);
@@ -2283,16 +2531,13 @@ boolean doBreak () {
   digitalWrite(RESET, LOW);
   pinMode(RESET, INPUT);
   _delay_ms(10);
-  dw.enable(false);
+  DEBLN(F("Start calibrating"));
   ctx.bps = dw.calibrate();
   if (ctx.bps == 0) {
-    DEBLN(F("No response from debugWire on sending break"));
+    // DEBLN(F("No response from debugWire on sending break"));
     return false;
   }
-  DEBPR(F("Speed: "));
-  DEBPRF(ctx.bps, DEC);
-  DEBLN(F(" bps"));
-  dw.enable(true);
+  DEBPR(F("Speed: ")); DEBPRF(ctx.bps, DEC); DEBLN(F(" bps"));
   dw.begin(ctx.bps);                        // Set computed bit rate
   DEBLN(F("Sending BREAK: "));
   dw.sendBreak();
@@ -2631,10 +2876,7 @@ void DWwriteEepromByte (unsigned int addr, byte val) {
 boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   // Read len bytes form flash page at <addr>
   unsigned int rsp;
-  DEBPR(F("Read flash "));
-  DEBPRF(addr,HEX);
-  DEBPR("-");
-  DEBLNF(addr+len-1, HEX);
+  // DEBPR(F("Read flash ")); DEBPRF(addr,HEX); DEBPR("-"); DEBLNF(addr+len-1, HEX);
   //  reportTimeout = false;
   unsigned int lenx2 = len * 2;
   for (byte ii = 0; ii < 4; ii++) {
@@ -2664,8 +2906,7 @@ boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
 
 // erase entire flash page
 boolean DWeraseFlashPage(unsigned int addr) {
-  DEBPR(F("Erase: "));
-  DEBLNF(addr,HEX);
+  // DEBPR(F("Erase: "));  DEBLNF(addr,HEX);
   DWwriteRegister(30, addr & 0xFF); // load Z reg with addr low
   DWwriteRegister(31, addr >> 8  ); // load Z reg with addr high
   DWwriteRegister(29, 0x03); // PGERS value for SPMCSR
@@ -2738,7 +2979,7 @@ boolean DWloadFlashPageBuffer(unsigned int addr, byte *mem)
 void DWreenableRWW(void)
 {
   if (mcu.bootaddr) {
-    DEBLN(F("DWreenableRWW"));
+    // DEBLN(F("DWreenableRWW"));
     DWsetWPc(mcu.bootaddr);
     DWwriteRegister(29, 0x11); //  RWWSRE value for SPMCSR
     byte errw[] = { 0x64, 0xD2,
@@ -2776,7 +3017,9 @@ unsigned int DWgetWBp () {
 
 // get chip signature
 unsigned int DWgetChipId () {
+  DEBLN(F("Send chip id command via dW"));
   sendCommand((const byte[]) {0xF3}, 1);
+  DEBLN(F("Return result"));
   return (getWordResponse()) ;
 }
 
@@ -2792,7 +3035,7 @@ void DWsetWBp (unsigned int wbp) {
   sendCommand(cmd, sizeof(cmd));
 }
 
-
+// execute a 2-byte instruction offline
 boolean DWexecOffline(unsigned int opcode)
 {
   byte cmd[] = {0xD2, (byte) (opcode >> 8), (byte) (opcode&0xFF), 0x23};
@@ -2801,7 +3044,7 @@ boolean DWexecOffline(unsigned int opcode)
   DEBPR(F("Offline exec: "));
   DEBLNF(opcode,HEX);
   if (opcode == 0x9598) {
-    DEBLN(F("***Trying to execute BREAK instruction"));
+    // DEBLN(F("***Trying to execute BREAK instruction"));
     // Fatal error wil be raised by the calling routine
     return false;
   }
@@ -2966,7 +3209,7 @@ int DWtests(int &num)
   DWwriteIOreg(0x3F, 0); // write SREG
   DWwriteRegister(0x55, 1);
   DWsetWPc(pc);
-  DWexecOffline(0x2411);
+  DWexecOffline(0x2411); // specify opcode as MSB LSB (bigendian!)
   succ = false;
   if (pc + 1 == DWgetWPc()) // PC advanced by one, then +1 for break, but this is autmatically subtracted
     if (DWreadRegister(1) == 0)  // reg 1 should be zero now
@@ -3046,10 +3289,10 @@ byte ispSend (byte c1, byte c2, byte c3, byte c4) {
 boolean enterProgramMode () {
   // TIMSK0 &= ~_BV(OCIE0A); // disable our blink IRQ
   if (progmode) {
-    DEBLN(F("Already in progmode"));
+    // DEBLN(F("Already in progmode"));
     return true;
   }
-  DEBLN(F("Entering progmode"));
+  // DEBLN(F("Entering progmode"));
   byte timeout = 0;
   byte rsp;
   enableSpiPins();
@@ -3063,7 +3306,7 @@ boolean enterProgramMode () {
   } while (rsp != 0x1E && ++timeout < 5);
   progmode = timeout < 5;
   if (!progmode) {
-    DEBLN(F("Timeout: Chip may have DWEN bit enabled"));
+    // DEBLN(F("Timeout: Chip may have DWEN bit enabled"));
     pinMode(RESET, INPUT);
   }
   return progmode;
@@ -3107,14 +3350,12 @@ boolean setMcuAttr(unsigned int id)
       mcu.eearl = mcu.eearh - 1;
       mcu.eedr = mcu.eecr + 1;
       mcu.infovalid = true;
-      DEBPR(F("Found MCU Sig: "));
-      DEBLNF(id, HEX);
+      // DEBPR(F("Found MCU Sig: ")); DEBLNF(id, HEX);
       return true;
     }
     ix++;
   }
-  DEBPR(F("Could not determine MCU type with SIG: "));
-  DEBLNF(id, HEX);
+  // DEBPR(F("Could not determine MCU type with SIG: ")); DEBLNF(id, HEX);
   return false;
 }
 
@@ -3168,8 +3409,7 @@ static void convNum(byte numbuf[10], long num)
 void freeRamMin(void)
 {
   int f = freeRam();
-  DEBPR(F("RAM: "));
-  DEBLN(f);
+  // DEBPR(F("RAM: ")); DEBLN(f);
   freeram = min(f,freeram);
 }
 

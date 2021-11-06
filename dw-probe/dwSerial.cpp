@@ -25,7 +25,7 @@ void dwSerial::sendBreak()
   
   enable(false);
   ICDDR |= _BV(ICBIT); // switch pin to output (which is always low)
-  _delay_ms(10);
+  _delay_ms(5);
   ICDDR &= ~_BV(ICBIT); // and switch it back to being an input
   enable(true);
 }
