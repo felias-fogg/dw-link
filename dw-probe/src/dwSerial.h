@@ -6,7 +6,7 @@
 #define dwSerial_h
 
 #include <inttypes.h>
-#include <SingleWireSerial.h>
+#include "SingleWireSerial.h"
 
 /******************************************************************************
 * Definitions
