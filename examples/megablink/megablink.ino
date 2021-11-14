@@ -1,4 +1,4 @@
-#define LED 0
+#define LED 13
 
 byte thisByte = 0;
 
@@ -22,4 +22,5 @@ void loop() {
   thisByte++;
   thisByte = thisByte + i;
   delay(thisByte);
+  asm("break");
 }

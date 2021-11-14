@@ -160,7 +160,7 @@ Version 0.9.7 (06-Nov-21)
   - introduced bpused (number of used BPs) as a  second BP counter  (in order
     to speed up processing when nothing is there)
 
-Version 0.9.8
+Version 0.9.8  (08-Nov-21)
   - some attiny chips exhibit a somewhat funny behavior
     when they are connected to debugWIRE: you need to send a LONG break to which the
     chip responds with a 'U' with roughly 4000 bps; when you then send
@@ -190,7 +190,7 @@ Version 0.9.8
     BUILTIN_LED of the target, since the SCK lines of debugger and
     target are connected; so switched to PB2 (Arudino pin 2) for the system LED
   - when running the ATmega328 target on 16 MHz, sometimes spurious
-    0x00/0xFF show up; so I introduced DWflushInput taht reads them
+    0x00/0xFF show up; so I introduced DWflushInput that reads them
     away; what is strange is that this does not happen at lower
     frequencies and not with other chips at 16 MHz; it also quite determinstic!
   - Unit tests successful on:
@@ -205,4 +205,52 @@ Version 0.9.8
     ATtiny1634 (8 MHz, 1 MHz)
     ATmega328P (16 MHz, 8 MHz, 2 MHz, 1 MHz)
    
+Version 0.9.9 (14-Nov-21)
+  - new commands: "monitor hwbp" (reducing the number of allowed
+    breakpoints to 1) and "monitor swbp" (allowing 32+1 breakpoints) and
+    for test purposes: monitor 4bp (3+1 BPs)
+  - checking for user inserted BREAK after/before step/continue and return
+    with SIGILL
+  - checking for ^C in single-step when not progressing (necessary when
+    there is a RJMP .-2 instruction and gdb tries to find the
+    instruction at the beginning of the next source line).
+  - unittest.ino is now the file with all the unit tests
+  - more strange observations:
+    + all Tinys can execute the two-word JMP and CALL instructions
+      despite the claim by Atmel that they cannot
+    + one ATmega328, which correctly identifies itself with the
+      signature 0x9514 when queried using ISP programming replies with
+      0x0950F (the signature of an ATmega328P) when queried using the
+      debugWIRE command
+    + the simulation of 2-word instructions does not appear to be
+      necessary; if the PC is set to the right location and the first word
+      is loaded into the instruction register, starting an offline
+      execution apparently fetches the second word from the right place
+      in flash memory and the execution works flawlessly
+  - new commands for testing: "monitor rcosc" and "monitor "xtosc" for
+    selecting the intzernal RC oscillator or an external crystal oscillator. 
+  - allow for early interrupts in the blinking interrupt routine
+  - added function to recognize illegal opcodes, which is used before
+    starting execution and when single-stepping; the function has
+    been validated against the avr-objdump disassembler (and JMP and
+    CALL on small ATinys are considered illegal)
+  - reprogrammed the ISP routines in order to be able to connect to
+    ATmegas with less than 32 KiB flash; I had to adopt the same way
+    of writing and reading the fuse bytes as avrdude in order to make
+    it work - no idea why; and it were only those ATmegas!
+  - changed targetStop so that it can be used even when there is a
+    fatal error in order to be able to always set a chip back into normal state
+  - removed ctx.run and ctx.targetcon and added systate to ctx
+  - removed gdbExecProblem; now we set signals and then give a message
+    in gdbSendState. 
+  - do not record fatal error when disconnected (is checked in
+    reportFatalError)
+  - in initSession we cleanup the BP table, so a "monitor init" can
+    start with an empty BP table
+  - gdbContinue does now either return with a signal notifying an
+    execution error or with a zero, meaning that execution has been
+    started and will be stopped by hitting a breakpoint or by an ^C interrupt
+  - had to move the exec on illegal intruction as the last test in the
+    unit tests, otherwise the inactive BPs were cleaned up and the hide breaks
+    routine would not be effective.
     

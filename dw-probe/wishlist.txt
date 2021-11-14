@@ -1,0 +1,3 @@
+- a mode where reads & writes are double-checked: "monitor verify/noverify". Could be
+  on or off by default.
+- checking whether there is a capacitive load on the RESET line

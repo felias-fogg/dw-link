@@ -2,10 +2,16 @@
 #define SingleWireSerial_config_h
 
 // Which timer to use. On some MCUs there is more than one 16-bit counter.
-// Default is Timer1. 
+// Default is Timer1 for most MCUs
 // Note that each timer posseses a different input capture pin, which is used
 // as the single wire serial line.
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+#define ICTIMER 4
+#elif defined(__AVR_ATtiny861__) || defined(__AVR_ATtiny461__) || defined(__AVR_ATtiny261__)
+#define ICTIMER 0
+#else
 #define ICTIMER 1
+#endif
 
 #if (ICTIMER == 0)
   #define TCCRA TCCR0A
@@ -305,7 +311,7 @@
     #error "ATtiny828 has only Timer1!"
   #endif
 #elif defined(__AVR_ATtiny85__) ||  defined(__AVR_ATtiny45__) ||  defined(__AVR_ATtiny25__)
-  #error "ATtiny85/45/25 does not have an input capture unit."
+  #error "ATtiny85/45/25 do not have an input capture unit."
 #elif defined(__AVR_ATtiny43U__)
   #error "ATtiny43U does not have an input capture unit."
 #else
