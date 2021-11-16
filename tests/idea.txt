@@ -14,6 +14,8 @@ The different programs are:
 All of it is compiled with arduino-cli and then debugged with avr-gdb using pexpect. 
 
 Open questions:
- - how to deal with 16 MHz for non-ATmega chips
+ - how to deal with 16 MHz for non-ATmega chips -> I now have a
+  16 MHz oscillator and I implemented a monitor command to switch
+  between RX and ETX oscillator
  - whether to include 16u2 by using one of the USBco-MCUs on an UNO board.
  

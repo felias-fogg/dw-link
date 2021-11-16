@@ -142,6 +142,7 @@
     #define OCArduinoPin 9
     #define OCPORT PORTB
     #define OCBIT  PB1
+    #define ICVECT __asm__("TIMER1_CAPT_vect")
   #else
     #error "ATmega328/168 has only Timer1!"
   #endif

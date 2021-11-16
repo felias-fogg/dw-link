@@ -12,7 +12,7 @@ def dw_stop(*args, **kwargs):
         toolchain = "toolchain-atmelavr-original"
     gdb = [env['PROJECT_PACKAGES_DIR'] + '/' + toolchain + '/bin/avr-gdb' ]
     gdb += ["-batch-silent", "-b", "115200", "-ex", "target remote " + \
-            env['UPLOAD_PORT'], "-ex", "monitor stop"]
+            env['UPLOAD_PORT'], "-ex", "monitor dwoff"]
     try:
         ret = subprocess.call(gdb, shell=False)
         print("DWEN fuse disabled")

@@ -253,4 +253,13 @@ Version 0.9.9 (14-Nov-21)
   - had to move the exec on illegal intruction as the last test in the
     unit tests, otherwise the inactive BPs were cleaned up and the hide breaks
     routine would not be effective.
-    
+
+Version 1.0.0
+  - renamed monitor commands "init" and "stop" to "dwco[nnect]" and "dwof[f]"
+  - renamed monitor commands "ckdiv8" and "ckdiv1" to "ck8[prescaler]"
+    and "ck1[prescaler]"
+  - allowed abbreviations for all other monitor commands as well
+  - measure rise time on RESET line in order to reject bad quality
+    connections
+  - reject monitor command "reset" and "test..." when target is not
+    connected

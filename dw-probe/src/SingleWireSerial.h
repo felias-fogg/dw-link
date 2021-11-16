@@ -53,7 +53,7 @@ private:
   static uint8_t _receive_buffer[_SS_MAX_RX_BUFF]; 
   static volatile uint8_t _receive_buffer_tail;
   static volatile uint8_t _receive_buffer_head;
-  static void handle_interrupt() __asm__("__vector_10") __attribute__((__signal__, naked, __used__, __externally_visible__));
+  static void handle_interrupt()  __asm__("TIMER1_CAPT_vect") __attribute__((__signal__, naked, __used__, __externally_visible__));
 
 
 protected:

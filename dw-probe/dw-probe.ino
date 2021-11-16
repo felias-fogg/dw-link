@@ -10,12 +10,12 @@
 //       boards you have to make sure that only the TX/RX as well as the Vcc/GND
 //       pins are connected. 
 // NOTE: In order to enable debugWIRE mode, one needs to enable the DWEN fuse.
-//       Use the gdb command "monitor init" to do so. Afterwards one has to power-cycle the
+//       Use the gdb command "monitor dwconnect" to do so. Afterwards one has to power-cycle the
 //       target system (if this is not supported by the hardware debugger).
 //       From now on, one cannot reset the MCU using the reset line nor
 //       is it possible to change fuses with ISP programming or load programs using
 //       the ISP interface. The program has to be loaded using the debug load command.
-//       With the gdb command "monitor stop", one can switch the MCU back to normal behavior
+//       With the gdb command "monitor dwoff", one can switch the MCU back to normal behavior
 //       using this hardware debugger.
 // Some of the code is inspired and/or copied  by/from
 // - dwire-debugger (https://github.com/dcwbrown/dwire-debug)
@@ -27,16 +27,35 @@
 // http://www.ruemohr.org/docs/debugwire.html
 //
 
-#define VERSION "0.9.9"
-#ifndef DEBUG 
-#define DEBUG    0   // for debugging the debugger!
+#if F_CPU < 16000000UL
+#error "dw-probe needs at least 16 MHz clock frequency"
 #endif
-#ifndef FREERAM
-#define FREERAM  0   // for checking how much memory is left on the stack
+
+#define VERSION "1.0.0"
+#ifndef DEBUG        // for debugging the debugger!
+#define DEBUG    0   
 #endif
-#ifndef UNITTESTS
-#define UNITTESTS 0  // unit testing
+#ifndef FREERAM      // for checking how much memory is left on the stack
+#define FREERAM  0   
 #endif
+#ifndef UNITALL      // test all units
+#define UNITALL 0    
+#elif UNITALL == 1
+#define UNITDW 1
+#define UNITTG 1
+#define UNITGDB 1
+#endif
+#ifndef UNITDW
+#define UNITDW 0
+#endif
+#ifndef UNITTG
+#define UNITTG 0
+#endif
+#ifndef UNITGDB
+#define UNITGDB 0
+#endif
+
+
 #define NEWCONN 1    // new method for connecting: first break and 'U', then reset
                      // and another (sometimes faster) 'U'
 
@@ -61,6 +80,7 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 #include "src/dwSerial.h"
+#include "src/SingleWireSerial_config.h"
 #ifdef DEBUG
 #include <TXOnlySerial.h> // only needed for (meta-)debuging
 #endif
@@ -68,7 +88,7 @@
 
 // some size restrictions
 
- #define MAXBUF 255
+#define MAXBUF 255
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many!)
 
 // clock rates 
@@ -77,8 +97,13 @@
 
 // timeout for waiting for response, should be > 70ms for RESET response
 // loop time in the the getResponse routine is roughly 2-3us, so 40,000 should do.
-#define WAITLIMIT 40000UL 
+#define WAITLIMIT 40000UL
 
+// maximal rise time for RESET line in clock cycles
+#define MAXRISETIME 20 // actually 7-8 cycles are achievable (=500ns),  20 cycles means 1.25us
+                       // with weak pullup (50-100k) you have 56 (= 3.5us),
+                       // similarly with 1nF, you get 59 (=3.75us)
+#define UNCONNRISETIME 60000 // rise time result when unconnected (more than 3.5 ms)
 // signals
 #define SIGHUP  1     // connection to target lost
 #define SIGINT  2     // Interrupt  - user interrupted the program (UART ISR) 
@@ -167,7 +192,7 @@ volatile unsigned int offtime; // number of ms off
 
 // MCU names
 const char attiny13[] PROGMEM = "ATtiny13";
-const char attiny43[] PROGMEM = "ATtiny43";
+const char attiny43[] PROGMEM = "ATtiny43U";
 const char attiny2313[] PROGMEM = "ATtiny2313";
 const char attiny4313[] PROGMEM = "ATtiny4313";
 const char attiny24[] PROGMEM = "ATtiny24";
@@ -215,7 +240,7 @@ struct mcu_type {
   unsigned int eecr;       // address of EECR register
   unsigned int eearh;      // address of EARL register (0 if none)
   unsigned int rcosc;      // fuse pattern for setting RC osc as clock source
-  unsigned int xtosc;      // fuse pattern for setting XTAL osc as clock source
+  unsigned int extosc;     // fuse pattern for setting EXTernal osc as clock source
   char         *name;      // pointer to name in PROGMEM
   unsigned int dwenfuse;   // bit mask for DWEN fuse in high fuse byte
   unsigned int ckdiv8;     // bit mask for CKDIV8 fuse in low fuse byte
@@ -227,51 +252,51 @@ struct mcu_type {
   
 // mcu attributes (for all AVR mcus supporting debugWIRE)
 const unsigned int mcu_attr[] PROGMEM = {
-  // sig sram   base eeprom flash  dwdr   pg  er4  boot    eecr eearh  rcosc xtosc name
-  0x9007,  64,  0x60,   64,  1024, 0x2E,  32,   0, 0x0000, 0x1C, 0x00, 0x0A, 0x0A, attiny13,
+  // sig sram   base eeprom flash  dwdr   pg  er4  boot    eecr eearh  rcosc extosc name
+  0x9007,  64,  0x60,   64,  1024, 0x2E,  32,   0, 0x0000, 0x1C, 0x00, 0x0A, 0x08,  attiny13,
 
-  0x920C, 256,  0x60,   64,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny43,
+  0x920C, 256,  0x60,   64,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x22, 0x20,  attiny43,
 
-  0x910A, 128,  0x60,  128,  2048, 0x1f,  32,   0, 0x0000, 0x1C, 0x00, 0x24, 0x3F, attiny2313,
-  0x920D, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x24, 0x3F, attiny4313,
+  0x910A, 128,  0x60,  128,  2048, 0x1f,  32,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  attiny2313,
+  0x920D, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  attiny4313,
 
-  0x910B, 128,  0x60,  128,  2048, 0x27,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny24,   
-  0x9207, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny44,
-  0x930C, 512,  0x60,  512,  8192, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny84,
+  0x910B, 128,  0x60,  128,  2048, 0x27,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny24,   
+  0x9207, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny44,
+  0x930C, 512,  0x60,  512,  8192, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny84,
   
-  0x9215, 256, 0x100,  256,  4096, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny441, 
-  0x9315, 512, 0x100,  512,  8192, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny841,
+  0x9215, 256, 0x100,  256,  4096, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny441, 
+  0x9315, 512, 0x100,  512,  8192, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny841,
   
-  0x9108, 128,  0x60,  128,  2048, 0x22,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny25,
-  0x9206, 256,  0x60,  256,  4096, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny45,
-  0x930B, 512,  0x60,  512,  8192, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny85,
+  0x9108, 128,  0x60,  128,  2048, 0x22,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny25,
+  0x9206, 256,  0x60,  256,  4096, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny45,
+  0x930B, 512,  0x60,  512,  8192, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny85,
   
-  0x910C, 128,  0x60,  128,  2048, 0x20,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny261,
-  0x9208, 256,  0x60,  256,  4096, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny461,
-  0x930D, 512,  0x60,  512,  8192, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x3F, attiny861,
+  0x910C, 128,  0x60,  128,  2048, 0x20,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny261,
+  0x9208, 256,  0x60,  256,  4096, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny461,
+  0x930D, 512,  0x60,  512,  8192, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny861,
   
-  0x9387, 512, 0x100,  512,  8192, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x3F, attiny87,
-  0x9487, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x3F, attiny167,
+  0x9387, 512, 0x100,  512,  8192, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  attiny87,
+  0x9487, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  attiny167,
 
-  0x9314, 512, 0x100,  256,  8192, 0x31,  64,   0, 0x0F7F, 0x1F, 0x22, 0x3E, 0x3E, attiny828,
+  0x9314, 512, 0x100,  256,  8192, 0x31,  64,   0, 0x0F7F, 0x1F, 0x22, 0x3E, 0x2C,  attiny828,
 
-  0x9209, 256, 0x100,   64,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2E, attiny48,
-  0x9311, 512, 0x100,   64,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2E, attiny88,
+  0x9209, 256, 0x100,   64,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  attiny48,
+  0x9311, 512, 0x100,   64,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  attiny88,
   
-  0x9412,1024, 0x100,  256, 16384, 0x2E,  32,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x2F, attiny1634,
+  0x9412,1024, 0x100,  256, 16384, 0x2E,  32,   1, 0x0000, 0x1C, 0x00, 0x22, 0x20,  attiny1634,
   
-  0x9205, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x3F, atmega48a,
-  0x920A, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x3F, atmega48pa,
-  0x930A,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x3F, atmega88a,
-  0x930F,1024, 0x100,  512,  8192, 0x2F,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x3F, atmega88pa,
-  0x9406,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x3F, atmega168a,
-  0x940B,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x3F, atmega168pa,
-  0x9514,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x3F, atmega328,
-  0x950F,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x3F, atmega328p,
+  0x9205, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega48a,
+  0x920A, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega48pa,
+  0x930A,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  atmega88a,
+  0x930F,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  atmega88pa,
+  0x9406,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  atmega168a,
+  0x940B,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  atmega168pa,
+  0x9514,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  atmega328,
+  0x950F,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  atmega328p,
   
-  0x9389, 512, 0x100,  512,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x3F, atmega8u2,
-  0x9489, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x3F, atmega16u2,
-  0x958A,1024, 0x100, 1024, 32768, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x3F, atmega32u2,
+  0x9389, 512, 0x100,  512,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega8u2,
+  0x9489, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega16u2,
+  0x958A,1024, 0x100, 1024, 32768, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega32u2,
   0,
 };
 
@@ -333,6 +358,7 @@ ISR(TIMER0_COMPA_vect)
 
 /******************* setup & loop ******************************/
 void setup(void) {
+  DEBLN(F("Restart ..."));
   TIMSK0 = 0; // no millis interrupts
   
   LEDDDR |= LEDPIN; // switch on output for system LED
@@ -361,7 +387,7 @@ void loop(void) {
 // init all global vars when the debugger connects
 void initSession(void)
 {
-  DEBLN(F("initSession"));
+  //  DEBLN(F("initSession"));
   bpcnt = 0;
   bpused = 0;
   toomanybps = false;
@@ -403,8 +429,7 @@ void reportFatalError(byte errnum, boolean checkio)
 // switch on blink IRQ when run, error, or power-cycle state
 void setSysState(statetype newstate)
 {
-  DEBPR(F("setSysState: "));
-  DEBLN(newstate);
+  DEBPR(F("setSysState: ")); DEBLN(newstate);
   TIMSK0 &= ~_BV(OCIE0A); // switch off!
   ctx.state = newstate;
   ontime = ontimes[newstate];
@@ -416,8 +441,8 @@ void setSysState(statetype newstate)
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
   }
-  //DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
-  //DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
+  DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
+  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
 /****************** gdbserver routines **************************/
@@ -474,7 +499,7 @@ void gdbHandleCmd(void)
 	gdbSendState(SIGINT);
       } else {
 	gdbSendState(SIGHUP);
-	DEBLN(F("Connection lost"));
+	// DEBLN(F("Connection lost"));
       }
     }
     break;
@@ -554,7 +579,7 @@ void gdbParsePacket(const byte *buff)
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"), 6) == 0)   /* monitor command */
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
-      DEBLN(F("qSupported"));
+      //DEBLN(F("qSupported"));
 	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+")); 
 	initSession();                               /* init all vars when gdb (re-)connects */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
@@ -583,42 +608,51 @@ void gdbParseMonitorPacket(const byte *buf)
 
   gdbCheckForRemainingBreakpoints(); // check if there are still BPs 
   gdbUpdateBreakpoints();  // update breakpoints in memory before any monitor ops
+
+  int clen = strlen(buf);
+  //DEBPR(F("clen=")); DEBLN(slen);
   
-  if (memcmp_P(buf, (void *)PSTR("73746f70"), 8) == 0)                     /* stop */
+  if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  /* dwo[ff] */
     gdbStop();
-  else if  (memcmp_P(buf, (void *)PSTR("696e6974"), 8) == 0)               /* init */
+  else if  (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)    /* dwc[onnnect] */
     gdbConnect();
-  else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e74"), 20) == 0)   /* flashcount */
+  else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)   /* fla[shcount] */
     gdbReportFlashCount();
-  else if (memcmp_P(buf, (void *)PSTR("72616d"), 6) == 0)                  /* ram usage */
+  else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)       /* ram[usage] */
     gdbReportRamUsage();
-  else if  (memcmp_P(buf, (void *)PSTR("636b64697638"), 12) == 0)          /* ckdiv8 */
+  else if  (memcmp_P(buf, (void *)PSTR("636b387072657363616c657200"), max(6,min(26,clen))) == 0) /* ck8[prescaler] */
     gdbSetCkFuses(CkDiv8);
-  else if  (memcmp_P(buf, (void *)PSTR("636b64697631"), 12) == 0)          /* ckdiv1 */
+  else if  (memcmp_P(buf, (void *)PSTR("636b317072657363616c657200"), max(6,min(26,clen))) == 0) /* ck1[prescaler] */
     gdbSetCkFuses(CkDiv1);
-  else if  (memcmp_P(buf, (void *)PSTR("72636f7363"), 10) == 0)            /* rcosc */
+  else if  (memcmp_P(buf, (void *)PSTR("72636f736300"), max(4,min(12,clen))) == 0)            /* rc[osc] */
     gdbSetCkFuses(CkRc);
-  else if  (memcmp_P(buf, (void *)PSTR("78746f7363"), 10) == 0)            /* xtosc */
+  else if  (memcmp_P(buf, (void *)PSTR("6578746f736300"), max(4,min(14,clen))) == 0)          /* ex[tosc] */
     gdbSetCkFuses(CkXtal);  
-  else if  (memcmp_P(buf, (void *)PSTR("68776270"), 8) == 0)               /* hwbp */
+  else if  (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)              /* hw[bp] */
     gdbSetMaxBPs(1);
-  else if  (memcmp_P(buf, (void *)PSTR("73776270"), 8) == 0)               /* swbp */
+  else if  (memcmp_P(buf, (void *)PSTR("7377627000"), max(4,min(10,clen))) == 0)              /* sw[bp] */
     gdbSetMaxBPs(MAXBREAK);
-  else if  (memcmp_P(buf, (void *)PSTR("346270"), 6) == 0)                 /* 4bp */
+  else if  (memcmp_P(buf, (void *)PSTR("34627000"), max(2,min(8,clen))) == 0)                 /* 4[bp] */
     gdbSetMaxBPs(4);
-#if UNITTESTS
-  else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)          /* testdw */
+#if UNITDW
+  else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)                             /* testdw */
     DWtests(para);
-  else if  (memcmp_P(buf, (void *)PSTR("746573747467"), 12) == 0)          /* testtg */
+#endif
+#if UNITTG
+  else if  (memcmp_P(buf, (void *)PSTR("746573747467"), 12) == 0)                             /* testtg */
     targetTests(para);
-  else if  (memcmp_P(buf, (void *)PSTR("74657374676462"), 14) == 0)        /* testgdb */
+#endif
+#if UNITGDB
+  else if  (memcmp_P(buf, (void *)PSTR("74657374676462"), 14) == 0)                           /* testgdb */
     gdbTests(para);
-  else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)        /* testall */
+#endif
+#if UNITALL
+  else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)                           /* testall */
     alltests();
 #endif
-  else if (memcmp_P(buf, (void *)PSTR("7265736574"), 10) == 0) {           /* reset */
-    gdbReset();
-    gdbSendReply("OK");
+  else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {           /* re[set] */
+    if (gdbReset()) gdbSendReply("OK");
+    else gdbSendReply("E09");
   } else gdbSendReply("");
 }
 
@@ -662,6 +696,7 @@ boolean gdbConnect(void)
   int conncode;
 
   conncode = targetConnect();
+  DEBPR(F("conncode=")); DEBLN(conncode);
   switch (conncode) {
 
   case 1: // everything OK since we are already connected
@@ -676,11 +711,14 @@ boolean gdbConnect(void)
   case 0: // we have changed the fuse and need to powercycle
     setSysState(PWRCYC_STATE);
     while (retry < 60) {
+      DEBPR(F("retry=")); DEBLN(retry);
       if (retry%3 == 0) { // try to power-cycle
+	DEBLN(F("Power cycle!"));
 	digitalWrite(VCC, LOW); // cutoff power to target
 	_delay_ms(500);
 	digitalWrite(VCC, HIGH); // power target again
 	_delay_ms(200); // wait for target to startup
+	DEBLN(F("Power cycling done!"));	
       }
       if ((retry++)%3 == 0 && retry >= 3) {
 	do {
@@ -691,8 +729,9 @@ boolean gdbConnect(void)
       }
       _delay_ms(1000);
       if (doBreak()) {
+	setSysState(CONN_STATE);
 #if NEWCONN==0
-	gdbReset();
+	gdbReset(); 
 #endif
 	flushInput();
 	gdbDebugMessagePSTR(Connected,-2);
@@ -700,7 +739,6 @@ boolean gdbConnect(void)
 	_delay_ms(100);
 	flushInput();
 	gdbSendReply("OK");
-	setSysState(CONN_STATE);
 	return true;
       }
     }
@@ -712,6 +750,7 @@ boolean gdbConnect(void)
     case -1: gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1); break;
     case -2: gdbDebugMessagePSTR(PSTR("Cannot connect: Unsupported MCU type"),-1); break;
     case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits are set"),-1); break;
+    case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: Weak pull-up or capacitive load on RESET line"),-1); break;
     default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); break;
     }
     break;
@@ -737,10 +776,15 @@ void gdbStop(void)
 }
     
 // issue reset on target
-void gdbReset(void)
+boolean gdbReset(void)
 {
+  if (targetOffline()) {
+    gdbDebugMessagePSTR(PSTR("Target offline: Cannot reset"), -1);
+    return false;
+  }
   targetReset();
   targetInitRegisters();
+  return true;
 }
 
 void gdbSetCkFuses(CkFuses fuse)
@@ -762,7 +806,7 @@ void gdbSetCkFuses(CkFuses fuse)
   case CkDiv8: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now programmed"),-1); break;
   case CkDiv1: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now unprogrammed"),-1); break;
   case CkRc: gdbDebugMessagePSTR(PSTR("Clock source is now the RC oscillator"),-1); break;
-  case CkXtal: gdbDebugMessagePSTR(PSTR("Clock source is now the XTAL oscillator"),-1); break;
+  case CkXtal: gdbDebugMessagePSTR(PSTR("Clock source is now the EXTernal oscillator"),-1); break;
   }
   _delay_ms(200);
   flushInput();
@@ -795,9 +839,9 @@ boolean gdbBreakPresent(unsigned int &opcode)
 // in a saved state.
 inline byte gdbBreakDetour(unsigned int opcode)
 {
-  DEBLN(F("gdbBreakDetour"));
+  //DEBLN(F("gdbBreakDetour"));
   if (targetIllegalOpcode(opcode)) {
-    DEBPR(F("Illop: ")); DEBLNF(opcode,HEX);
+    //DEBPR(F("Illop: ")); DEBLNF(opcode,HEX);
     return SIGILL;
   }
   targetRestoreRegisters();
@@ -814,14 +858,14 @@ byte gdbStep(void)
   unsigned int opcode;
   unsigned int oldpc = ctx.wpc;
   byte sig = SIGTRAP; // SIGTRAP (normal), SIGILL (if ill opcode), SIGSYS (fatal), SIGABRT (too many bps)
-  DEBLN(F("Start step operation"));
+  //DEBLN(F("Start step operation"));
   if (fatalerror) return SIGSYS;
   if (targetOffline()) return SIGHUP;
   if (toomanybps) return SIGABRT;
   if (gdbBreakPresent(opcode)) { // we have a break instruction inserted here
     return gdbBreakDetour(opcode);
   } else { // just single-step in flash
-    DEBPR(F("Opcode: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
+    //DEBPR(F("Opcode: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
     if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
       DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
       return SIGILL;
@@ -1615,14 +1659,24 @@ void gdbDebugMessagePSTR(const char pstr[],long num) {
 //   -1 if we cannot connect
 //   -2 if unknown MCU type
 //   -3 if lock bits set
+//   -4 if connection quality is not good enough
 
 int targetConnect(void)
 {
   unsigned int sig;
   int result = 0;
-  
+  unsigned int quality = DWquality();
+
+  if (quality > UNCONNRISETIME) return -1;
+  else if (quality > MAXRISETIME) return -4;
+  sei();
   if (doBreak()) {
-    return (setMcuAttr(DWgetChipId()) ? 1 : -2);
+    DEBLN(F("targetConnect: doBreak done"));
+    sig = DWgetChipId();
+    DEBPR(F("targetConnect: sig=")); DEBLNF(sig,HEX);
+    result = setMcuAttr(sig);
+    DEBPR(F("setMcuAttr=")); DEBLN(result);
+    return (result ? 1 : -2);
   }
   // so we need to set the DWEN fuse bit
   if (!enterProgramMode()) return -1;
@@ -1650,10 +1704,14 @@ boolean targetStop(void)
   boolean succ = false;
   unsigned int sig;
   if (doBreak()) {
+    DEBLN(F("Sending LEAVE cmd"));
     sendCommand((const byte[]) {0x06}, 1); // leave debugWIREMode
     _delay_ms(50);
   }
-  if (!enterProgramMode()) return false;
+  if (!enterProgramMode()) {
+    DEBLN(F("Could not enter progmode"));
+    return false;
+  }
   sig = ispGetChipId();
   if (sig && setMcuAttr(sig)) {
     if (ispProgramFuse(true, mcu.dwenfuse, mcu.dwenfuse)) {
@@ -1662,6 +1720,7 @@ boolean targetStop(void)
     }
   }
   leaveProgramMode();
+  dw.end();
   return succ;
 }
 
@@ -1698,7 +1757,7 @@ int targetSetCkFuses(CkFuses fuse)
   case CkDiv1: succ = ispProgramFuse(false, mcu.ckdiv8, mcu.ckdiv8); break;
   case CkDiv8: succ = ispProgramFuse(false, mcu.ckdiv8, 0); break;
   case CkRc:   succ = ispProgramFuse(false, mcu.ckmsk, mcu.rcosc); break;
-  case CkXtal: succ = ispProgramFuse(false, mcu.ckmsk, mcu.xtosc); break;
+  case CkXtal: succ = ispProgramFuse(false, mcu.ckmsk, mcu.extosc); break;
   default: succ = false;
   }
   return (succ ? 1 : -3);
@@ -2111,7 +2170,6 @@ boolean doBreak () {
   }
   DEBPR(F("First Speed: ")); DEBPRF(ctx.bps, DEC); DEBLN(F(" bps"));
   dw.begin(ctx.bps);                        // Set computed bit rate
-#if NEWCONN==1
   // now we send a reset command, wait for a falling edge, then calibrate again
   sendCommand((const byte[]){0x07}, 1);
   dw.enable(false);
@@ -2126,17 +2184,6 @@ boolean doBreak () {
   DEBPR(F("Second Speed: ")); DEBPRF(ctx.bps, DEC); DEBLN(F(" bps"));
   dw.begin(ctx.bps);                        // Set computed bit rate
   return true;
-#else 
-  DEBLN(F("Sending BREAK: "));
-  dw.sendBreak();
-  if (checkCmdOk()) {
-    DEBLN(F("debugWIRE Enabled"));
-    return true;
-  } else {
-    DEBLN(F("debugWIRE not enabled, is DWEN enabled?"));
-  }
-  return false;
-#endif
 }
 
 // send a command
@@ -2188,6 +2235,7 @@ unsigned int getWordResponse () {
   measureRam();
 
   getResponse(&tmp[0], 2);
+  DEBPR(F("getWordReponse: ")); DEBLNF(((unsigned int) tmp[0] << 8) + tmp[1],HEX);
   return ((unsigned int) tmp[0] << 8) + tmp[1];
 }
 
@@ -2646,7 +2694,7 @@ unsigned int DWgetWBp () {
 unsigned int DWgetChipId () {
   DWflushInput();
   sendCommand((const byte[]) {0xF3}, 1);
-  return (getWordResponse()) ;
+  return (getWordResponse());
 }
 
 // set PC (word address)
@@ -2662,13 +2710,13 @@ void DWsetWBp (unsigned int wbp) {
   sendCommand(cmd, sizeof(cmd));
 }
 
-// execute a 2-byte instruction offline
+// execute an instruction offline (can be 2-byte or 4-byte)
 void DWexecOffline(unsigned int opcode)
 {
   byte cmd[] = {0xD2, (byte) (opcode >> 8), (byte) (opcode&0xFF), 0x23};
   measureRam();
 
-  DEBPR(F("Offline exec: "));
+  //DEBPR(F("Offline exec: "));
   DEBLNF(opcode,HEX);
   sendCommand(cmd, sizeof(cmd));
 }
@@ -2682,14 +2730,42 @@ void DWflushInput(void)
   }
 }
 
+// test quality of DW line by measuring rise time (in clock cycles)
+// and return it
+unsigned int DWquality(void)
+{
+  unsigned int rise;
+  byte savesreg;
+  
+  TCCRA = 0;
+  TCCRC = 0;
+  TCCRB = _BV(CS0) |  _BV(ICES) | _BV(ICNC);// prescaler = 1 + noise canceler + rising edge
+  ICDDR |= _BV(ICBIT); // make RESET line an output = low (2 cycles after timer start)
+  _delay_ms(5);        // stabilize voltage
+  DEBLN(F("Reset timer and go high"));
+  savesreg =SREG;
+  cli();
+  TCNT = 0;            // reset counter
+  ICDDR &= ~_BV(ICBIT); // make it an input = high
+  while ((TIFR & _BV(ICF)) == 0 && TCNT < UNCONNRISETIME); // wait for edge
+  if (TCNT < UNCONNRISETIME) rise = ICR-2;  // get time from input capture (4 cycles late because of noise cancelation)
+  else rise = TCNT;
+  SREG = savesreg; 
+  DEBPR(F("rise time=")); DEBLN(rise);
+  return rise;
+}
+
 
 /***************************** a little bit of SPI programming ********/
 
 
 void enableSpiPins () {
+  DEBLN(F("ESP ..."));
   pinMode(RESET, OUTPUT);
   digitalWrite(RESET, LOW);
+  DEBLN(F("RESET low"));
   _delay_us(1);
+  DEBLN(F("waited"));
   pinMode(SCK, OUTPUT);
   digitalWrite(SCK, LOW);
   pinMode(MOSI, OUTPUT);
@@ -2735,8 +2811,11 @@ boolean enterProgramMode ()
   byte timeout = 5;
 
   DEBLN(F("Entering progmode"));
+  dw.enable(false);
   do {
+    DEBLN(F("Do ..."));
     enableSpiPins();
+    DEBLN(F("Pins enabled ..."));
     digitalWrite(RESET, HIGH); 
     _delay_us(30);             // short positive RESET pulse of at least 2 clock cycles
     digitalWrite(RESET, LOW);  
@@ -2760,6 +2839,7 @@ void leaveProgramMode()
   disableSpiPins();
   _delay_ms(10);
   pinMode(RESET, INPUT); // allow MCU to run or to communicate via debugWIRE
+  dw.enable(true);
 }
   
 
@@ -2790,9 +2870,9 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
   if (high) newfuse = highfuse;
   else newfuse = lowfuse;
 
-  DEBPR(F("Old ")); if (high) DEBPR(F("high ")); DEBPR(F("fuse: ")); DEBLNF(newfuse,HEX);
+  //DEBPR(F("Old ")); if (high) DEBPR(F("high ")); DEBPR(F("fuse: ")); DEBLNF(newfuse,HEX);
   newfuse = (newfuse & ~fusemsk) | (fuseval & fusemsk);
-  DEBPR(F("New ")); if (high) DEBPR(F("high ")); DEBPR(F("fuse: ")); DEBLNF(newfuse,HEX);
+  //DEBPR(F("New ")); if (high) DEBPR(F("high ")); DEBPR(F("fuse: ")); DEBLNF(newfuse,HEX);
 
   if (high) highfuse = newfuse;
   else lowfuse = newfuse;

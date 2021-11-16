@@ -1,3 +1,13 @@
 - a mode where reads & writes are double-checked: "monitor verify/noverify". Could be
   on or off by default.
-- checking whether there is a capacitive load on the RESET line
+- check communication speed setting again
+- use cases
+  - adapting picoUART 
+  - blink with user ISR
+  - Fibonacci with memoization & array overflow
+  - OOP with geometric objects
+  - TicTacToe (with fixed seed)
+- PCB
+  - circuit design
+  - breadboard test
+  - PCB design

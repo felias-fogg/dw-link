@@ -1,13 +1,17 @@
 
 /********************************* General setup and reporting functions ******************************************/
 
-
 // run all unit tests
 void alltests(void)
 {
   int failed = 0;
   int testnum = 1;
 
+  if (targetOffline()) {
+    gdbSendReply("E00");
+    return;
+  }
+  
   failed += DWtests(testnum);
   failed += targetTests(testnum);
   failed += gdbTests(testnum);
@@ -101,6 +105,11 @@ int gdbTests(int &num) {
   int testnum;
   unsigned int oldsp;
 
+  if (targetOffline()) {
+    gdbSendReply("E00");
+    return;
+  }
+  
   if (num >= 1) testnum = num;
   else testnum = 1;
 
@@ -227,7 +236,7 @@ int gdbTests(int &num) {
   // replacing the first word of a STS __,r18 instruction; execution happens using
   // simulation.
   gdbDebugMessagePSTR(PSTR("Test gdbStep on 4-byte instruction (STS) hidden by BREAK: "), testnum++);
-  DEBLN(F("Test simulated write:"));
+  //DEBLN(F("Test simulated write:"));
   unsigned int sramaddr = (mcu.rambase == 0x60 ? 0x60 : 0x100);
   ctx.regs[18] = 0x42;
   ctx.wpc = 0xda;
@@ -235,11 +244,11 @@ int gdbTests(int &num) {
   targetWriteSram(sramaddr, membuf, 1);
   targetReadSram(sramaddr, membuf, 1);
   membuf[0] = 0;
-  DEBLNF(membuf[0],HEX);
+  //DEBLNF(membuf[0],HEX);
   gdbStep();
   targetReadSram(sramaddr, membuf, 1);
-  DEBLNF(membuf[0],HEX);
-  DEBLNF(ctx.wpc,HEX);
+  //DEBLNF(membuf[0],HEX);
+  //DEBLNF(ctx.wpc,HEX);
   failed += testResult(membuf[0] == 0x42 && ctx.wpc == 0xdc);
 
   // perform a single stop at location 0xe5 at which a BREAK instruction has been inserted,
@@ -249,8 +258,8 @@ int gdbTests(int &num) {
   ctx.regs[17] = 0xFF;
   ctx.wpc = 0xe4;
   gdbStep();
-  DEBLNF(ctx.regs[17],HEX);
-  DEBLNF(ctx.wpc,HEX);
+  //DEBLNF(ctx.regs[17],HEX);
+  //DEBLNF(ctx.wpc,HEX);
   failed += testResult(ctx.wpc == 0xe5 && ctx.regs[17] == 0x91);
 
   // perform a single step at location 0xe5 on instruction RET
@@ -273,17 +282,17 @@ int gdbTests(int &num) {
   targetReadFlash(0x1ad, membuf, 0x1C); // from 0x1ad (uneven) to 0x1e4 (even)
   succ = (membuf[0x1ad-0x1ad] == 0x00 && membuf[0x1b4-0x1ad] == 0x98
 	  && membuf[0x1b4-0x1ad+1] == 0x95 && membuf[0x1c8-0x1ad] == 0x98);
-  DEBLNF(membuf[0x1ad-0x1ad],HEX);
-  DEBLNF(membuf[0x1b4-0x1ad],HEX);
-  DEBLNF(membuf[0x1b4-0x1ad+1],HEX);
-  DEBLNF(membuf[0x1c8-0x1ad],HEX);
-  DEBLN();
+  //DEBLNF(membuf[0x1ad-0x1ad],HEX);
+  //DEBLNF(membuf[0x1b4-0x1ad],HEX);
+  //DEBLNF(membuf[0x1b4-0x1ad+1],HEX);
+  //DEBLNF(membuf[0x1c8-0x1ad],HEX);
+  //DEBLN();
   gdbHideBREAKs(0x1ad, membuf, 0x1C);
-  DEBLNF(membuf[0x1ad-0x1ad],HEX);
-  DEBLNF(membuf[0x1b4-0x1ad],HEX);
-  DEBLNF(membuf[0x1b4-0x1ad+1],HEX);
-  DEBLNF(membuf[0x1c8-0x1ad],HEX);
-  DEBLN();
+  //DEBLNF(membuf[0x1ad-0x1ad],HEX);
+  //DEBLNF(membuf[0x1b4-0x1ad],HEX);
+  //DEBLNF(membuf[0x1b4-0x1ad+1],HEX);
+  //DEBLNF(membuf[0x1c8-0x1ad],HEX);
+  //DEBLN();
   failed += testResult(succ && membuf[0x1ad-0x1ad] == 0x00 && membuf[0x1b4-0x1ad] == 0x20
 		       && membuf[0x1b4-0x1ad+1] == 0x93 && membuf[0x1c8-0x1ad] == 0x11);
 
@@ -297,8 +306,8 @@ int gdbTests(int &num) {
   gdbDebugMessagePSTR(PSTR("Test gdbStep on illegal instruction 0x0001: "), testnum++);
   ctx.wpc = 0xe6;
   byte sig = gdbStep();
-  DEBLNF(ctx.wpc,HEX);
-  DEBLN(sig);
+  //DEBLNF(ctx.wpc,HEX);
+  //DEBLN(sig);
   failed += testResult(sig == SIGILL && ctx.wpc == 0xe6);
   
   // execute starting at 0xd5 (word address) with a NOP and run to the hardware breakpoint (next instruction)
@@ -334,6 +343,11 @@ int targetTests(int &num) {
   int testnum;
   byte i;
   long lastflashcnt;
+
+  if (targetOffline()) {
+    gdbSendReply("E00");
+    return;
+  }
 
   if (num >= 1) testnum = num;
   else testnum = 1;
@@ -418,14 +432,14 @@ int targetTests(int &num) {
   ctx.sreg = 0;
   for (i = 0; i < 32; i++) ctx.regs[i] = 0;
   targetSaveRegisters(); // get all regs from target
-  DEBLN(F("All regs from target"));
+  //DEBLN(F("All regs from target"));
 	
   if (!ctx.saved || ctx.wpc != 0x123-1 || ctx.sp != spinit || ctx.sreg != 0xF7) succ = false;
   for (i = 0; i < 32; i++) {
-    DEBLNF(ctx.regs[i],HEX);
+    //DEBLNF(ctx.regs[i],HEX);
     if (ctx.regs[i] != i+1) succ = false;
   }
-  DEBPR(F("wpc/sp/sreg = ")); DEBPRF(ctx.wpc,HEX); DEBPR(F("/")); DEBPRF(ctx.sp,HEX); DEBPR(F("/")); DEBLNF(ctx.sreg,HEX); 
+  //DEBPR(F("wpc/sp/sreg = ")); DEBPRF(ctx.wpc,HEX); DEBPR(F("/")); DEBPRF(ctx.sp,HEX); DEBPR(F("/")); DEBLNF(ctx.sreg,HEX); 
   failed += testResult(succ);
 
   // test ergister init procedure
@@ -558,6 +572,11 @@ int DWtests(int &num)
   bool succ;
   int testnum;
   byte temp;
+
+  if (targetOffline()) {
+    gdbSendReply("E00");
+    return;
+  }
 
   if (num >= 1) testnum = num;
   else testnum = 1;

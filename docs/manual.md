@@ -12,8 +12,9 @@ You just need an ATmega328 based board to get started (e.g., UNO, Nano, or Mini)
 
 ### Warning
 
-Read Section 2.3 carefully before trying to debug a target system. You might very well "brick" your MCU. The only way to unbrick the MCU is to use high-voltage programming.
+Read [Section 2.3](#section23) on the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements.
 
+<a name="section1"></a>
 ## 1. The debugWIRE interface
 
 The basic idea of *debugWIRE* is that one uses the RESET line as a communication line between the target system (the system you want to debug) and the development machine, which runs a debug program such as GDB. This idea is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU.
@@ -24,10 +25,9 @@ Do not get nervous when your MCU does not react any longer as you expect it, but
 2. The **transitionary** state, in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** state.
 3. The **debugWIRE** state is the state in which you can use the debugger to control the target system. If you want to return to the **normal** state, a particular debugWIRE command leads to a transition to the **transitionary** state, from which one can reach the normal state using ISP programming. 
 
-The hardware debugger will take care of bringing you from state 1 to state 3 in order start debugging by either power-cycling itself or asking you to do it. This is accomplished with the gdb command ```monitor init```. The transition from state 3 to state 1 can be achieved by the gdb command ```monitor stop```.
+The hardware debugger will take care of bringing you from state 1 to state 3 in order start debugging by either power-cycling itself or asking you to do it. This is accomplished with the gdb command ```monitor dwconnect```. The transition from state 3 to state 1 can be achieved by the gdb command ```monitor dwoff```.
 
-Having said all that, I have to admit that I encountered strange situations that I did not understand, and which led to bricking MCUs. Sometimes MCUs started up with a much lower communication speed than is standard and only after a RESET command they offered the full speed. I have have taken this into account now. Further, some MCUs claimed to have been transitioned into the debugWIRE state, but actually did not. In any case, there is no guarantee that the hardware debugger will not brick your MCU. Usually, it can be resurrected by using a high-voltage programmer, provided you own one or you build one on the fly using my [RescueAVR Arduino sketch](https://github.com/felias-fogg/RescueAVR). With SMD chips that cannot be removed from the target, things may be tricky, however. 
-
+Having said all that, I have to admit that I encountered strange situations that I did not understand, and which led to bricking MCUs. Sometimes MCUs started up with a much lower communication speed than is standard and only after a RESET command they offered the full speed. I have have taken this into account now. Further, some MCUs claimed to have been transitioned into the debugWIRE state, but actually did not. In any case, there is no guarantee that the hardware debugger will not brick your MCU. Usually, it can be [resurrected by using a high-voltage programmer](#worstcase), though.
 
 ## 2. Hardware requirements
 
@@ -38,7 +38,7 @@ As mentioned above, as a base for the debugger you can use any ATmega328 based b
 
 If you want to use the debugger more than once, it may payoff to configure an ISP cable with the RESET line broken out, similar to what has been described by dmjlambert in [his instructables](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). Going one step further, one could break out the Vcc line on ICSP pin 2 as well and 
 
-* connect it to Arduino pin 9 in order to be able to power-cycle the target system automatically when necessary; note that in this case the target system should draw no more than 20 mA;
+* connect it to Arduino pin 9 on your hardware debugger in order to be able to power-cycle the target system automatically when necessary; note that in this case the target system should draw no more than 20-30 mA;
 * leave it open when the target system has an external power source;
 * or connect it to the Vcc pin of the Arduino board powering the target system from the Uno.
 
@@ -65,13 +65,14 @@ In general, almost all "older" ATtiny MCUs and the ATmegaXX8 series have the deb
 * __ATmega48A__, ATmega48PA, __ATmega88A__, ATmega88PA, __ATmega168A__, ATmega168PA, __ATmega328__, __ATmega328P__
 * ATmega8U2, ATmega16U2, ATmega32U2
 
-I have tested the debugger on the MCUs marked bold. They probably also work on the untested MCUs. However, there are always surprises. For example, the ATmegaXX8 with 16 KiB flash or less require a particular way of changing fuses, the ATtiny1634 had a special way of erasing flash pages, the ATtiny4313 used a different address for the DWDR register than the 2313, and the ATmega328 claims to be an ATmega328P when debugWIRE is activated. 
+I have tested the debugger on the MCUs marked bold. It will probably also work on the untested MCUs. However, there are always surprises. For example, the ATmegasX8 with 16 KiB flash or less require a particular way of changing fuses, the ATtiny1634 had a special way of erasing flash pages, the ATtiny4313 used a different address for the DWDR register than the 2313, and the ATmega328 claims to be an ATmega328P when debugWIRE is activated. 
 
 <a name="section23"></a>
 ### 2.3 Requirements concerning the RESET line of the target system 
 
+Since the RESET line of the target system is used as an asynchronous half-duplex serial communication line, one has to make sure that there is no capacitive load on the line when it is used in debugWIRE mode. On an Arduino Uno and similar boards, there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
-Since the RESET line of the target system is used as an asynchronous serial communication line, one has to make sure that there is no capacitive load on the line when it is used in debugWIRE mode. On an Arduino Uno and similar boards, there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the board any longer with the Arduino IDE. A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper.
+A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper. Alternatively, you could always manually reset the UNO before the Arduino IDE attempts to upload a sketch. The trick is to release the reset button just when the compilation process has finished. 
 
 ![Solder bridge on Uno board](pics/solderbridge.jpg)
 
@@ -79,7 +80,15 @@ Solder bridge (picture copied from [https://sites.google.com/site/wayneholder/de
 
 Further, one needs a 10 kΩ pullup resistor on the RESET line. According to reports of other people, 4.7 kΩ might also work. Higher values than 10 kΩ are not advisable, though, because the signal quality might suffer. Pullups with less than 4.7kΩ probably will not work because the debugWIRE interface is not strong enough. The Arduino Uno has already a pullup of 10 kΩ, so one does not need another one. 
 
-Other Arduino boards, such as the Nano, are a bit harder to modify, while a Pro Mini, for example, can be used without a problem, provided the DTR line of the FTDI connector is not connected. In general, I suggest to use debugWIRE on boards you have complete control over the hardware, e.g., the boards you have designed yourself.
+Other Arduino boards, such as the [Nano, are a bit harder to modify](https://mtech.dk/thomsen/electro/arduino.php), while a Pro Mini, for example, can be used without a problem, provided the DTR line of the FTDI connector is not connected. In general, it is a good idea to get hold of a schematic of the board you are going to debug. Then it is easy to find out what is connected to the RESET line, and what needs to be removed.
+
+The debugger will test the RESET line before attempting to start a debugWIRE session and will report on whether the pull-up is to weak or whether there is a capacitive load. However, there is no guarantee that passing the test leads to error-free communication between the hardware debugger and the target. For instance, the debugger cannot check whether the pull-up is too strong.
+
+<a name="worstcase"></a>
+### 2.4 Worst-case scenario 
+
+So, what is the worst-case scenario? As described in [Section 1](#section1), first the DWEN fuse is programmed using ISP programming. Then one has to power-cycle in order to reach the debugWIRE state, in which you can communicate with the target over the RESET line. If this kind of communication fails, you cannot put the target back in a state, in which ISP programming is possible. Your MCU is *bricked*. There are two ways out here. First you can try to make the RESET line compliant with the debugWIRE requirements. Then you should be able to connect to the target using the hardware debugger. Second, you can use high-voltage programming, where 12 volt have to applied to the RESET pin. So you either remove the chip from the board and do the programming offline or you remove any connection from the RESET line to the Vcc rail and other components on the board. Then you can use either an existing high-voltage programmer or you build one on a breadboard (see my [HV programmer on the fly](https://github.com/felias-fogg/RescueAVR)).
+
 
 ## 3. Installation and example sessions
 
@@ -95,7 +104,7 @@ However, before you can start to debug, you have to setup the hardware. I'll use
 ![ATtiny85 on a breadboard](pics/debug-attiny85_Steckplatine.png)
 
 
-As you can see, the Vcc rail is connected to pin 9 of the Arduino, so that the Uno will be able to power-cycle the target chip. Furthermore, pin 8 of the Arduino is connected to the RESET pin of the ATtiny (pin 1). Note the presence of the pullup resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino and ATtiny are MOSI, MISO and SCK, which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny (which is PB4 or digital pin 4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" assignment of hardware pins to Arduino pins).
+As you can see, the Vcc rail is connected to pin 9 of the Arduino so that the Uno will be able to power-cycle the target chip. Furthermore, pin 8 of the Arduino is connected to the RESET pin of the ATtiny (pin 1). Note the presence of the pullup resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino and ATtiny are MOSI, MISO and SCK, which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny (which is PB4 or digital pin 4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" assignment of Arduino pins).
 
 
 ![ATtiny85 pinout](https://raw.githubusercontent.com/SpenceKonde/ATTinyCore/master/avr/extras/ATtiny_x5.png)
@@ -195,12 +204,11 @@ Unfortunately, the debugger is not any longer part of the toolchain integrated i
 
 #### 3.2.5 Example session with avr-gdb
 
-Now we are ready to start a debug session. So compile the example `tiny85blink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `tiny85blink.ino.elf` in the sketch directory. Then connect your Uno to your computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment: 
-
+Now we are ready to start a debug session. So compile the example `tiny85blink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `tiny85blink.ino.elf` in the sketch directory. Then connect your Uno to your computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment. **\<serial port\>** is the serial port you use to communicate with the UNO.
 ```
 > avr-gdb
-GNU gdb (GDB) 10.1
-Copyright (C) 2020 Free Software Foundation, Inc.
+GNU gdb (GDB) 10.2
+Copyright (C) 2021 Free Software Foundation, Inc.
 ...
 
 (gdb) file tiny85blink.ino.elf                # load symbol table from executable file
@@ -209,48 +217,59 @@ Reading symbols from tiny85blink.ino.elf...
 (gdb) target remote <serial port>             # connect to the serial port of the hardware debugger    
 Remote debugging using <serial port>
 0x00000000 in __vectors ()
-(gdb) monitor init                            # now start debugWIRE
-Please power-cycle the target system          # the LED on the UNO will now flash every second
-Ignoring packet error, continuing...
-Please power-cycle the target system 
-debugWire is now enabled                      # now we are connected to the MCU and UNO LED is on
+(gdb) monitor dwconnect                       # now start debugWIRE
+Connected to ATtiny85
+debugWIRE is now enabled, bps: 63713          # now we are connected to the MCU and UNO LED is on
 (gdb) load                                    # load binary file
-Loading section .text, size 0x374 lma 0x0
-Start address 0x00000000, load size 884
-Transfer rate: 621 bytes/sec, 221 bytes/write.
+Loading section .text, size 0x1e2 lma 0x0
+Start address 0x00000000, load size 482
+Transfer rate: 621 bytes/sec, 160 bytes/write.
 (gdb) break loop                              # set breakpoint at start of loop
-Breakpoint 1 at 0x1f2: file /.../tiny85blink/tiny85blink.ino, line 39.
-(gdb) br 42                                   # set breakpoint at line 42 or later
-Breakpoint 2 at 0x202: file /.../tiny85blink/tiny85blink.ino, line 43.
+Breakpoint 1 at 0x1ae: file /.../tiny85blink/tiny85blink.ino, line 14.
+(gdb) list loop                               # list part of loop functions and shifts focus
+9	}
+10	
+11	// the loop function runs over and over again forever
+12	void loop() {
+13	  int i=10;
+14	  digitalWrite(LED, HIGH);   // turn the LED on (HIGH is the voltage level)
+15	  i++;
+16	  delay(1000);                       // wait for a second
+17	  i++;
+18	  digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
+(gdb) br 18                                   # set breakpoint at line 16 or later
+Breakpoint 2 at 0x1bc: file /.../tiny85blink/tiny85blink.ino, line 18.
 (gdb) continue                                # start execution (at PC=0)
 Continuing.
 
 Breakpoint 1, loop ()
-    at /.../tiny85blink/tiny85blink.ino:39
+    at /.../tiny85blink/tiny85blink.ino:14
 39	  digitalWrite(LED, HIGH);   // turn the LED on (HIGH is the voltage level)
 (gdb) set var thisByte=20                     # set variable thisByte
 (gdb)  print i                                # print value of variable i
 $1 = 10
-(gdb) step                                    # make one step (even stepping into functions)
+(gdb) next                                    # make one step (not stepping into functions)
+16	  delay(1000);                       // wait for a second
+(gdb) step
 delay (ms=1000)
-    at /.../ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:518
+    at /.../tiny/wiring.c:518
 518	    uint16_t start = (uint16_t)micros();
 (gdb) finish                                  # finish current function and return
 Run till exit from #0  delay (ms=1000)
-    at /.../ATTinyCore/hardware/avr/1.5.2/cores/tiny/wiring.c:518
+    at /.../tiny/wiring.c:518
 
-Breakpoint 2, loop ()                         # reached second breakpoint
+Breakpoint 2, loop ()                         # reached second breakpoint when returning
     at /.../tiny85blink/tiny85blink.ino:43
-43	  digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
+18	  digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
 (gdb) info breakpoints                        # show all breakpoints
 Num     Type           Disp Enb Address    What
-1       breakpoint     keep y   0x000001f2 in loop() 
-                                           at /.../tiny85blink/tiny85blink.ino:39
-	breakpoint already hit 2 times
-2       breakpoint     keep y   0x00000202 in loop() 
-                                           at /.../tiny85blink/tiny85blink.ino:43
+1       breakpoint     keep y   0x000001ae in loop() 
+                                           at /.../tiny85blink/tiny85blink.ino:14
 	breakpoint already hit 1 time
-(gdb) delete breakpoint 1                     # remove breakpoint 1
+2       breakpoint     keep y   0x000001c0 in loop() 
+                                           at /.../tiny85blink/tiny85blink.ino:18
+	breakpoint already hit 1 time
+(gdb) delete 1                                # remove breakpoint 1
 (gdb) detach                                  # detach from remote target
 Detaching from program: /Users/nebel/Development/GitHub/debugWIRE-probe/examples/tiny85blink/tiny85blink.ino.elf, Remote target
 Ending remote debugging.
@@ -265,20 +284,20 @@ Note that the ATtiny MCU is still in debugWIRE mode and the RESET pin cannot be 
 
 ```
 > avr-gdb
-GNU gdb (GDB) 10.1
-Copyright (C) 2020 Free Software Foundation, Inc.
+GNU gdb (GDB) 10.2
+Copyright (C) 2021 Free Software Foundation, Inc.
 ...
 
 (gdb) set serial baud 115200              # set baud rate 
 (gdb) target remote <serial port>         # connect to the serial port of the hardware debugger    
 Remote debugging using <serial port>
 0x00000000 in __vectors ()
-(gdb) monitor stop                        # terminate debugWIRE mode 
+(gdb) monitor dwoff                       # terminate debugWIRE mode 
 debugWire is now disabled
 (gdb) quit
 >
 ```        
-Of course, you could have done that before leaving the debug session.
+Of course, you could have done that before leaving the debug session in the previous section.
 
 #### 3.2.7 GDB commands
 
@@ -318,14 +337,14 @@ set se[rial] b[aud] *number* | set baud rate of the serial line to the gdbserver
 tar[get] rem[ote] *serial line* | specify the serial line to the gdbserver (use only after baud rate has been set)
 fil[e] *name*.elf | load the symbol table from the specified ELF file
 lo[ad] | load the ELF file into flash memory
-mo[nitor] init | establishes the debugWIRE link to the target
-mo[nitor] stop | disable debugWIRE mode
-mo[nitor] reset | resets the MCU
-mo[nitor] flashcount | reports on how many flash-page write operation have taken place since start  
-mo[nitor] ckdiv8 | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator)
-mo[nitor] ckdiv1 | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
-mo[nitor] hwbp | set number of allowed breakpoints to 1 (i.e., only HW BP) 
-mo[nitor] swbp | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
+mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target
+mo[nitor] dwo[ff] | disable debugWIRE mode
+mo[nitor] re[set] | resets the MCU
+mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
+mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator)
+mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
+mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
+mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
 tu[i] e[nable] | enable text window user interface
 tu[i] d[isable] | disable text window user interface
 
@@ -361,7 +380,7 @@ After having copied the two files into the project directory and reopened the pr
 
 #### 3.3.4 Switch off debugWIRE mode
 
-There are two ways of switching off the debugWIRE mode. If you click on the ant symbol (last symbol in the left navigation bar), there should be the option *debug* environment. When you then click on *Custom*, you should see you the option *DebugWire Stop*. Clicking on it will set the MCU back to its normal state, where the RESET line can be used for resets and ISP programming is possible.  Alternatively, you should be able to bring back you MCU to the normal state by typing "monitor stop" in the debugging terminal window of the PlatformIO IDE.
+There are two ways of switching off the debugWIRE mode. If you click on the ant symbol (last symbol in the left navigation bar), there should be the option *debug* environment. When you then click on *Custom*, you should see you the option *DebugWire Stop*. Clicking on it will set the MCU back to its normal state, where the RESET line can be used for resets and ISP programming is possible.  Alternatively, you should be able to bring back you MCU to the normal state by typing `monitor dwoff` in the debugging terminal window of the PlatformIO IDE.
 
 ## 4. Problems and shortcomings
 
@@ -404,7 +423,7 @@ Sometimes, in particular when using 1MHz clock speed, the responses from the MCU
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ckdiv8` and `monitor ckdiv1` to the hardware debugger that allows you to change this fuse. `monitor ckdiv8` programs the fuse, i.e., the clock is divided by 8, `monitor ckdiv1` un-programs this fuse. 
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. 
 
 ### 4.3 Limited number of breakpoints
 
@@ -452,15 +471,17 @@ This means that the sequence of first disabling debugWIRE by a debugWIRE command
 The debugger is not able to connect to the target system using ISP commands. Most probably the wiring is wrong. 
 
 #### Problem: You get the message *Cannot connect: Unsupported MCU type* 
-Sorry, but the target system is (very probably) debugWIRE incompatible. If you believe that this message is in error, please drop me a line.
+The target system is (very probably) debugWIRE incompatible. If you believe that this message is in error, please drop me a line.
 
 #### Problem: You get the message *Cannot connect: Lock bits are set* 
 Some of the lock bits are set and for this reason it is not possible to debug the MCU. You need to erase the entire device using ISP programming before you can continue.
 
+#### Problem: You get the message *Cannot connect: Weak pull-up or capacitive load on RESET line*
+The electric characteristic of the RESET line does not permit successful communication between the hardware debugger and the target. Add a pull-up resistor (10 kΩ should be appropriate) and/or remove the capacitor from the RESET line. 
+
 #### Problem: You get the *power-cycle* message a couple of times, then the debugger stops and blinks furiously
 
-When the *power-cycle* message is displayed, you have to power-cycle the target system. If you do not do that, after a while the debugger will go into the error state (LED blinking) and stop. If you have power-cycled the target system (or the debugger has done that automatically), but you still get the message, it could be possible that the RESET line of the target system has no pullup, a pullup that is too strong, or a  capacitive load (see [Section 2.3](#section23)). Be aware: the target system is now in debugWIRE mode and the **only** way to bring it back to normal mode is to solve the problems with the RESET line, e.g., by removing the capacitor! Well, one could actually use high-voltage programming to reset the MCU,
-provided one has such a programmer and the MCU can be unplugged from the target system.
+When the *power-cycle* message is displayed, you have to power-cycle the target system. If you do not do that, after a while the debugger will go into the error state (LED blinking) and stop. If you have power-cycled the target system (or the debugger has done that for you automatically), but you still get the message, it could be possible that the RESET line of the target system has no pullup, a pullup that is too strong, or a  capacitive load (see [Section 2.3](#section23)). Be aware: the target system is now in debugWIRE mode and the **only** ways to bring it back to normal mode is to solve the problems with the RESET line, e.g., by removing the capacitor, or you use high-voltage programming to resurrect the MCU (see [Section 2.3](#section23)).
 
 #### Problem: The debugger responses are very sluggish   
 
@@ -485,7 +506,7 @@ The debugger checks whether the first instruction it has to execute is a legal i
 
 #### Problem: You get the message *\*\*\*\*Fatal internal debugger error: n* when trying to start execution
 
-In this case some serious internal error happened. You have to stop the current debug session, reset the debugger and restart. Please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). BTW: `monitor stop` can still be executed in order to disable the debugWIRE on your MCU even if a fatal error happened. 
+In this case some serious internal error happened. You have to stop the current debug session, reset the debugger and restart. Please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). BTW: `monitor dwoff` can still be executed in order to disable the debugWIRE on your MCU even if a fatal error happened. 
 
 #### Problem: The debugger does not stop at the line the breakpoint was set
 
