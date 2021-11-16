@@ -345,6 +345,11 @@ void SingleWireSerial::handle_interrupt()
 }
 #endif // not _FASTIRQ
 
+ISR(TIMER_CAPT_vect, ISR_NAKED)
+{
+  SingleWireSerial::handle_interrupt();
+}
+
 //
 // Constructor
 //
@@ -408,9 +413,6 @@ void SingleWireSerial::begin(long speed)
   _bitDelay = (bit_delay100+50)/100; // bit delay time in timer1 ticks
   _oneAndAHalfBitDelay = (bit_delay100+bit_delay100/2+50)/100; // delay until first sample time point
   _endOfByte = _oneAndAHalfBitDelay + (7*_bitDelay); // last sample timepoint
-  TCCRA = 0;
-  TCCRC = 0;
-  setRxIntMsk(true);
 
 #if _LOGDEBUG
   Serial.print(F("bit_delay100="));
@@ -426,6 +428,9 @@ void SingleWireSerial::begin(long speed)
   Serial.print(F("_setCTC="));
   Serial.println(_setCTC,BIN);
 #endif
+  TCCRA = 0;
+  TCCRC = 0;
+  setRxIntMsk(true);
 #if _DEBUG
   DDRC |= 0x3F;
 #endif
@@ -435,7 +440,6 @@ void SingleWireSerial::end()
 {
   _receive_buffer_tail = _receive_buffer_head;
   setRxIntMsk(false);
-  _bitDelay = 0;
 }
 
 
@@ -461,7 +465,6 @@ size_t SingleWireSerial::write(uint8_t data)
 {
   uint8_t oldSREG = SREG;
 
-  //  if (_bitDelay == 0) return 0;
   setRxIntMsk(false);
   TCCRA = 0;
   TCCRC = 0;

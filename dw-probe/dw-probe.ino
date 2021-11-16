@@ -31,7 +31,7 @@
 #error "dw-probe needs at least 16 MHz clock frequency"
 #endif
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #ifndef DEBUG        // for debugging the debugger!
 #define DEBUG    0   
 #endif

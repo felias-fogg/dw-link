@@ -53,7 +53,6 @@ private:
   static uint8_t _receive_buffer[_SS_MAX_RX_BUFF]; 
   static volatile uint8_t _receive_buffer_tail;
   static volatile uint8_t _receive_buffer_head;
-  static void handle_interrupt()  __asm__("TIMER1_CAPT_vect") __attribute__((__signal__, naked, __used__, __externally_visible__));
 
 
 protected:
@@ -73,9 +72,9 @@ public:
   virtual int available();
   virtual void flush();
   operator bool() { return true; }
-  
-  //using Print::write;
 
+  // public only for easy access by interrupt handler
+  static inline void handle_interrupt() __attribute__((__always_inline__));
 };
 
 #endif
