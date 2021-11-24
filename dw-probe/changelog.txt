@@ -254,7 +254,7 @@ Version 0.9.9 (14-Nov-21)
     unit tests, otherwise the inactive BPs were cleaned up and the hide breaks
     routine would not be effective.
 
-Version 1.0.0
+Version 1.0.0 (16-Nov-21)
   - renamed monitor commands "init" and "stop" to "dwco[nnect]" and "dwof[f]"
   - renamed monitor commands "ckdiv8" and "ckdiv1" to "ck8[prescaler]"
     and "ck1[prescaler]"
@@ -263,3 +263,53 @@ Version 1.0.0
     connections
   - reject monitor command "reset" and "test..." when target is not
     connected
+  - included test sketches
+
+Version 1.0.1 (16-Nov-21)
+  - reverted back a change in SingleWireSerial that declared a method
+    as an ISR because it let to portability problems
+
+Version 1.0.2
+  - deleted 10 ms break from doBreak, since the break is already sent
+    by calibrate
+  - changed calibrate in dwSerial, so that 12 ms break is sent, which should be
+    enough even for a 128 kHz system clock, i.e., 1 kbps communication 
+    speed (may need to change ISP frequence to accomodate this!)   
+  - introduced different pin assignments for 7 different boards: Uno,
+    Leonardo, Mega, Nano, Pro Min, Pro Micro, and Micro. The latter
+    four all fit into the socket on the same adapter board that
+    has level shifting and switching electronic on board,
+    for the former three, I will design a shield
+  - put type casts into mcu_attr array in order to get rid of warning
+  - adapted the unit tests functions so that they only give an error
+    reply in case of a not connected target system when they are called
+    in isolation; in addition, they now always return a zero when
+    called with an unconnected target
+  - since the program will now be designed to drive the RESET line
+    through a level shifter, the quality measurement of the line does not
+    make sense anymore; will be (conditionally) removed from the code
+    and eliminated in the manual; perhaps one can implement this
+    functionality by feeding the reset pin back to an ordinary input
+    pin and we measure by 'cycle-counting'?
+  - reconfiguration based on switch settings occur in the main
+    loop
+  - switching on programming mode and power-cycling is now done in
+    specialized function that take the configuration into accout
+  - changed "too many BPs" error: now the gdb function sends an error
+    return when one too many BP is inserted; in this case the continue
+    or step function is aborted with the warning: "Cannot insert breakpoint 1.
+    Cannot access memory at address 0x1b4. Command aborted" - not
+    completely accurate, but sort of helpful
+  - the above change implies that there may be active BPS (i.e., also
+    inserted BREAKS) when the debugger is left or when a load is
+    issued; for this reason a removal of all BREAKs is necessary before
+    one leaves -> cleanup parameter of gdbUpdateBreakpoints.
+  - toomanybps and error message about BPs removed, SIGSYS removed, SIGSYS is
+    now SIGABRT.
+  - monitor dwconnect integrated into the routine that is started
+    after gdb connected to the hardware debugger, i.e., when the
+    qsupported command is sent; this means you usually do not have to
+    type this command explicitly
+    
+    
+    

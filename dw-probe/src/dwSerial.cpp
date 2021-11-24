@@ -25,7 +25,7 @@ void dwSerial::sendBreak()
   
   enable(false);
   ICDDR |= _BV(ICBIT); // switch pin to output (which is always low)
-  _delay_ms(5);
+  _delay_ms(12);       // shouild be long enough even for 128 kHz clock, i.e., 1k bps
   ICDDR &= ~_BV(ICBIT); // and switch it back to being an input
   enable(true);
 }
@@ -58,8 +58,8 @@ unsigned long dwSerial::calibrate(void)
   byte saveSREG;
 
   saveSREG = SREG;
-  sendBreak();
   cli();
+  sendBreak();
   enable(false);
   TCCRA = 0;
   TCCRB = _BV(ICNC) | _BV(CS0); // noise cancellation, falling edge, prescaler = 1

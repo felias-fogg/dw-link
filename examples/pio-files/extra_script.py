@@ -27,7 +27,7 @@ env.AddCustomTarget(
     actions=[
         dw_stop
     ],
-    title="DebugWire Stop",
-    description="Stops debugWire mode and re-enables the reset line"
+    title="DebugWIRE Disable",
+    description="Disables debugWIRE mode and re-enables the reset line"
 )
 

@@ -26,20 +26,12 @@
 // attempts on reverse enginering of the debugWIRE protocol:
 // http://www.ruemohr.org/docs/debugwire.html
 //
-// You can run it on the Uno, the Nano, the Pro Mini, and the Pro Micro. For the three latter ones,
-// there exists an adapter board, which fits all three of them, using, of course, different pin assignments.
-// For the Nano board, there are apparently two different versions around, version 2 and version 3.
-// The former one has the A0 pin close to 5V pin, version 3 boards have the A0 pin close to the REF pin.
-// If you use the adapter board, you need to set the compile time constant NANOVERSION
-#ifndef NANOVERSION
-#define NANOVERSION 3
-#endif
 
 #if F_CPU < 16000000UL
 #error "dw-probe needs at least 16 MHz clock frequency"
 #endif
 
-#define VERSION "1.0.2"
+#define VERSION "1.0.0"
 #ifndef DEBUG        // for debugging the debugger!
 #define DEBUG    0   
 #endif
@@ -64,157 +56,22 @@
 #endif
 
 
+#define NEWCONN 1    // new method for connecting: first break and 'U', then reset
+                     // and another (sometimes faster) 'U'
 
-// Pins for different boards
-// Note that Nano, Pro Mini, Pro Micro, and Micro use the same socket
-// Similarly, UNO, Leonardo and Mega use the same shield
-//-----------------------------------------------------------
-#if defined(DIRECTISP)   // Binding for a modified ISP plug
-#define SCK    13        // SCK  -- directly connected to ISP socket
-#define MOSI   11        // MOSI -- directly connected to ISP socket
-#define MISO   12        // MISO -- directly connected to ISP socket
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define VSUP    9        // needs to be an extra pin so that we can power-cycle
-#define DEBTX   3        // TX line for TXOnlySerial
-//#define LEDDDR  DDRB     // DDR of system LED
-//#define LEDPORT PORTB    // port register of system LED
-//#define LEDPIN  PB5      // pin (=D13)
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_UNO)  
-#define VHIGH   2        // switch, low-level signals that one should use the 5V supply
-#define VON     5        // switch, low-level signals that dw-probe should deliver the supply charge
-#define V5      9        // a low level switches the MOSFET for 5 volt on 
-#define V33     7        // a low level switches the MOSFET for 3.3 volt on 
-#define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 14        // If low, then we use a shield
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define SCK    12        // SCK
-#define MOSI   10        // MOSI
-#define MISO   11        // MISO
-#define DEBTX   3        // TX line for TXOnlySerial
-#define PROG    6        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB5      // pin (=D13)
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_LEONARDO)  
-#define VHIGH   2        // switch, low-level signals that one should use the 5V supply
-#define VON     5        // switch, low-level signals that dw-probe should deliver the supply charge
-#define V5      9        // a low level switches the MOSFET for 5 volt on 
-#define V33     7        // a low level switches the MOSFET for 3.3 volt on 
-#define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 18        // If low, then we use a shield
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define SCK    12        // SCK
-#define MOSI   10        // MOSI
-#define MISO   11        // MISO
-#define DEBTX   3        // TX line for TXOnlySerial
-#define PROG    6        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13
-#define LEDDDR  DDRC     // DDR of system LED
-#define LEDPORT PORTC    // port register of system LED
-#define LEDPIN  PC7      // pin (=D13)
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_MEGA) 
-#define VHIGH   2        // switch, low-level signals that one should use the 5V supply
-#define VON     5        // switch, low-level signals that dw-probe should deliver the supply charge
-#define V5      9        // a low level switches the MOSFET for 5 volt on 
-#define V33     7        // a low level switches the MOSFET for 3.3 volt on 
-#define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 54        // If low, then we use a shield
-#define DWLINE 49        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define SCK    12        // SCK
-#define MOSI   10        // MOSI
-#define MISO   11        // MISO
-#define DEBTX   3        // TX line for TXOnlySerial
-#define PROG    6        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB7      // pin (=D13)
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_NANO)  // on Nano board -- is aligned with Pro Mini and Pro Micro
-#define VHIGH   7        // switch, low-level signals that one should use the 5V supply
-#define VON    15        // switch, low-level signals that dw-probe should deliver the supply charge
-#define V33     5        // a low level switches the MOSFET for 3.3 volt on 
-#define V5      6        // a low level switches the MOSFET for 5 volt on 
-#define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 11        // If low, then we are on the adapter board
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define SCK     3        // SCK
-#define PROG    2        // if low, signals that one wants to use the ISP programming feature
-#if NANOVERSION == 3
-#define MOSI   16        // MOSI
-#define MISO   19        // MISO
-#define DEBTX  18        // TX line for TXOnlySerial
-#else
-#define MOSI   19        // MOSI
-#define MISO   16        // MISO
-#define DEBTX  17        // TX line for TXOnlySerial
-#endif
-// System LED = Arduino pin 13 (builtin LED) (pin TX0 on Pro Micro/Mini)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB5      // Arduino pin 13
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_PRO)  // on a Pro Mini board
-#define VHIGH  16        // switch, low-level signals that one should use the 5V supply
-#define VON     2        // switch, low-level signals tha dw-probe should deliver the supply charge
-#define V33    14        // a low level switches the MOSFET for 3.3 volt on 
-#define V5     15        // a low level switches the MOSFET for 5 volt on 
-#define VSUP   15        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 10        // If low, then we are on the adapter board
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define SCK    12        // SCK
-#define MOSI    3        // MOSI
-#define MISO    6        // MISO
-#define DEBTX   5        // TX line for TXOnlySerial
-#define PROG   11        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13 (builtin LED) (pin D4 on Nano and D15 on Pro Micro)
-//#define LEDDDR  DDRC     // DDR of system LED
-//#define LEDPORT PORTC    // port register of system LED
-//#define LEDPIN  PC7      // not connected to the outside world!
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_PROMICRO)  // Pro Micro, i.e., that is a Mega 32U4
-#define VHIGH  20        // switch, low-level signals that one should use the 5V supply
-#define VON     2        // switch, low-level signals tha dw-probe should deliver the supply charge
-#define V33    18        // a low level switches the MOSFET for 3.3 volt on 
-#define V5     19        // a low level switches the MOSFET for 5 volt on 
-#define VSUP   19        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 10        // If low, then we are on the adapter board
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define SCK    14        // SCK
-#define MOSI    3        // MOSI
-#define MISO    6        // MISO
-#define DEBTX   5        // TX line for TXOnlySerial
-#define PROG   16        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB0      // Arduino pin 17
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_MICRO)  // Micro, i.e., that is a Mega 32U4
-#define VHIGH   7        // switch, low-level signals that one should use the 5V supply
-#define VON    19        // switch, low-level signals tha dw-probe should deliver the supply charge
-#define V33     5        // a low level switches the MOSFET for 3.3 volt on 
-#define V5      6        // a low level switches the MOSFET for 5 volt on 
-#define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 11        // If low, then we are on the adapter board
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define SCK     3        // SCK
-#define MOSI   20        // MOSI
-#define MISO   23        // MISO
-#define DEBTX  22        // TX line for TXOnlySerial
-#define PROG    2        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB0      // Arduino pin 17
-//-----------------------------------------------------------#else
-#error "Board is not supported yet. dw-probe works only Uno, Leonardo, Mega, Nano, Pro Mini, and Pro Micro (yet)" 
-#endif
+// pins
+#define DEBTX    3    // TX line for TXOnlySerial
+#define VCC      9    // Vcc control
+#define RESET    8    // Target Pin 1 - RESET (needs to be 8 so that we can use it as an input for TIMER1)
+#define MOSI    11    // Target Pin 5 - MOSI
+#define MISO    12    // Target Pin 6 - MISO
+#define SCK     13    // Target Pin 7 - SCK
 
+// System LED
+// change, if you want a different port for state signaling
+#define LEDDDR  DDRB   // DDR of system LED
+#define LEDPORT PORTB  // port register of system LED
+#define LEDPIN  PB2    // pin 
 
 #include <stddef.h>
 #include <stdio.h>
@@ -242,20 +99,18 @@
 // loop time in the the getResponse routine is roughly 2-3us, so 40,000 should do.
 #define WAITLIMIT 40000UL
 
-#ifdef LINEQUALITY
 // maximal rise time for RESET line in clock cycles
 #define MAXRISETIME 20 // actually 7-8 cycles are achievable (=500ns),  20 cycles means 1.25us
                        // with weak pullup (50-100k) you have 56 (= 3.5us),
                        // similarly with 1nF, you get 59 (=3.75us)
 #define UNCONNRISETIME 60000 // rise time result when unconnected (more than 3.5 ms)
-#endif
-
 // signals
 #define SIGHUP  1     // connection to target lost
 #define SIGINT  2     // Interrupt  - user interrupted the program (UART ISR) 
 #define SIGILL  4     // Illegal instruction
 #define SIGTRAP 5     // Trace trap  - stopped on a breakpoint
-#define SIGABRT 6     // Abort because of some fatal error
+#define SIGSYS  12    // When some fatal failure in the debugger was detected
+#define SIGABRT 6     // Too many breakpoints
 
 // types of fatal errors
 #define NO_FATAL 0
@@ -308,6 +163,7 @@ struct breakpoint
 byte bpcnt;             // number of ACTIVE breakpoints (there may be as many as MAXBREAK used ones from the last execution!)
 byte bpused;            // number of USED breakpoints, which may not all be active
 byte maxbreak = MAXBREAK; // actual number of breakpoints allowed
+boolean toomanybps = false;
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
@@ -320,9 +176,6 @@ struct context {
   byte regs[32]; // general purpose regs
   boolean saved:1; // all of the regs have been saved
   statetype state:3; // system state
-  boolean von:1; // deliver power to the target
-  boolean vhigh:1; // deliver 5 volt instead of 3.3 volt
-  boolean snsgnd:1; // true if SNSGDB pin is low
   unsigned long bps; // communication speed
 } ctx;
 
@@ -400,50 +253,50 @@ struct mcu_type {
 // mcu attributes (for all AVR mcus supporting debugWIRE)
 const unsigned int mcu_attr[] PROGMEM = {
   // sig sram   base eeprom flash  dwdr   pg  er4  boot    eecr eearh  rcosc extosc name
-  0x9007,  64,  0x60,   64,  1024, 0x2E,  32,   0, 0x0000, 0x1C, 0x00, 0x0A, 0x08,  (unsigned int)attiny13,
+  0x9007,  64,  0x60,   64,  1024, 0x2E,  32,   0, 0x0000, 0x1C, 0x00, 0x0A, 0x08,  attiny13,
 
-  0x920C, 256,  0x60,   64,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x22, 0x20,  (unsigned int)attiny43,
+  0x920C, 256,  0x60,   64,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x22, 0x20,  attiny43,
 
-  0x910A, 128,  0x60,  128,  2048, 0x1f,  32,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  (unsigned int)attiny2313,
-  0x920D, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  (unsigned int)attiny4313,
+  0x910A, 128,  0x60,  128,  2048, 0x1f,  32,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  attiny2313,
+  0x920D, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  attiny4313,
 
-  0x910B, 128,  0x60,  128,  2048, 0x27,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny24,   
-  0x9207, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny44,
-  0x930C, 512,  0x60,  512,  8192, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny84,
+  0x910B, 128,  0x60,  128,  2048, 0x27,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny24,   
+  0x9207, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny44,
+  0x930C, 512,  0x60,  512,  8192, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny84,
   
-  0x9215, 256, 0x100,  256,  4096, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny441, 
-  0x9315, 512, 0x100,  512,  8192, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny841,
+  0x9215, 256, 0x100,  256,  4096, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny441, 
+  0x9315, 512, 0x100,  512,  8192, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny841,
   
-  0x9108, 128,  0x60,  128,  2048, 0x22,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny25,
-  0x9206, 256,  0x60,  256,  4096, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny45,
-  0x930B, 512,  0x60,  512,  8192, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny85,
+  0x9108, 128,  0x60,  128,  2048, 0x22,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny25,
+  0x9206, 256,  0x60,  256,  4096, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny45,
+  0x930B, 512,  0x60,  512,  8192, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny85,
   
-  0x910C, 128,  0x60,  128,  2048, 0x20,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny261,
-  0x9208, 256,  0x60,  256,  4096, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny461,
-  0x930D, 512,  0x60,  512,  8192, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny861,
+  0x910C, 128,  0x60,  128,  2048, 0x20,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny261,
+  0x9208, 256,  0x60,  256,  4096, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny461,
+  0x930D, 512,  0x60,  512,  8192, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  attiny861,
   
-  0x9387, 512, 0x100,  512,  8192, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)attiny87,
-  0x9487, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)attiny167,
+  0x9387, 512, 0x100,  512,  8192, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  attiny87,
+  0x9487, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  attiny167,
 
-  0x9314, 512, 0x100,  256,  8192, 0x31,  64,   0, 0x0F7F, 0x1F, 0x22, 0x3E, 0x2C,  (unsigned int)attiny828,
+  0x9314, 512, 0x100,  256,  8192, 0x31,  64,   0, 0x0F7F, 0x1F, 0x22, 0x3E, 0x2C,  attiny828,
 
-  0x9209, 256, 0x100,   64,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  (unsigned int)attiny48,
-  0x9311, 512, 0x100,   64,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  (unsigned int)attiny88,
+  0x9209, 256, 0x100,   64,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  attiny48,
+  0x9311, 512, 0x100,   64,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  attiny88,
   
-  0x9412,1024, 0x100,  256, 16384, 0x2E,  32,   1, 0x0000, 0x1C, 0x00, 0x22, 0x20,  (unsigned int)attiny1634,
+  0x9412,1024, 0x100,  256, 16384, 0x2E,  32,   1, 0x0000, 0x1C, 0x00, 0x22, 0x20,  attiny1634,
   
-  0x9205, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega48a,
-  0x920A, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega48pa,
-  0x930A,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega88a,
-  0x930F,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega88pa,
-  0x9406,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega168a,
-  0x940B,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega168pa,
-  0x9514,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega328,
-  0x950F,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega328p,
+  0x9205, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega48a,
+  0x920A, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega48pa,
+  0x930A,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  atmega88a,
+  0x930F,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  atmega88pa,
+  0x9406,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  atmega168a,
+  0x940B,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  atmega168pa,
+  0x9514,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  atmega328,
+  0x950F,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  atmega328p,
   
-  0x9389, 512, 0x100,  512,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega8u2,
-  0x9489, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega16u2,
-  0x958A,1024, 0x100, 1024, 32768, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega32u2,
+  0x9389, 512, 0x100,  512,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega8u2,
+  0x9489, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega16u2,
+  0x958A,1024, 0x100, 1024, 32768, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  atmega32u2,
   0,
 };
 
@@ -478,7 +331,6 @@ DEBDECLARE();
 
 /****************** Interrupt blink routine *********************/
 
-#ifdef LEDPIN // is only used if there is a LEDPIN designed
 ISR(TIMER0_COMPA_vect)
 {
   // only active during power-cycle wait, error, and when running
@@ -503,36 +355,18 @@ ISR(TIMER0_COMPA_vect)
   }
   busy--;
 }
-#endif
 
 /******************* setup & loop ******************************/
 void setup(void) {
-  DEBLN(F("Restart ..."));
   TIMSK0 = 0; // no millis interrupts
   
-#ifdef LEDDDR
   LEDDDR |= LEDPIN; // switch on output for system LED
-#endif
   DEBINIT(); 
   Serial.begin(GDB_BAUD);
-  while (!Serial); // wait for serial port to connect (only needed for native USB ports)
-#ifdef VON
-  pinMode(VON, INPUT_PULLUP); // configure Von as input from switch
-#endif
-  ctx.von = false;
-#ifdef VHIGH
-  pinMode(VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
-#endif
-  ctx.vhigh = false;
-#ifdef SNSGND
-  pinMode(SNSGND, INPUT_PULLUP);
-#endif
-  ctx.snsgnd = false;
   initSession();
 }
 
 void loop(void) {
-  configureSupply();
   if (Serial.available()) {
     gdbHandleCmd();
   } else if (ctx.state == RUN_STATE) {
@@ -549,44 +383,13 @@ void loop(void) {
 
 /****************** system state routines ***********************/
 
-// configure supply lines according to switch setting
-void configureSupply(void)
-{
-#ifdef SNSGND
-  ctx.snsgnd = !digitalRead(SNSGND);
-#endif
-  if (!ctx.snsgnd) {
-    //DEBLN(F("ctx.snsgnd=false"));
-    pinMode(VSUP, OUTPUT);
-    digitalWrite(VSUP, HIGH);
-    ctx.von = false;
-    return; 
-  } else {
-#if defined(VHIGH) && defined(VON) && defined(V33) && defined (V5)
-    if (ctx.vhigh != !digitalRead(VHIGH) || ctx.von != !digitalRead(VON)) { // something changed
-      _delay_ms(30); // debounce
-      DEBLN(F("Some change"));
-      DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(VHIGH));
-      DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(VON));
-      ctx.vhigh = !digitalRead(VHIGH);
-      ctx.von = !digitalRead(VON);
-      pinMode(V33, INPUT); // switch off both supply lines
-      pinMode(V5, INPUT);
-      if (ctx.von) { // if on, switch on the right MOSFET
-	if (ctx.vhigh) pinMode(V5, OUTPUT); // switch on 5V MOSFET
-	else pinMode(V33, OUTPUT); // switch on 3.3 V MOSFET
-      }
-    }
-#endif
-  }
-}
-
 // init all global vars when the debugger connects
 void initSession(void)
 {
   //  DEBLN(F("initSession"));
   bpcnt = 0;
   bpused = 0;
+  toomanybps = false;
   hwbp = 0xFFFF;
   reportTimeout = true;
   lastsignal = 0;
@@ -594,6 +397,9 @@ void initSession(void)
   buffill = 0;
   fatalerror = NO_FATAL;
   setSysState(NOTCONN_STATE);
+  pinMode(VCC, OUTPUT);
+  digitalWrite(VCC, HIGH);
+  if (!targetOffline()) gdbCleanupBreakpointTable();
 }
 
 // report a fatal error and stop everything
@@ -622,12 +428,11 @@ void reportFatalError(byte errnum, boolean checkio)
 // switch on blink IRQ when run, error, or power-cycle state
 void setSysState(statetype newstate)
 {
-  DEBPR(F("setSysState: ")); DEBLN(newstate);
+  //DEBPR(F("setSysState: ")); DEBLN(newstate);
   TIMSK0 &= ~_BV(OCIE0A); // switch off!
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-#ifdef LEDDDR
   LEDDDR |= _BV(LEDPIN);
   if (ontimes[newstate] == 0) LEDPORT &= ~_BV(LEDPIN);
   else if (offtimes[newstate] == 0) LEDPORT |= _BV(LEDPIN);
@@ -635,9 +440,8 @@ void setSysState(statetype newstate)
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
   }
-#endif
-  DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
-  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
+  //DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
+  //DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
 /****************** gdbserver routines **************************/
@@ -709,8 +513,7 @@ void gdbHandleCmd(void)
 void gdbParsePacket(const byte *buff)
 {
   byte s;
-
-  DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
+  
   switch (*buff) {
   case '?':                                          /* last signal */
     gdbSendSignal(lastsignal);  
@@ -731,25 +534,26 @@ void gdbParsePacket(const byte *buff)
     gdbReadMemory(buff + 1);
     break;
   case 'M':                                          /* write memory */
-    gdbUpdateBreakpoints(true);                      /* remove all BREAKS before! */
+    gdbUpdateBreakpoints();                          /* remove all inactive breakpoints before! */
     gdbWriteMemory(buff + 1);
     break;
   case 'X':                                          /* write memory from binary data */
-    gdbUpdateBreakpoints(true);                      /* remove all BREAKS before writing into flash */
+    gdbUpdateBreakpoints();                          /* remove all inactive breakpoints before */
     gdbWriteBinMemory(buff + 1); 
     break;
   case 'D':                                          /* detach the debugger */
-    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
+    gdbCheckForRemainingBreakpoints();               /* check if there are still BPs */
+    gdbUpdateBreakpoints();                          /* update breakpoints in memory before exit */
     validpg = false;
     setSysState(NOTCONN_STATE);                      /* set to unconnected state */
     targetContinue();                                /* let the target machine do what it wants to do! */
-    gdbSendReply("OK");                              /* and signal that everything is OK */
+    gdbSendReply("OK");                              /* and signal that evefrything is OK */
     break;
   case 'k':                                          /* kill request */
-    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit! */
-    digitalWrite(DWLINE,LOW);                        /* hold reset line low so that MCU does not start */
-    pinMode(DWLINE,OUTPUT);
-    setSysState(NOTCONN_STATE);                      /* set to unconnected state */
+    gdbCheckForRemainingBreakpoints();               /* check if there are still BPs */
+    gdbUpdateBreakpoints();                          /* update breakpoints in memory before exit! */
+    digitalWrite(RESET,LOW);                         /* hold reset line low so that MCU does not start */
+    pinMode(RESET,OUTPUT);
     break;
   case 'c':                                          /* continue */
   case 'C':                                          /* continue with signal - just ignore signal! */
@@ -758,7 +562,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 's':                                          /* single step */
   case 'S':                                          /* step with signal - just ignore signal */
-    gdbSendState(gdbStep());                        /* do only one step and report reason why stopped */
+    gdbSendSignal(gdbStep());                        /* do only one step and report reason why stopped */
     break;              
   case 'v':                                          /* notfication that process stopped */
     if (memcmp_P(buff, (void *)PSTR("vStopped"), 8) == 0) 
@@ -777,7 +581,6 @@ void gdbParsePacket(const byte *buff)
       //DEBLN(F("qSupported"));
 	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+")); 
 	initSession();                               /* init all vars when gdb (re-)connects */
-	gdbConnect();                                /* and try to connect */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
       /* current thread is always 1 */
       gdbSendReply("QC01");
@@ -798,13 +601,14 @@ void gdbParsePacket(const byte *buff)
 
 void gdbParseMonitorPacket(const byte *buf)
 {
-   [[maybe_unused]] int para = 0;
+  int para = 0;
 
   measureRam();
 
-  gdbUpdateBreakpoints(true);  // update breakpoints in memory before any monitor ops
+  gdbCheckForRemainingBreakpoints(); // check if there are still BPs 
+  gdbUpdateBreakpoints();  // update breakpoints in memory before any monitor ops
 
-  int clen = strlen((const char *)buf);
+  int clen = strlen(buf);
   //DEBPR(F("clen=")); DEBLN(slen);
   
   if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  /* dwo[ff] */
@@ -851,7 +655,7 @@ void gdbParseMonitorPacket(const byte *buf)
   } else gdbSendReply("");
 }
 
-// "monitor swbp/hwbp/4bp"
+
 // set maximum number of breakpoints
 inline void gdbSetMaxBPs(byte num)
 {
@@ -859,7 +663,6 @@ inline void gdbSetMaxBPs(byte num)
   gdbSendReply("OK");
 }
 
-// "monitor flashcount"
 // report on how many flash pages have been written
 void gdbReportFlashCount(void)
 {
@@ -869,7 +672,6 @@ void gdbReportFlashCount(void)
   gdbSendReply("OK");
 }
 
-// "monitor ramusage"
 void gdbReportRamUsage(void)
 {
 #if FREERAM
@@ -883,7 +685,7 @@ void gdbReportRamUsage(void)
 }
 
 
-// "monitor dwconnect"
+// "monitor init"
 // try to enable debugWIRE
 // this might imply that the user has to power-cycle the target system
 boolean gdbConnect(void)
@@ -893,7 +695,6 @@ boolean gdbConnect(void)
   int conncode;
 
   conncode = targetConnect();
-  DEBPR(F("conncode=")); DEBLN(conncode);
   switch (conncode) {
 
   case 1: // everything OK since we are already connected
@@ -901,23 +702,18 @@ boolean gdbConnect(void)
     gdbDebugMessagePSTR(Connected,-2);
     gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
     gdbReset();
-    gdbCleanupBreakpointTable();
     flushInput();
     gdbSendReply("OK");
     return true;
     break;
   case 0: // we have changed the fuse and need to powercycle
-    dw.enable(false);
     setSysState(PWRCYC_STATE);
     while (retry < 60) {
-      DEBPR(F("retry=")); DEBLN(retry);
       if (retry%3 == 0) { // try to power-cycle
-	DEBLN(F("Power cycle!"));
-	power(false); // cutoff power to target
+	digitalWrite(VCC, LOW); // cutoff power to target
 	_delay_ms(500);
-	power(true); // power target again
+	digitalWrite(VCC, HIGH); // power target again
 	_delay_ms(200); // wait for target to startup
-	DEBLN(F("Power cycling done!"));	
       }
       if ((retry++)%3 == 0 && retry >= 3) {
 	do {
@@ -927,15 +723,16 @@ boolean gdbConnect(void)
 	} while (b == '-');
       }
       _delay_ms(1000);
-      dw.enable(true);
       if (doBreak()) {
 	setSysState(CONN_STATE);
+#if NEWCONN==0
+	gdbReset(); 
+#endif
 	flushInput();
 	gdbDebugMessagePSTR(Connected,-2);
 	gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
 	_delay_ms(100);
 	flushInput();
-	gdbCleanupBreakpointTable();
 	gdbSendReply("OK");
 	return true;
       }
@@ -948,9 +745,7 @@ boolean gdbConnect(void)
     case -1: gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1); break;
     case -2: gdbDebugMessagePSTR(PSTR("Cannot connect: Unsupported MCU type"),-1); break;
     case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits are set"),-1); break;
-#ifdef LINEQUALITY
     case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: Weak pull-up or capacitive load on RESET line"),-1); break;
-#endif
     default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); break;
     }
     break;
@@ -961,35 +756,6 @@ boolean gdbConnect(void)
   return false;
 }
 
-void power(boolean on)
-{
-  DEBPR(F("Power: ")); DEBLN(on);
-  if (on) {
-    if (!ctx.snsgnd) {
-      DEBLN(F("VSUP up"));
-      digitalWrite(VSUP, HIGH);
-    } else {
-      if (ctx.von) {
-#if defined(V5) && defined(V33)
-	DEBLN(F("VXX up"));
-	if (ctx.vhigh) pinMode(V5, OUTPUT);
-	else pinMode(V33, OUTPUT);
-#endif
-      }
-    }
-  } else { // on=false
-    if (!ctx.snsgnd) {
-      digitalWrite(VSUP, LOW);
-    } else {
-#if defined(V5) && defined(V33)
-      pinMode(V5, INPUT);
-      pinMode(V33, INPUT);
-#endif
-    }
-  }
-}
-
-// "monitor dwoff" 
 // try to disable the debugWIRE interface on the target system
 void gdbStop(void)
 {
@@ -1003,8 +769,7 @@ void gdbStop(void)
     gdbSendReply("E05");
   }
 }
-
-// "monitor reset"
+    
 // issue reset on target
 boolean gdbReset(void)
 {
@@ -1017,7 +782,6 @@ boolean gdbReset(void)
   return true;
 }
 
-// "monitor ck1prescaler/ck8prescaler/rcosc/extosc"
 void gdbSetCkFuses(CkFuses fuse)
 {
   boolean offline = targetOffline();
@@ -1088,10 +852,11 @@ byte gdbStep(void)
 {
   unsigned int opcode;
   unsigned int oldpc = ctx.wpc;
-  byte sig = SIGTRAP; // SIGTRAP (normal), SIGILL (if ill opcode), SIGABRT (fatal)
-  DEBLN(F("Start step operation"));
-  if (fatalerror) return SIGABRT;
+  byte sig = SIGTRAP; // SIGTRAP (normal), SIGILL (if ill opcode), SIGSYS (fatal), SIGABRT (too many bps)
+  //DEBLN(F("Start step operation"));
+  if (fatalerror) return SIGSYS;
   if (targetOffline()) return SIGHUP;
+  if (toomanybps) return SIGABRT;
   if (gdbBreakPresent(opcode)) { // we have a break instruction inserted here
     return gdbBreakDetour(opcode);
   } else { // just single-step in flash
@@ -1105,7 +870,7 @@ byte gdbStep(void)
     if (!checkCmdOk2()) {
       ctx.saved = true; // just reinstantiate the old state
       reportFatalError(NO_STEP_FATAL, true);
-      return SIGABRT;
+      return SIGSYS;
     } else {
       targetSaveRegisters();
       if (oldpc == ctx.wpc) {
@@ -1125,13 +890,14 @@ byte gdbContinue(void)
   byte sig = 0;
   unsigned int opcode;
   DEBLN(F("Start continue operation"));
-  if (fatalerror) sig = SIGABRT;
+  if (fatalerror) sig = SIGSYS;
   else if (targetOffline()) sig = SIGHUP;
+  else if (toomanybps) sig = SIGABRT;
   else {
-    gdbUpdateBreakpoints(false);  // update breakpoints in flash memory
+    gdbUpdateBreakpoints();  // update breakpoints in flash memory
     if (gdbBreakPresent(opcode)) { // we have a break instruction inserted here
       reportFatalError(SELF_BLOCKING_FATAL, false);
-      sig = SIGABRT;
+      sig = SIGSYS;
     }  else if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
       //DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
       sig = SIGILL;
@@ -1165,11 +931,7 @@ byte gdbContinue(void)
 // Order all actionable BPs by increasing address and only then change flash memory
 // (so that multiple BPs in one page only need one flash change)
 //
-// When the parameter cleanup is true, we also will remove BREAK instructions
-// of active breakpoints, because either an exit or a memory write action will
-// follow.
-//
-void gdbUpdateBreakpoints(boolean cleanup)
+void gdbUpdateBreakpoints(void)
 {
   int i, j, ix, rel = 0;
   unsigned int relevant[MAXBREAK*2+1];
@@ -1182,19 +944,14 @@ void gdbUpdateBreakpoints(boolean cleanup)
   // because in this case we will not start to execute
   // if there are no used entries, we also can return immediately
   // if the target is not connected, we cannot update breakpoints in any case
-  if (bpused == 0 || targetOffline()) return;
+  if (toomanybps || bpused == 0 || targetOffline()) return;
 
   // find relevant BPs
   for (i=0; i < MAXBREAK*2; i++) {
     if (bp[i].used) { // only used breakpoints!
       if (bp[i].active) { // active breakpoint
-	if (!cleanup) {
-	  if (!bp[i].inflash && !bp[i].hw)  // not in flash yet and not a hw bp
-	    relevant[rel++] = bp[i].waddr; // remember to be set
-	} else { // active BP && cleanup
-	  if (bp[i].inflash)              // remove BREAK instruction, but leave it active
-	    relevant[rel++] = bp[i].waddr;
-	}
+	if (!bp[i].inflash && !bp[i].hw)  // not in flash yet and not a hw bp
+	  relevant[rel++] = bp[i].waddr; // remember to be set
       } else { // inactive bp
 	if (bp[i].inflash) { // still in flash 
 	  relevant[rel++] = bp[i].waddr; // remember to be removed
@@ -1226,11 +983,11 @@ void gdbUpdateBreakpoints(boolean cleanup)
       targetReadFlashPage(addr);
       memcpy(newpage, page, mcu.targetpgsz);
       while (j < i) {
-	DEBPR(F("RELEVANT: ")); DEBLNF(relevant[j]*2,HEX);
+	DEBPR(F("RELEVANT: ")); DEBLNF(relevant[j],HEX);
 	ix = gdbFindBreakpoint(relevant[j++]);
 	if (ix < 0) reportFatalError(RELEVANT_BP_NOT_PRESENT, false);
 	DEBPR(F("Found BP:")); DEBLN(ix);
-	if (bp[ix].active && !cleanup) { // enabled but not yet in flash && not a cleanup operation
+	if (bp[ix].active) { // enabled but not yet in flash
 	  bp[ix].opcode = (newpage[(bp[ix].waddr*2)%mcu.targetpgsz])+
 	    (unsigned int)((newpage[((bp[ix].waddr*2)+1)%mcu.targetpgsz])<<8);
 	  DEBPR(F("Replace op ")); DEBPRF(bp[ix].opcode,HEX); DEBPR(F(" with BREAK at byte addr ")); DEBLNF(bp[ix].waddr*2,HEX);
@@ -1239,19 +996,16 @@ void gdbUpdateBreakpoints(boolean cleanup)
 	    reportFatalError(BREAK_FATAL, false);
 	  }
 	  */
-	  bp[ix].inflash = true; 
-				  
+	  bp[ix].inflash = true;
 	  newpage[(bp[ix].waddr*2)%mcu.targetpgsz] = 0x98; // BREAK instruction
 	  newpage[((bp[ix].waddr*2)+1)%mcu.targetpgsz] = 0x95;
-	} else { // disabled but still in flash or cleanup operation
+	} else { // disabled but still in flash
 	  DEBPR(F("Restore original op ")); DEBPRF(bp[ix].opcode,HEX); DEBPR(F(" at byte addr ")); DEBLNF(bp[ix].waddr*2,HEX);
 	  newpage[(bp[ix].waddr*2)%mcu.targetpgsz] = bp[ix].opcode&0xFF;
 	  newpage[((bp[ix].waddr*2)+1)%mcu.targetpgsz] = bp[ix].opcode>>8;
+	  bp[ix].used = false;
 	  bp[ix].inflash = false;
-	  if (!bp[ix].active) { // now release this slot!
-	    bp[ix].used = false;
-	    bpused--;
-	  }
+	  bpused--; 
 	}
       }
       targetWriteFlashPage(addr, newpage);
@@ -1304,16 +1058,11 @@ void gdbHandleBreakpointCommand(const byte *buff)
   switch (buff[1]) {
   case '0': /* software breakpoint */
     if (buff[0] == 'Z') {
-      if (gdbInsertBreakpoint(byteflashaddr >> 1)) 
-	gdbSendReply("OK");
-      else
-	gdbSendReply("E03");
-      return;
-    } else {
+      gdbInsertBreakpoint(byteflashaddr >> 1);
+    } else 
       gdbRemoveBreakpoint(byteflashaddr >> 1);
-      gdbSendReply("OK");
-    }
-    return;
+    gdbSendReply("OK");
+    break;
   default:
     gdbSendReply("");
     break;
@@ -1321,7 +1070,7 @@ void gdbHandleBreakpointCommand(const byte *buff)
 }
 
 /* insert bp, flash addr is in words */
-boolean gdbInsertBreakpoint(unsigned int waddr)
+void gdbInsertBreakpoint(unsigned int waddr)
 {
   int i,j;
 
@@ -1331,12 +1080,13 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
   i = gdbFindBreakpoint(waddr);
   if (i >= 0)
     if (bp[i].active)  // this is a BP set twice, can be ignored!
-      return true;
+      return;
   
   // if we try to set too many bps, return
   if (bpcnt == maxbreak) {
     // DEBLN(F("Too many BPs to be set! Execution will fail!"));
-    return false;
+    toomanybps = true;
+    return;
   }
 
   // if bp is already there, but not active, then activate
@@ -1344,9 +1094,8 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
   if (i >= 0) { // existing bp
     bp[i].active = true;
     bpcnt++;
-    DEBPR(F("New recycled BP: ")); DEBPRF(waddr*2,HEX); if (bp[i].inflash) DEBPR(F(" (flash) "));
-    DEBPR(F(" / now active: ")); DEBLN(bpcnt);
-    return true;
+    DEBPR(F("New recycled BP: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
+    return;
   }
   // find free slot (should be there, even if there are MAXBREAK inactive bps)
   for (i=0; i < MAXBREAK*2; i++) {
@@ -1361,7 +1110,7 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
       } else { // we steal it from other bp since the most recent should be a hwbp
 	j = gdbFindBreakpoint(hwbp);
 	if (j >= 0 && bp[j].hw) {
-	  DEBPR(F("Stealing HWBP from other BP:")); DEBLNF(bp[j].waddr*2,HEX);
+	  DEBLN(F("Stealing HWBP from other BP"));
 	  bp[j].hw = false;
 	  bp[i].hw = true;
 	  hwbp = waddr;
@@ -1371,12 +1120,11 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
       bpused++;
       DEBPR(F("New BP: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
       if (bp[i].hw) { DEBLN(F("implemented as a HW BP")); }
-      return true;
+      return;
     }
   }
   reportFatalError(NO_FREE_SLOT_FATAL, false);
   //DEBLN(F("***No free slot in bp array"));
-  return false;
 }
 
 // inactivate a bp 
@@ -1393,6 +1141,24 @@ void gdbRemoveBreakpoint(unsigned int waddr)
   bp[i].active = false;
   bpcnt--;
   DEBPR(F("BP removed: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
+  if (bpcnt <= maxbreak) toomanybps = false;
+}
+
+// check whether ther are still active breakpoints, if so -> fatal error
+void gdbCheckForRemainingBreakpoints(void)
+{
+  int cnt = 0;
+
+  measureRam();
+
+  for (byte i=0; i < MAXBREAK*2; i++) {
+    if (bp[i].active) {
+      //DEBPR(F("Active BP found at: ")); DEBLNF(bp[i].waddr*2,HEX);
+      cnt++;
+    }
+  }
+  if (bpcnt != 0 || cnt != 0)
+    reportFatalError(REMAINING_BREAKPOINTS_FATAL, false);
 }
 
 // after a restart, go through table
@@ -1406,7 +1172,7 @@ void gdbCleanupBreakpointTable(void)
     bp[i].active = false;
     if (bp[i].used) bpused++;
   }
-  gdbUpdateBreakpoints(false); // now remove all breakpoints
+  gdbUpdateBreakpoints(); // now remove all breakpoints
 }
 
 // GDB wants to see the 32 8-bit registers (r00 - r31), the
@@ -1821,9 +1587,12 @@ void gdbSendState(byte signo)
   case SIGILL:
     gdbDebugMessagePSTR(PSTR("Illegal instruction"),-1);
     break;
-  case SIGABRT:
+  case SIGSYS:
     gdbDebugMessagePSTR(PSTR("***Fatal internal debugger error: "),fatalerror);
     setSysState(ERROR_STATE);
+    break;
+  case SIGABRT:
+    gdbDebugMessagePSTR(PSTR("Too many active breakpoints!"),-1);
     break;
   }
   gdbState2Buf(signo);
@@ -1891,19 +1660,12 @@ int targetConnect(void)
 {
   unsigned int sig;
   int result = 0;
-#ifdef LINEQUALITY
   unsigned int quality = DWquality();
 
   if (quality > UNCONNRISETIME) return -1;
   else if (quality > MAXRISETIME) return -4;
-#endif
   if (doBreak()) {
-    DEBLN(F("targetConnect: doBreak done"));
-    sig = DWgetChipId();
-    DEBPR(F("targetConnect: sig=")); DEBLNF(sig,HEX);
-    result = setMcuAttr(sig);
-    DEBPR(F("setMcuAttr=")); DEBLN(result);
-    return (result ? 1 : -2);
+    return (setMcuAttr(DWgetChipId()) ? 1 : -2);
   }
   // so we need to set the DWEN fuse bit
   if (!enterProgramMode()) return -1;
@@ -1920,7 +1682,7 @@ int targetConnect(void)
     result = -1;
   }
   leaveProgramMode();
-  DEBPR(F("Programming result: ")); DEBLN(result);
+  //DEBPR(F("Programming result: ")); DEBLN(result);
   return result;
 }
 
@@ -1931,14 +1693,10 @@ boolean targetStop(void)
   boolean succ = false;
   unsigned int sig;
   if (doBreak()) {
-    DEBLN(F("Sending LEAVE cmd"));
     sendCommand((const byte[]) {0x06}, 1); // leave debugWIREMode
     _delay_ms(50);
   }
-  if (!enterProgramMode()) {
-    DEBLN(F("Could not enter progmode"));
-    return false;
-  }
+  if (!enterProgramMode()) return false;
   sig = ispGetChipId();
   if (sig && setMcuAttr(sig)) {
     if (ispProgramFuse(true, mcu.dwenfuse, mcu.dwenfuse)) {
@@ -1961,6 +1719,7 @@ boolean targetStop(void)
 
 int targetSetCkFuses(CkFuses fuse)
 {
+  byte newfuse, lowfuse;
   unsigned int sig;
   boolean succ;
 
@@ -2006,7 +1765,7 @@ void targetReadFlashPage(unsigned int addr)
     lastpg = addr;
     validpg = true;
   } else {
-    // DEBPR(F("using cached page at ")); DEBLNF(lastpg,HEX);
+    DEBPR(F("using cached page at ")); DEBLNF(lastpg,HEX);
   }
 }
 
@@ -2062,11 +1821,11 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
 
   measureRam();
 
-  //DEBPR(F("Write flash ... "));
-  //DEBPRF(addr, HEX);
-  //DEBPR("-");
-  //DEBPRF(addr+mcu.targetpgsz-1,HEX);
-  //DEBLN(":");
+  DEBPR(F("Write flash ... "));
+  DEBPRF(addr, HEX);
+  DEBPR("-");
+  DEBPRF(addr+mcu.targetpgsz-1,HEX);
+  DEBLN(":");
   if (addr != (addr & ~(mcu.targetpgsz-1))) {
     //DEBLN(F("\n***Page address error when writing"));
     reportFatalError(WRITE_PAGE_ADDR_FATAL, false);
@@ -2109,14 +1868,14 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   
   // erase page when dirty
   if (dirty) {
-    // DEBLN(F(" erasing ..."));
+    DEBLN(F(" erasing ..."));
     if (!DWeraseFlashPage(addr)) {
       reportFatalError(ERASE_FAILURE_FATAL, true);
       // DEBLN(F(" not possible"));
       DWreenableRWW();
       return;
     } else {
-      //DEBLN(F(" will overwrite ..."));
+      DEBLN(F(" will overwrite ..."));
     }
     
     DWreenableRWW();
@@ -2131,7 +1890,8 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   
   // now do the programming; for 4-page erase MCUs four subpages
   for (subpage = 0; subpage < 1+(3*mcu.erase4pg); subpage++) {
-    //DEBPR(F("writing subpage at ")); DEBLNF(addr+subpage*mcu.pagesz,HEX);
+    DEBPR(F("writing subpage at "));
+    DEBLNF(addr+subpage*mcu.pagesz,HEX);
     if (!DWloadFlashPageBuffer(addr+(subpage*mcu.pagesz), &mem[subpage*mcu.pagesz])) {
       DWreenableRWW();
       reportFatalError(NO_LOAD_FLASH_FATAL, true);
@@ -2149,7 +1909,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     memcpy(page, mem, mcu.targetpgsz);
     validpg = true;
     lastpg = addr;
-    //DEBLN(F(" page flashed"));
+    DEBLN(F(" page flashed"));
   } else {
     // DEBLN(F("\n***Could not program flash memory"));
     reportFatalError(PROGRAM_FLASH_FAIL_FATAL, true);
@@ -2384,9 +2144,10 @@ boolean doBreak () {
 
   measureRam();
 
-  DEBLN(F("Start calibrating"));
-  pinMode(DWLINE, INPUT);
+  digitalWrite(RESET, LOW);
+  pinMode(RESET, INPUT);
   _delay_ms(10);
+  DEBLN(F("Start calibrating"));
   ctx.bps = dw.calibrate();
   if (ctx.bps == 0) {
     // DEBLN(F("No response from debugWIRE on sending break"));
@@ -2394,11 +2155,12 @@ boolean doBreak () {
   }
   DEBPR(F("First Speed: ")); DEBPRF(ctx.bps, DEC); DEBLN(F(" bps"));
   dw.begin(ctx.bps);                        // Set computed bit rate
+#if NEWCONN==1
   // now we send a reset command, wait for a falling edge, then calibrate again
   sendCommand((const byte[]){0x07}, 1);
   dw.enable(false);
   while (timeout--)
-    if (digitalRead(DWLINE) == LOW) break;
+    if (digitalRead(RESET) == LOW) break;
     else _delay_ms(1);
   if (timeout != 0) ctx.bps = dw.calibrate();
   if (ctx.bps == 0) {
@@ -2408,6 +2170,17 @@ boolean doBreak () {
   DEBPR(F("Second Speed: ")); DEBPRF(ctx.bps, DEC); DEBLN(F(" bps"));
   dw.begin(ctx.bps);                        // Set computed bit rate
   return true;
+#else 
+  DEBLN(F("Sending BREAK: "));
+  dw.sendBreak();
+  if (checkCmdOk()) {
+    DEBLN(F("debugWIRE Enabled"));
+    return true;
+  } else {
+    DEBLN(F("debugWIRE not enabled, is DWEN enabled?"));
+  }
+  return false;
+#endif
 }
 
 // send a command
@@ -2459,7 +2232,6 @@ unsigned int getWordResponse () {
   measureRam();
 
   getResponse(&tmp[0], 2);
-  //DEBPR(F("getWordReponse: ")); DEBLNF(((unsigned int) tmp[0] << 8) + tmp[1],HEX);
   return ((unsigned int) tmp[0] << 8) + tmp[1];
 }
 
@@ -2918,7 +2690,7 @@ unsigned int DWgetWBp () {
 unsigned int DWgetChipId () {
   DWflushInput();
   sendCommand((const byte[]) {0xF3}, 1);
-  return (getWordResponse());
+  return (getWordResponse()) ;
 }
 
 // set PC (word address)
@@ -2949,12 +2721,11 @@ void DWflushInput(void)
 {
   while (dw.available()) {
     // DEBPR("@");
-     [[maybe_unused]] char c = dw.read();
+    char c = dw.read();
     // DEBLN(c);
   }
 }
 
-#ifdef LINEQUALITY
 // test quality of DW line by measuring rise time (in clock cycles)
 // and return it
 unsigned int DWquality(void)
@@ -2979,18 +2750,15 @@ unsigned int DWquality(void)
   DEBPR(F("rise time=")); DEBLN(rise);
   return rise;
 }
-#endif
+
 
 /***************************** a little bit of SPI programming ********/
 
 
 void enableSpiPins () {
-  DEBLN(F("ESP ..."));
-  pinMode(DWLINE, OUTPUT);
-  digitalWrite(DWLINE, LOW);
-  DEBLN(F("RESET low"));
+  pinMode(RESET, OUTPUT);
+  digitalWrite(RESET, LOW);
   _delay_us(1);
-  DEBLN(F("waited"));
   pinMode(SCK, OUTPUT);
   digitalWrite(SCK, LOW);
   pinMode(MOSI, OUTPUT);
@@ -3036,14 +2804,11 @@ boolean enterProgramMode ()
   byte timeout = 5;
 
   DEBLN(F("Entering progmode"));
-  dw.enable(false);
   do {
-    DEBLN(F("Do ..."));
     enableSpiPins();
-    DEBLN(F("Pins enabled ..."));
-    digitalWrite(DWLINE, HIGH); 
+    digitalWrite(RESET, HIGH); 
     _delay_us(30);             // short positive RESET pulse of at least 2 clock cycles
-    digitalWrite(DWLINE, LOW);  
+    digitalWrite(RESET, LOW);  
     _delay_ms(30);            // wait at least 20 ms before sending enable sequence
     if (ispSend(0xAC, 0x53, 0x00, 0x00, false) == 0x53) break;
   } while (--timeout);
@@ -3063,8 +2828,7 @@ void leaveProgramMode()
   DEBLN(F("Leaving progmode"));
   disableSpiPins();
   _delay_ms(10);
-  pinMode(DWLINE, INPUT); // allow MCU to run or to communicate via debugWIRE
-  dw.enable(true);
+  pinMode(RESET, INPUT); // allow MCU to run or to communicate via debugWIRE
 }
   
 
@@ -3085,6 +2849,7 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
 {
   byte newfuse;
   byte lowfuse, highfuse, extfuse;
+  byte rep;
   boolean succ = true;
 
   lowfuse = ispSend(0x50, 0x00, 0x00, 0x00, true);

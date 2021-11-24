@@ -106,8 +106,8 @@ int gdbTests(int &num) {
   unsigned int oldsp;
 
   if (targetOffline()) {
-    gdbSendReply("E00");
-    return;
+    if (num == 0) gdbSendReply("E00");
+    return 0;
   }
   
   if (num >= 1) testnum = num;
@@ -148,7 +148,7 @@ int gdbTests(int &num) {
 
   // will insert two software breakpoints and the most recent one is a hardware breakpoint
   gdbDebugMessagePSTR(PSTR("Test gdbUpdateBreakpoints: "), testnum++);
-  gdbUpdateBreakpoints();
+  gdbUpdateBreakpoints(false);
   failed += testResult(bp[0].inflash && bp[0].used && bp[0].active  && bp[1].inflash
 		       && bp[1].opcode == 0 && !bp[2].inflash && bp[0].opcode == 0xe911
 		       && targetReadFlashWord(0xe4*2) == 0x9598
@@ -183,7 +183,7 @@ int gdbTests(int &num) {
   gdbDebugMessagePSTR(PSTR("Test gdbUpdateBreakpoint (after reinserting 2 of 3 inactive BPs): "), testnum++);
   gdbInsertBreakpoint(0xe4);
   gdbInsertBreakpoint(0xda);
-  gdbUpdateBreakpoints();
+  gdbUpdateBreakpoints(false);
   failed += testResult(bpcnt == 4 && bpused == 4 && hwbp == 0xd6 && bp[0].inflash
 		       && bp[0].used && bp[0].active && bp[0].inflash && bp[0].waddr == 0xe4
 		       && !bp[1].used && !bp[1].active &&  targetReadFlashWord(0xd5*2) == 0
@@ -299,7 +299,7 @@ int gdbTests(int &num) {
   // cleanup
   gdbDebugMessagePSTR(PSTR("Test delete BPs and BP update: "), testnum++);
   gdbRemoveBreakpoint(0xe0);
-  gdbUpdateBreakpoints();
+  gdbUpdateBreakpoints(false);
   failed += testResult(bpcnt == 0 && bpused == 0 && hwbp == 0xFFFF);
 
   // test the illegal opcode detector
@@ -345,8 +345,8 @@ int targetTests(int &num) {
   long lastflashcnt;
 
   if (targetOffline()) {
-    gdbSendReply("E00");
-    return;
+    if (num == 0) gdbSendReply("E00");
+    return 0;
   }
 
   if (num >= 1) testnum = num;
@@ -574,8 +574,8 @@ int DWtests(int &num)
   byte temp;
 
   if (targetOffline()) {
-    gdbSendReply("E00");
-    return;
+    if (num == 0) gdbSendReply("E00");
+    return 0;
   }
 
   if (num >= 1) testnum = num;
