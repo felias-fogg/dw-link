@@ -1,4 +1,4 @@
-// This is a gdbserver implementation using the debugWIRE protocol.
+// This is an implementation of the remote gdb protocol for debugWIRE.
 // It should run on all ATmega328 boards and provides a hardware debugger
 // for most of the ATtinys (13, xx13,  x4, x41, x5, x61, x7, 1634)  and some small
 // ATmegas (x8, xU2)
@@ -17,8 +17,9 @@
 //       the ISP interface. The program has to be loaded using the debug load command.
 //       With the gdb command "monitor dwoff", one can switch the MCU back to normal behavior
 //       using this hardware debugger.
-// Some of the code is inspired and/or copied  by/from
+// Some of the code is inspired by and/or copied from
 // - dwire-debugger (https://github.com/dcwbrown/dwire-debug)
+// - debugwire-gdb-bridge (https://github.com/ccrause/debugwire-gdb-bridge)
 // - DebugWireDebuggerProgrammer (https://github.com/wholder/DebugWireDebuggerProgrammer/),
 // - AVR-GDBServer (https://github.com/rouming/AVR-GDBServer),  and
 // - avr_debug (https://github.com/jdolinay/avr_debug).
@@ -39,7 +40,8 @@
 #error "dw-probe needs at least 16 MHz clock frequency"
 #endif
 
-#define VERSION "1.0.2"
+#define VERSION "1.0.3"
+
 #ifndef DEBUG        // for debugging the debugger!
 #define DEBUG    0   
 #endif
@@ -259,31 +261,30 @@
 
 // types of fatal errors
 #define NO_FATAL 0
-#define NO_EXEC_FATAL 1 // Error in executing instruction offline
-#define BREAK_FATAL 2 // saved BREAK instruction in BP slot
-#define NO_FREE_SLOT_FATAL 3 // no free slot in BP structure
-#define INCONS_BP_FATAL 4 // inconsistency in BP counting
-#define PACKET_LEN_FATAL 5 // packet length too large
-#define WRONG_MEM_FATAL 6 // wrong memory type
-#define NEG_SIZE_FATAL 7 // negative size of buffer
-#define RESET_FAILED_FATAL 8 // reset failed
-#define READ_PAGE_ADDR_FATAL 9 // an address that does not point to start of a page 
-#define FLASH_READ_FATAL 10 // error when reading from flash memory
-#define SRAM_READ_FATAL 11 //  error when reading from sram memory
-#define WRITE_PAGE_ADDR_FATAL 12 // wrong page address when writing
-#define ERASE_FAILURE_FATAL 13 // error when erasing flash memory
-#define NO_LOAD_FLASH_FATAL 14 // error when loading page into flash buffer
-#define PROGRAM_FLASH_FAIL_FATAL 15 // error when programming flash page
-#define REENABLERWW_FAILED_FATAL 16 // Could not reenable RWW
-#define EXEC_BREAK_FATAL 17 // Tried to execute the BREAK instruction offline
-#define HWBP_ASSIGNMENT_INCONSISTENT_FATAL 18 // HWBP assignemnt is inconsistent
-#define SELF_BLOCKING_FATAL 19 // there shouldn't be a BREAK instruction in the code
-#define FLASH_READ_WRONG_ADDR_FATAL 20 // trying to read a flash word at a non-even address
-#define NO_STEP_FATAL 21 // could not do a single-step operation
-#define REMAINING_BREAKPOINTS_FATAL 22 // there are still some active BPs that shouldn't be there
-#define REMOVE_NON_EXISTING_BP_FATAL 23 // tried to remove non-existing BP
-#define RELEVANT_BP_NOT_PRESENT 24 // identified relevant BP not present any longer 
-#define INPUT_OVERLFOW_FATAL 25 // input buffer overlfow - should not happen at all!
+#define CONNERR_NO_ISP_OR_DW_REPLY 1 // connection error: no ISP or DW reply
+#define CONNERR_UNSUPPORTED_MCU 2 // connection error: MCU not supported
+#define CONNERR_LOCK_BITS 3 // connection error: lock bits are set
+#define CONNERR_WEAK_PULLUP 4 // connection error: weak pullup
+#define CONNERR_NO_DW_AFTER_DWEN 5 // connection error: no DW afetr DWEN has been programmed
+#define CONNERR_UNKNOWN 6 // unknown connection error
+#define NO_FREE_SLOT_FATAL 101 // no free slot in BP structure
+#define PACKET_LEN_FATAL 102 // packet length too large
+#define WRONG_MEM_FATAL 103 // wrong memory type
+#define NEG_SIZE_FATAL 104 // negative size of buffer
+#define RESET_FAILED_FATAL 105 // reset failed
+#define READ_PAGE_ADDR_FATAL 106 // an address that does not point to start of a page in read operation
+#define FLASH_READ_FATAL 107 // error when reading from flash memory
+#define SRAM_READ_FATAL 108 //  error when reading from sram memory
+#define WRITE_PAGE_ADDR_FATAL 109 // wrong page address when writing
+#define ERASE_FAILURE_FATAL 110 // error when erasing flash memory
+#define NO_LOAD_FLASH_FATAL 111 // error when loading page into flash buffer
+#define PROGRAM_FLASH_FAIL_FATAL 112 // error when programming flash page
+#define HWBP_ASSIGNMENT_INCONSISTENT_FATAL 113 // HWBP assignemnt is inconsistent
+#define SELF_BLOCKING_FATAL 114 // there shouldn't be a BREAK instruction in the code
+#define FLASH_READ_WRONG_ADDR_FATAL 115 // trying to read a flash word at a non-even address
+#define NO_STEP_FATAL 116 // could not do a single-step operation
+#define RELEVANT_BP_NOT_PRESENT 117 // identified relevant BP not present any longer 
+#define INPUT_OVERLFOW_FATAL 118 // input buffer overflow - should not happen at all!
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -425,7 +426,7 @@ const unsigned int mcu_attr[] PROGMEM = {
   0x9387, 512, 0x100,  512,  8192, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)attiny87,
   0x9487, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)attiny167,
 
-  0x9314, 512, 0x100,  256,  8192, 0x31,  64,   0, 0x0F7F, 0x1F, 0x22, 0x3E, 0x2C,  (unsigned int)attiny828,
+  0x9314, 512, 0x100,  256,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C,  (unsigned int)attiny828,
 
   0x9209, 256, 0x100,   64,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  (unsigned int)attiny48,
   0x9311, 512, 0x100,   64,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  (unsigned int)attiny88,
@@ -623,6 +624,7 @@ void reportFatalError(byte errnum, boolean checkio)
 void setSysState(statetype newstate)
 {
   DEBPR(F("setSysState: ")); DEBLN(newstate);
+  if (ctx.state == ERROR_STATE && fatalerror) return;
   TIMSK0 &= ~_BV(OCIE0A); // switch off!
   ctx.state = newstate;
   ontime = ontimes[newstate];
@@ -741,6 +743,7 @@ void gdbParsePacket(const byte *buff)
   case 'D':                                          /* detach the debugger */
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
     validpg = false;
+    fatalerror = NO_FATAL;
     setSysState(NOTCONN_STATE);                      /* set to unconnected state */
     targetContinue();                                /* let the target machine do what it wants to do! */
     gdbSendReply("OK");                              /* and signal that everything is OK */
@@ -749,6 +752,7 @@ void gdbParsePacket(const byte *buff)
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit! */
     digitalWrite(DWLINE,LOW);                        /* hold reset line low so that MCU does not start */
     pinMode(DWLINE,OUTPUT);
+    fatalerror = NO_FATAL;
     setSysState(NOTCONN_STATE);                      /* set to unconnected state */
     break;
   case 'c':                                          /* continue */
@@ -775,7 +779,7 @@ void gdbParsePacket(const byte *buff)
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
-	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+")); 
+	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+;hwbreak-")); 
 	initSession();                               /* init all vars when gdb (re-)connects */
 	gdbConnect();                                /* and try to connect */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
@@ -940,6 +944,8 @@ boolean gdbConnect(void)
 	return true;
       }
     }
+    gdbDebugMessagePSTR(PSTR("Cannot connect after setting DWEN fuse"),-1);
+    conncode = -5;
     break;
   default:
     setSysState(ERROR_STATE);
@@ -951,10 +957,11 @@ boolean gdbConnect(void)
 #ifdef LINEQUALITY
     case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: Weak pull-up or capacitive load on RESET line"),-1); break;
 #endif
-    default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); break;
+    default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -6; break;
     }
     break;
   }
+  if (fatalerror == NO_FATAL) fatalerror = -conncode;
   setSysState(ERROR_STATE);
   flushInput();
   gdbSendReply("E05");
@@ -1504,11 +1511,6 @@ void gdbReadMemory(const byte *buff)
 
   measureRam();
 
-  if (targetOffline()) {
-    gdbSendReply("E01");
-    return;
-  }
-
   buff += parseHex(buff, &addr);
   /* skip 'xxx,' */
   parseHex(buff + 1, &sz);
@@ -1517,6 +1519,18 @@ void gdbReadMemory(const byte *buff)
     gdbSendReply("E05");
     reportFatalError(PACKET_LEN_FATAL, false);
     //DEBLN(F("***Packet length > 127"));
+    return;
+  }
+
+  if (addr == 0xFFFFFFFF) {
+    buf[0] = nib2hex(fatalerror >> 4);
+    buf[1] = nib2hex(fatalerror & 0x0f);
+    gdbSendBuff(buf, 2);
+    return;
+  }
+
+  if (targetOffline()) {
+    gdbSendReply("E01");
     return;
   }
 
@@ -1529,8 +1543,6 @@ void gdbReadMemory(const byte *buff)
   } else if (flag == EEPROM_OFFSET) targetReadEeprom(addr, membuf, sz);
   else {
     gdbSendReply("E05");
-    reportFatalError(WRONG_MEM_FATAL, false);
-    //DEBLN(F("***Wrong memory type in gdbReadMemory"));
     return;
   }
   for (i = 0; i < sz; ++i) {
@@ -1677,7 +1689,7 @@ int gdbBin2Mem(const byte *buf, byte *mem, int count) {
   return num;
 }
 
-// chec k whether connected
+// check whether connected
 boolean targetOffline(void)
 {
   measureRam();

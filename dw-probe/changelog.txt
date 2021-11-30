@@ -269,7 +269,7 @@ Version 1.0.1 (16-Nov-21)
   - reverted back a change in SingleWireSerial that declared a method
     as an ISR because it let to portability problems
 
-Version 1.0.2
+Version 1.0.2 (24-Nov-21)
   - deleted 10 ms break from doBreak, since the break is already sent
     by calibrate
   - changed calibrate in dwSerial, so that 12 ms break is sent, which should be
@@ -310,6 +310,19 @@ Version 1.0.2
     after gdb connected to the hardware debugger, i.e., when the
     qsupported command is sent; this means you usually do not have to
     type this command explicitly
-    
-    
-    
+
+Version 1.0.3 (01-Dec-21)
+   - corrected entry bootaddr for ATtiny828 from 0x0F7F to 0x0F80
+   - added "hwbreak-" in response string to qSupported
+   - added the feature that examining address 0xFFFFFFFF gives you the
+     last fatal error code
+   - removed fatal error for examing addresses out of band; we simply
+     return an error reply to gdb
+   - integrated dwconnect error messages into fatal error message list
+   - if system state = ERROR_STATE, we need a reset/new connection to
+     reset that state
+   - error state is cleared when disconnecting with detach or kill
+   - further successful unit tests with meanwhile all MCUs, except ATtiny441,
+     ATtiny87, ATtiny48 and all ATmegaXU2s
+     
+   

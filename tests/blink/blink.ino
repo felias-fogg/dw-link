@@ -31,16 +31,15 @@ void mydelay(unsigned long wait) {
 }
 
 void setup() {
-  // initialize digital pin LED_BUILTIN as an output.
-  pinMode(LED, OUTPUT);
-  OCR0A = 0x80;
+  pinMode(LED, OUTPUT);   // initialize digital pin LED as an output.
+  OCR0A = 0x80;           // prepare for having a COMPA interrupt
 #ifdef TIMSK
   TIMSK |= _BV(OCIE0A);   // enable COMPA interrupt on Timer0
 #else
   TIMSK0 |= _BV(OCIE0A);  // enable COMPA interrupt on Timer0
 #endif
 #ifdef __AVR_ATtiny13__
-  TCCR0B = 0x03;         // use prescaler 64 on ATtiny13, which does not initialize TCCR0B!
+  TCCR0B = 0x03;         // set prescaler 64 on ATtiny13, since the ATtony13 does not initialize TCCR0B by itself
 #endif
 }
 
