@@ -130,9 +130,8 @@ Version 0.9.5 (04-Nov-21)
   - no more noJumpInstr() since jumps can actually be executed offline
   - calls to dw.sendCmd replaced by calls to new function sendCommand, which now waits for
     Serial output to be finished in order to avoid any output interrupt, which can
-    take up to 8.75 us
-    and by that confuse SingleWireSerial. It can withstand 6.6 us, but 8.75 us is too
-    much at 125 kbps!
+    take up to 8.75 us and by that confuse SingleWireSerial. It can
+    withstand 6.6 us, but 8.75 us is too much at 125 kbps!
 
 Version 0.9.6 (04-Nov-21)
   - reshuffeld code in gdbConnect without external effects. Added a case for "unknown reason"
@@ -188,11 +187,11 @@ Version 0.9.8  (08-Nov-21)
     for SingleWireSerial
   - noticed that when we use the BUILTIN_LED, then this will blink the
     BUILTIN_LED of the target, since the SCK lines of debugger and
-    target are connected; so switched to PB2 (Arudino pin 2) for the system LED
+    target are connected; so switched to PB2 (Arudino pin 10) for the system LED
   - when running the ATmega328 target on 16 MHz, sometimes spurious
     0x00/0xFF show up; so I introduced DWflushInput that reads them
     away; what is strange is that this does not happen at lower
-    frequencies and not with other chips at 16 MHz; it also quite determinstic!
+    frequencies and not with other chips at 16 MHz; it is also quite determinstic!
   - Unit tests successful on:
     Attiny13 (9.6 MHz, 1.2 MHz)
     ATtiny2313 (8 MHz, 1 MHz)
@@ -228,7 +227,7 @@ Version 0.9.9 (14-Nov-21)
       execution apparently fetches the second word from the right place
       in flash memory and the execution works flawlessly
   - new commands for testing: "monitor rcosc" and "monitor "xtosc" for
-    selecting the intzernal RC oscillator or an external crystal oscillator. 
+    selecting the internal RC oscillator or an external crystal oscillator. 
   - allow for early interrupts in the blinking interrupt routine
   - added function to recognize illegal opcodes, which is used before
     starting execution and when single-stepping; the function has
@@ -325,4 +324,8 @@ Version 1.0.3 (01-Dec-21)
    - further successful unit tests with meanwhile all MCUs, except ATtiny441,
      ATtiny87, ATtiny48 and all ATmegaXU2s
      
-   
+Version 1.0.4 (02-Dec-21)
+   - new command "monitor er[aseflash]"
+   - brought back command "monitor xt[alosc]"
+   - rewrote targetStop by making use of targetSetFuses
+   - renamed dw-probe to dw-link; the board retains the name, though

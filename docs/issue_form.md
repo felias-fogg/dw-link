@@ -1,4 +1,4 @@
-# dw-probe Issue Form
+## *dw-link* Issue Form
 
 **Short description:** (e.g., Debugger did not stop at breakpoint)
 
@@ -11,6 +11,8 @@
 **Adapter board**: (e.g., none or V1.0)
 
 **Arduino IDE version:** (e.g., IDE 1.8.13)
+
+**Development OS:** (e.g. macOS 11.6)
 
 **Additional hardware necessary to produce the error:** (e.g., I2C device at pins ... using a software I2C library)
 

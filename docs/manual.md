@@ -1,4 +1,4 @@
-# An Arduino-based debugWIRE hardware debugger: *dw-probe*
+# An Arduino-based debugWIRE hardware debugger: *dw-link*
 
 The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notices that a lot of important features are missing. In particular, the current IDE does not support any kind of debugging. So what can you do, when you want to debug your Arduino project on small ATmegas or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support the hardware debugging interface [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
 
@@ -100,9 +100,9 @@ There are two ways out. First you can try to make the RESET line compliant with 
 
 ## 3. Installation and example sessions
 
-Assuming that you have already downloaded and installed the [Arduino](https://www.arduino.cc/) IDE, as a first step, you have to download this repository and install it in a directory where the Arduino IDE recognizes Arduino sketches. Then you have to upload the ```dw-probe.ino``` sketch to the Arduino board you intend to turn into a hardware debugger. 
+Assuming that you have already downloaded and installed the [Arduino](https://www.arduino.cc/) IDE, as a first step, you have to download this repository and install it in a directory where the Arduino IDE recognizes Arduino sketches. Then you have to upload the ```dw-link.ino``` sketch to the Arduino board you intend to turn into a hardware debugger. 
 
-I will describe two options of using the hardware debugger. The first one is the easiest one, which simply adds a ```platform.local.txt``` file to the Arduino configuration and requires you to download ```avr-gdb```. With that you can start to debug. The second option involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. There are numerous other possibilities. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which should apply to *debugWIRE-probe* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/).
+I will describe two options of using the hardware debugger. The first one is the easiest one, which simply adds a ```platform.local.txt``` file to the Arduino configuration and requires you to download ```avr-gdb```. With that you can start to debug. The second option involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. There are numerous other possibilities. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which should apply to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/).
 
 However, before you can start to debug, you have to setup the hardware. I'll use an ATtiny85 on a breadboard as the example target system and an UNO as the example debugger. However, any MCU listed above would do. You have to adapt the steps where I describe the modification of configuration files accordingly, though. 
 
@@ -148,32 +148,25 @@ When you have chosen the **Boards Manager Installation**, then you will find the
 * Linux: ~/.arduino15/packages/ATTinyCore/hardware/avr/1.5.2
 * Windows: C:\Users\\*USERNAME*\AppData\Local\Arduino15\packages\ATTinyCore\hardware\avr\1.5.2
 
-If you have chosen **Manual Installation**, then you know where to look. In the directory with the ```platform.txt``` file create ```platform.local.txt``` with the following contents:
+If you have chosen **Manual Installation**, then you know where to look. In the directory with the ```platform.txt``` file create ```platform.local.txt``` (see `example/platform-local`) with the following contents:
 
 ```
 recipe.hooks.savehex.postsavehex.1.pattern.macosx=cp "{build.path}/{build.project_name}.elf" "{sketch_path}"
-recipe.hooks.savehex.postsavehex.2.pattern.macosx=cp "{build.path}/{build.project_name}.lst" "{sketch_path}"
 recipe.hooks.savehex.postsavehex.1.pattern.linux=cp "{build.path}/{build.project_name}.elf" "{sketch_path}"
-recipe.hooks.savehex.postsavehex.2.pattern.linux=cp "{build.path}/{build.project_name}.lst" "{sketch_path}"
 recipe.hooks.savehex.postsavehex.1.pattern.windows=cmd /C copy "{build.path}\{build.project_name}.elf" "{sketch_path}"
-recipe.hooks.savehex.postsavehex.2.pattern.windows=cmd /C copy "{build.path}\{build.project_name}.lst" "{sketch_path}"
 
 compiler.c.extra_flags=-Og
 compiler.cpp.extra_flags=-Og
 ```
 
-The first four lines make sure that you receive an **ELF** and a **LST** file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. The former type of file contains machine-readable symbol and line number information and is needed when you want to debug a program using avr-gdb. The latter type is informative when you want to know how your program maps to assembler statements. Note that **LST** files are only generated with the ATTinyCore. So, if you want to debug another AVR MCU, you have to either delete the number 2 hooks or copy the *presave hooks* from the ATTinyCore ```platform.txt``` together with the appropriate batch/shell scripts. 
+The first three lines make sure that you receive an **ELF** file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using avr-gdb. 
 
 The last two lines enforce that the compiler optimizations are geared towards being debugging friendly. Strictly speaking, this compiler option is not necessary. However, without it, the execution of the program may not follow step by step the way you had specified it in the program. Please also note that the code size of the program may grow.
 
-
-
-If you do not want to have '-Og' as the standard option, you can rename ```platform.local.txt``` to something else, when you are not debugging. Another alternative can be to modify the `boards.txt` file in order to set the debug flags.
-
-If you are using `arduino-cli`, you can specify additional options to the `compile` command and do not have to bother with modifying the `boards.txt` file or renaming ```platform.local.txt```. Instead of putting the last two lines above into the ```platform.local.txt``` file, just add the following to your command line:
+If you do not want to have '-Og' as the standard option, you can rename ```platform.local.txt``` to something else, when you are not debugging. Another alternative can be to modify the `boards.txt` file in order to set the debug flags. If you are using `arduino-cli`, you can specify additional options to the `compile` command and do not have to bother with modifying the `boards.txt` file or renaming ```platform.local.txt```. Instead of putting the last two lines above into the ```platform.local.txt``` file, just add the following to your command line:
 
 ```
---build-property compiler.c.extra_flags=-Og --build-property compiler.cpp.extra_flags=-Og 
+--build-property build.extra_flags=-Og 
 ```
 
 #### 3.2.3 Optional modification of boards.txt
@@ -190,7 +183,7 @@ If you now want to be able modify the debug flag for the ATtinyX5, scroll down t
 attinyx5.build.extra_flags={build.millis} -DNEOPIXELPORT=PORTB {build.pllsettings}
 `
 
-Now add `{build.debug}` to the end of this line. Before the line, you have to insert the following four lines:
+and add `{build.debug}` to the end of this line. Before the line, you have to insert the following four lines:
 
 ```
 attinyx5.menu.debug.disabled=Disabled
@@ -368,8 +361,8 @@ command | action
 set se[rial] b[aud] *number* | set baud rate of the serial line to the hardware debugger (same as using the `-b` option when starting `avr-gdb`)
 tar[get] rem[ote] *serial line* | establish a connection to the hardware debugger via the *serial line*, which in turn will set up a connection to the target via debugWIRE (use only after baud rate has been specified!) 
 fil[e] *name*.elf | load the symbol table from the specified ELF file (should be done before establishing the connection to the target)
-lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change parts of the memory that needs to be changed)
-mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed
+lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
+mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected)
 mo[nitor] dwo[ff] | disable debugWIRE mode in the target
 mo[nitor] re[set] | resets the MCU
 mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
@@ -425,20 +418,20 @@ While one can use the setting as described in [Section 3.1](#section31), it woul
 It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an UNO, Leonardo or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
 
 <center>
-![dw-probe V 0.1](pics/dw-probe0.1.png)
+![dw-probe-fritzing V 0.1](pics/dw-link0.1.png)
 </center>
 
 In reality, it probably will more look like as in the next picture.
 
 <center>
-![dw-probe V 0.1](pics/proto.png)
+![dw-probe-proto V 0.1](pics/proto.png)
 </center>
 
 This works very well on an Arduino UNO. On a Leonardo, you need to use Arduino pin 4 instead of 8 for the RESET line. Or better yet, you connect the two pins. On an Arduino Mega, you have to use Arduino pin 49, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-wire.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 4.3.2 & 4.3.3](#section432). 
 
-### 4.2 A shield with level shifting 
+### 4.2 A shield with level shifters
 
-If you often work with 3.3 volt systems, you probably would like to have a version with level-shifting. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar boards work as well. 
+If you often work with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar boards work as well. 
 
 
 
@@ -519,10 +512,10 @@ VSUP | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9 | **+**
 
 As the system LED, we use the builtin LED on pin13 for most boards. On the Pro Micro, the RXI LED is used. On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board. So, if you use the Pro Mini, you do not have a system LED that signals the internal state.  
 
-
+<a name="section5"></a>
 ## 5. Problems and shortcomings
 
-dw-probe is still in ***alpha*** state. The most obvious errors have been fixed, but there are most probably others. If something does not go according to plan, please try to isolate the reason for the erroneous behaviour, i.e., identify a sequence of operations to replicate the error. One perfect way to document a debugger error is to switch on logging and command tracing in the debugger:
+*dw-link* is still in ***alpha*** state. The most obvious errors have been fixed, but there are most probably others. If something does not go according to plan, please try to isolate the reason for the erroneous behaviour, i.e., identify a sequence of operations to replicate the error. One perfect way to document a debugger error is to switch on logging and command tracing in the debugger:
 
 ```
 set trace-commands on
@@ -539,15 +532,15 @@ Setting and removing *breakpoints* is one of the main functionality of a debugge
 
 One now has to understand that gdb does not pass *breakpoint set* and *breakpoint delete* commands from the user to the gdbserver, but instead it sends a list of *breakpoint set* commands before execution starts. After execution stops, it sends *breakpoint delete* commands for all breakpoints. In particular, when thinking about conditional breakpoints, it becomes clear that gdb may send a large number of *breakpoint set* and *breakpoint delete* commands for one breakpoint during one debug session. Although it is guaranteed that flash memory can be reprogrammed at least 10,000 times according to the data sheets, this number can easily be reached even in a few debug sessions, provided there are loops which are often executed and where a conditional breakpoint has been inserted. Fortunately, the situation is not as bad as it looks since there are a number of ways of getting around the need of reprogramming flash memory.
 
-First of all, *dw-probe* leaves the breakpoint in memory, even when gdb requests to remove them. Only when gdb requests to continue execution, the breakpoints in flash memory are updated. Well, the same happens before loading program code, detaching, exiting, etc. Assuming that the user does not change breakpoints too often, this will reduce flash reprogramming significantly.  
+First of all, *dw-link* leaves the breakpoint in memory, even when gdb requests to remove them. Only when gdb requests to continue execution, the breakpoints in flash memory are updated. Well, the same happens before loading program code, detaching, exiting, etc. Assuming that the user does not change breakpoints too often, this will reduce flash reprogramming significantly.  
 
 Second, if there are many breakpoints on the same flash page, then the page is reprogrammed only once instead of reprogramming it for each breakpoint individually.
 
-Third, when one restarts from a location where a breakpoint has been set, gdb removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-probe* does not update flash memory before single-stepping. Instead, it checks whether the current location contains a BREAK instruction. If this is not the case, *dw-probe* issues a single-step command. Otherwise, it loads the original instruction into the *instruction register* of the MCU and executes it there. This appears to work even it is a two-word instruction, i.e., the second word is fetched from flash memory, provided the PC was set to the location of the original instruction. 
+Third, when one restarts from a location where a breakpoint has been set, gdb removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-link* does not update flash memory before single-stepping. Instead, it checks whether the current location contains a BREAK instruction. If this is not the case, *dw-link* issues a single-step command. Otherwise, it loads the original instruction into the *instruction register* of the MCU and executes it there. This appears to work even it is a two-word instruction, i.e., the second word is fetched from flash memory, provided the PC was set to the location of the original instruction. 
 
 Fourth, each MCU contains one *hardware breakpoint register*, which stops the MCU when the value in the register equals the program counter. This is used for the most recent breakpoint introduced. With this heuristic, temporary breakpoints (as the ones gdb generates for single-stepping) will always get priority and more permanent breakpoints set by the user will end up in flash. 
 
-Fifth, when reprogramming of a flash page is requested, *dw-probe* first checks whether the identical contents should be loaded. Further, it checks whether it is possible to achieve the result by just turning some 1's into 0's. Only if these two things are not possible, the flash page is erased and reprogrammed. This helps in particular when reloading a file with the gdb `load` command after only a few things in the program have been changed.  
+Fifth, when reprogramming of a flash page is requested, *dw-link* first checks whether the identical contents should be loaded. Further, it checks whether it is possible to achieve the result by just turning some 1's into 0's. Only if these two things are not possible, the flash page is erased and reprogrammed. This helps in particular when reloading a file with the gdb `load` command after only a few things in the program have been changed.  
 
 With all of that in mind, you do not have to worry too much about flash memory wear when debugging. As a general rule, you should not make massive changes of the breakpoints each time the MCU stops executing. Finally, Microchip recommends that chips that have been used for debugging using debugWIRE should not been shipped to customers. Well, I never ship chips to customers anyway.
 
@@ -595,7 +588,7 @@ When running under the debugger, the program will be stopped in the same way as 
 
 ### 5.7 The start of the debugger takes a couple of seconds
 
-The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain UNO or equivalent, then it will spend a couple of seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-probe.ino` with an ISP programmer into the hardware debugger.
+The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain UNO or equivalent, then it will spend a couple of seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
 
 ### 5.8 Program execution is very slow when conditional breakpoints are present
 
@@ -644,7 +637,7 @@ Not all source lines generate machine code so that it is sometimes impossible to
 
 #### Problem: The debugger seems to do things that appear to be strange
 
-I encountered such behavior more than once and it almost always turned out that I had forgotten to load the new binary. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU contains old code! 
+I encountered such behavior more than once and it almost always turned out that I had forgotten to load the binary into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! 
 
 #### Problem: In PlatformIO, the global variables are not displayed
 
@@ -661,15 +654,15 @@ In this case some serious internal error had happened. You have to stop the curr
 The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. If not, you can find out what kind of error happened by examining the memory at address `0xFFFFFFFF`. Type the following command:
 
 ```
-x/1bd 0xFFFFFFFF
+x/db 0xFFFFFFFF
 ```
 
-The (virtual) byte at this address contains the relevant error number. If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors (see below).
+The (virtual) memory cell at this address contains the relevant error number. If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors (see below).
  
-If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). BTW: `monitor dwoff` can still be executed in order to disable the debugWIRE on your MCU even if a fatal error has happened. 
+If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). By the way: `monitor dwoff` can still be executed in order to disable the debugWIRE on your MCU even if a fatal error has happened. 
 
 
-Error #memory  | Meaning
+Error #  | Meaning
 --:|---
 1 | Connection error: No response to ISP and debugWIRE communication; check wiring
 2 | Connection error: MCU type is not supported

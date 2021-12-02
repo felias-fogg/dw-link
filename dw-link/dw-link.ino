@@ -37,10 +37,10 @@
 #endif
 
 #if F_CPU < 16000000UL
-#error "dw-probe needs at least 16 MHz clock frequency"
+#error "dw-link needs at least 16 MHz clock frequency"
 #endif
 
-#define VERSION "1.0.3"
+#define VERSION "1.0.4"
 
 #ifndef DEBUG        // for debugging the debugger!
 #define DEBUG    0   
@@ -83,8 +83,8 @@
 //#define LEDPIN  PB5      // pin (=D13)
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_UNO)  
-#define VHIGH   2        // switch, low-level signals that one should use the 5V supply
-#define VON     5        // switch, low-level signals that dw-probe should deliver the supply charge
+#define VHIGH   2        // switch, low signals that one should use the 5V supply
+#define VON     5        // switch, low signals that dw-probe should deliver the supply charge
 #define V5      9        // a low level switches the MOSFET for 5 volt on 
 #define V33     7        // a low level switches the MOSFET for 3.3 volt on 
 #define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
@@ -101,8 +101,8 @@
 #define LEDPIN  PB5      // pin (=D13)
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_LEONARDO)  
-#define VHIGH   2        // switch, low-level signals that one should use the 5V supply
-#define VON     5        // switch, low-level signals that dw-probe should deliver the supply charge
+#define VHIGH   2        // switch, low signals that one should use the 5V supply
+#define VON     5        // switch, low signals that dw-probe should deliver the supply charge
 #define V5      9        // a low level switches the MOSFET for 5 volt on 
 #define V33     7        // a low level switches the MOSFET for 3.3 volt on 
 #define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
@@ -119,8 +119,8 @@
 #define LEDPIN  PC7      // pin (=D13)
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MEGA) 
-#define VHIGH   2        // switch, low-level signals that one should use the 5V supply
-#define VON     5        // switch, low-level signals that dw-probe should deliver the supply charge
+#define VHIGH   2        // switch, low signals that one should use the 5V supply
+#define VON     5        // switch, low signals that dw-probe should deliver the supply charge
 #define V5      9        // a low level switches the MOSFET for 5 volt on 
 #define V33     7        // a low level switches the MOSFET for 3.3 volt on 
 #define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
@@ -137,8 +137,8 @@
 #define LEDPIN  PB7      // pin (=D13)
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_NANO)  // on Nano board -- is aligned with Pro Mini and Pro Micro
-#define VHIGH   7        // switch, low-level signals that one should use the 5V supply
-#define VON    15        // switch, low-level signals that dw-probe should deliver the supply charge
+#define VHIGH   7        // switch, low signals that one should use the 5V supply
+#define VON    15        // switch, low signals that dw-probe should deliver the supply charge
 #define V33     5        // a low level switches the MOSFET for 3.3 volt on 
 #define V5      6        // a low level switches the MOSFET for 5 volt on 
 #define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
@@ -161,8 +161,8 @@
 #define LEDPIN  PB5      // Arduino pin 13
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_PRO)  // on a Pro Mini board
-#define VHIGH  16        // switch, low-level signals that one should use the 5V supply
-#define VON     2        // switch, low-level signals tha dw-probe should deliver the supply charge
+#define VHIGH  16        // switch, low signals that one should use the 5V supply
+#define VON     2        // switch, low signals tha dw-probe should deliver the supply charge
 #define V33    14        // a low level switches the MOSFET for 3.3 volt on 
 #define V5     15        // a low level switches the MOSFET for 5 volt on 
 #define VSUP   15        // Vcc - direct supply charge (limit it to 20-30 mA!)
@@ -179,8 +179,8 @@
 //#define LEDPIN  PC7      // not connected to the outside world!
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_PROMICRO)  // Pro Micro, i.e., that is a Mega 32U4
-#define VHIGH  20        // switch, low-level signals that one should use the 5V supply
-#define VON     2        // switch, low-level signals tha dw-probe should deliver the supply charge
+#define VHIGH  20        // switch, low signals that one should use the 5V supply
+#define VON     2        // switch, low signals tha dw-probe should deliver the supply charge
 #define V33    18        // a low level switches the MOSFET for 3.3 volt on 
 #define V5     19        // a low level switches the MOSFET for 5 volt on 
 #define VSUP   19        // Vcc - direct supply charge (limit it to 20-30 mA!)
@@ -197,8 +197,8 @@
 #define LEDPIN  PB0      // Arduino pin 17
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MICRO)  // Micro, i.e., that is a Mega 32U4
-#define VHIGH   7        // switch, low-level signals that one should use the 5V supply
-#define VON    19        // switch, low-level signals tha dw-probe should deliver the supply charge
+#define VHIGH   7        // switch, low signals that one should use the 5V supply
+#define VON    19        // switch, low signals tha dw-probe should deliver the supply charge
 #define V33     5        // a low level switches the MOSFET for 3.3 volt on 
 #define V5      6        // a low level switches the MOSFET for 5 volt on 
 #define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
@@ -214,7 +214,7 @@
 #define LEDPORT PORTB    // port register of system LED
 #define LEDPIN  PB0      // Arduino pin 17
 //-----------------------------------------------------------#else
-#error "Board is not supported yet. dw-probe works only Uno, Leonardo, Mega, Nano, Pro Mini, and Pro Micro (yet)" 
+#error "Board is not supported yet. dw-link works only on Uno, Leonardo, Mega, Nano, Pro Mini, Micro, and Pro Micro (yet)" 
 #endif
 
 
@@ -389,6 +389,7 @@ struct mcu_type {
   unsigned int eearh;      // address of EARL register (0 if none)
   unsigned int rcosc;      // fuse pattern for setting RC osc as clock source
   unsigned int extosc;     // fuse pattern for setting EXTernal osc as clock source
+  unsigned int xtalosc;    // fuse pattern for setting XTAL osc as clock source
   char         *name;      // pointer to name in PROGMEM
   unsigned int dwenfuse;   // bit mask for DWEN fuse in high fuse byte
   unsigned int ckdiv8;     // bit mask for CKDIV8 fuse in low fuse byte
@@ -400,55 +401,55 @@ struct mcu_type {
   
 // mcu attributes (for all AVR mcus supporting debugWIRE)
 const unsigned int mcu_attr[] PROGMEM = {
-  // sig sram   base eeprom flash  dwdr   pg  er4  boot    eecr eearh  rcosc extosc name
-  0x9007,  64,  0x60,   64,  1024, 0x2E,  32,   0, 0x0000, 0x1C, 0x00, 0x0A, 0x08,  (unsigned int)attiny13,
+  // sig sram   base eeprom flash  dwdr   pg er4 boot    eecr eearh rcosc extosc xtosc name
+  0x9007,  64,  0x60,   64,  1024, 0x2E,  32, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x0A, (uint16_t)attiny13,
 
-  0x920C, 256,  0x60,   64,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x22, 0x20,  (unsigned int)attiny43,
+  0x920C, 256,  0x60,   64,  4096, 0x27,  64, 0, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x3F, (uint16_t)attiny43,
 
-  0x910A, 128,  0x60,  128,  2048, 0x1f,  32,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  (unsigned int)attiny2313,
-  0x920D, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x00, 0x24, 0x20,  (unsigned int)attiny4313,
+  0x910A, 128,  0x60,  128,  2048, 0x1f,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, (uint16_t)attiny2313,
+  0x920D, 256,  0x60,  256,  4096, 0x27,  64, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, (uint16_t)attiny4313,
 
-  0x910B, 128,  0x60,  128,  2048, 0x27,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny24,   
-  0x9207, 256,  0x60,  256,  4096, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny44,
-  0x930C, 512,  0x60,  512,  8192, 0x27,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny84,
+  0x910B, 128,  0x60,  128,  2048, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny24,   
+  0x9207, 256,  0x60,  256,  4096, 0x27,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny44,
+  0x930C, 512,  0x60,  512,  8192, 0x27,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny84,
   
-  0x9215, 256, 0x100,  256,  4096, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny441, 
-  0x9315, 512, 0x100,  512,  8192, 0x27,  16,   1, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny841,
+  0x9215, 256, 0x100,  256,  4096, 0x27,  16, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny441, 
+  0x9315, 512, 0x100,  512,  8192, 0x27,  16, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny841,
   
-  0x9108, 128,  0x60,  128,  2048, 0x22,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny25,
-  0x9206, 256,  0x60,  256,  4096, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny45,
-  0x930B, 512,  0x60,  512,  8192, 0x22,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny85,
+  0x9108, 128,  0x60,  128,  2048, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny25,
+  0x9206, 256,  0x60,  256,  4096, 0x22,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny45,
+  0x930B, 512,  0x60,  512,  8192, 0x22,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny85,
   
-  0x910C, 128,  0x60,  128,  2048, 0x20,  32,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny261,
-  0x9208, 256,  0x60,  256,  4096, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny461,
-  0x930D, 512,  0x60,  512,  8192, 0x20,  64,   0, 0x0000, 0x1C, 0x1F, 0x22, 0x20,  (unsigned int)attiny861,
+  0x910C, 128,  0x60,  128,  2048, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny261,
+  0x9208, 256,  0x60,  256,  4096, 0x20,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny461,
+  0x930D, 512,  0x60,  512,  8192, 0x20,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny861,
   
-  0x9387, 512, 0x100,  512,  8192, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)attiny87,
-  0x9487, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)attiny167,
+  0x9387, 512, 0x100,  512,  8192, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)attiny87,
+  0x9487, 512, 0x100,  512, 16384, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)attiny167,
 
-  0x9314, 512, 0x100,  256,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C,  (unsigned int)attiny828,
+  0x9314, 512, 0x100,  256,  8192, 0x31,  64, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, (uint16_t)attiny828,
 
-  0x9209, 256, 0x100,   64,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  (unsigned int)attiny48,
-  0x9311, 512, 0x100,   64,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C,  (unsigned int)attiny88,
+  0x9209, 256, 0x100,   64,  4096, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x2E, (uint16_t)attiny48,
+  0x9311, 512, 0x100,   64,  8192, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x2E, (uint16_t)attiny88,
   
-  0x9412,1024, 0x100,  256, 16384, 0x2E,  32,   1, 0x0000, 0x1C, 0x00, 0x22, 0x20,  (unsigned int)attiny1634,
+  0x9412,1024, 0x100,  256, 16384, 0x2E,  32, 1, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x2F, (uint16_t)attiny1634,
   
-  0x9205, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega48a,
-  0x920A, 512, 0x100,  256,  4096, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega48pa,
-  0x930A,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega88a,
-  0x930F,1024, 0x100,  512,  8192, 0x31,  64,   0, 0x0F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega88pa,
-  0x9406,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega168a,
-  0x940B,1024, 0x100,  512, 16384, 0x31, 128,   0, 0x1F80, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega168pa,
-  0x9514,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega328,
-  0x950F,2048, 0x100, 1024, 32768, 0x31, 128,   0, 0x3F00, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega328p,
+  0x9205, 512, 0x100,  256,  4096, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega48a,
+  0x920A, 512, 0x100,  256,  4096, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega48pa,
+  0x930A,1024, 0x100,  512,  8192, 0x31,  64, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega88a,
+  0x930F,1024, 0x100,  512,  8192, 0x31,  64, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega88pa,
+  0x9406,1024, 0x100,  512, 16384, 0x31, 128, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega168a,
+  0x940B,1024, 0x100,  512, 16384, 0x31, 128, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega168pa,
+  0x9514,2048, 0x100, 1024, 32768, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega328,
+  0x950F,2048, 0x100, 1024, 32768, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega328p,
   
-  0x9389, 512, 0x100,  512,  8192, 0x31,  64,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega8u2,
-  0x9489, 512, 0x100,  512, 16384, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega16u2,
-  0x958A,1024, 0x100, 1024, 32768, 0x31, 128,   0, 0x0000, 0x1F, 0x22, 0x22, 0x20,  (unsigned int)atmega32u2,
+  0x9389, 512, 0x100,  512,  8192, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega8u2,
+  0x9489, 512, 0x100,  512, 16384, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega16u2,
+  0x958A,1024, 0x100, 1024, 32768, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega32u2,
   0,
 };
 
-enum CkFuses { CkDiv8, CkDiv1, CkRc, CkXtal };
+enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, Erase, DWEN };
 
 // some statistics
 long flashcnt = 0; // number of flash writes 
@@ -811,46 +812,50 @@ void gdbParseMonitorPacket(const byte *buf)
   int clen = strlen((const char *)buf);
   //DEBPR(F("clen=")); DEBLN(slen);
   
-  if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  /* dwo[ff] */
-    gdbStop();
-  else if  (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)    /* dwc[onnnect] */
-    gdbConnect();
-  else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)   /* fla[shcount] */
-    gdbReportFlashCount();
-  else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)       /* ram[usage] */
-    gdbReportRamUsage();
-  else if  (memcmp_P(buf, (void *)PSTR("636b387072657363616c657200"), max(6,min(26,clen))) == 0) /* ck8[prescaler] */
-    gdbSetCkFuses(CkDiv8);
-  else if  (memcmp_P(buf, (void *)PSTR("636b317072657363616c657200"), max(6,min(26,clen))) == 0) /* ck1[prescaler] */
-    gdbSetCkFuses(CkDiv1);
-  else if  (memcmp_P(buf, (void *)PSTR("72636f736300"), max(4,min(12,clen))) == 0)            /* rc[osc] */
-    gdbSetCkFuses(CkRc);
-  else if  (memcmp_P(buf, (void *)PSTR("6578746f736300"), max(4,min(14,clen))) == 0)          /* ex[tosc] */
-    gdbSetCkFuses(CkXtal);  
-  else if  (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)              /* hw[bp] */
-    gdbSetMaxBPs(1);
-  else if  (memcmp_P(buf, (void *)PSTR("7377627000"), max(4,min(10,clen))) == 0)              /* sw[bp] */
-    gdbSetMaxBPs(MAXBREAK);
-  else if  (memcmp_P(buf, (void *)PSTR("34627000"), max(2,min(8,clen))) == 0)                 /* 4[bp] */
-    gdbSetMaxBPs(4);
+  if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
+    gdbStop();                                                              /* dwo[ff] */
+  else if  (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)
+    gdbConnect();                                                           /* dwc[onnnect] */
+  else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)
+    gdbReportFlashCount();                                                  /* fla[shcount] */
+  else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)
+    gdbReportRamUsage();                                                    /* ram[usage] */
+  else if  (memcmp_P(buf, (void *)PSTR("636b387072657363616c657200"), max(6,min(26,clen))) == 0)
+    gdbSetFuses(CkDiv8);                                                    /* ck8[prescaler] */
+  else if  (memcmp_P(buf, (void *)PSTR("636b317072657363616c657200"), max(6,min(26,clen))) == 0) 
+    gdbSetFuses(CkDiv1);                                                    /* ck1[prescaler] */
+  else if  (memcmp_P(buf, (void *)PSTR("72636f736300"), max(4,min(12,clen))) == 0)
+    gdbSetFuses(CkRc);                                                      /* rc[osc] */
+  else if  (memcmp_P(buf, (void *)PSTR("6578746f736300"), max(4,min(14,clen))) == 0)
+    gdbSetFuses(CkExt);                                                     /* ex[tosc] */
+  else if  (memcmp_P(buf, (void *)PSTR("7874616c6f736300"), max(4,min(16,clen))) == 0)
+    gdbSetFuses(CkXtal);                                                     /* xt[alosc] */
+  else if  (memcmp_P(buf, (void *)PSTR("6572617365666c61736800"), max(4,min(22,clen))) == 0)
+    gdbSetFuses(Erase);                                                     /*er[aseflash]*/
+  else if  (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)
+    gdbSetMaxBPs(1);                                                        /* hw[bp] */
+  else if  (memcmp_P(buf, (void *)PSTR("7377627000"), max(4,min(10,clen))) == 0)
+    gdbSetMaxBPs(MAXBREAK);                                                 /* sw[bp] */
+  else if  (memcmp_P(buf, (void *)PSTR("34627000"), max(2,min(8,clen))) == 0)
+    gdbSetMaxBPs(4);                                                        /* 4[bp] */
 #if UNITDW
-  else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)                             /* testdw */
-    DWtests(para);
+  else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)
+    DWtests(para);                                                          /* testdw */
 #endif
 #if UNITTG
-  else if  (memcmp_P(buf, (void *)PSTR("746573747467"), 12) == 0)                             /* testtg */
-    targetTests(para);
+  else if  (memcmp_P(buf, (void *)PSTR("746573747467"), 12) == 0)
+    targetTests(para);                                                      /* testtg */
 #endif
 #if UNITGDB
-  else if  (memcmp_P(buf, (void *)PSTR("74657374676462"), 14) == 0)                           /* testgdb */
-    gdbTests(para);
+  else if  (memcmp_P(buf, (void *)PSTR("74657374676462"), 14) == 0)
+    gdbTests(para);                                                         /* testgdb */
 #endif
 #if UNITALL
-  else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)                           /* testall */
-    alltests();
+  else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)
+    alltests();                                                             /* testall */
 #endif
-  else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {           /* re[set] */
-    if (gdbReset()) gdbSendReply("OK");
+  else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
+    if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
   } else gdbSendReply("");
 }
@@ -1025,13 +1030,13 @@ boolean gdbReset(void)
 }
 
 // "monitor ck1prescaler/ck8prescaler/rcosc/extosc"
-void gdbSetCkFuses(CkFuses fuse)
+void gdbSetFuses(Fuses fuse)
 {
   boolean offline = targetOffline();
   int res; 
 
   setSysState(NOTCONN_STATE);
-  res = targetSetCkFuses(fuse);
+  res = targetSetFuses(fuse);
   if (res < 0) {
     if (res == -1) gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1);
     else if (res == -2) gdbDebugMessagePSTR(PSTR("Unsupported MCU type"),-1);
@@ -1044,7 +1049,9 @@ void gdbSetCkFuses(CkFuses fuse)
   case CkDiv8: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now programmed"),-1); break;
   case CkDiv1: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now unprogrammed"),-1); break;
   case CkRc: gdbDebugMessagePSTR(PSTR("Clock source is now the RC oscillator"),-1); break;
-  case CkXtal: gdbDebugMessagePSTR(PSTR("Clock source is now the EXTernal oscillator"),-1); break;
+  case CkExt: gdbDebugMessagePSTR(PSTR("Clock source is now the EXTernal oscillator"),-1); break;
+  case CkXtal: gdbDebugMessagePSTR(PSTR("Clock source is now the XTAL oscillator"),-1); break;
+  case Erase: gdbDebugMessagePSTR(PSTR("Flash memory erased"),-1); break;
   }
   _delay_ms(200);
   flushInput();
@@ -1940,38 +1947,21 @@ int targetConnect(void)
 // disable debugWIRE mode
 boolean targetStop(void)
 {
-  boolean succ = false;
-  unsigned int sig;
-  if (doBreak()) {
-    DEBLN(F("Sending LEAVE cmd"));
-    sendCommand((const byte[]) {0x06}, 1); // leave debugWIREMode
-    _delay_ms(50);
-  }
-  if (!enterProgramMode()) {
-    DEBLN(F("Could not enter progmode"));
-    return false;
-  }
-  sig = ispGetChipId();
-  if (sig && setMcuAttr(sig)) {
-    if (ispProgramFuse(true, mcu.dwenfuse, mcu.dwenfuse)) {
-      DEBLN(F("DWEN disabled"));
-      succ = true;
-    }
-  }
+  int ret = targetSetFuses(DWEN);
   leaveProgramMode();
   dw.end();
-  return succ;
+  return (ret == 1);
 }
 
 
-// set the CKDIV fuse (true for CHKDIV8 to be programmed), returns
-// 1 - if programmed
+// set the fuses/clear memory, returns
+//  1 - if successful
 // -1 - if we cannot enter programming mode or sig is not readable
 // -2 - if unknown MCU type
 // -3 - programming was unsuccessful
  
 
-int targetSetCkFuses(CkFuses fuse)
+int targetSetFuses(Fuses fuse)
 {
   unsigned int sig;
   boolean succ;
@@ -1995,7 +1985,10 @@ int targetSetCkFuses(CkFuses fuse)
   case CkDiv1: succ = ispProgramFuse(false, mcu.ckdiv8, mcu.ckdiv8); break;
   case CkDiv8: succ = ispProgramFuse(false, mcu.ckdiv8, 0); break;
   case CkRc:   succ = ispProgramFuse(false, mcu.ckmsk, mcu.rcosc); break;
-  case CkXtal: succ = ispProgramFuse(false, mcu.ckmsk, mcu.extosc); break;
+  case CkExt: succ = ispProgramFuse(false, mcu.ckmsk, mcu.extosc); break;
+  case CkXtal: succ = ispProgramFuse(false, mcu.ckmsk, mcu.xtalosc); break;
+  case Erase: succ = ispEraseFlash(); break;
+  case DWEN: succ = ispProgramFuse(true, mcu.dwenfuse, mcu.dwenfuse); break;
   default: succ = false;
   }
   return (succ ? 1 : -3);
@@ -3128,6 +3121,16 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
   return succ;
 }
 
+boolean ispEraseFlash(void)
+{
+  ispSend(0xAC, 0x80, 0x00, 0x00, true);
+  _delay_ms(20);
+  pinMode(DWLINE, INPUT); // short positive pulse
+  _delay_ms(1);
+  pinMode(DWLINE, OUTPUT); 
+  return true;
+}
+
 boolean ispLocked()
 {
   return (ispSend(0x58, 0x00, 0x00, 0x00, true) != 0xFF);
@@ -3141,11 +3144,11 @@ boolean setMcuAttr(unsigned int id)
   unsigned int *ptr;
   measureRam();
 
-  while ((sig = pgm_read_word(&mcu_attr[ix*14]))) {
+  while ((sig = pgm_read_word(&mcu_attr[ix*15]))) {
     if (sig == id) { // found the right mcu type
       ptr = &mcu.sig;
-      for (byte f = 0; f < 14; f++) 
-	*ptr++ = pgm_read_word(&mcu_attr[ix*14+f]);
+      for (byte f = 0; f < 15; f++) 
+	*ptr++ = pgm_read_word(&mcu_attr[ix*15+f]);
       mcu.eearl = mcu.eecr + 2;
       mcu.eedr = mcu.eecr + 1;
 // we treat the 4-page erase MCU as if pages were larger by a factor of 4!
