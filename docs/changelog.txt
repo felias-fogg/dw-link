@@ -329,3 +329,26 @@ Version 1.0.4 (02-Dec-21)
    - brought back command "monitor xt[alosc]"
    - rewrote targetStop by making use of targetSetFuses
    - renamed dw-probe to dw-link; the board retains the name, though
+
+Version 1.0.5 (04-Dec-21)
+   - designed, tested, and documented the prototype board with
+     level-shifters
+   - did an exhaustive search in the MPLAB-X database for MCUs
+     supporting debugWIRE and came up with a number of obscure chips
+     I had never heard about; I documented it in  the manual and
+     ordered some of the chips I could get hold of (some will
+     only be available by end of next year)
+   - restructured the mcu_info data & saved more than 600 bytes
+   - check now whether change to xtal is possible and give error
+     message if not
+   - extended mcu_info so that now all DW chips except the obsolete
+     ones are covered; only 128 bytes added for 18 additional chips; 6
+     will not be covered because they are obsolete
+   - extended mcu_info to include a field that describes the
+     architecture, i.e, AVRe or AVRe+; AVRe+ means that multiplication
+     can be done in hardware; extended also the handling in targetIllegalOpcode
+   - added three unit tests: 1 DW test to check whether
+     multiplication is performed/not performed; 2 TG tests for checking
+     recognition of mul and jmp instructions
+   - mov ed changelog to doc directory
+     

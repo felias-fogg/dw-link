@@ -60,7 +60,7 @@ int testResult(bool succ)
  1c4:	e2: 0c 94 d5 00 	jmp	0x1aa	        ; 0x1aa <START>
  1c8:	e4: 11 e9       	ldi	r17, 0x91	; 145
  1ca:	e5: 08 95       	ret 
- 1cc:   e6: 01 00             ILLEGAL
+ 1cc:   e6: 01 00               ILLEGAL
 */
 
 const byte testcode[] PROGMEM = {
@@ -553,6 +553,13 @@ int targetTests(int &num) {
   targetSaveRegisters();
   DEBPR(F("SREG after: ")); DEBLNF(DWreadIOreg(0x3F),HEX);
   failed += testResult(ctx.wpc == 0 && DWreadIOreg(0x3F) == 0);
+
+  gdbDebugMessagePSTR(PSTR("Test targetIllegalOpcode (mul r16, r16): "), testnum++);
+  failed += testResult(targetIllegalOpcode(0x9F00) == !mcu.avreplus);
+
+  gdbDebugMessagePSTR(PSTR("Test targetIllegalOpcode (jmp ...): "), testnum++);
+  failed += testResult(targetIllegalOpcode(0x940C) == (mcu.flashsz <= 8192));
+  
   
   if (num >= 1) {
     num = testnum;
@@ -741,7 +748,7 @@ int DWtests(int &num)
   // execute one instruction offline
   gdbDebugMessagePSTR(PSTR("Test DWexecOffline (eor r1,r1 at WPC=0x003F): "), testnum++);
   DWwriteIOreg(0x3F, 0); // write SREG
-  DWwriteRegister(0x55, 1);
+  DWwriteRegister(1, 0x55);
   DWsetWPc(pc);
   DWexecOffline(0x2411); // specify opcode as MSB LSB (bigendian!)
   succ = false;
@@ -749,6 +756,24 @@ int DWtests(int &num)
     if (DWreadRegister(1) == 0)  // reg 1 should be zero now
       if (DWreadIOreg(0x3F) == 0x02) // in SREG, only zero bit should be set
 	succ = true;
+  failed += testResult(succ);
+
+  // execute MUL offline
+  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (mul r16, r16 at WPC=0x003F): "), testnum++);
+  DWwriteRegister(16, 5);
+  DWwriteRegister(1, 0x55);
+  DWwriteRegister(0, 0x55);
+  DWsetWPc(pc);
+  DWexecOffline(0x9F00); // specify opcode as MSB LSB (bigendian!)
+  int newpc = DWgetWPc();
+  succ = false;
+  DEBPR(F("reg 1:")); DEBLN(DWreadRegister(1));
+  DEBPR(F("reg 0:")); DEBLN(DWreadRegister(0));
+  DEBLN(mcu.avreplus);
+  DEBLNF(newpc,HEX);
+  if (0x0040 == newpc) // PC advanced by one, then +1 for break, but this is autmatically subtracted
+    succ = ((DWreadRegister(0) == 25 && DWreadRegister(1) == 0 && mcu.avreplus) ||
+	    (DWreadRegister(0) == 0x55 && DWreadRegister(0) == 0x55 && !mcu.avreplus));
   failed += testResult(succ);
 
   // execute a rjmp instruction offline 

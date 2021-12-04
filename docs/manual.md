@@ -58,7 +58,7 @@ The most basic solution is to use the UNO board and connect the cables as it is 
 
 ### 2.2 MCUs with debugWIRE interface
 
-In general, almost all "older" ATtiny MCUs, the ATmegaX8 MCUs, and the ATmegaXU2 MCUs have the debugWIRE interface. Specifically, the following MCUs can be debugged using this interface:
+In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs can be debugged using this interface:
 
 * __ATtiny13__
 * __ATtiny43U__
@@ -71,10 +71,16 @@ In general, almost all "older" ATtiny MCUs, the ATmegaX8 MCUs, and the ATmegaXU2
 * __ATtiny828__
 * ATtiny48, __ATtiny88__
 * __ATtiny1634__
-* __ATmega48A__, __ATmega48PA__, __ATmega88A__, __ATmega88PA__, __ATmega168A__, __ATmega168PA__, __ATmega328__, __ATmega328P__
-* ATmega8U2, ATmega16U2, ATmega32U2
+* __ATmega48A__, __ATmega48PA__, ATmega48PB, __ATmega88A__, __ATmega88PA__, Atmega88PB, __ATmega168A__, __ATmega168PA__, ATmega168PB, __ATmega328__, __ATmega328P__, _ATmega328PB_
+* _ATmega8U2_, ATmega16U2, _ATmega32U2_
+* ATmega32C1, ATmega64C1, ATmega16M1, _ATmega32M1_, _ATmega64M1_
+* AT90USB82, _AT90USB162_
+* AT90PWM1, AT90PWM2B, AT90PWM3B
+* AT90PWM81, AT90PWM161
+* AT90PWM216, AT90PWM316
+* <font color="grey">ATmega8HVA, ATmega16HVA, ATmega16HVB, ATmega32HVA, ATmega32HVB, ATmega64HVE2</font>
 
-I have tested the debugger on the MCUs marked bold. It will probably also work on the untested MCUs. However, there are always surprises. For example, the ATmegaX8s with 16 KiB flash or less require a particular way of changing fuses, the ATtiny1634 has a special way of erasing flash pages, the ATtiny4313 uses a different address for the DWDR register than the 2313, and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
+This list should be complete, but one never knows. The debugger supports (in principle) all listed MCUs except for the ones marked grey, which are obsolete. I have tested the debugger on the MCUs marked bold. I have ordered samples of the ones in italics.  The remaining MCUs were either currently impossible to get or only sold in large quantities. The debugger will probably work on these untested MCUs too. However, there are always surprises. For example, the ATmegaX8s with 16 KiB flash or less require a particular way of changing fuses and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
 
 <a name="section23"></a>
 ### 2.3 Requirements concerning the RESET line of the target system 
@@ -159,7 +165,7 @@ compiler.c.extra_flags=-Og
 compiler.cpp.extra_flags=-Og
 ```
 
-The first three lines make sure that you receive an **ELF** file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using avr-gdb. 
+The first three lines make sure that you receive an [*ELF*](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using avr-gdb. 
 
 The last two lines enforce that the compiler optimizations are geared towards being debugging friendly. Strictly speaking, this compiler option is not necessary. However, without it, the execution of the program may not follow step by step the way you had specified it in the program. Please also note that the code size of the program may grow.
 
@@ -418,7 +424,7 @@ While one can use the setting as described in [Section 3.1](#section31), it woul
 It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an UNO, Leonardo or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
 
 <center>
-![dw-probe-fritzing V 0.1](pics/dw-link0.1.png)
+![dw-probe-fritzing V 0.1](pics/dw-probe0.1.png)
 </center>
 
 In reality, it probably will more look like as in the next picture.
@@ -434,30 +440,41 @@ This works very well on an Arduino UNO. On a Leonardo, you need to use Arduino p
 If you often work with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar boards work as well. 
 
 
+<center>
+![dw-probe-fritzing V 0.2](pics/dw-probe0.2.png)
+</center>
+
+Now the reality check! How could a prototype look like? 
+<center>
+![dw-probe-proto V 0.1](pics/proto0.2.jpg)
+</center>
+
+Maybe it does not look completely convincing, but it does what it is supposed to do. In particular, the level-shifting works flawlessly. However, it is definitely not made for eternity. And even when I would give it a more sustainable form, this prototype has a few shortcomings. First, it has pull-up resistors at the outgoing SPI lines, i.e., it changes the electrical properties of these lines considerably. Second, when powering it with 3.3 volt from the Arduino board, one should source not more than 50 mA. Third, the board cannot power-cycle the target board when interfacing to a 3.3V board.
 
 ### 4.3 Adapter board/shield with level-shifter and switchable power supply
 
-While one of the two boards above is probably a solution one can live with, there are some features that would be nice to have:
+So, it would be great to have a board with the following features: 
 
-* switchable power supply (that supports power-cycling),
+* switchable power supply (supporting power-cycling),
 * 5 volt and 3.3 volt supply at 200 mA,
 * level-shifter on the ISP lines, and
 * tri-state buffers for the two output signals (MOSI and SCK).
 
-I have designed such a shield for the Arduino Uno, Leonardo, and Mega and a base board for the Arduino Nano V2, Nano V3, Pro Mini, Pro Micro, and Micro.  You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go.  
+I have designed a base board for the Arduino Nano V2, Nano V3, Pro Mini, Pro Micro, and Micro with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The PCB design looks as follows (you'll find the design files in the directory **pcb**)
 
-The only problem may be that you do not get this board fully assembled. You have to send the design data to a PCB fab, get all the parts somewhere and in the end need to solder SMD parts.
+![PCB V1.0](pics/dw-probe1.0.png)
 
-When you use an Arduino Nano, you should be aware that  there are apparently two different versions around, namely version 2 and version 3. The former one has the A0 pin close to the 5V pin, while version 3 boards have the A0 pin close to the REF pin. If you use a Nano on the adapter board, you need to set the compile time constant `NANOVERSION`, either by changing the value in the source or by defining the value when compiling. The default value is 3 (which is the current version).
+The board is currently produced in a PCB fab and should arrive soon. I also plan to design a shield for the UNO sized boards. 
+
 
 #### 4.3.1 DIP switch configuration
 
-There a three different DIP switches labelled **Vcc**, **5V**, and **10k**. 
+There a three different DIP switches labelled **Von**, **5V**, and **10k**. 
 
 Label | On | Off
 --- | --- | ---
 **Von** | The debugger supplies power to the target (should be less than 200 mA) and the line is power-cycled when debugWIRE mode needs to be enabled | The debugger does not supply power to the target, which means that power has to be supplied externally and power-cycling needs to be done manually
-**5V** | The debugger provides 5 V (if Von is on) | The debugger provides 3.3 V (if Von is on)
+**5V** | The debugger provides 5 V to the target board (if Von is on) | The debugger provides 3.3 V to the target board (if Von is on)
 **10k** | A 10kΩ pull-up resistor is connected to the RESET line of the target | 
 
 <a name="section432"></a>
@@ -487,6 +504,8 @@ VSUP | Output | Used as a target supply line driven directly by an ATmega pin, w
 
 If you plug in your Arduino into the adapter board or use the shield, you do not have to bother about pin assignments. The only important thing is to set the DIP switches and plug in the USB and ISP cable. If you want to use the Arduino without such a board, you need, of course, to know which pins of the debugger to connect to the target.
 
+When you use an Arduino Nano, you should be aware that  there are apparently two different versions around, namely version 2 and version 3. The former one has the A0 pin close to the 5V pin, while version 3 boards have the A0 pin close to the REF pin. If you use a Nano on the adapter board, you need to set the compile time constant `NANOVERSION`, either by changing the value in the source or by defining the value when compiling. The default value is 3.
+
 In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. For a standalone setting, only the pins marked in the last column are required. The **DWLINE** pin is the debugWIRE line, which needs to be connected to the traget. MOSI, MISO, and SCK are the usual signals for ISP programming by SPI.
 
 The **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a standalone setting, there is no level-shifting done, so you only should debug 5 V systems.
@@ -510,7 +529,7 @@ VSUP | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9 | **+**
 
 #### 4.3.4 System LED
 
-As the system LED, we use the builtin LED on pin13 for most boards. On the Pro Micro, the RXI LED is used. On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board. So, if you use the Pro Mini, you do not have a system LED that signals the internal state.  
+As the system LED, we use the builtin LED on pin13 for most boards. On the Pro Micro, the RXI LED is used. On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board. So, if you use the Pro Mini, you do not have a system LED that signals the internal state. For a future version of the board, I will add an extra solder bridge into the design that can be closed for accommodating the Arduino Micro and allows to use the builtin LED of a Mini board otherwise.
 
 <a name="section5"></a>
 ## 5. Problems and shortcomings
@@ -530,7 +549,7 @@ Apart from bugs, there are, of course, shortcomings that one cannot avoid. I wil
 
 Setting and removing *breakpoints* is one of the main functionality of a debugger. Setting a breakpoint is mainly accomplished by changing an instruction in flash memory to the BREAK instruction. This, however, implies that one has to *reprogram flash memory*. Since flash memory wears out, one should try to minimize the number of flash memory reprogramming operations.
 
-One now has to understand that gdb does not pass *breakpoint set* and *breakpoint delete* commands from the user to the gdbserver, but instead it sends a list of *breakpoint set* commands before execution starts. After execution stops, it sends *breakpoint delete* commands for all breakpoints. In particular, when thinking about conditional breakpoints, it becomes clear that gdb may send a large number of *breakpoint set* and *breakpoint delete* commands for one breakpoint during one debug session. Although it is guaranteed that flash memory can be reprogrammed at least 10,000 times according to the data sheets, this number can easily be reached even in a few debug sessions, provided there are loops which are often executed and where a conditional breakpoint has been inserted. Fortunately, the situation is not as bad as it looks since there are a number of ways of getting around the need of reprogramming flash memory.
+One now has to understand that gdb does not pass *breakpoint set* and *breakpoint delete* commands from the user to the hardware debugger, but instead it sends a list of *breakpoint set* commands before execution starts. After execution stops, it sends *breakpoint delete* commands for all breakpoints. In particular, when thinking about conditional breakpoints, it becomes clear that gdb may send a large number of *breakpoint set* and *breakpoint delete* commands for one breakpoint during one debug session. Although it is guaranteed that flash memory can be reprogrammed at least 10,000 times according to the data sheets, this number can easily be reached even in a few debug sessions, provided there are loops which are often executed and where a conditional breakpoint has been inserted. Fortunately, the situation is not as bad as it looks since there are a number of ways of getting around the need of reprogramming flash memory.
 
 First of all, *dw-link* leaves the breakpoint in memory, even when gdb requests to remove them. Only when gdb requests to continue execution, the breakpoints in flash memory are updated. Well, the same happens before loading program code, detaching, exiting, etc. Assuming that the user does not change breakpoints too often, this will reduce flash reprogramming significantly.  
 
@@ -547,6 +566,8 @@ With all of that in mind, you do not have to worry too much about flash memory w
 <a name="paranoid"></a>
 For the really paranoid,  there is the option that permits only one breakpoint, i.e., the hardware breakpoint: `monitor hwbp`. In this case, one either can set one breakpoint or on can single-step, but not both. So, if you want to continue after a break by single-stepping, you first have to delete the breakpoint. By the way, with `monitor swbp`, one switches back to normal mode, in which 32 (+1 temporary) breakpoints are allowed.
 
+In addition, there is the debugger command `monitor flashcount`, which returns the number of how many flash page reprogramming commands have been executed since the debugger had been started.
+
 <a name="section52"></a>
 ### 5.2 Slow responses when loading or single-stepping
 
@@ -558,7 +579,7 @@ Sometimes, in particular when using 1MHz clock speed, the responses from the MCU
 
 ### 5.3 Limited number of breakpoints
 
-The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints (+1 temporary breakpoint for single-stepping) are supported by default. You can reduce this to 1 by issuing the command `monitor hwbp` ([see above](#paranoid)). If you set more than the maximum number, it will not be possible to start execution. Instead one will get the warning `Cannot insert breakpoint ... Command aborted`. You have to delete or disable some breakpoints before program execution can continue. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
+The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints (+1 temporary breakpoint for single-stepping) are supported by default. You can reduce this to 1 by issuing the command `monitor hwbp` ([see above](#paranoid)). If you set more breakpoints than the maximum number, it will not be possible to start execution. Instead one will get the warning `Cannot insert breakpoint ... Command aborted`. You have to delete or disable some breakpoints before program execution can continue. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
 
 ### 5.4 Power saving is not operational 
 
@@ -570,15 +591,15 @@ When you activate *sleep mode*, the power consumed by the MCU is supposed to go 
 There are a few more situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) mentions the following:
 
 * BOD and WDT resets lead to loss of connection 
-* Breakpoints should not be set at the last address of flash memory
 * The voltage should not be changed during a debug session
 * The OSCCAL and CLKPR registers should not be changed during a debug session
 * The PRSPI bit in the power-saving register should not be set
 * The CKDIV8 fuse should not be in the programmed state when running off a 128 kHz clock source
+* Breakpoints should not be set at the last address of flash memory
 * Do not single step over a SLEEP instruction
 * Do not insert breakpoints immediately after an LPM instruction
 
-If you do one of these things, either you might lose the connection to the target or, in the last two cases, the instruction might do something wrong. If you loose connection to the target, then it is very likely that there are still BREAK instructions in flash memory. So, after reconnecting, you need to issue the `load` command in order to get a clean copy of your binary into flash memory.
+If you do one of these things, either you might lose the connection to the target or, in the last three cases, the instruction might do something wrong. If you loose connection to the target, then it is very likely that there are still BREAK instructions in flash memory. So, after reconnecting, you need to issue the `load` command in order to get a clean copy of your binary into flash memory.
 
 ### 5.6 BREAK instructions in your program
 
@@ -588,11 +609,11 @@ When running under the debugger, the program will be stopped in the same way as 
 
 ### 5.7 The start of the debugger takes a couple of seconds
 
-The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain UNO or equivalent, then it will spend a couple of seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
+The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain UNO board or equivalent, then it will spend a couple of seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
 
 ### 5.8 Program execution is very slow when conditional breakpoints are present
 
-If you use *conditional breakpoints*, the program is slowed down significantly.  The reason is that at such a breakpoint, the program has to be stopped, all registers have to be saved, the current values of the variables have to be inspected, and then the program needs to be started again, whereby registers have to be restored first. For all of these operations, debugWIRE communication takes place. This takes roughly 100 ms per stop, even for simple conditions and an MCU running at 8MHz. So, if you have a loop that iterates 1000 times before the condition is met, it may easily take 2 minutes before execution stops.
+If you use *conditional breakpoints*, the program is slowed down significantly.  The reason is that at such a breakpoint, the program has to be stopped, all registers have to be saved, the current values of the variables have to be inspected, and then the program needs to be started again, whereby registers have to be restored first. For all of these operations, debugWIRE communication takes place. This takes roughly 100 ms per stop, even for simple conditions and an MCU running at 8MHz. So, if you have a loop that iterates 1000 times before the condition is met, it may easily take 2 minutes (instead of the fraction of a second) before execution stops.
 
 ## 6 Trouble shooting
 
@@ -608,7 +629,7 @@ This is a generic gdb error message that indicates that the last `monitor` comma
 <a name="lost"></a>
 #### Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and the system LED is off
 
-The target is not responsive any longer. Possible reasons for such a loss of connectivity could be could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 2.3](#section23)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 5.5](#section55)). Try to identify the reason, eliminate it and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
+The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 2.3](#section23)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 5.5](#section55)). Try to identify the reason, eliminate it and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
 
 
 #### Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*

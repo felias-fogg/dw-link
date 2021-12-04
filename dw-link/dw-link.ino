@@ -32,6 +32,10 @@
 // For the Nano board, there are apparently two different versions around, version 2 and version 3.
 // The former one has the A0 pin close to 5V pin, version 3 boards have the A0 pin close to the REF pin.
 // If you use the adapter board, you need to set the compile time constant NANOVERSION
+
+#define VERSION "1.0.5"
+
+
 #ifndef NANOVERSION
 #define NANOVERSION 3
 #endif
@@ -40,7 +44,6 @@
 #error "dw-link needs at least 16 MHz clock frequency"
 #endif
 
-#define VERSION "1.0.4"
 
 #ifndef DEBUG        // for debugging the debugger!
 #define DEBUG    0   
@@ -362,91 +365,149 @@ const char attiny88[] PROGMEM = "ATtiny88";
 const char attiny1634[] PROGMEM = "ATtiny1634";
 const char atmega48a[] PROGMEM = "ATmega48A";
 const char atmega48pa[] PROGMEM = "ATmega48PA";
+const char atmega48pb[] PROGMEM = "ATmega48PB";
 const char atmega88a[] PROGMEM = "ATmega88A";
 const char atmega88pa[] PROGMEM = "ATmega88PA";
+const char atmega88pb[] PROGMEM = "ATmega88PB";
 const char atmega168a[] PROGMEM = "ATmega168A";
 const char atmega168pa[] PROGMEM = "ATmega168PA";
+const char atmega168pb[] PROGMEM = "ATmega168PB";
 const char atmega328[] PROGMEM = "ATmega328";
 const char atmega328p[] PROGMEM = "ATmega328P";
+const char atmega328pb[] PROGMEM = "ATmega328PB";
 const char atmega8u2[] PROGMEM = "ATmega8U2";
 const char atmega16u2[] PROGMEM = "ATmega16U2";
 const char atmega32u2[] PROGMEM = "ATmega32U2";
+const char atmega32c1[] PROGMEM = "ATmega32C1";
+const char atmega64c1[] PROGMEM = "ATmega64C1";
+const char atmega16m1[] PROGMEM = "ATmega16M1";
+const char atmega32m1[] PROGMEM = "ATmega32M1";
+const char atmega64m1[] PROGMEM = "ATmega64M1";
+const char at90usb82[] PROGMEM = "AT90USB82";
+const char at90usb162[] PROGMEM = "AT90USB162";
+const char at90pwm12b3b[] PROGMEM = "AT90PWM1/2B/3B";
+const char at90pwm81[] PROGMEM = "AT90PWM81";
+const char at90pwm161[] PROGMEM = "AT90PWM161";
+const char at90pwm216316[] PROGMEM = "AT90PWM216/316";
+
 
 const char Connected[] PROGMEM = "Connected to ";
 
 //  MCU parameters
-struct mcu_type {
+struct {
   unsigned int sig;        // two byte signature
+  boolean      avreplus;   // is an AVRe+ architecture MCU (includes MUL instruction)
   unsigned int ramsz;      // SRAM size
   unsigned int rambase;    // base address of SRAM
   unsigned int eepromsz;   // size of EEPROM
   unsigned int flashsz;    // size of flash memory
-  unsigned int dwdr;       // address of DWDR register
+  byte         dwdr;       // address of DWDR register
   unsigned int pagesz;     // page size of flash memory
-  unsigned int erase4pg;   // 1 when the MCU has a 4-page erase operation
+  boolean      erase4pg;   // 1 when the MCU has a 4-page erase operation
   unsigned int bootaddr;   // highest address of possible boot section  (0 if no boot support)
-  unsigned int eecr;       // address of EECR register
-  unsigned int eearh;      // address of EARL register (0 if none)
-  unsigned int rcosc;      // fuse pattern for setting RC osc as clock source
-  unsigned int extosc;     // fuse pattern for setting EXTernal osc as clock source
-  unsigned int xtalosc;    // fuse pattern for setting XTAL osc as clock source
-  char         *name;      // pointer to name in PROGMEM
-  unsigned int dwenfuse;   // bit mask for DWEN fuse in high fuse byte
-  unsigned int ckdiv8;     // bit mask for CKDIV8 fuse in low fuse byte
-  unsigned int ckmsk;      // bit mask for selecting clock source (and startup time)
-  unsigned int eedr;       // address of EEDR (computed from EECR)
-  unsigned int eearl;      // address of EARL (computed from EECR)
+  byte         eecr;       // address of EECR register
+  byte         eearh;      // address of EARL register (0 if none)
+  byte         rcosc;      // fuse pattern for setting RC osc as clock source
+  byte         extosc;     // fuse pattern for setting EXTernal osc as clock source
+  byte         xtalosc;    // fuse pattern for setting XTAL osc as clock source
+  char*        name;      // pointer to name in PROGMEM
+  byte         dwenfuse;   // bit mask for DWEN fuse in high fuse byte
+  byte         ckdiv8;     // bit mask for CKDIV8 fuse in low fuse byte
+  byte         ckmsk;      // bit mask for selecting clock source (and startup time)
+  byte         eedr;       // address of EEDR (computed from EECR)
+  byte         eearl;      // address of EARL (computed from EECR)
   unsigned int targetpgsz; // target page size (depends on pagesize and erase4pg)
 } mcu;
-  
-// mcu attributes (for all AVR mcus supporting debugWIRE)
-const unsigned int mcu_attr[] PROGMEM = {
-  // sig sram   base eeprom flash  dwdr   pg er4 boot    eecr eearh rcosc extosc xtosc name
-  0x9007,  64,  0x60,   64,  1024, 0x2E,  32, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x0A, (uint16_t)attiny13,
 
-  0x920C, 256,  0x60,   64,  4096, 0x27,  64, 0, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x3F, (uint16_t)attiny43,
 
-  0x910A, 128,  0x60,  128,  2048, 0x1f,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, (uint16_t)attiny2313,
-  0x920D, 256,  0x60,  256,  4096, 0x27,  64, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, (uint16_t)attiny4313,
+struct mcu_info_type {
+  unsigned int sig;             // two byte signature
+  byte         ramsz_div_64;    // SRAM size
+  boolean      rambase_low;     // base address of SRAM; low: 0x60, high: 0x100
+  byte         eepromsz_div_64; // size of EEPROM
+  byte         flashsz_div_1k;  // size of flash memory
+  byte         dwdr;            // address of DWDR register
+  byte         pagesz_div_2;    // page size of flash memory
+  boolean      erase4pg;        // 1 when the MCU has a 4-page erase operation
+  unsigned int bootaddr;        // highest address of possible boot section  (0 if no boot support)
+  byte         eecr;            // address of EECR register
+  byte         eearh;           // address of EARL register (0 if none)
+  byte         rcosc;           // fuse pattern for setting RC osc as clock source
+  byte         extosc;          // fuse pattern for setting EXTernal osc as clock source
+  byte         xtalosc;         // fuse pattern for setting XTAL osc as clock source
+  boolean      avreplus;        // AVRe+ architecture
+  char*        name;            // pointer to name in PROGMEM
+};
 
-  0x910B, 128,  0x60,  128,  2048, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny24,   
-  0x9207, 256,  0x60,  256,  4096, 0x27,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny44,
-  0x930C, 512,  0x60,  512,  8192, 0x27,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny84,
-  
-  0x9215, 256, 0x100,  256,  4096, 0x27,  16, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny441, 
-  0x9315, 512, 0x100,  512,  8192, 0x27,  16, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny841,
-  
-  0x9108, 128,  0x60,  128,  2048, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny25,
-  0x9206, 256,  0x60,  256,  4096, 0x22,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny45,
-  0x930B, 512,  0x60,  512,  8192, 0x22,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny85,
-  
-  0x910C, 128,  0x60,  128,  2048, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny261,
-  0x9208, 256,  0x60,  256,  4096, 0x20,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny461,
-  0x930D, 512,  0x60,  512,  8192, 0x20,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, (uint16_t)attiny861,
-  
-  0x9387, 512, 0x100,  512,  8192, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)attiny87,
-  0x9487, 512, 0x100,  512, 16384, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)attiny167,
+// mcu infos (for all AVR mcus supporting debugWIRE)
+// untested ones are marked by a star
+const mcu_info_type mcu_info[] PROGMEM = {
+  // sig sram low eep flsh dwdr  pg er4 boot    eecr eearh rcosc extosc xtosc plus name
+  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0, (unsigned int)attiny13},
 
-  0x9314, 512, 0x100,  256,  8192, 0x31,  64, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, (uint16_t)attiny828,
+  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, (unsigned int)attiny2313},
+  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, (unsigned int)attiny4313},
 
-  0x9209, 256, 0x100,   64,  4096, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x2E, (uint16_t)attiny48,
-  0x9311, 512, 0x100,   64,  8192, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x2E, (uint16_t)attiny88,
+  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny43},
+
+  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny24},   
+  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny44},
+  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny84},
   
-  0x9412,1024, 0x100,  256, 16384, 0x2E,  32, 1, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x2F, (uint16_t)attiny1634,
+  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny441}, //*
+  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny841},
   
-  0x9205, 512, 0x100,  256,  4096, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega48a,
-  0x920A, 512, 0x100,  256,  4096, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega48pa,
-  0x930A,1024, 0x100,  512,  8192, 0x31,  64, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega88a,
-  0x930F,1024, 0x100,  512,  8192, 0x31,  64, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega88pa,
-  0x9406,1024, 0x100,  512, 16384, 0x31, 128, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega168a,
-  0x940B,1024, 0x100,  512, 16384, 0x31, 128, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega168pa,
-  0x9514,2048, 0x100, 1024, 32768, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega328,
-  0x950F,2048, 0x100, 1024, 32768, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega328p,
+  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny25},
+  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny45},
+  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny85},
   
-  0x9389, 512, 0x100,  512,  8192, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega8u2,
-  0x9489, 512, 0x100,  512, 16384, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega16u2,
-  0x958A,1024, 0x100, 1024, 32768, 0x31, 128, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, (uint16_t)atmega32u2,
-  0,
+  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny261},
+  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny461},
+  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny861},
+  
+  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny87},  //*
+  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny167},
+
+  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, 0, (unsigned int)attiny828},
+
+  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, (unsigned int)attiny48},  //*
+  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, (unsigned int)attiny88},
+  
+  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x2F, 0, (unsigned int)attiny1634},
+  
+  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega48a},
+  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega48pa},
+  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega48pb}, //*
+  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega88a},
+  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega88pa},
+  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega88pb}, //*
+  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega168a},
+  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega168pa},
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega168pb}, //*
+  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega328},
+  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega328p},
+  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega328pb}, //*
+  
+  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega8u2},   //*
+  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega16u2},  //*
+  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega32u2},  //*
+
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega16m1},  //*
+  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega32c1},  //*
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega32m1},  //*
+  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega64c1},  //*
+  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega64m1},  //*
+
+  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90usb82},   //*
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90usb162},  //*
+
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm12b3b},//* 
+
+  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm81},  //*
+  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm161}, //*
+
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm216316},  //*
+  {0}
 };
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, Erase, DWEN };
@@ -1041,6 +1102,7 @@ void gdbSetFuses(Fuses fuse)
     if (res == -1) gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1);
     else if (res == -2) gdbDebugMessagePSTR(PSTR("Unsupported MCU type"),-1);
     else if (res == -3) gdbDebugMessagePSTR(PSTR("Fuse programming failed"),-1);
+    else if (res == -4) gdbDebugMessagePSTR(PSTR("XTAL is not a possible clock source"),-1);
     flushInput();
     gdbSendReply("E05");
     return;
@@ -1967,6 +2029,7 @@ int targetSetFuses(Fuses fuse)
   boolean succ;
 
   measureRam();
+  if (fuse == CkXtal && mcu.xtalosc == 0) return -4; // this chip does not permit an XTAL as the clock source
   if (doBreak()) {
     sendCommand((const byte[]) {0x06}, 1); // leave debugWIRE mode
   } 
@@ -2337,7 +2400,7 @@ boolean targetIllegalOpcode(unsigned int opcode)
     return lsb != 0; 
   case 0x02: // muls
   case 0x03: // mulsu/fmuls
-    return true;
+    return !mcu.avreplus;
   case 0x90: 
   case 0x91: // lds, ld, lpm, elpm
     if ((lsb & 0x0F) == 0x3 || (lsb & 0x0F) == 0x6 || (lsb & 0x0F) == 0x7 ||
@@ -2368,7 +2431,7 @@ boolean targetIllegalOpcode(unsigned int opcode)
   case 0x9d:
   case 0x9e:
   case 0x9f: // mul
-    return true;
+    return !mcu.avreplus;
   default: if (((msb & 0xF8) == 0xF8) && ((lsb & 0xF) >= 8)) return true; 
     return false;
   }
@@ -3144,16 +3207,32 @@ boolean setMcuAttr(unsigned int id)
   unsigned int *ptr;
   measureRam();
 
-  while ((sig = pgm_read_word(&mcu_attr[ix*15]))) {
+  while ((sig = pgm_read_word(&mcu_info[ix].sig))) {
     if (sig == id) { // found the right mcu type
-      ptr = &mcu.sig;
-      for (byte f = 0; f < 15; f++) 
-	*ptr++ = pgm_read_word(&mcu_attr[ix*15+f]);
+      DEBLN(F("MCU struct:"));
+      mcu.sig = sig;
+      mcu.ramsz = pgm_read_byte(&mcu_info[ix].ramsz_div_64)*64;
+      mcu.rambase = (pgm_read_byte(&mcu_info[ix].rambase_low) ? 0x60 : 0x100);
+      mcu.eepromsz = pgm_read_byte(&mcu_info[ix].eepromsz_div_64)*64;
+      mcu.flashsz = pgm_read_byte(&mcu_info[ix].flashsz_div_1k)*1024;
+      mcu.dwdr = pgm_read_byte(&mcu_info[ix].dwdr);
+      mcu.pagesz = pgm_read_byte(&mcu_info[ix].pagesz_div_2)*2;
+      mcu.erase4pg = pgm_read_byte(&mcu_info[ix].erase4pg);
+      mcu.bootaddr = pgm_read_word(&mcu_info[ix].bootaddr);
+      mcu.eecr =  pgm_read_byte(&mcu_info[ix].eecr);
+      mcu.eearh =  pgm_read_byte(&mcu_info[ix].eearh);
+      mcu.rcosc =  pgm_read_byte(&mcu_info[ix].rcosc);
+      mcu.extosc =  pgm_read_byte(&mcu_info[ix].extosc);
+      mcu.xtalosc =  pgm_read_byte(&mcu_info[ix].xtalosc);
+      mcu.avreplus = pgm_read_byte(&mcu_info[ix].avreplus);
+      mcu.name = pgm_read_word(&mcu_info[ix].name);
+      // the remaining fields will be derived 
       mcu.eearl = mcu.eecr + 2;
       mcu.eedr = mcu.eecr + 1;
-// we treat the 4-page erase MCU as if pages were larger by a factor of 4!
+      // we treat the 4-page erase MCU as if pages were larger by a factor of 4!
       if (mcu.erase4pg) mcu.targetpgsz = mcu.pagesz*4; 
       else mcu.targetpgsz = mcu.pagesz;
+      // dwen, chmsk, ckdiv8 are identical for almost all MCUs, so we treat the exceptions here
       mcu.dwenfuse = 0x40;
       mcu.ckmsk = 0x3F;
       mcu.ckdiv8 = 0x80;
@@ -3164,7 +3243,31 @@ boolean setMcuAttr(unsigned int id)
       } else if (mcu.name == attiny2313 || mcu.name == attiny4313) {
 	mcu.dwenfuse = 0x80;
       }
-      // DEBPR(F("Found MCU Sig: ")); DEBLNF(id, HEX);
+#if 0
+      DEBPR(F("sig=")); DEBLNF(mcu.sig,HEX);
+      DEBPR(F("aep="));  DEBLN(mcu.avreplus);
+      DEBPR(F("ram=")); DEBLN(mcu.ramsz);
+      DEBPR(F("bas=0x")); DEBLNF(mcu.rambase,HEX);
+      DEBPR(F("eep=")); DEBLN(mcu.eepromsz);
+      DEBPR(F("fla="));  DEBLN(mcu.flashsz);
+      DEBPR(F("dwd=0x")); DEBLNF(mcu.dwdr,HEX);
+      DEBPR(F("pgs=")); DEBLN(mcu.pagesz);
+      DEBPR(F("e4p=")); DEBLN(mcu.erase4pg);
+      DEBPR(F("boo=0x")); DEBLNF(mcu.bootaddr,HEX);
+      DEBPR(F("eec=0x")); DEBLNF(mcu.eecr,HEX);
+      DEBPR(F("eea=0x")); DEBLNF(mcu.eearh,HEX);
+      DEBPR(F("rco=0x")); DEBLNF(mcu.rcosc,HEX);
+      DEBPR(F("ext=0x")); DEBLNF(mcu.extosc,HEX);
+      DEBPR(F("xto=0x")); DEBLNF(mcu.xtalosc,HEX);
+      strcpy_P(buf,mcu.name);
+      DEBPR(F("nam=")); DEBLN((char*)buf);
+      DEBPR(F("ear=0x")); DEBLNF(mcu.eearl,HEX);
+      DEBPR(F("eed=0x")); DEBLNF(mcu.eedr,HEX);
+      DEBPR(F("tps=")); DEBLN(mcu.targetpgsz);
+      DEBPR(F("dwe=0x")); DEBLNF(mcu.dwenfuse,HEX);
+      DEBPR(F("ckm=0x")); DEBLNF(mcu.ckmsk,HEX);
+      DEBPR(F("ck8=0x")); DEBLNF(mcu.ckdiv8,HEX);
+#endif
       return true;
     }
     ix++;
