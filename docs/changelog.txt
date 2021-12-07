@@ -350,5 +350,22 @@ Version 1.0.5 (04-Dec-21)
    - added three unit tests: 1 DW test to check whether
      multiplication is performed/not performed; 2 TG tests for checking
      recognition of mul and jmp instructions
-   - mov ed changelog to doc directory
+   - moved changelog to docs directory
      
+Version 1.0.6
+   - made the blinking ISR an ISR_NOBLOCK in order to minimize
+     interrupt latency
+   - integrated communication speed control so that regardless of
+     MCU clock frequency one has a reasonable communication speed;
+     this resulted in a number of changes
+   - one strange observation in this contect is that communication
+     speed is reduced to clk/256 after a program has been stopped by
+     CTRL-C, which results in a break condition on the RESET line;
+     this does NOT happen when doing the same with the Atnmel-ICE,
+     and I have no idea why
+   - implemented communication speed limit control: "monitor speed <option>",
+     where <option> can be 'l' (low speed = 62500), 'n' (normal speed
+     = 125000), and 'h' (high speed = 250000); the command sets the
+     upper limit, but then for 1 MHz clock frequency, one reaches only 
+     62500 or 125000 bps in any case; the monitor speed command without an
+     option prints the current connection speed

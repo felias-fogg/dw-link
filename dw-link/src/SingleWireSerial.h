@@ -41,7 +41,7 @@
 
 class SingleWireSerial : public Stream
 {
-private:
+protected:
   // only 1 object possible, so everything is static
   static bool _twoWire;
   static bool _waitBeforeSending;
@@ -57,6 +57,7 @@ private:
 
 protected:
   static void setRxIntMsk(bool enable);
+  
 
 public:
   // public methods

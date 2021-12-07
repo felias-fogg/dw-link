@@ -22,10 +22,9 @@ dwSerial::dwSerial(void)
 //
 void dwSerial::sendBreak()
 {
-  
   enable(false);
   ICDDR |= _BV(ICBIT); // switch pin to output (which is always low)
-  _delay_ms(12);       // shouild be long enough even for 128 kHz clock, i.e., 1k bps
+  _delay_ms(100);
   ICDDR &= ~_BV(ICBIT); // and switch it back to being an input
   enable(true);
 }
@@ -51,37 +50,36 @@ void dwSerial::enable(bool active)
 
 unsigned long dwSerial::calibrate(void)
 {
-  const unsigned int timeout = 30000;
+  unsigned long timeout = 100000UL; // long means roughly 80 ms
   unsigned long bps, eightbits = 0;
-  unsigned int start, wait = 0;
+  unsigned int start;
   byte edges = 1;
   byte saveSREG;
 
   saveSREG = SREG;
   cli();
-  sendBreak();
   enable(false);
   TCCRA = 0;
   TCCRB = _BV(ICNC) | _BV(CS0); // noise cancellation, falling edge, prescaler = 1
   TCCRC =  0;
   TIFR |= _BV(ICF);
 
-  while ((TIFR & _BV(ICF)) == 0 && wait < timeout) wait++;
-  if (wait >= timeout) {
+  while ((TIFR & _BV(ICF)) == 0 && timeout) timeout--;
+  if (timeout == 0) {
     SREG = saveSREG;
     return 0;
   }
   start = ICR;
   TIFR |= _BV(ICF);
-  wait = 0;
+  timeout = 10000;
   while (edges < 5) {
-    while ((TIFR & _BV(ICF)) == 0 && wait < timeout) wait++;
-    if (wait >= timeout) {
+    while ((TIFR & _BV(ICF)) == 0 && timeout) timeout--;
+    if (timeout == 0) {
       SREG = saveSREG;
       return 0;
     }
     TIFR |= _BV(ICF);
-    wait = 0;
+    timeout = 10000;
     eightbits += (ICR - start);
     start = ICR;
     edges++;
@@ -91,4 +89,4 @@ unsigned long dwSerial::calibrate(void)
   enable(true);
   return bps;
 }
-    
+

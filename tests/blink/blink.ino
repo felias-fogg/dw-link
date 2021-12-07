@@ -1,3 +1,5 @@
+// Program intended to be used for testing dw-link
+
 #define LED SCK // use always the SCK pin so one can see something flashing.
 
 volatile byte cycle = 0; // cycle counter
@@ -38,8 +40,12 @@ void setup() {
 #else
   TIMSK0 |= _BV(OCIE0A);  // enable COMPA interrupt on Timer0
 #endif
-#ifdef __AVR_ATtiny13__
-  TCCR0B = 0x03;         // set prescaler 64 on ATtiny13, since the ATtony13 does not initialize TCCR0B by itself
+#ifdef __AVR_ATtiny13__   // set prescaler on ATtiny13, since the ATtiny13 does not initialize TCCR0B by itself
+#if F_CPU >= 8000000
+  TCCR0B = 0x03;         // prescaler 64 on fast Attinys
+#else
+  TCCR0B = 0x02;         // set prescaler 8 on slow ATtinys
+#endif
 #endif
 }
 

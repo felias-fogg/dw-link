@@ -1,3 +1,5 @@
+// Program intended to be used for testing dw-link
+
 #include <stdio.h>
 #include <string.h>
 #include "src/picoUART.h"

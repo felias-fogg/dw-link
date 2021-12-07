@@ -1,8 +1,0 @@
-- a mode where reads & writes are double-checked: "monitor verify/noverify". Could be
-  on or off by default.
-- check communication speed setting again
-- PCB
-  - circuit design
-  - breadboard test
-  - PCB design
-- implement simple ISP programmer again

@@ -199,10 +199,10 @@ int gdbTests(int &num) {
   ctx.sp = mcu.ramsz+mcu.rambase-1;
   ctx.wpc = 0xd5;
   gdbContinue();
-  succ = checkCmdOk2();
+  succ = expectBreakAndU();
   if (!succ) {
     targetBreak();
-    checkCmdOk();
+    expectUCalibrate();
   }
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xd6);
@@ -212,10 +212,10 @@ int gdbTests(int &num) {
   ctx.wpc = 0xdc;
   oldsp = ctx.sp;
   gdbContinue();
-  succ = checkCmdOk2();
+  succ = expectBreakAndU();
   if (!succ) {
     targetBreak();
-    checkCmdOk();
+    expectUCalibrate();
   }
   targetSaveRegisters();
   targetReadSram(ctx.sp+1,membuf,2); // return addr
@@ -319,7 +319,7 @@ int gdbTests(int &num) {
   succ = ctx.saved && sig == SIGILL; 
   if (sig == 0) {
     targetBreak();
-    checkCmdOk();
+    expectUCalibrate();
   }
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xe6);
@@ -522,7 +522,7 @@ int targetTests(int &num) {
   ctx.sp = mcu.ramsz+mcu.rambase-1; // SP to upper limit of RAM
   targetRestoreRegisters(); 
   targetStep();
-  if (!checkCmdOk2()) succ = false;
+  if (!expectBreakAndU()) succ = false;
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xda && ctx.regs[18] == 0x49);
 
@@ -531,7 +531,7 @@ int targetTests(int &num) {
   ctx.wpc = 0xde; // rcall instruction
   targetRestoreRegisters();
   targetStep(); // one step leads to Break+0x55
-  if (!checkCmdOk2()) succ = false;
+  if (!expectBreakAndU()) succ = false;
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xe4);
 
@@ -541,7 +541,7 @@ int targetTests(int &num) {
   targetRestoreRegisters();
   targetContinue();
   targetBreak(); // DW responds with 0x55 on break
-  if (!checkCmdOk()) succ = false;
+  if (!expectUCalibrate()) succ = false;
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xd8 && ctx.regs[17] == 0x91);
 

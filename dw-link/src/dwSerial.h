@@ -14,10 +14,19 @@
 
 class dwSerial : public SingleWireSerial
 {
-public:
+ private:
+  struct  {
+    uint16_t oneAndAHalfBitDelay;
+    uint16_t bitDelay;
+    uint16_t endOfByte;
+    uint8_t setICfalling, setICrising, setCTC;
+  } _speedData[2];
+
+
+ public:
   // public methods
   dwSerial(void);
-  unsigned long calibrate();
+  unsigned long calibrate(void);
   void sendBreak();
   size_t sendCmd(const uint8_t  *buf, uint8_t len);
   size_t write(const uint8_t  *buf, uint8_t len);
