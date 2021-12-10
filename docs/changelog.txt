@@ -352,7 +352,7 @@ Version 1.0.5 (04-Dec-21)
      recognition of mul and jmp instructions
    - moved changelog to docs directory
      
-Version 1.0.6
+Version 1.0.6 (07-Dec-21)
    - made the blinking ISR an ISR_NOBLOCK in order to minimize
      interrupt latency
    - integrated communication speed control so that regardless of
@@ -369,3 +369,20 @@ Version 1.0.6
      upper limit, but then for 1 MHz clock frequency, one reaches only 
      62500 or 125000 bps in any case; the monitor speed command without an
      option prints the current connection speed
+
+Version 1.0.7
+   - fixed the bug that a breakpoint signal by the target was not
+     detected
+   - adaptive communication speed to host: 230400, 115200, 57600,
+     38400, 19200, and 9600 (the GDB default) are possible; so
+     one only has to set the speed in avr-gdb; dw-link will adapt
+     to it!
+   - inserted configureSupply into setup so that the target could
+     be powered up early on; otherwise DW is not active when the
+     first doBreak is issued; DW apparently needs to be powered up
+     at least 70 ms before you can use it!
+   - support extended-remote, i.e., now one can also use the 'run'
+     command in order to restart
+   - New monitor command: serial - prints speed of communcation line
+     to host
+     

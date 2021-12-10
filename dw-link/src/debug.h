@@ -1,6 +1,6 @@
 
 /* Debug macros */
-#if DEBUG
+#if TXODEBUG
 #define DEBDECLARE() TXOnlySerial deb(DEBTX)
 #define DEBINIT() deb.begin(57600)
 #define DEBPR(str) deb.print(str)

@@ -1,4 +1,4 @@
-// This is an implementation of the remote gdb protocol for debugWIRE.
+// This is an implementation of the GDB remote serial protocol for debugWIRE.
 // It should run on all ATmega328 boards and provides a hardware debugger
 // for the classic ATtinys and some small ATmegas (see below)
 //
@@ -8,7 +8,8 @@
 //       for auto reset. On the original Uno boards there is a bridge labeled "RESET EN"
 //       that you can cut. This does not apply to the Pro Mini boards! For Pro Mini
 //       boards you have to make sure that only the TX/RX as well as the Vcc/GND
-//       pins are connected. 
+//       pins are connected.
+//
 // Some of the code is inspired by and/or copied from
 // - dwire-debugger (https://github.com/dcwbrown/dwire-debug)
 // - debugwire-gdb-bridge (https://github.com/ccrause/debugwire-gdb-bridge)
@@ -17,6 +18,12 @@
 // - avr_debug (https://github.com/jdolinay/avr_debug).
 // And, of course, all of it would have not been possible without the work of RikusW
 // on reverse engineering of the debugWIRE protocol: http://www.ruemohr.org/docs/debugwire.html
+//
+// The following documents were helpful in implementing the RSP server:
+// The official GDB doc: https://sourceware.org/gdb/current/onlinedocs/gdb/Remote-Protocol.html
+// Jeremy Bennett's description of an implementation of an RSP server:
+//    https://www.embecosm.com/appnotes/ean4/embecosm-howto-rsp-server-ean4-issue-2.html
+// 
 //
 // You can run it on an UNO, a Leonardo, a Mega, a Nano, a Pro Mini, a
 // Pro Micro, or a Micro.  For the four latter ones, there exists an
@@ -28,8 +35,9 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by defualt is 3.
 
-#define VERSION "1.0.6"
+#define VERSION "1.0.7"
 
+#define INITIALBPS 230400UL // initial expected  commuication speed with the host (115200, 57600, 38400 are alternatives)
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -43,8 +51,8 @@
 #define VARSPEED 0
 #endif
 
-#ifndef DEBUG        // for debugging the debugger!
-#define DEBUG    0   
+#ifndef TXODEBUG        // for debugging the debugger!
+#define TXODEBUG    0   
 #endif
 #ifndef SCOPEDEBUG
 #define SCOPEDEBUG 0
@@ -230,7 +238,7 @@
 #include <util/delay.h>
 #include "src/dwSerial.h"
 #include "src/SingleWireSerial_config.h"
-#ifdef DEBUG
+#ifdef TXODEBUG
 #include <TXOnlySerial.h> // only needed for (meta-)debuging
 #endif
 #include "src/debug.h" // some (meta-)debug macros
@@ -240,8 +248,7 @@
 #define MAXBUF 255
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries!)
 
-// clock rates 
-#define GDB_BAUD      115200UL // communcation speed with the host
+// communication bit rates 
 #define SPEEDHIGH     275000UL // maximum communication speed limit for DW
 #define SPEEDNORMAL   137000UL // normal speed limit
 #define SPEEDLOW       70000UL // low speed limit (if others is too fast)
@@ -326,7 +333,8 @@ struct context {
   boolean von:1; // deliver power to the target
   boolean vhigh:1; // deliver 5 volt instead of 3.3 volt
   boolean snsgnd:1; // true if SNSGDB pin is low
-  unsigned long bps; // communication speed
+  unsigned long bps; // debugWIRE communication speed
+  unsigned long hostbps; // host communication speed
 } ctx;
 
 // use LED to signal system state
@@ -409,7 +417,7 @@ struct {
   byte         rcosc;      // fuse pattern for setting RC osc as clock source
   byte         extosc;     // fuse pattern for setting EXTernal osc as clock source
   byte         xtalosc;    // fuse pattern for setting XTAL osc as clock source
-  char*        name;      // pointer to name in PROGMEM
+  const char*  name;       // pointer to name in PROGMEM
   byte         dwenfuse;   // bit mask for DWEN fuse in high fuse byte
   byte         ckdiv8;     // bit mask for CKDIV8 fuse in low fuse byte
   byte         ckmsk;      // bit mask for selecting clock source (and startup time)
@@ -420,100 +428,103 @@ struct {
 
 
 struct mcu_info_type {
-  unsigned int sig;             // two byte signature
-  byte         ramsz_div_64;    // SRAM size
-  boolean      rambase_low;     // base address of SRAM; low: 0x60, high: 0x100
-  byte         eepromsz_div_64; // size of EEPROM
-  byte         flashsz_div_1k;  // size of flash memory
-  byte         dwdr;            // address of DWDR register
-  byte         pagesz_div_2;    // page size of flash memory
-  boolean      erase4pg;        // 1 when the MCU has a 4-page erase operation
-  unsigned int bootaddr;        // highest address of possible boot section  (0 if no boot support)
-  byte         eecr;            // address of EECR register
-  byte         eearh;           // address of EARL register (0 if none)
-  byte         rcosc;           // fuse pattern for setting RC osc as clock source
-  byte         extosc;          // fuse pattern for setting EXTernal osc as clock source
-  byte         xtalosc;         // fuse pattern for setting XTAL osc as clock source
-  boolean      avreplus;        // AVRe+ architecture
-  char*        name;            // pointer to name in PROGMEM
+  unsigned int sig;            // two byte signature
+  byte         ramsz_div_64;   // SRAM size
+  boolean      rambase_low;    // base address of SRAM; low: 0x60, high: 0x100
+  byte         eepromsz_div_64;// size of EEPROM
+  byte         flashsz_div_1k; // size of flash memory
+  byte         dwdr;           // address of DWDR register
+  byte         pagesz_div_2;   // page size of flash memory
+  boolean      erase4pg;       // 1 when the MCU has a 4-page erase operation
+  unsigned int bootaddr;       // highest address of possible boot section  (0 if no boot support)
+  byte         eecr;           // address of EECR register
+  byte         eearh;          // address of EARL register (0 if none)
+  byte         rcosc;          // fuse pattern for setting RC osc as clock source
+  byte         extosc;         // fuse pattern for setting EXTernal osc as clock source
+  byte         xtalosc;        // fuse pattern for setting XTAL osc as clock source
+  boolean      avreplus;       // AVRe+ architecture
+  const char*  name;           // pointer to name in PROGMEM
 };
 
 // mcu infos (for all AVR mcus supporting debugWIRE)
 // untested ones are marked by a star
 const mcu_info_type mcu_info[] PROGMEM = {
   // sig sram low eep flsh dwdr  pg er4 boot    eecr eearh rcosc extosc xtosc plus name
-  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0, (unsigned int)attiny13},
+  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0, attiny13},
 
-  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, (unsigned int)attiny2313},
-  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, (unsigned int)attiny4313},
+  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, attiny2313},
+  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, attiny4313},
 
-  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny43},
+  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x3F, 0, attiny43},
 
-  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny24},   
-  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny44},
-  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny84},
+  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny24},   
+  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny44},
+  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny84},
   
-  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny441}, //*
-  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny841},
+  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny441}, //*
+  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny841},
   
-  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny25},
-  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny45},
-  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny85},
+  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny25},
+  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny45},
+  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny85},
   
-  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny261},
-  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny461},
-  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny861},
+  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny261},
+  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny461},
+  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny861},
   
-  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny87},  //*
-  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, (unsigned int)attiny167},
+  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, attiny87},  //*
+  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, attiny167},
 
-  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, 0, (unsigned int)attiny828},
+  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, 0, attiny828},
 
-  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, (unsigned int)attiny48},  //*
-  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, (unsigned int)attiny88},
+  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, attiny48},  //*
+  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, attiny88},
   
-  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x2F, 0, (unsigned int)attiny1634},
+  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x2F, 0, attiny1634},
   
-  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega48a},
-  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega48pa},
-  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega48pb}, //*
-  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega88a},
-  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega88pa},
-  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega88pb}, //*
-  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega168a},
-  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega168pa},
-  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega168pb}, //*
-  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega328},
-  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega328p},
-  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega328pb}, //*
+  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48a},
+  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48pa},
+  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48pb}, //*
+  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88a},
+  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88pa},
+  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88pb}, //*
+  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168a},
+  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pa},
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pb}, //*
+  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328},
+  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328p},
+  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328pb}, //*
   
-  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega8u2},   //*
-  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega16u2},  //*
-  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega32u2},  //*
+  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega8u2},   //*
+  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16u2},  //*
+  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32u2},  //*
 
-  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega16m1},  //*
-  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega32c1},  //*
-  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega32m1},  //*
-  //  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega64c1},  //*
-  //  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)atmega64m1},  //*
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16m1},  //*
+  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32c1},  //*
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32m1},  //*
+  //  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64c1},  //*
+  //  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64m1},  //*
 
-  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90usb82},   //*
-  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90usb162},  //*
+  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb82},   //*
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb162},  //*
 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm12b3b},//* 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm12b3b},//* 
 
-  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm81},  //*
-  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm161}, //*
+  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm81},  //*
+  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm161}, //*
 
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, (unsigned int)at90pwm216316},  //*
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm216316},  //*
   {0},
 };
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
 const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
-unsigned long speedlimit = SPEEDNORMAL;
+unsigned long speedlimit = SPEEDHIGH;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, Erase, DWEN };
+
+const int maxbpsix = 5;
+const unsigned long rsp_bps[] = { 230400, 115200, 57600, 38400, 19200, 9600 };
 
 // some statistics
 long flashcnt = 0; // number of flash writes 
@@ -527,7 +538,7 @@ int freeram = 2048; // minimal amount of free memory (only if enabled)
 // communcation interface to target
 dwSerial      dw;
 char          rpt[16];                // Repeat command buffer
-byte          lastsignal = 0;
+byte          lastsignal;
 
 // communication and memory buffer
 byte membuf[256]; // used for storing sram, flash, and eeprom values
@@ -574,32 +585,35 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 
 /******************* setup & loop ******************************/
 void setup(void) {
-  DEBLN(F("Restart ..."));
+  DEBINIT(); 
+  DEBLN(F("dw-link V" VERSION));
   TIMSK0 = 0; // no millis interrupts
+  Serial.begin(INITIALBPS);
+  ctx.hostbps = INITIALBPS;
+  while (!Serial); // wait for serial port to connect (only needed for native USB ports)
+  ctx.von = false;
+  ctx.vhigh = false;
+  ctx.snsgnd = false;
   
 #ifdef LEDDDR
   LEDDDR |= LEDPIN; // switch on output for system LED
 #endif
-  DEBINIT(); 
-  Serial.begin(GDB_BAUD);
-  while (!Serial); // wait for serial port to connect (only needed for native USB ports)
 #ifdef VON
   pinMode(VON, INPUT_PULLUP); // configure Von as input from switch
 #endif
-  ctx.von = false;
 #ifdef VHIGH
   pinMode(VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
 #endif
-  ctx.vhigh = false;
 #ifdef SNSGND
   pinMode(SNSGND, INPUT_PULLUP);
 #endif
-  ctx.snsgnd = false;
-  initSession();
-
 #if SCOPEDEBUG
   DDRC = 0xFF;
 #endif
+  initSession(); // initialize all critical global variables
+  configureSupply(); // configure suppy already here
+  pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
+  detectRSPCommSpeed(); // check for coummication speed and select the right one
 }
 
 void loop(void) {
@@ -609,16 +623,91 @@ void loop(void) {
   } else if (ctx.state == RUN_STATE) {
     if (dw.available()) {
       byte cc = dw.read();
-      if (cc == 0x55) { // breakpoint reached
-	DEBLN(F("Execution stopped"));
-	_delay_ms(5); // we need that in order to avoid conflicts on the line
-	gdbSendState(SIGTRAP);
+      if (cc == 0x0) { // break sent by target
+	if (expectUCalibrate()) {
+	  DEBLN(F("Execution stopped"));
+	  _delay_us(5); // avoid conflicts on the line
+	  gdbSendState(SIGTRAP);
+	}
       }
     }
   }
 }
 
 /****************** system state routines ***********************/
+
+// find out communication speed of host
+// try to identify a qSupported packet
+//   if found, we are done: send '-' so that it is retransmitted
+//   if not: vary the speed and send '-' to provoke resending
+//           if one gets a response, send it again through the filter
+void detectRSPCommSpeed(void) {
+  int initix, ix;
+  int timeout;
+
+  initix = -1;
+  for (ix = 0; ix <= maxbpsix; ix++)
+    if (rsp_bps[ix] == INITIALBPS) initix = ix;
+
+  while (1) {
+    if (!Serial.available()) continue;
+    ix = maxbpsix + 1;
+    if (rightSpeed()) { // already found right speed
+      Serial.print("-"); // ask for retransmission
+      DEBLN(F("Initial guess right"));
+      return; 
+    }
+    // Now send "-" in all possible speeds and wait for response
+    ix = maxbpsix + 1;
+    while (ix > 0) {
+      ix--;
+      if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
+      DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
+      Serial.begin(rsp_bps[ix]);
+      Serial.print("-");  // ask for retransmission
+      timeout = 2000;
+      while (!Serial.available() && timeout--);
+      if (timeout == 0) continue; // try different speed
+      if (rightSpeed()) { // should be right one - check!
+	ctx.hostbps = rsp_bps[ix];
+	Serial.print("-");  // ask for retransmission
+	return;
+      }
+    }
+    Serial.begin(INITIALBPS); // set to initial guess and wait again
+  }
+}
+  
+// try to find "qSupported" in a stream
+// in any case, wait until no more characters are sent
+boolean rightSpeed(void)
+{
+  char keyseq[] = "qSupported:";
+  int ix = 0;
+  const int maxix = sizeof(keyseq) - 1;
+  int timeout;
+  char c;
+
+  measureRam();
+  timeout = 2000;
+  while (timeout-- && ix < maxix) 
+    if (Serial.available()) {
+      timeout = 2000;
+      c = Serial.read();
+      if (c == keyseq[ix]) ix++;
+      else
+	if (c == keyseq[0]) ix = 1;
+	else ix = 0;
+    }
+  // now read the remaining chars
+  timeout = 2000;
+  while (timeout--)
+    if (Serial.available()) {
+      timeout = 2000;
+      Serial.read();
+    }
+  return (ix == maxix); // entire sequence found
+}
 
 // configure supply lines according to switch setting
 void configureSupply(void)
@@ -627,7 +716,6 @@ void configureSupply(void)
   ctx.snsgnd = !digitalRead(SNSGND);
 #endif
   if (!ctx.snsgnd) {
-    //DEBLN(F("ctx.snsgnd=false"));
     pinMode(VSUP, OUTPUT);
     digitalWrite(VSUP, HIGH);
     ctx.von = false;
@@ -655,15 +743,16 @@ void configureSupply(void)
 // init all global vars when the debugger connects
 void initSession(void)
 {
-  //  DEBLN(F("initSession"));
+  DEBLN(F("initSession"));
   bpcnt = 0;
   bpused = 0;
   hwbp = 0xFFFF;
-  lastsignal = 0;
+  lastsignal = SIGTRAP;
   validpg = false;
   buffill = 0;
   fatalerror = NO_FATAL;
   setSysState(NOTCONN_STATE);
+  targetInitRegisters();
 }
 
 // report a fatal error and stop everything
@@ -802,7 +891,7 @@ void gdbParsePacket(const byte *buff)
     gdbReadMemory(buff + 1);
     break;
   case 'M':                                          /* write memory */
-    gdbUpdateBreakpoints(true);                      /* remove all BREAKS before! */
+    gdbUpdateBreakpoints(true);                      /* remove all BREAKS beforehand! */
     gdbWriteMemory(buff + 1);
     break;
   case 'X':                                          /* write memory from binary data */
@@ -813,54 +902,59 @@ void gdbParsePacket(const byte *buff)
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    setSysState(NOTCONN_STATE);                      /* set to unconnected state */
     targetContinue();                                /* let the target machine do what it wants to do! */
+    setSysState(NOTCONN_STATE);                      /* set to unconnected state */
     gdbSendReply("OK");                              /* and signal that everything is OK */
     break;
   case 'k':                                          /* kill request */
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit! */
-    digitalWrite(DWLINE,LOW);                        /* hold reset line low so that MCU does not start */
-    pinMode(DWLINE,OUTPUT);
-    fatalerror = NO_FATAL;
-    setSysState(NOTCONN_STATE);                      /* set to unconnected state */
     break;
   case 'c':                                          /* continue */
   case 'C':                                          /* continue with signal - just ignore signal! */
     s = gdbContinue();                               /* start execution on target at current PC */
     if (s) gdbSendState(s);                          /* if s != 0, it is a signal notifying an error */
+                                                     /* otherwise the target is now executing */
     break;
   case 's':                                          /* single step */
   case 'S':                                          /* step with signal - just ignore signal */
     gdbSendState(gdbStep());                         /* do only one step and report reason why stopped */
     break;              
-  case 'v':                                          /* notfication that process stopped */
-    if (memcmp_P(buff, (void *)PSTR("vStopped"), 8) == 0) 
-      gdbSendReply("OK");      
-    else
-      gdbSendReply("");
-    break;
   case 'z':                                          /* remove break/watch point */
   case 'Z':                                          /* insert break/watch point */
     gdbHandleBreakpointCommand(buf);
+    break;
+  case 'v':                                          /* Run command */
+    if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {
+      gdbReset();                                    /* reset MCU and initialize registers */
+      gdbSendState(SIGTRAP);                         /* stop at start address (= 0x000) */
+                                                     /* GDB will auto restart! */
+    } else {
+       gdbSendReply("");                             /* not supported */
+    }
     break;
   case 'q':                                          /* query requests */
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"), 6) == 0)   /* monitor command */
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
-      //DEBLN(F("qSupported"));
-	gdbSendPSTR((const char *)PSTR("PacketSize=FF;swbreak+;hwbreak-")); 
+        DEBLN(F("qSupported"));
 	initSession();                               /* init all vars when gdb (re-)connects */
-	gdbConnect();                                /* and try to connect */
+	gdbConnect(false);                           /* and try to connect */
+	gdbSendPSTR((const char *)PSTR("PacketSize=FF")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
       /* current thread is always 1 */
       gdbSendReply("QC01");
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
       /* always 1 thread*/
-      gdbSendReply("m1");
+      gdbSendReply("m01");
     else if (memcmp_P(buf, (void *)PSTR("qsThreadInfo"), 12) == 0)
       /* send end of list */
       gdbSendReply("l");
-    else 
+    /* ioreg query does not work!
+    else if (memcmp_P(buf, (void *)PSTR("qRavr.io_reg"), 12) == 0) 
+      if (mcu.rambase == 0x100) gdbSendReply("e0");
+      else gdbSendReply("40");
+    else
+    */
       gdbSendReply("");  /* not supported */
     break;
   default:
@@ -883,7 +977,10 @@ void gdbParseMonitorPacket(const byte *buf)
   if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
     gdbStop();                                                              /* dwo[ff] */
   else if (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)
-    gdbConnect();                                                           /* dwc[onnnect] */
+    if (gdbConnect(true)) gdbSendReply("OK");                               /* dwc[onnnect] */
+    else gdbSendReply("E03");
+  else if (memcmp_P(buf, (void *)PSTR("73657269616c00"), max(6,min(14,clen))) == 0)
+    gdbReportRSPbps();
   else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)
     gdbReportFlashCount();                                                  /* fla[shcount] */
   else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)
@@ -930,12 +1027,21 @@ void gdbParseMonitorPacket(const byte *buf)
   } else gdbSendReply("");
 }
 
+// show connectio speed to host
+void gdbReportRSPbps(void)
+{
+  gdbDebugMessagePSTR(PSTR("Current bitrate of serial connection to host: "), ctx.hostbps);
+  _delay_ms(5);
+  //  flushInput();
+  gdbSendReply("OK");
+}
+
 // get DW speed
 void gdbGetSpeed(void)
 {
-  gdbDebugMessagePSTR(PSTR("Current bitrate: "), ctx.bps);
+  gdbDebugMessagePSTR(PSTR("Current debugWIRE bitrate: "), ctx.bps);
   _delay_ms(5);
-  flushInput();
+  //  flushInput();
   gdbSendReply("OK");
 }
 
@@ -1008,7 +1114,7 @@ void gdbReportFlashCount(void)
 {
   gdbDebugMessagePSTR(PSTR("Number of flash write operations: "), flashcnt);
   _delay_ms(5);
-  flushInput();
+  // flushInput();
   gdbSendReply("OK");
 }
 
@@ -1018,7 +1124,7 @@ void gdbReportRamUsage(void)
 #if FREERAM
   gdbDebugMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
   _delay_ms(5);
-  flushInput();
+  // flushInput();
   gdbSendReply("OK");
 #else
   gdbSendReply("");
@@ -1029,7 +1135,7 @@ void gdbReportRamUsage(void)
 // "monitor dwconnect"
 // try to enable debugWIRE
 // this might imply that the user has to power-cycle the target system
-boolean gdbConnect(void)
+boolean gdbConnect(boolean verbose)
 {
   int retry = 0;
   byte b;
@@ -1041,12 +1147,13 @@ boolean gdbConnect(void)
 
   case 1: // everything OK since we are already connected
     setSysState(CONN_STATE);
-    gdbDebugMessagePSTR(Connected,-2);
-    gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
-    gdbReset();
+    if (verbose) {
+      gdbDebugMessagePSTR(Connected,-2);
+      gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
+    }
     gdbCleanupBreakpointTable();
-    flushInput();
-    gdbSendReply("OK");
+    // flushInput();
+    // gdbSendReply("OK");
     return true;
     break;
   case 0: // we have changed the fuse and need to powercycle
@@ -1064,27 +1171,32 @@ boolean gdbConnect(void)
       }
       if ((retry++)%3 == 0 && retry >= 3) {
 	do {
-	  flushInput();
-	  gdbDebugMessagePSTR(PSTR("Please power-cycle the target system"),-1);
-	  b = gdbReadByte();
+	  //	  flushInput();
+	  if (verbose) {
+	    gdbDebugMessagePSTR(PSTR("Please power-cycle the target system"),-1);
+	    b = gdbReadByte();
+	  } else b ='+';
 	} while (b == '-');
       }
       _delay_ms(1000);
       dw.enable(true);
       if (doBreak()) {
 	setSysState(CONN_STATE);
-	flushInput();
-	gdbReset();
-	gdbDebugMessagePSTR(Connected,-2);
-	gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
-	_delay_ms(100);
-	flushInput();
+	// flushInput();
+	// gdbReset();
+	if (verbose) {
+	  gdbDebugMessagePSTR(Connected,-2);
+	  gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
+	  _delay_ms(100);
+	}
+	// flushInput();
 	gdbCleanupBreakpointTable();
-	gdbSendReply("OK");
+	// gdbSendReply("OK");
 	return true;
       }
     }
-    gdbDebugMessagePSTR(PSTR("Cannot connect after setting DWEN fuse"),-1);
+    if (verbose)
+      gdbDebugMessagePSTR(PSTR("Cannot connect after setting DWEN fuse"),-1);
     conncode = -5;
     break;
   default:
@@ -1104,7 +1216,7 @@ boolean gdbConnect(void)
   if (fatalerror == NO_FATAL) fatalerror = -conncode;
   setSysState(ERROR_STATE);
   flushInput();
-  gdbSendReply("E05");
+  // gdbSendReply("E05");
   return false;
 }
 
@@ -1195,7 +1307,10 @@ void gdbSetFuses(Fuses fuse)
     gdbSendReply("OK");
     return;
   }
-  gdbConnect();
+  if (gdbConnect(true))
+    gdbSendReply("OK");
+  else
+    gdbSendReply("E02");
 }
 
 // check whether there should be a BREAK instruction at the current PC address 
@@ -2032,9 +2147,9 @@ void gdbDebugMessagePSTR(const char pstr[],long num) {
 
 /****************** target functions *************/
 
-// try to establish ISP connection
+// try to establish DW connection 
+// if not possible, try to establish ISP connection
 // if possible, set DWEN fuse
-// if not possible, trx to connect directly to debugWIRE
 //   1 if we are in debugWIRE mode and connected 
 //   0 if we need to powercycle
 //   -1 if we cannot connect
@@ -2225,7 +2340,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   }
   // DEBLN(F("changed"));
 
-#ifdef DEBUG
+#ifdef TXODEBUG
   DEBLN(F("Changes in flash page:"));
   for (unsigned int i=0; i<mcu.targetpgsz; i++) {
     if (page[i] != mem[i]) {
@@ -2365,11 +2480,11 @@ void targetInitRegisters(void)
 {
   byte a;
   a = 32;	/* in the loop, send R0 thru R31 */
-  byte *ptr = &(ctx.regs[0]);
+  byte *ptr = &(ctx.regs[31]);
   measureRam();
 
   do {
-    *ptr++ = a;
+    *ptr-- = a;
   } while (--a > 0);
   ctx.sreg = 0;
   ctx.wpc = 0;
@@ -2529,7 +2644,7 @@ boolean doBreak () {
 
   DEBLN(F("doBreak"));
   pinMode(DWLINE, INPUT);
-  _delay_ms(10);
+  _delay_ms(10); 
   ctx.bps = 0; // forget about previous connection
   dw.sendBreak(); // send a break
   if (!expectUCalibrate()) {
@@ -2846,7 +2961,7 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
 }
 
 //   EEPROM Notes: This section contains code to read and write from EEPROM.  This is accomplished by setting parameters
-//    into registers 28 - r31 and then using the 0xD2 command to send and execure a series of instruction opcodes on the
+//    into registers 28 - r31 and then using the 0xD2 command to send and execute a series of instruction opcodes on the
 //    target device. 
 // 
 //   EEPROM Register Locations for ATTiny25/45/85, ATTiny24/44/84, ATTiny13, Tiny2313, Tiny441/841

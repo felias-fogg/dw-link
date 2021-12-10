@@ -3,7 +3,7 @@ Import("env", "projenv")
 import subprocess
 
 def dw_stop(*args, **kwargs):
-    print("Disable debugWire")
+    print("Disable debugWIRE")
     tc = env.Dump().find('toolchain-atmelavr')
     sl = env.Dump().find('/',tc+1)
     if (sl > tc and sl >= 0 and tc >= 0):
@@ -17,7 +17,7 @@ def dw_stop(*args, **kwargs):
         ret = subprocess.call(gdb, shell=False)
         print("DWEN fuse disabled")
     except subprocess.CalledProcessError as exc:
-        print("Call failed with " + str(exc))
+        print("Call to disable debugWIRE failed with " + str(exc))
 
 
 

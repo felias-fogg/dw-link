@@ -12,7 +12,7 @@ Based on RikusW's work on [reverse engineering the debugWIRE protocol](http://ww
 
 So, I took all of the above ideas (and some of the code) and put it together in order to come up with a cheap hardware debugger for the classic ATtinys and some of the smaller ATmegas supporting gdb's remote debugging interface. Actually, it was a bit more than just throwing the things together. I developed a [new library for single wire serial communication](https://github.com/felias-fogg/SingleWireSerial) that is [much more reliable and robust](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/) than the usually employed SoftwareSerial library in order to have a base one can trust. I also made a number of interesting discoveries along the way. 
 
-You just need an ATmega328 based board to get started (e.g., an UNO, Nano, or Pro Mini). Actually, ATmega32U4 systems such as Leonardo, Pro Micro, and Micro also work. And you can even can use an Arduino Mega (it is a bit of an overkill, though). 
+You just need an ATmega328 based board to get started (e.g., an UNO, Nano, or Pro Mini). Actually, ATmega32U4 systems such as Leonardo, Pro Micro, and Micro should also work, but this is currently untested. And you can even can use an Arduino Mega (it is a bit of an overkill, though). 
 
 If you use the debugger more than once, you probably will start thinking about building a shield or adapter that makes it easy to connect to your target system by using the ISP cable. This and other hardware related issues are covered in [Section 4](#section4).
 
@@ -44,7 +44,7 @@ Having said all that, I have to admit that I encountered strange situations that
 There are a few constraints on what kind of board you can use as the base for the hardware debugger and some requirements on how to connect the debugger to the target system. Furthermore, there is only a limited set of AVR MCUs that can be debugged using  debugWIRE.
 
 ### 2.1 The debugger
-As mentioned above, as a base for the debugger, in principle one can use any ATmega328, ATmega32U4, ATmega1284, or ATmega2560 based board. The clock speed  must be 16MHz. Currently, the following boards are supported:
+As mentioned above, as a base for the debugger, in principle one can use any ATmega328, ATmega32U4, ATmega1284, or ATmega2560 based board. The clock speed  must be 16MHz. Currently, only the UNO board is supported, but the following boards should wotk and will be tested in the near future:
 
 * [Arduino Uno](https://store.arduino.cc/products/arduino-uno-rev3)
 * [Arduino Leonardo](https://store.arduino.cc/products/arduino-leonardo-with-headers)
@@ -73,16 +73,16 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATtiny828__
 * ATtiny48, __ATtiny88__
 * __ATtiny1634__
-* __ATmega48A__, __ATmega48PA__, ATmega48PB, __ATmega88A__, __ATmega88PA__, Atmega88PB, __ATmega168A__, __ATmega168PA__, ATmega168PB, __ATmega328__, __ATmega328P__, ___ATmega328PB___
-* ___ATmega8U2___, ATmega16U2, ___ATmega32U2___
-* ATmega32C1, <strike>ATmega64C1</strike>, ATmega16M1, ___ATmega32M1___, <strike>ATmega64M</strike>
-* AT90USB82, ___AT90USB162___
+* __ATmega48A__, __ATmega48PA__, ATmega48PB, __ATmega88A__, __ATmega88PA__, Atmega88PB, __ATmega168A__, __ATmega168PA__, ATmega168PB, __ATmega328__, __ATmega328P__, <u>ATmega328PB</u>
+* <u>ATmega8U2</u>, ATmega16U2, <u>ATmega32U2</u>
+* ATmega32C1, <strike>ATmega64C1</strike>, ATmega16M1, <u>ATmega32M1</u>, <strike>ATmega64M</strike>
+* AT90USB82, <u>AT90USB162</u>
 * AT90PWM1, AT90PWM2B, AT90PWM3B
 * AT90PWM81, AT90PWM161
 * AT90PWM216, AT90PWM316
 * <font color="grey">ATmega8HVA, ATmega16HVA, ATmega16HVB, ATmega32HVA, ATmega32HVB, ATmega64HVE2</font>
 
-This list should be complete, but one never knows. The debugger supports (in principle) all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have an address space that is too large. I have tested the debugger on the MCUs marked bold. The remaining MCUs were either currently impossible to get or only sold in large quantities. The debugger will probably work on these untested MCUs too. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
+This list should be complete, but one never knows. The debugger supports (in principle) all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have an address space that is too large. I have tested the debugger on the MCUs marked bold and will (really soon) test the underlined ones. The remaining MCUs were either currently impossible to get or only sold in large quantities. The debugger will probably work on these untested MCUs too. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
 
 <a name="section23"></a>
 ### 2.3 Requirements concerning the RESET line of the target system 
@@ -224,17 +224,17 @@ Copyright (C) 2021 Free Software Foundation, Inc.
 
 (gdb) file tiny85blink.ino.elf          # load symbol table from executable file
 Reading symbols from tiny85blink.ino.elf...
-(gdb) set serial baud 115200            # set baud rate 
+(gdb) set serial baud 230400            # set baud rate for connection to host
 (gdb) target remote <serial port>       # connect to the serial port of debugger    
 Remote debugging using <serial port>    # and make connection to target
 0x00000000 in __vectors ()              # we always start at location 0x0000
 (gdb) monitor dwconnect                 # show the debugWIRE connection
 Connected to ATtiny85
-debugWIRE is now enabled, bps: 63713    
+debugWIRE is now enabled, bps: 243560   # bit rate for connection to target    
 (gdb) load                              # load binary file
 Loading section .text, size 0x1e2 lma 0x0
 Start address 0x00000000, load size 482
-Transfer rate: 621 bytes/sec, 160 bytes/write.
+Transfer rate: 821 bytes/sec, 160 bytes/write.
 (gdb) break loop                        # set breakpoint at start of loop
 Breakpoint 1 at 0x1ae: file /.../tiny85blink/tiny85blink.ino, line 14.
 (gdb) list loop                         # list part of loop and shift focus
@@ -299,7 +299,7 @@ GNU gdb (GDB) 10.2
 Copyright (C) 2021 Free Software Foundation, Inc.
 ...
 
-(gdb) set serial baud 115200            # set baud rate 
+(gdb) set serial baud 230400            # set baud rate 
 (gdb) target remote <serial port>       # connect to serial port of debugger    
 Remote debugging using <serial port>
 0x00000000 in __vectors ()
@@ -324,7 +324,8 @@ n[ext] | single step statement without descending into functions (step over)
 stepi \| si | single step a machine instruction, descending into functions
 nexti \| ni | single step a machine instruction without descending into functions
 fin[ish] | finish current function and return from call (step out)
-c[ontinue] | continue (or start) from current position
+c[ontinue] | continue from current position
+r[un] | reset MCU and restart program at address 0x0000
 ba[cktrace] \| bt | show call stack
 up | go one stack frame up (in order to display variables)
 down | go one stack frame down (only possible after up)
@@ -367,8 +368,9 @@ In addition to the commands above, you have to know a few more commands that con
 
 command | action
 --- | ---
-set se[rial] b[aud] *number* | set baud rate of the serial line to the hardware debugger (same as using the `-b` option when starting `avr-gdb`)
-tar[get] rem[ote] *serial line* | establish a connection to the hardware debugger via the *serial line*, which in turn will set up a connection to the target via debugWIRE (use only after baud rate has been specified!) 
+set se[rial] b[aud] *number* | set baud rate of serial port to the hardware debugger (same as using the `-b` option when starting `avr-gdb`); only effective when called before establishing a connection with the `target` command 
+tar[get] rem[ote] *serialport* | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE (use only after baud rate has been specified!) 
+tar[get] ext[ended-remote] *serialport* | establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command
 fil[e] *name*.elf | load the symbol table from the specified ELF file (should be done before establishing the connection to the target)
 lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
 mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected)
@@ -379,7 +381,8 @@ mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz 
 mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
 mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
 mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
-mo[nitor] sp[eed] [<option>] | set communication speed limit to **l**ow (=62.5kbps), to **n**ormal (=125kbps), or to **h**igh (=250kbps); **n** is the default; without an argument, the current communication speed is printed
+mo[nitor] sp[eed] [<option>] | set communication speed limit to **l**ow (=62.5kbps), to **n**ormal (=125kbps), or to **h**igh (=250kbps); **h** is the default; without an argument, the current communication speed is printed
+mo[onitor] ser[ial] | print current communication speed of the connection to the host computer
 
 
 ### 3.3 PlatformIO
@@ -631,6 +634,10 @@ Something in the `platformio.ini` file is not quite right. Perhaps a missing dec
 
 One common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the `platformio.ini` file accordingly.
 
+#### Problem: When connecting to the target using the *target ...* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
+
+The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino accepts 230400, 115200, 57600, 38400, 19200, and 9600 bps. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. Another (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
+
 #### Problem: You get the message *Protocol error with Rcmd* 
 This is a generic gdb error message that indicates that the last `monitor` command you typed could not be successfully executed. Usually, also a more specific error message is displayed, e.g., *debugWIRE could NOT be disabled*. These messages are suppressed in some GUIs, though. 
 
@@ -647,8 +654,11 @@ The reason is most probably that the communication connection to the target syst
 
 #### Problem: The debugger responses are very sluggish   
 
-One reason for that could be that the target is run with a clock of 1 MHz (or less). Since the debugWIRE communication speed is MCU clock/128, the communication speed is roughly 8000 Baud in this case. It is recommended to run the MCU at 8 MHz for this reason (see [Section 5.2](#section52)).
+One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 5.2](#section52)).
 
+Another reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed. 
+
+You can choose 230400, 115200, 57600, 38400, 19200, or 9600 when starting `avr-gdb` by giving the bit rate as an argument to the `-b` option or by specifying the bit rate as an argument to the command `set serial baud ...` before establishing a connection with the `target` command.
 
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted* 
 
@@ -698,7 +708,8 @@ Error #  | Meaning
 3 | Connection error: Lock bits are set; erase MCU and try again
 4 | Connection error: Bad line quality
 5 | Connection error: No response from debugWIRE after DWEN fuse has been programmed; probably capacitive load or weak pull-up resistor on RESET line
-6 | Unknown connection error
+6 | Connection error: Could not determine bps for communication with host 
+7 | Unknown connection error
 101 | No free slot in breakpoint table
 102 | Packet length too large
 103 | Wrong memory type
