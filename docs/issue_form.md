@@ -6,7 +6,7 @@
 
 **Target system:** (e.g., ATtiny24, 8 MHz, 5V or Pro Mini, 328, 3.3V)
 
-**Debugger board:** (e.g., Uno or Micro)
+**Debugger board:** (e.g., Uno or Mega)
 
 **Adapter board**: (e.g., none or V1.0)
 

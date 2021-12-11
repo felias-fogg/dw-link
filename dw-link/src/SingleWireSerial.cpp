@@ -161,7 +161,12 @@ void SingleWireSerial::handle_interrupt()
 	       "rjmp _LWAIT1\n\t"
 	       
 	       // read one bit
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+	       "lds r30, %[INPORTaddr]\n\t"
+	       "sbrc r30, %[INPIN] ; skip if cleared\n\t"
+#else
 	       "sbic %[INPORT], %[INPIN] ; skip if cleared\n\t"
+#endif
 	       "sec ; set carry if bit is set\n\t"
 	       "ror r24 ; rotate carry bit into byte\n\t"
 #if _DEBUG
@@ -198,7 +203,12 @@ void SingleWireSerial::handle_interrupt()
 	       "sbi %[TIFRIOaddr], %[ICFconst]\n\t"
 
 	       // read last bit
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+	       "lds r25, %[INPORTaddr]\n\t"
+	       "sbrc r25, %[INPIN] ; skip if cleared\n\t"
+#else
 	       "sbic %[INPORT], %[INPIN] ; skip if cleared\n\t"
+#endif
 	       "sec ; set carry if bit is set\n\t"
 	       "ror r24 ; rotate carry bit into byte\n\t"
 #if _DEBUG
@@ -228,7 +238,11 @@ void SingleWireSerial::handle_interrupt()
 		 [TCCRBaddr] "M" (&TCCRB),
 		 [TIFRIOaddr] "M" (_SFR_IO_ADDR(TIFR)),
 		 [OCFAconst] "M" (OCFA),
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+		 [INPORTaddr] "n" (&ICPIN),
+#else
 		 [INPORT] "I" (_SFR_IO_ADDR(ICPIN)),
+#endif
 		 [INPIN] "I"  (ICBIT),
 		 [ENDOFFSET] "M" (10),
 		 [ICFconst] "M" (ICF),

@@ -23,6 +23,7 @@ dwSerial::dwSerial(void)
 void dwSerial::sendBreak()
 {
   enable(false);
+  //  PORTD &= ~_BV(ICBIT); // TEST -- needs to be removed!
   ICDDR |= _BV(ICBIT); // switch pin to output (which is always low)
   _delay_ms(100);
   ICDDR &= ~_BV(ICBIT); // and switch it back to being an input

@@ -1,64 +1,84 @@
-# An Arduino-based debugWIRE hardware debugger: *dw-link*
+# dw-link
 
-The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notices that a lot of important features are missing. In particular, the current IDE does not support any kind of debugging. So what can you do, when you want to debug your Arduino project on small ATmegas (such as the popular ATmega328) or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support the hardware debugging interface [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
+# An Arduino-based debugWIRE debugger
+
+**Bernhard Nebel**
+
+**December 2021**
+
+<div style="page-break-after: always"></div>
+
+[TOC]
+
+## 1. Introduction
+
+The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notes that a lot of important features are missing. In particular, the current IDE does not support any kind of debugging. So what can you do, when you want to debug your Arduino project on small ATmegas (such as the popular ATmega328) or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support [on-chip debugging](https://en.wikipedia.org/wiki/In-circuit_emulation#On-chip_debugging) via [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
 
 When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE, but then you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). You may try to get the open-source software AVaRICE running; I was not successful in doing that on a Mac, though.
 
-So, are there alternatives if you want to develop programs for AVR ATtinys and small ATmegas, you are in need of a debugging tool, and you either want to develop on a Mac or you do not want to spend more than € 100 (or both)? Preferably, such a solution should interface to `avr-gdb`, the GNU debugger [`gdb`](https://www.gnu.org/software/gdb/) for AVR MCUs.  This would make it possible to use IDEs such as Eclipse and PlatformIO. Perhaps, one may also be able to integrate such a solution into the new Arduino IDE 2.0. 
+So, are there alternatives if you are in need of a debugging tool and you either want to develop on a Mac or you do not want to spend more than € 100 (or both)? Preferably, such a solution should interface to `avr-gdb`, the GNU debugger [`gdb`](https://www.gnu.org/software/gdb/) for AVR MCUs.  This would make it possible to use IDEs such as [Eclipse](https://www.eclipse.org/) and [PlatformIO](https://platformio.org). Perhaps, one will also be able to integrate such a solution into the new Arduino IDE 2.0. 
 
-There exists a software simulator called [SIMAVR](https://github.com/buserror/simavr) and there is a [gdb remote stub](https://sourceware.org/gdb/onlinedocs/gdb/Remote-Stub.html) for some ATmegas, called [AVR8-STUB](https://github.com/jdolinay/avr_debug). Both are integrated into PlatformIO as debuggers. However, both tools come with a lot of restrictions and using them is not the same as debugging on the hardware where your firmware should finally run. 
+There exists a software simulator called [SIMAVR](https://github.com/buserror/simavr) and there is a [GDB remote stub](https://sourceware.org/gdb/onlinedocs/gdb/Remote-Stub.html) for some ATmegas, called [AVR8-STUB](https://github.com/jdolinay/avr_debug). Both are integrated into PlatformIO as debuggers. However, both tools come with a lot of restrictions and using them is not the same as debugging on the hardware where your firmware should finally run. 
 
-Based on RikusW's work on [reverse engineering the debugWIRE protocol](http://www.ruemohr.org/docs/debugwire.html), you can find a few attempts at building debuggers using debugWIRE. First of all, there is an implementation called [dwire-debug](https://github.com/dcwbrown/dwire-debug) for host systems that use just the serial interface to talk with a target using the debugWIRE interface. However, only one breakpoint (the hardware breakpoint on the target system) is supported and the particular way of turning a serial interface into a one-wire interface does not seem to work under macOS, as far as I can tell. Additionally, there exists a similar implementation in Pascal called [debugwire-gdb-bridge](https://github.com/ccrause/debugwire-gdb-bridge) that appears to be more 'complete'. However, I was not able to install it. That is probably based on the fact that my knowledge of Pascal is rusty and I have no experience with the Lazarus framework. Finally, there is the Arduino based hardware debugger called [DebugWireDebuggerProgrammer](https://github.com/wholder/DebugWireDebuggerProgrammer). Unfortunately, it does not provide an interface for gdb remote debugging. Furthermore, it does not seem to provide reliable communication with the target when the target runs with a 16 MHz clock.
+Based on RikusW's work on [reverse engineering the debugWIRE protocol](http://www.ruemohr.org/docs/debugwire.html), you can find a few attempts at building debuggers using debugWIRE. First of all, there is an implementation called [dwire-debug](https://github.com/dcwbrown/dwire-debug) for host systems that use just the serial interface to talk with a target using the debugWIRE interface. This implementation implements GDB's remote serial protocol.  However, only one breakpoint (the hardware breakpoint on the target system) is supported and the particular way of turning a serial interface into a one-wire interface does not seem to work under macOS, as far as I can tell. Additionally, there exists a similar implementation in Pascal called [debugwire-gdb-bridge](https://github.com/ccrause/debugwire-gdb-bridge) that appears to be more 'complete'. However, I was not able to install it. That is probably based on the fact that my knowledge of Pascal is rusty and I have no experience with the Lazarus IDE. Finally, there is the Arduino based hardware debugger called [DebugWireDebuggerProgrammer](https://github.com/wholder/DebugWireDebuggerProgrammer). Unfortunately, it is not able to program flash memory and it does not provide an interface for GDB's remote serial protocol. Furthermore, it does not seem to provide reliable communication with the target when the target runs with a 16 MHz clock.
 
-So, I took all of the above ideas (and some of the code) and put it together in order to come up with a cheap hardware debugger for the classic ATtinys and some of the smaller ATmegas supporting gdb's remote debugging interface. Actually, it was a bit more than just throwing the things together. I developed a [new library for single wire serial communication](https://github.com/felias-fogg/SingleWireSerial) that is [much more reliable and robust](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/) than the usually employed SoftwareSerial library in order to have a base one can trust. I also made a number of interesting discoveries along the way. 
+So, I took all of the above ideas (and some of the code) and put it together in order to come up with a cheap hardware debugger for the classic ATtinys and some of the smaller ATmegas supporting GDB's remote debugging interface. Actually, it was a bit more than just throwing the things together. I developed a [new library for single wire serial communication](https://github.com/felias-fogg/SingleWireSerial) that is [much more reliable and robust](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/) than the usually employed SoftwareSerial library. Further, I fixed a few loose ends in the existing implementations, sped up communication and flash programming, and spent a few nights debugging the debugger. Along the way, I also made a number of interesting discoveries. 
 
-You just need an ATmega328 based board to get started (e.g., an UNO, Nano, or Pro Mini). Actually, ATmega32U4 systems such as Leonardo, Pro Micro, and Micro should also work, but this is currently untested. And you can even can use an Arduino Mega (it is a bit of an overkill, though). 
+For your first excursion into the wonderful world of debugging, you need an Arduino Uno (or something equivalent) as the hardware debugger (see [Section 3.1](#section31)) and a chip that understands debugWIRE (see [Section 3.2](section32)). Then you only have to install the firmware for the debugger ([Section 4.1](section41)) and set up the hardware for a debugging session ([Section 4.2](section42)). 
 
-If you use the debugger more than once, you probably will start thinking about building a shield or adapter that makes it easy to connect to your target system by using the ISP cable. This and other hardware related issues are covered in [Section 4](#section4).
+Finally, you need to install a debugging environment. I will describe two options for that. The first one, covered in [Section 5](#section5), is the easiest one, which simply adds a ```platform.local.txt``` file to the Arduino configuration and requires you to download ```avr-gdb```. The second option, described in [Section 6](#section6), involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. There are numerous other possibilities. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which applies to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/).
+
+
 
 <font color="red">
+
 ### Warning
 </font>
 
-Read [Sections 2.3 & 2.4](#section23) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements.
+Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements.
 
+<a name="section2"></a>
 
-<a name="section1"></a>
-## 1. The debugWIRE interface
+## 2. The debugWIRE interface
 
-The basic idea of ***debugWIRE*** is that one uses the RESET line as a communication line between the ***target system*** (the system you want to debug) and the development machine or ***host***, which runs a debug program such as `gdb` or in our case `avr-gdb`. This idea is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU.
+The basic idea of ***debugWIRE*** is that one uses the RESET line as a communication line between the ***target system*** (the system you want to debug) and the development machine or ***host***, which runs a debug program such as `gdb` or in our case `avr-gdb`. This idea is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU. Firmware uploads are possible over the debugWIRE interface, they are a bit slower, however. 
 
 Do not get nervous when your MCU does not react any longer as you expect it, but try to understand in which state the MCU is. With respect to the debugWIRE protocol there are basically three states your MCU could be in:
 
-1. The **normal** state in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitionary** state.
-2. The **transitionary** state is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** state.
-3. The **debugWIRE** state is the state in which you can use the debugger to control the target system. If you want to return to the **normal** state, a particular debugWIRE command leads to a transition to the **transitionary** state, from which one can reach the normal state using ISP programming. 
+1. The **normal** **state** in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitionary** **state**.
+2. The **transitionary** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** state.
+3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to a transition to the **transitionary** **state**, from which one can reach the **normal state** using ordinary ISP programming. 
 
-The hardware debugger will take care of bringing you from state 1 to state 3 when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from state 3 to state 1 can be achieved by the gdb command ```monitor dwoff```.
+The hardware debugger will take care of bringing you from state 1 to state 3 when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from state 3 to state 1 can be achieved by the GDB command ```monitor dwoff```.
 
-Having said all that, I have to admit that I encountered strange situations that I did not fully understand, and which led to bricking MCUs. Sometimes MCUs started up with a much lower communication speed than is standard and only after a DebugWIRE RESET command they offered the full speed. I have taken this into account now and this behavior should not lead to any problems.  In any case, there is no guarantee that the hardware debugger will not brick your MCU. Usually, it can be [resurrected by using a high-voltage programmer](#worstcase), though.
+Having said all that, I have to admit that I encountered strange situations that I did not fully understand, and which led to "bricking" MCUs. Sometimes MCUs started up with a much lower communication speed than is standard and only after a debugWIRE RESET command they offered the full speed. I have taken this into account now and this behavior should not lead to any problems.  In any case, there is no guarantee that the hardware debugger will not brick your MCU. Usually, it can be [resurrected by using a high-voltage programmer](#worstcase), though.
 
-<a name="section2"></a>
-## 2. Hardware requirements
+<a name="section3"></a>
+
+## 3. Hardware requirements
 
 There are a few constraints on what kind of board you can use as the base for the hardware debugger and some requirements on how to connect the debugger to the target system. Furthermore, there is only a limited set of AVR MCUs that can be debugged using  debugWIRE.
 
-### 2.1 The debugger
-As mentioned above, as a base for the debugger, in principle one can use any ATmega328, ATmega32U4, ATmega1284, or ATmega2560 based board. The clock speed  must be 16MHz. Currently, only the UNO board is supported, but the following boards should wotk and will be tested in the near future:
+<a name="section31"></a>
 
-* [Arduino Uno](https://store.arduino.cc/products/arduino-uno-rev3)
-* [Arduino Leonardo](https://store.arduino.cc/products/arduino-leonardo-with-headers)
-* [Arduino Mega](https://store.arduino.cc/products/arduino-mega-2560-rev3)
+### 3.1 The debugger
+
+As mentioned above, as a base for the debugger, in principle one can use any ATmega328, ATmega1284, or ATmega2560 based board. The clock speed  must be 16MHz. Currently, the sketch has been tested on the following boards:
+
+* [Arduino Uno](https://store.arduino.cc/products/arduino-uno-rev3) 
 * [Arduino Nano](https://store.arduino.cc/products/arduino-nano)
-* [Arduino Pro Mini](https://docs.arduino.cc/retired/boards/arduino-pro-mini)
-* [Arduino Micro](https://store.arduino.cc/products/arduino-micro)
-* [Arduino Pro Micro](https://www.sparkfun.com/products/12640)
+* [Arduino Pro Mini](https://docs.arduino.cc/retired/boards/arduino-pro-mini) 
+* [Arduino Mega](https://store.arduino.cc/products/arduino-mega-2560-rev3)
 
-If you intend to use a different board, this is possible without too much hassle. You simply need to set up your own pin mapping (see [Sections 4.3.2 & 4.3.3](#section432)) in the source code (a big conditional compilation part in the beginning of the sketch).
+<!-- [Arduino Leonardo](https://store.arduino.cc/products/arduino-leonardo-with-headers) [Arduino Micro](https://store.arduino.cc/products/arduino-micro) [Arduino Pro Micro](https://www.sparkfun.com/products/12640) -->
 
-The most basic solution is to use the UNO board and connect the cables as it is shown in the [Fritzing sketch](#Fritzing) further down. If you want to use the debugger more than once, it may payoff to use a prototype shield and put an ISP socket on it. The more luxurious solution is an adapter board for Nano sized Arduino boards or a shield for the UNO sized Arduino boards as described further down in [Section 4](#section4).
+If you intend to use a different board, this is possible without too much hassle. You simply need to set up your own pin mapping (see [Sections 7.3.2 & 7.3.3](#section732)) in the source code (a big conditional compilation part in the beginning of the sketch).
 
-### 2.2 MCUs with debugWIRE interface
+The most basic solution is to use the Uno board and connect the cables as it is shown in the [Fritzing sketch](#Fritzing) further down. If you want to use the debugger more than once, it may payoff to use a prototype shield and put an ISP socket on it. The more luxurious solution is an adapter board for Nano sized Arduino boards or a shield for the Uno sized Arduino boards as described further down in [Section 7](#section7).
+
+<a name="section32"></a>
+
+### 3.2 MCUs with debugWIRE interface
 
 In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs can be debugged using this interface:
 
@@ -82,40 +102,52 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * AT90PWM216, AT90PWM316
 * <font color="grey">ATmega8HVA, ATmega16HVA, ATmega16HVB, ATmega32HVA, ATmega32HVB, ATmega64HVE2</font>
 
-This list should be complete, but one never knows. The debugger supports (in principle) all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have an address space that is too large. I have tested the debugger on the MCUs marked bold and will (really soon) test the underlined ones. The remaining MCUs were either currently impossible to get or only sold in large quantities. The debugger will probably work on these untested MCUs too. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
+This list should be complete, but one never knows. The debugger supports (in principle) all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have a flash address space that is too large. I have tested the debugger on the MCUs marked bold and will (really soon) test the underlined ones. The remaining MCUs were either currently impossible to get or only sold in large quantities. The debugger will probably work on these untested MCUs too. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
 
-<a name="section23"></a>
-### 2.3 Requirements concerning the RESET line of the target system 
+In case you wonder how the Arduino IDE (and PlatformIO) supports the chips mentioned above, there is good news. All the *ATtinys* are supported by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), which you need to install in the board manager (after having  inserted `http://drazzy.com/package_drazzy.com_index.json` in the list of `Additional Boards Manager URLs` in the preference menu). All the *ATmegaX8s* are supported by [MiniCore](https://github.com/MCUdude/MiniCore) (add `https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json` to `Additional Boards Manager URLs`). For the remaining chips, I was not able to locate any recent Arduino cores. So, in these cases, testing is only done using the unit tests of the debugger.
 
-Since the RESET line of the target system is used as an asynchronous half-duplex serial communication line, one has to make sure that there is no capacitive load on the line when it is used in debugWIRE mode. Further, there should be a pull-up resistor of around 10 kΩ. According to reports of other people, 4.7 kΩ might also work.
+<a name="section33"></a>
 
-If your target system is an Arduino UNO, you have to be aware that there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
+### 3.3 Requirements concerning the RESET line of the target system 
+
+Since the RESET line of the target system is used as an asynchronous half-duplex serial communication line, one has to make sure that there is no capacitive load on the line when it is used in debugWIRE mode. Further, there should be a pull-up resistor of around 10 kΩ. According to reports of other people, 4.7 kΩ might also work. Of course, the RESET line should no be directly connected to Vcc and there should not be any external reset sources on the RESET line.
+
+If your target system is an Arduino Uno, you have to be aware that there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
 ![Solder bridge on Uno board](pics/cut.jpg)
 <center>Solder bridge</center> 
 
-A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper. Alternatively, you could always manually reset the UNO before the Arduino IDE attempts to upload a sketch. The trick is to release the reset button just when the compilation process has finished. 
+A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper. Alternatively, you could always manually reset the Uno before the Arduino IDE attempts to upload a sketch. The trick is to release the reset button just when the compilation process has finished. 
 
 Other Arduino boards, [such as the Nano, are a bit harder to modify](https://mtech.dk/thomsen/electro/arduino.php), while a Pro Mini, for example, can be used without a problem, provided the DTR line of the FTDI connector is not connected. In general, it is a good idea to get hold of a schematic of the board you are going to debug. Then it is easy to find out what is connected to the RESET line, and what needs to be removed. It is probably also a good idea to check the value of the pull-up resistor, if present. 
 
 <a name="worstcase"></a>
-### 2.4 Worst-case scenario 
+### 3.4 Worst-case scenario 
 
-So, what is the worst-case scenario when using debugWIRE? As described in [Section 1](#section1), first the DWEN fuse is programmed using ISP programming. Then one has to power-cycle in order to reach the debugWIRE state, in which you can communicate with the target over the RESET line. If this kind of communication fails, you cannot put the target back in a state, in which ISP programming is possible. Your MCU is *bricked*. It still works with the firmware programmed last time. However, the only way to reset the MCU is now to power-cycle it. Further, it is impossible to reprogram it using ISP programming.
- 
+So, what is the worst-case scenario when using debugWIRE? As described in [Section 2](#section2), first the DWEN fuse is programmed using ISP programming. Then one has to power-cycle in order to reach the debugWIRE state, in which you can communicate with the target over the RESET line. If this kind of communication fails, you cannot put the target back in a state, in which ISP programming is possible. Your MCU is *bricked*. It still works with the firmware programmed last time. However, the only way to reset the MCU is now to power-cycle it. Further, it is impossible to reprogram it using ISP programming.
+
 There are two ways out. First you can try to make the RESET line compliant with the debugWIRE requirements. Then you should be able to connect to the target using the hardware debugger. Second, you can use high-voltage programming, where 12 volt have to be applied to the RESET pin. So you either remove the chip from the board and do the programming offline or you remove any connection from the RESET line to the Vcc rail and other components on the board. Then you can use either an existing high-voltage programmer or you [build one on a breadboard](https://github.com/felias-fogg/RescueAVR).
 
 
-## 3. Installation and example sessions
+## 4. Installation and hardware setup
 
-Assuming that you have already downloaded and installed the [Arduino](https://www.arduino.cc/) IDE, as a first step, you have to download this repository and install it in a directory where the Arduino IDE recognizes Arduino sketches. Then you have to upload the ```dw-link.ino``` sketch to the Arduino board you intend to turn into a hardware debugger. 
+There are only a few steps necessary for installing the program on an ATmega328 board, most of which you probably already have done. For the hardware setup, you need a breadboard or a development board with one of the chips that speak debugWIRE.
 
-I will describe two options of using the hardware debugger. The first one is the easiest one, which simply adds a ```platform.local.txt``` file to the Arduino configuration and requires you to download ```avr-gdb```. With that you can start to debug. The second option involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. There are numerous other possibilities. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which should apply to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/).
+<a name="section41"></a>
 
-However, before you can start to debug, you have to setup the hardware. I'll use an ATtiny85 on a breadboard as the example target system and an UNO as the example debugger. However, any MCU listed above would do. You have to adapt the steps where I describe the modification of configuration files accordingly, though. 
+### 4.1 Software installation
 
-<a name="section31"></a>
-### 3.1 Setting up the hardware
+Since the firmware of the hardware debugger comes in form of an Arduino sketch, you need to download first of all the [Arduino IDE](https://www.arduino.cc/en/software), if you have not done that already. Note that for some of the later software components (e.g., the ATTinyCore) a reasonably recent version is required. It is probably best when you upgrade your installation now.
+
+Second, you need to download this repository somewhere, where the IDE is able to find the Arduino sketch. 
+
+Third, you have to connect your ATmega328 (or similar) board to your computer, select the right board in the Arduino IDE and upload the *dw-link.ino* sketch to the board. With that, you are all set.
+
+<a name="section42"></a>
+
+### 4.2 Setting up the hardware
+
+However, before you can start to debug, you have to setup the hardware. I'll use an ATtiny85 on a breadboard as the example target system and an Uno as the example debugger. However, any MCU listed above would do as a target. You have to adapt the steps where I describe the modification of configuration files accordingly, though. 
 
 <a name="Fritzing"></a>
 ![ATtiny85 on a breadboard](pics/debug-attiny85_Steckplatine.png)
@@ -128,7 +160,7 @@ As you can see, the Vcc rail is connected to pin D9 of the Arduino so that the U
 
 We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED (the Arduino builtin LED on Arduino pin D13).
 
-#### 3.1.1 States of the hardware debugger
+### 4.3 States of the hardware debugger
 
 There are basically 5 states, the debugger can be in and each is signaled by a different blink pattern of the system LED:
 
@@ -138,17 +170,19 @@ There are basically 5 states, the debugger can be in and each is signaled by a d
 * target is running (LED blinks 0.5 sec on / 0.5 sec off)
 * error state, i.e., not possible to connect to target, connection has been lost, or other internal error (LED blinks furiously every 100 ms)
 
-If the hardware debugger is in the error state, one should reset the debugger, finish the gdb session, and restart it.
+If the hardware debugger is in the error state, one should  finish the GDB session, reset the debugger, and restart everything. If the problem persists, please check the section on [trouble shooting](#trouble).
 
-### 3.2 Arduino IDE and avr-gdb
+<a name="section5"></a>
 
-Assuming that you are working with the Arduino IDE or Arduino CLI, the simplest way of starting to debug your code is to use the GNU debugger. You only have to download the debugger and make a few changes to some of the configuration files.
+## 5. Arduino IDE and avr-gdb
 
-#### 3.2.1 Installing ATTinyCore
+Assuming that you are working with the Arduino IDE or Arduino CLI, the simplest way of starting to debug your code is to use the GNU debugger. You only have to download the debugger and make a few changes to some of the configuration files. Please take notes on what you change because these changes will vanish when you upgrade to a new version of the Arduino package.
 
-Since ATtinys are not supported by default, one needs to download and install [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md). After you have done that, you need to create a ```platform.local.txt``` file in the right directory and might want to add some lines to the ```boards.txt``` file. 
+### 5.1 Installing ATTinyCore
 
-#### 3.2.2 Modifications of platform.local.txt
+Since ATtinys are not supported by default, one needs to download and install [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md), an Arduino core for the classic ATtinys. After you have done that, you need to create a ```platform.local.txt``` file in the right directory and might want to add some lines to the ```boards.txt``` file. 
+
+### 5.2 Modifications of platform.local.txt
 
 When you have chosen the **Boards Manager Installation**, then you will find the ATTinyCore configuration files under the following directories:
 
@@ -167,7 +201,7 @@ compiler.c.extra_flags=-Og
 compiler.cpp.extra_flags=-Og
 ```
 
-The first three lines make sure that you receive an [*ELF*](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using avr-gdb. 
+The first three lines make sure that you receive an [*ELF*](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using `avr-gdb`. 
 
 The last two lines enforce that the compiler optimizations are geared towards being debugging friendly. Strictly speaking, this compiler option is not necessary. However, without it, the execution of the program may not follow step by step the way you had specified it in the program. Please also note that the code size of the program may grow.
 
@@ -177,7 +211,7 @@ If you do not want to have '-Og' as the standard option, you can rename ```platf
 --build-property build.extra_flags=-Og 
 ```
 
-#### 3.2.3 Optional modification of boards.txt
+### 5.3 Optional modification of boards.txt
 
 Instead of setting the compiler flag globally for the platform, you can modify the ```boards.txt``` file (residing in the same directory as the `platform.txt`file) and introduce for each type of MCU a new menu entry ```debug``` that when enabled adds the build option ```-Og```. For the ATTinyCore platform, you could simply add another menu entry in `boards.txt` under the first couple of lines as follows:
 
@@ -202,7 +236,7 @@ attinyx5.menu.debug.enabled.build.debug=-Og
 
 Now you have to restart the Arduino IDE. If you select `ATtiny25/45/85 (No bootloader)` from the menu of possible MCUs, then you will notice that there is a new menu option `Debug`. This works, of course, also for other board definitions, e.g., for the Arduino Uno. 
 
-#### 3.2.4 Installing avr-gdb
+### 5.4 Installing avr-gdb
 
 Unfortunately, the debugger is not any longer part of the toolchain integrated into the Arduino IDE. This means, you have to download it and install it by yourself:
 
@@ -212,9 +246,9 @@ Unfortunately, the debugger is not any longer part of the toolchain integrated i
 
 * Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or from [Zak's Eletronic Blog\~\*](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb.
 
-#### 3.2.5 Example session with avr-gdb
+### 5.5 Example session with avr-gdb
 
-Now we are ready to start a debug session. So compile the example `tiny85blink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `tiny85blink.ino.elf` in the sketch directory. Then connect your UNO to your computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment. **\<serial port\>** is the serial port you use to communicate with the UNO.
+Now we are ready to start a debug session. So compile the example `tiny85blink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `tiny85blink.ino.elf` in the sketch directory. Then connect your Uno to your computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment. **\<serial port\>** is the serial port you use to communicate with the Uno.
 
 ```
 > avr-gdb
@@ -289,9 +323,9 @@ Detaching from program: /.../tiny85blink/tiny85blink.ino.elf, ...
 ```
 
 
-#### 3.2.6 Switching off debugWIRE mode 
+### 5.6 Disabling debugWIRE mode 
 
-Note that the ATtiny MCU is still in debugWIRE mode and the RESET pin cannot be used to reset the chip. If you want to bring the MCU back to the normal state, you need to call avr-gdb again.
+Note that the ATtiny MCU is still in debugWIRE mode and the RESET pin cannot be used to reset the chip. If you want to bring the MCU back to the normal state, you need to call `avr-gdb` again.
 
 ```
 > avr-gdb
@@ -308,10 +342,10 @@ Connected to ATtiny85
 debugWIRE is now disabled
 (gdb) quit
 >
-```        
+```
 Of course, you could have done that before leaving the debug session in the previous section.
 
-#### 3.2.7 GDB commands
+### 5.7 GDB commands
 
 In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most interesting commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics).
 
@@ -345,7 +379,7 @@ command | action
 --- | ---
 l[ist] | show source code around current point
 l[ist] *function* | show source code around start of code for *function* and shift focus to function
-l[ist] *number* | show source code around line *number*
+l[ist] [*filename*:]*number* | show source code around line *number* in *filename* 
 disas[semble] *function* | show assembly code of *function*
 disas[semble] *address* | show assembly code of function around memory location *address*
 p[rint] *expression* | evaluate expression and print 
@@ -353,7 +387,7 @@ i[nfo] reg[isters] | print contents of all registers
 i[nfo] reg[isters] *regname* ... | print contents of specified register(s)
 x *address* | examine memory contents at *address* and print it as a 4-byte hex-number
 x/*nfu* *address* | examine memory contents at *address* with repeat count *n*, format *f*, and unit size *u* (they are all optional); format can be, e.g., **d** for decimal, **u** for unsigned decimal, **x** for hexadecimal, **c** for ASCII characters, **i** for machine instruction, and **s** for string; unit size can be **b** for one byte, **h** for a halfword, i.e., a 2-byte word, **w** for a 4-byte word, and **g** for a giant 8-byte word 
-disp[lay][/*f*] *expression* | display expression using format *f* each time the program halts
+disp[lay]\[/*f*] *expression* | display expression using format *f* each time the program halts
 disp[lay]/*nfu* *address* | display memory contents using *nfu* each time the program halts
 i[nfo] di[splay] | print all auto-display commands
 dis[able] d[display] *number* ... | disable auto-display command(s) numbered *number*
@@ -364,7 +398,7 @@ d[elete] d[display] | delete all auto-display commands(s)
 *address* in the above commands can be any numerical value or also the register names prefixed with a \$-sign, e.g., `$pc`. `display/i $pc`, for example, displays after each stop the machine instruction at the location where the program has stopped.
 
 <a name="controlcommands"></a>
-In addition to the commands above, you have to know a few more commands that control the execution of avr-gdb.
+In addition to the commands above, you have to know a few more commands that control the execution of `avr-gdb`.
 
 command | action
 --- | ---
@@ -381,25 +415,25 @@ mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz 
 mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
 mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
 mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
-mo[nitor] sp[eed] [<option>] | set communication speed limit to **l**ow (=62.5kbps), to **n**ormal (=125kbps), or to **h**igh (=250kbps); **h** is the default; without an argument, the current communication speed is printed
+mo[nitor] sp[eed] [<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **h** is the default; without an argument, the current communication speed is printed 
 mo[onitor] ser[ial] | print current communication speed of the connection to the host computer
 
+<a name="section6"></a>
 
-### 3.3 PlatformIO
+## 6 PlatformIO
 
-[platformIO](https://platformio.org/) is an IDE aimed at embedded systems and it is based on [Visual Studio Code](https://code.visualstudio.com/). It supports many MCUs, in particular all AVR MCUs. And it is possible to import Arduino projects, which are then turned into ordinary C++ projects. Projects are highly configurable, that is a lot of parameters can be set for different purposes. However, that makes things in the beginning a bit more challenging. 
+[platformIO](https://platformio.org/) is an IDE aimed at embedded systems and is based on [Visual Studio Code](https://code.visualstudio.com/). It supports many MCUs, in particular almost all AVR MCUs. And it is possible to import Arduino projects, which are then turned into ordinary C++ projects. Projects are highly configurable, that is a lot of parameters can be set for different purposes. However, that makes things in the beginning a bit more challenging. 
 
-#### 3.3.1 Installing PlatformIO
+### 6.1 Installing PlatformIO
 
-Installing PlatformIO is straight forward. Download and install Visual Studio Code. Then start it and click on the extension icon on the left, search for the PlatformIO extension and install it, as is described [here](https://platformio.org/install/ide?install=vscode).
-Check out the [quick start guide](https://docs.platformio.org/en/latest//integration/ide/vscode.html#quick-start). Now we are all set.
+Installing PlatformIO is straight forward. Download and install Visual Studio Code. Then start it and click on the extension icon on the left, search for the PlatformIO extension and install it, as is described [here](https://platformio.org/install/ide?install=vscode). Check out the [quick start guide](https://docs.platformio.org/en/latest//integration/ide/vscode.html#quick-start). Now we are all set.
 
-#### 3.3.2 Import an Arduino project into PlatformIO
+### 6.2 Import an Arduino project into PlatformIO
 
 Now let us prepare a debugging session with the same project we had before. Startup Visual Studio Code and click on the home symbol in the lower navigation bar. Now PlatformIO offers you to create a new project, import an Arduino project, open a project, or take some project examples. Choose **Import Arduino Project** and PlatformIO will ask you which platform you want to use. Type in **attiny85** and choose **ATtiny85 generic**. After that, you can navigate to the directory containing the Arduino project and PlatformIO will import it. 
 
 
-#### 3.3.3 Debugging with PlatformIO
+### 6.3 Debugging with PlatformIO
 
 
 If you now click on the debug symbol in the left navigation bar (fourth from the top), PlatformIO enables debugging using **simavr**, the default debugger for this chip. You can now start a debug session by clicking the green triangle at the top navigation bar labeled **PIO Debug**. On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. Try to play around with it!
@@ -415,48 +449,47 @@ After having copied the two files into the project directory and reopened the pr
 
 A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI.
 
-#### 3.3.4 Switch off debugWIRE mode
+### 6.4 Disabling debugWIRE mode
 
 There are two ways of switching off the debugWIRE mode. If you click on the ant symbol (last symbol in the left navigation bar), there should be the option *debug* environment. When you then click on *Custom*, you should see you the option *DebugWIRE Disable*. Clicking on it will set the MCU back to its normal state, where the RESET line can be used for resets and ISP programming is possible.  Alternatively, you should be able to bring back you MCU to the normal state by typing `monitor dwoff` in the debugging terminal window of the PlatformIO IDE.
 
-<a name="section4"></a>
-## 4. A "real" hardware debugger
+<a name="section7"></a>
 
-While one can use the setting as described in [Section 3.1](#section31), it would be much nicer if you just could plug an ISP cable on the one side into the debugger and on the other side into the target system. In other words, it would be nice to have a "real" hardware debugger. 
+## 7. A "real" hardware debugger
 
-### 4.1 A simple shield
+While one can use the setting as described in [Section 4.2](#section42), it would be much nicer if you just could plug an ISP cable on the one side into the debugger and on the other side into the target system. In other words, it would be nice to have a "real" hardware debugger. 
 
-It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an UNO, Leonardo or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
+### 7.1 A simple shield
 
-<center>
+It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno<!--, Leonardo --> or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
+
+
 ![dw-probe-fritzing V 0.1](pics/dw-probe0.1.png)
-</center>
+
 
 In reality, it probably will more look like as in the next picture.
 
-<center>
+
 ![dw-probe-proto V 0.1](pics/proto.png)
-</center>
 
-This works very well on an Arduino UNO. On a Leonardo, you need to use Arduino pin 4 instead of 8 for the RESET line. Or better yet, you connect the two pins. On an Arduino Mega, you have to use Arduino pin 49, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-wire.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 4.3.2 & 4.3.3](#section432). 
 
-### 4.2 A shield with level shifters
+This works very well on an Arduino Uno. <!-- On a Leonardo, you need to use Arduino pin 4 instead of 8 for the RESET line. Or better yet, you connect the two pins.--> On an Arduino Mega, you have to use Arduino pin 49, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-wire.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
+
+### 7.2 A shield with level shifters
 
 If you often work with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. 
 
-
-<center>
 ![dw-probe-fritzing V 0.2](pics/dw-probe0.2.png)
-</center>
+
 
 Now the reality check! How could a prototype look like? 
-<center>
+
 ![dw-probe-proto V 0.1](pics/proto0.2.jpg)
-</center>
+
 
 Maybe it does not look completely convincing, but it does what it is supposed to do. In particular, the level-shifting works flawlessly. However, it is definitely not made for eternity. And even when I would give it a more sustainable form, this prototype has a few shortcomings. First, it has pull-up resistors at the outgoing SPI lines, i.e., it changes the electrical properties of these lines considerably. Second, when powering it with 3.3 volt from the Arduino board, one should source not more than 50 mA. Third, the board cannot power-cycle the target board when interfacing to a 3.3V board.
 
-### 4.3 Adapter board/shield with level-shifter and switchable power supply
+### 7.3 Adapter board/shield with level-shifter and switchable power supply
 
 So, it would be great to have a board with the following features: 
 
@@ -465,14 +498,14 @@ So, it would be great to have a board with the following features:
 * level-shifter on the ISP lines, and
 * tri-state buffers for the two output signals (MOSI and SCK).
 
-I have designed a base board for the Arduino Nano V2, Nano V3, Pro Mini, Pro Micro, and Micro with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The PCB design looks as follows (you'll find the design files in the directory **pcb**)
+I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The PCB design looks as follows (you'll find the design files in the directory **pcb**)
 
 ![PCB V1.0](pics/dw-probe1.0.png)
 
-The board is currently produced in a PCB fab and should arrive soon. I also plan to design a shield for the UNO sized boards. 
+The board is currently produced in a PCB fab and should arrive soon. I also plan to design a shield for the Uno sized boards. 
 
 
-#### 4.3.1 DIP switch configuration
+#### 7.3.1 DIP switch configuration
 
 There a three different DIP switches labelled **Von**, **5V**, and **10k**. 
 
@@ -482,8 +515,9 @@ Label | On | Off
 **5V** | The debugger provides 5 V to the target board (if Von is on) | The debugger provides 3.3 V to the target board (if Von is on)
 **10k** | A 10kΩ pull-up resistor is connected to the RESET line of the target | 
 
-<a name="section432"></a>
-#### 4.3.2 Functional pins of the adapter board 
+<a name="section732"></a>
+
+#### 7.3.2 Functional pins of the adapter board 
 
 In order to be able to accommodate different boards on the adapters, the pin mapping of the adapter boards is somewhat complex. First of all, let me list the functional pins.
 
@@ -505,7 +539,7 @@ VON | Input from switch | If low, then supply target (and use power-cycling)
 VSUP | Output | Used as a target supply line driven directly by an ATmega pin, which is only active if the debugger board does not sit on the adapter board, i.e., if SNSGND=open
 
 
-#### 4.3.3 Pin mapping
+#### 7.3.3 Pin mapping
 
 If you plug in your Arduino into the adapter board or use the shield, you do not have to bother about pin assignments. The only important thing is to set the DIP switches and plug in the USB and ISP cable. If you want to use the Arduino without such a board, you need, of course, to know which pins of the debugger to connect to the target.
 
@@ -515,29 +549,50 @@ In the table below, the mapping between functional pins of the debugger and the 
 
 The **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a standalone setting, there is no level-shifting done, so you only should debug 5 V systems.
 
-Pin | Nano V2 | Nano V3 | Micro | Pro Micro | Pro Mini | UNO | Leo-nardo | Mega | Stand alone
---- | --- | --- | --- | --- | --- | --- | --- | --- | ---
-DEB-TX |A3= D17|A4= D18| A4= D22 | D5 | D5 |D3 |D3|D3|
-DW-LINE | D8 | D8 | D4 | D4 |D8| D8 |D4|D49| **+**
-GND | GND | GND | GND | GND | GND | GND | GND | GND | **+**
-ISP | D2 | D2 | D2 | D16 | D11 |D6|D6|D6|
-MISO | A2= D16 | A5= D19 | A5= D23 |D6 | D6 |D11|D11|D11| **+**
-MOSI | A5= D19 | A2= D16 | A2= D20 | D3 | D3 |D10|D10|D10| **+**
-SCK | D3 | D3 | D3 | D14 | D12 |D12|D12|D12| **+**
-SNS-GND | D11 | D11 | D11 | D10 | D10 |A0= D14|A0= D18|A0= D54|
-V33 | D5 | D5 | D5 | A0= D18 | A0= D14 |D7|D7|D7| 
-V5 | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9| 
-Vcc | 5V | 5V | 5V | Vcc | Vcc |5V|5V|5V| (+)
-VHIGH | D7 | D7 | D7 | A2= D20 | A2= D16 |D2|D2|D2| 
-VON | A1= D15 | A1= D15 | A1= D19 | D2 | D2 |D5|D5|D5| 
-VSUP | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9 | **+**
+<!-- Pin | Nano V2 | Nano V3 | Micro | Pro Micro | Pro Mini | Uno | Leo-nardo | Mega | Stand alone -->
+<!-- --- | --- | --- | --- | --- | --- | --- | --- | --- | --- -->
+<!-- DEB-TX |A3= D17|A4= D18| A4= D22 | D5 | D5 |D3 |D3|D3| -->
+<!-- DW-LINE | D8 | D8 | D4 | D4 |D8| D8 |D4|D49| **+** -->
+<!-- GND | GND | GND | GND | GND | GND | GND | GND | GND | **+** -->
+<!-- ISP | D2 | D2 | D2 | D16 | D11 |D6|D6|D6| -->
+<!-- MISO | A2= D16 | A5= D19 | A5= D23 |D6 | D6 |D11|D11|D11| **+** -->
+<!-- MOSI | A5= D19 | A2= D16 | A2= D20 | D3 | D3 |D10|D10|D10| **+** -->
+<!-- SCK | D3 | D3 | D3 | D14 | D12 |D12|D12|D12| **+** -->
+<!-- SNS-GND | D11 | D11 | D11 | D10 | D10 |A0= D14|A0= D18|A0= D54| -->
+<!-- V33 | D5 | D5 | D5 | A0= D18 | A0= D14 |D7|D7|D7| -->
+<!-- V5 | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9| -->
+<!-- Vcc | 5V | 5V | 5V | Vcc | Vcc |5V|5V|5V| (+) -->
+<!-- VHIGH | D7 | D7 | D7 | A2= D20 | A2= D16 |D2|D2|D2|--> 
+<!-- VON | A1= D15 | A1= D15 | A1= D19 | D2 | D2 |D5|D5|D5| -->
+<!-- VSUP | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9 | **+** -->
 
-#### 4.3.4 System LED
+Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega | Stand alone 
+--- | --- | --- | --- | --- | --- | --- 
+DEB-TX |A3= D17|A4= D18| D5 |D3|D3| 
+DW-LINE | D8 | D8 |D8| D8 |D49| **+** 
+GND | GND | GND | GND | GND | GND | **+** 
+ISP | D2 | D2 | D11 |D6|D6| 
+MISO | A2= D16 | A5= D19 | D6 |D11|D11| **+** 
+MOSI | A5= D19 | A2= D16 | D3 |D10|D10| **+** 
+SCK | D3 | D3 | D12 |D12|D12| **+** 
+SNS-GND | D11 | D11 | D10 |A0= D14|A0= D54| 
+V33 | D5 | D5 | A0= D14 |D7|D7| 
+V5 | D6 | D6  | A1= D15 |D9|D9| 
+Vcc | 5V | 5V | Vcc |5V|5V| (+) 
+VHIGH | D7 | D7  | A2= D16 |D2|D2|
+VON | A1= D15 | A1= D15  | D2 |D5|D5| 
+VSUP | D6 | D6 | A1= D15 |D9|D9 | **+** 
 
-As the system LED, we use the builtin LED on pin13 for most boards. On the Pro Micro, the RXI LED is used. On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board. So, if you use the Pro Mini, you do not have a system LED that signals the internal state. For a future version of the board, I will add an extra solder bridge into the design that can be closed for accommodating the Arduino Micro and allows to use the builtin LED of a Pro Mini board otherwise.
 
-<a name="section5"></a>
-## 5. Problems and shortcomings
+
+
+#### 7.3.4 System LED
+
+As the system LED, we use the builtin LED on pin13 for most boards. <!-- On the Pro Micro, the RXI LED is used. --> On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board (which we plan to support in the future). So, if you use the Pro Mini, you do not have a system LED that signals the internal state. For a future version of the board, I will add an extra solder bridge into the design that can be closed for accommodating the Arduino Micro and allows to use the builtin LED of a Pro Mini board otherwise.
+
+<a name="section8"></a>
+
+## 8. Problems and shortcomings
 
 *dw-link* is still in ***alpha*** state. The most obvious errors have been fixed, but there are most probably others. If something does not go according to plan, please try to isolate the reason for the erroneous behaviour, i.e., identify a sequence of operations to replicate the error. One perfect way to document a debugger error is to switch on logging and command tracing in the debugger:
 
@@ -550,7 +605,7 @@ I have prepared an *[issue form](issue_form.md)* for you, where I ask for all th
 
 Apart from bugs, there are, of course, shortcomings that one cannot avoid. I will present some of them in the next subsections.
 
-### 5.1 Flash memory wear
+### 8.1 Flash memory wear
 
 Setting and removing *breakpoints* is one of the main functionality of a debugger. Setting a breakpoint is mainly accomplished by changing an instruction in flash memory to the BREAK instruction. This, however, implies that one has to *reprogram flash memory*. Since flash memory wears out, one should try to minimize the number of flash memory reprogramming operations.
 
@@ -560,15 +615,17 @@ First of all, *dw-link* leaves the breakpoint in memory, even when gdb requests 
 
 Second, if there are many breakpoints on the same flash page, then the page is reprogrammed only once instead of reprogramming it for each breakpoint individually.
 
-Third, when one restarts from a location where a breakpoint has been set, gdb removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-link* does not update flash memory before single-stepping. Instead, it checks whether the current location contains a BREAK instruction. If this is not the case, *dw-link* issues a single-step command. Otherwise, it loads the original instruction into the *instruction register* of the MCU and executes it there. This appears to work even it is a two-word instruction, i.e., the second word is fetched from flash memory, provided the PC was set to the location of the original instruction. This discovery came as a surprise since the official Microchip documents state that one should refrain from setting breakpoints at double word instructions, implying that this would create problems. Indeed, RikusW stated in his [reverse engineering notes about debugWIRE](http://www.ruemohr.org/docs/debugwire.html) the following.
+Third, when one restarts from a location where a breakpoint has been set, gdb removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-link* does not update flash memory before single-stepping. Instead, it checks whether the current location contains a BREAK instruction. If this is not the case, *dw-link* issues simply a single-step command. Otherwise, if the instruction is a single-word instructions, it loads the original instruction into the *instruction register* of the MCU and executes it there. 
+
+For two-word instructions (i.e., LDS, STS, JUMP, and CALL), things are a bit more complicated. The Microchip documents state that one should refrain from  inserting breakpoints at double word instructions, implying that this would create problems. Indeed, RikusW noted in his [reverse engineering notes about debugWIRE](http://www.ruemohr.org/docs/debugwire.html):
 >Seems that its not possible to execute a 32 bit instruction this way.
 The Dragon reflash the page to remove the SW BP, SS and then reflash again with the SW BP!!! 
 
-However, I did extensive testing and never encountered a case where the execution of a 32 bit instruction failed or resulted in wrong results.
+I noticed that this is still the case, i.e., MPLAB-X in connection with ATMEL-ICE still reprograms the  page twice for hitting a breakpoint at a two-word instruction. The more sensible solution is to simulate the execution of these instructions, which is at least as fast and saves two reprogramming operations. And this is what *dw-link* does.
 
-Fourth, each MCU contains one *hardware breakpoint register*, which stops the MCU when the value in the register equals the program counter. This is used for the most recent breakpoint introduced. With this heuristic, temporary breakpoints (as the ones gdb generates for single-stepping) will always get priority and more permanent breakpoints set by the user will end up in flash. 
+Fourth, each MCU contains one *hardware breakpoint register*, which stops the MCU when the value in the register equals the program counter. *dw-link* uses this for the breakpoint introduced most recently. With this heuristic, temporary breakpoints (as the ones GDB generates for single-stepping) will always get priority and more permanent breakpoints set by the user will end up in flash. 
 
-Fifth, when reprogramming of a flash page is requested, *dw-link* first checks whether the identical contents should be loaded. Further, it checks whether it is possible to achieve the result by just turning some 1's into 0's. Only if these two things are not possible, the flash page is erased and reprogrammed. This helps in particular when reloading a file with the gdb `load` command after only a few things in the program have been changed.  
+Fifth, when reprogramming of a flash page is requested, *dw-link* first checks whether the identical contents should be loaded, in which case it does nothing. Further, it checks whether it is possible to achieve the result by just turning some 1's into 0's. Only if these two things are not possible, the flash page is erased and reprogrammed. This helps in particular when reloading a file with the GDB `load` command after only a few things in the program have been changed.  
 
 With all of that in mind, you do not have to worry too much about flash memory wear when debugging. As a general rule, you should not make massive changes of the breakpoints each time the MCU stops executing. Finally, Microchip recommends that chips that have been used for debugging using debugWIRE should not been shipped to customers. Well, I never ship chips to customers anyway.
 
@@ -577,27 +634,29 @@ For the really paranoid,  there is the option that permits only one breakpoint, 
 
 In addition, there is the debugger command `monitor flashcount`, which returns the number of how many flash page reprogramming commands have been executed since the debugger had been started.
 
-<a name="section52"></a>
-### 5.2 Slow responses when loading or single-stepping
+<a name="section82"></a>
+
+### 8.2 Slow responses when loading or single-stepping
 
 Sometimes, in particular when using a clock speed below 1 MHz, the responses from the MCU are quite sluggish. This happens, e.g., when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 16, which is roughly 62500 baud in case of a 1MHz MCU clock. For a 125 kHz clock, it is roughly 8000 bps. Do not even think about setting the CKDIV8 fuse, which divides the clock by 8! Indeed, the [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. 
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. Note that after executing the commands, the MCU is reset (and the register values of GDB are not valid anymore).
 
-In order to cope with high clock frequencies, it is possible to limit the communication speed to either 250 kbps, 125 kbps, or 62.5 kbps. The default case is 125 kbps. The other limits can be enforced by using the `monitor speed` command (see [commands for controlling gdb](#controlcommands)).
+In order to cope with high clock frequencies, it is possible to limit the communication speed to either 250 kbps or 125 kbps. The default case is 250 kbps. The other limit can be enforced by using the `monitor speed` command (see [commands for controlling GDB](#controlcommands)).
 
-### 5.3 Limited number of breakpoints
+### 8.3 Limited number of breakpoints
 
 The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints (+1 temporary breakpoint for single-stepping) are supported by default. You can reduce this to 1 by issuing the command `monitor hwbp` ([see above](#paranoid)). If you set more breakpoints than the maximum number, it will not be possible to start execution. Instead one will get the warning `Cannot insert breakpoint ... Command aborted`. You have to delete or disable some breakpoints before program execution can continue. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
 
-### 5.4 Power saving is not operational 
+### 8.4 Power saving is not operational 
 
 When you activate *sleep mode*, the power consumed by the MCU is supposed to go down significantly. If debugWIRE is active, this is not the case. 
 
-<a name="section55"></a>
-### 5.5 MCU operations interfering with debugWIRE
+<a name="section85"></a>
+
+### 8.5 MCU operations interfering with debugWIRE
 
 There are a few more situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) mentions the following:
 
@@ -612,21 +671,23 @@ There are a few more situations, which might lead to problems. The above mention
 
 If you do one of these things, either you might lose the connection to the target or, in the last three cases, the instruction might do something wrong. If you loose connection to the target, then it is very likely that there are still BREAK instructions in flash memory. So, after reconnecting, you need to issue the `load` command in order to get a clean copy of your binary into flash memory.
 
-### 5.6 BREAK instructions in your program
+### 8.6 BREAK instructions in your program
 
 It is possible to put the BREAK instruction, which is used to implement breakpoints, in ones program by using the inline assembly statement asm("break"). This does not make any sense since without the debugger, the MCU will stop at this point and will not do anything anymore. Such a BREAK instruction may also be in the program because a previous debugging session was not terminated in a clean way. If such a BREAK is detected, one may want to issue the `load` command again.
 
 When running under the debugger, the program will be stopped in the same way as if there is a software breakpoint set by the user. However, one cannot continue execution from this point with the `step`, `next`, or `continue` command. Instead, the debugger gets an "illegal instruction" signal. So, one either needs to reload the program code or, set the PC to a different value, or restart the debugging session.
 
-### 5.7 The start of the debugger takes a couple of seconds
+### 8.7 The start of the debugger takes a couple of seconds
 
-The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain UNO board or equivalent, then it will spend a couple of seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
+The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain Uno board or equivalent, then it will spend a couple of seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
 
-### 5.8 Program execution is very slow when conditional breakpoints are present
+### 8.8 Program execution is very slow when conditional breakpoints are present
 
 If you use *conditional breakpoints*, the program is slowed down significantly.  The reason is that at such a breakpoint, the program has to be stopped, all registers have to be saved, the current values of the variables have to be inspected, and then the program needs to be started again, whereby registers have to be restored first. For all of these operations, debugWIRE communication takes place. This takes roughly 100 ms per stop, even for simple conditions and an MCU running at 8MHz. So, if you have a loop that iterates 1000 times before the condition is met, it may easily take 2 minutes (instead of the fraction of a second) before execution stops.
 
-## 6 Trouble shooting
+<a name="trouble"></a>
+
+## 9 Trouble shooting
 
 #### Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*
 
@@ -634,17 +695,17 @@ Something in the `platformio.ini` file is not quite right. Perhaps a missing dec
 
 One common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the `platformio.ini` file accordingly.
 
-#### Problem: When connecting to the target using the *target ...* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
+#### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
-The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino accepts 230400, 115200, 57600, 38400, 19200, and 9600 bps. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. Another (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
+Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino accepts 230400, 115200, 57600, 38400, 19200, and 9600 bps. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. Another (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
 
 #### Problem: You get the message *Protocol error with Rcmd* 
-This is a generic gdb error message that indicates that the last `monitor` command you typed could not be successfully executed. Usually, also a more specific error message is displayed, e.g., *debugWIRE could NOT be disabled*. These messages are suppressed in some GUIs, though. 
+This is a generic GDB error message that indicates that the last `monitor` command you typed could not be successfully executed. Usually, also a more specific error message is displayed, e.g., *debugWIRE could NOT be disabled*. These messages are suppressed in some GUIs, though. 
 
 <a name="lost"></a>
 #### Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and the system LED is off
 
-The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 2.3](#section23)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 5.5](#section55)). Try to identify the reason, eliminate it and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
+The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 3.3](#section33)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 8.5](#section85)). Try to identify the reason, eliminate it and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
 
 
 #### Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*
@@ -654,7 +715,7 @@ The reason is most probably that the communication connection to the target syst
 
 #### Problem: The debugger responses are very sluggish   
 
-One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 5.2](#section52)).
+One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)).
 
 Another reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed. 
 
@@ -697,7 +758,7 @@ x/db 0xFFFFFFFF
 ```
 
 The (virtual) memory cell at this address contains the relevant error number. If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors (see below).
- 
+
 If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). By the way: `monitor dwoff` can still be executed in order to disable the debugWIRE on your MCU even if a fatal error has happened. 
 
 

@@ -302,7 +302,7 @@ int gdbTests(int &num) {
   gdbUpdateBreakpoints(false);
   failed += testResult(bpcnt == 0 && bpused == 0 && hwbp == 0xFFFF);
 
-  // test the illegal opcode detector
+  // test the illegal opcode detector for single step
   gdbDebugMessagePSTR(PSTR("Test gdbStep on illegal instruction 0x0001: "), testnum++);
   ctx.wpc = 0xe6;
   byte sig = gdbStep();
@@ -310,8 +310,8 @@ int gdbTests(int &num) {
   //DEBLN(sig);
   failed += testResult(sig == SIGILL && ctx.wpc == 0xe6);
   
-  // execute starting at 0xd5 (word address) with a NOP and run to the hardware breakpoint (next instruction)
-  gdbDebugMessagePSTR(PSTR("Test gdbContinue on illegal instruction 0x001: "), testnum++);
+  // test the illegal opcode detector for continue
+  gdbDebugMessagePSTR(PSTR("Test gdbContinue on illegal instruction 0x0001: "), testnum++);
   targetInitRegisters();
   ctx.sp = mcu.ramsz+mcu.rambase-1;
   ctx.wpc = 0xe6;

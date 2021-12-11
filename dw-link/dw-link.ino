@@ -24,10 +24,9 @@
 // Jeremy Bennett's description of an implementation of an RSP server:
 //    https://www.embecosm.com/appnotes/ean4/embecosm-howto-rsp-server-ean4-issue-2.html
 // 
-//
-// You can run it on an UNO, a Leonardo, a Mega, a Nano, a Pro Mini, a
-// Pro Micro, or a Micro.  For the four latter ones, there exists an
-// adapter board, which fits all four of them, using, of course,
+// You can run it on an Uno, a Mega, a Nano V2, A Nano V3, or a Pro Mini.
+// For the three latter ones, there exists an
+// adapter board, which fits both of them, using, of course,
 // different pin assignments.  For the Nano board, there are
 // apparently two different versions around, version 2 and version 3.
 // The former one has the A0 pin close to 5V pin, version 3 boards
@@ -35,9 +34,14 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by defualt is 3.
 
-#define VERSION "1.0.7"
+// It is also planned to run the sketch on ATmega32U4 boards
+// and there exist already the pin assignments and conditional
+// compilation statements. However, it turns out to be non-trivial
+// to adapt the sketch to the ATmega32U4.
 
-#define INITIALBPS 230400UL // initial expected  commuication speed with the host (115200, 57600, 38400 are alternatives)
+#define VERSION "1.0.8"
+
+#define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400 are alternatives)
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -47,12 +51,17 @@
 #error "dw-link needs at least 16 MHz clock frequency"
 #endif
 
-#ifndef VARSPEED    // for changing communication speed
-#define VARSPEED 0
+#ifndef SIM2WORD    // simulate 2 word instructions at break points instead of executing them
+#define SIM2WORD 1  // although exeuction appears to work, one does not know when it will fail
 #endif
-
+#ifndef VARSPEED    // for changing debugWIRE communication speed to maximal speed
+#define VARSPEED 1
+#endif
+#ifndef ADAPTSPEED // adaptive communication speed for line to host
+#define ADAPTSPEED 1
+#endif
 #ifndef TXODEBUG        // for debugging the debugger!
-#define TXODEBUG    0   
+#define TXODEBUG    1   
 #endif
 #ifndef SCOPEDEBUG
 #define SCOPEDEBUG 0
@@ -61,7 +70,7 @@
 #define FREERAM  0   
 #endif
 #ifndef UNITALL      // test all units
-#define UNITALL 0    
+#define UNITALL 0 
 #elif UNITALL == 1
 #define UNITDW 1
 #define UNITTG 1
@@ -130,14 +139,14 @@
 #define LEDPORT PORTC    // port register of system LED
 #define LEDPIN  PC7      // pin (=D13)
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_MEGA) 
+#elif defined(ARDUINO_AVR_MEGA2560) 
 #define VHIGH   2        // switch, low signals that one should use the 5V supply
 #define VON     5        // switch, low signals that dw-probe should deliver the supply charge
 #define V5      9        // a low level switches the MOSFET for 5 volt on 
 #define V33     7        // a low level switches the MOSFET for 3.3 volt on 
 #define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 54        // If low, then we use a shield
-#define DWLINE 49        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
+#define DWLINE 49        // RESET line 
 #define SCK    12        // SCK
 #define MOSI   10        // MOSI
 #define MISO   11        // MISO
@@ -250,8 +259,7 @@
 
 // communication bit rates 
 #define SPEEDHIGH     275000UL // maximum communication speed limit for DW
-#define SPEEDNORMAL   137000UL // normal speed limit
-#define SPEEDLOW       70000UL // low speed limit (if others is too fast)
+#define SPEEDLOW   137000UL // normal speed limit
 
 #ifdef LINEQUALITY
 // maximal rise time for RESET line in clock cycles
@@ -613,7 +621,9 @@ void setup(void) {
   initSession(); // initialize all critical global variables
   configureSupply(); // configure suppy already here
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
+#if ADAPTSPEED
   detectRSPCommSpeed(); // check for coummication speed and select the right one
+#endif
 }
 
 void loop(void) {
@@ -953,8 +963,8 @@ void gdbParsePacket(const byte *buff)
     else if (memcmp_P(buf, (void *)PSTR("qRavr.io_reg"), 12) == 0) 
       if (mcu.rambase == 0x100) gdbSendReply("e0");
       else gdbSendReply("40");
-    else
     */
+    else
       gdbSendReply("");  /* not supported */
     break;
   default:
@@ -972,7 +982,8 @@ void gdbParseMonitorPacket(const byte *buf)
   gdbUpdateBreakpoints(true);  // update breakpoints in memory before any monitor ops
 
   int clen = strlen((const char *)buf);
-  //DEBPR(F("clen=")); DEBLN(slen);
+  DEBPR(F("clen=")); DEBLN(clen);
+  DEBLN((const char *)buf);
   
   if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
     gdbStop();                                                              /* dwo[ff] */
@@ -1028,21 +1039,15 @@ void gdbParseMonitorPacket(const byte *buf)
 }
 
 // show connectio speed to host
-void gdbReportRSPbps(void)
+inline void gdbReportRSPbps(void)
 {
-  gdbDebugMessagePSTR(PSTR("Current bitrate of serial connection to host: "), ctx.hostbps);
-  _delay_ms(5);
-  //  flushInput();
-  gdbSendReply("OK");
+  gdbReplyMessagePSTR(PSTR("Current bitrate of serial connection to host: "), ctx.hostbps);
 }
 
 // get DW speed
-void gdbGetSpeed(void)
+inline void gdbGetSpeed(void)
 {
-  gdbDebugMessagePSTR(PSTR("Current debugWIRE bitrate: "), ctx.bps);
-  _delay_ms(5);
-  //  flushInput();
-  gdbSendReply("OK");
+  gdbReplyMessagePSTR(PSTR("Current debugWIRE bitrate: "), ctx.bps);
 }
 
 // set DW communication speed
@@ -1061,8 +1066,6 @@ void gdbSetSpeed(const byte cmd[])
   else arg = (hex2nib(cmd[argix])<<4) + hex2nib(cmd[argix+1]);
   switch (arg) {
   case 'h': speedlimit = SPEEDHIGH;
-    break;
-  case 'n': speedlimit = SPEEDNORMAL;
     break;
   case 'l': speedlimit = SPEEDLOW;
     break;
@@ -1105,27 +1108,21 @@ byte findArg(const byte cmd[])
 inline void gdbSetMaxBPs(byte num)
 {
   maxbreak = num;
-  gdbSendReply("OK");
+  gdbReplyMessagePSTR(PSTR("Maximum number of breakpoints now: "), num);
 }
 
 // "monitor flashcount"
 // report on how many flash pages have been written
-void gdbReportFlashCount(void)
+inline void gdbReportFlashCount(void)
 {
-  gdbDebugMessagePSTR(PSTR("Number of flash write operations: "), flashcnt);
-  _delay_ms(5);
-  // flushInput();
-  gdbSendReply("OK");
+  gdbReplyMessagePSTR(PSTR("Number of flash write operations: "), flashcnt);
 }
 
 // "monitor ramusage"
-void gdbReportRamUsage(void)
+inline void gdbReportRamUsage(void)
 {
 #if FREERAM
-  gdbDebugMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
-  _delay_ms(5);
-  // flushInput();
-  gdbSendReply("OK");
+  gdbReplyMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
 #else
   gdbSendReply("");
 #endif
@@ -1254,9 +1251,8 @@ void gdbStop(void)
 {
   if (targetStop()) {
     gdbDebugMessagePSTR(Connected,-2);
-    gdbDebugMessagePSTR(PSTR("debugWIRE is now disabled"),-1);
+    gdbReplyMessagePSTR(PSTR("debugWIRE is now disabled"),-1);
     setSysState(NOTCONN_STATE);
-    gdbSendReply("OK");
   } else {
     gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
     gdbSendReply("E05");
@@ -1307,24 +1303,43 @@ void gdbSetFuses(Fuses fuse)
     gdbSendReply("OK");
     return;
   }
-  if (gdbConnect(true))
-    gdbSendReply("OK");
-  else
+  if (!gdbConnect(true))
     gdbSendReply("E02");
+  else 
+    gdbSendReply("OK");
 }
 
+
+
 // check whether there should be a BREAK instruction at the current PC address 
-// if so, give back original instruction 
-boolean gdbBreakPresent(unsigned int &opcode)
+// if so, give back original instruction and second word, if it is a 2-word instructions
+boolean gdbBreakPresent(unsigned int &opcode, unsigned int &addr)
 {
   int bpix = gdbFindBreakpoint(ctx.wpc);
   opcode = 0;
+  addr = 0;
   if (bpix < 0) return false;
   if (!bp[bpix].inflash) return false;
   opcode = bp[bpix].opcode;
+#if SIM2WORD
+  if (twoWordInstr(opcode)) {
+    DEBPR(F("towWord/waddr="));
+    DEBLNF(bp[bpix].waddr+1,HEX);
+    addr = targetReadFlashWord((bp[bpix].waddr+1)<<1);
+    DEBLNF(addr,HEX);
+  }
+#endif
   return true;
 }
 
+#if SIM2WORD
+// check whether an opcode is a 32-bit instruction
+boolean twoWordInstr(unsigned int opcode)
+{
+  return(((opcode & ~0x1F0) == 0x9000) || ((opcode & ~0x1F0) == 0x9200) ||
+	 ((opcode & 0x0FE0E) == 0x940C) || ((opcode & 0x0FE0E) == 0x940E));
+}
+#endif
 
 // If there is a BREAK instruction (a not yet restored SW BP) at the current PC
 // location, we may need to execute the original instruction offline.
@@ -1333,13 +1348,45 @@ boolean gdbBreakPresent(unsigned int &opcode)
 // will check the condition and provide the opcode.
 // gdbBreakDetour will start with registers in a saved state and return with it
 // in a saved state.
-inline byte gdbBreakDetour(unsigned int opcode)
+// If SIM2WORD is true, all 2-word instructions will be simulated. This is 
+// safer than to rely on the fact that 2-word instructions appear to be
+// offline executable.
+inline byte gdbBreakDetour(unsigned int opcode, unsigned int addr)
 {
-  //DEBLN(F("gdbBreakDetour"));
+  DEBLN(F("gdbBreakDetour"));
   if (targetIllegalOpcode(opcode)) {
-    //DEBPR(F("Illop: ")); DEBLNF(opcode,HEX);
+    DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
     return SIGILL;
   }
+#if SIM2WORD
+  if (twoWordInstr(opcode)) {
+    byte reg, val;
+    if ((opcode & ~0x1F0) == 0x9000) {   // lds 
+      reg = (opcode & 0x1F0) >> 4;
+      val = DWreadSramByte(addr);
+      ctx.regs[reg] = val;
+      ctx.wpc += 2;
+    } else if ((opcode & ~0x1F0) == 0x9200) { // sts 
+      reg = (opcode & 0x1F0) >> 4;
+      DEBPR(F("Reg="));
+      DEBLN(reg);
+      DEBPR(F("addr="));
+      DEBLNF(addr,HEX);
+      DWwriteSramByte(addr,ctx.regs[reg]);
+      ctx.wpc += 2;
+    } else if ((opcode & 0x0FE0E) == 0x940C) { // jmp 
+      // since debugWIRE works only on MCUs with a flash address space <= 64 kwords
+      // we do not need to use the bits from the opcode
+      ctx.wpc = addr;
+    } else if  ((opcode & 0x0FE0E) == 0x940E) { // call
+      DWwriteSramByte(ctx.sp, (byte)((ctx.wpc+2) & 0xff)); // save return address on stack
+      DWwriteSramByte(ctx.sp-1, (byte)((ctx.wpc+2)>>8));
+      ctx.sp -= 2; // decrement stack pointer
+      ctx.wpc = addr; // the new PC value
+    }
+    return SIGTRAP;
+  }
+#endif
   targetRestoreRegisters();
   DWexecOffline(opcode);
   targetSaveRegisters();
@@ -1351,14 +1398,14 @@ inline byte gdbBreakDetour(unsigned int opcode)
 // it will return a signal, which in case of success is SIGTRAP
 byte gdbStep(void)
 {
-  unsigned int opcode;
+  unsigned int opcode, arg;
   unsigned int oldpc = ctx.wpc;
   byte sig = SIGTRAP; // SIGTRAP (normal), SIGILL (if ill opcode), SIGABRT (fatal)
   DEBLN(F("Start step operation"));
   if (fatalerror) return SIGABRT;
   if (targetOffline()) return SIGHUP;
-  if (gdbBreakPresent(opcode)) { // we have a break instruction inserted here
-    return gdbBreakDetour(opcode);
+  if (gdbBreakPresent(opcode, arg)) { // we have a break instruction inserted here
+    return gdbBreakDetour(opcode, arg);
   } else { // just single-step in flash
     //DEBPR(F("Opcode: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
     if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
@@ -1388,13 +1435,13 @@ byte gdbStep(void)
 byte gdbContinue(void)
 {
   byte sig = 0;
-  unsigned int opcode;
+  unsigned int opcode, arg;
   DEBLN(F("Start continue operation"));
   if (fatalerror) sig = SIGABRT;
   else if (targetOffline()) sig = SIGHUP;
   else {
     gdbUpdateBreakpoints(false);  // update breakpoints in flash memory
-    if (gdbBreakPresent(opcode)) { // we have a break instruction inserted here
+    if (gdbBreakPresent(opcode, arg)) { // we have a break instruction inserted here
       reportFatalError(SELF_BLOCKING_FATAL, false);
       sig = SIGABRT;
     }  else if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
@@ -2101,14 +2148,30 @@ void gdbSendState(byte signo)
   lastsignal = signo;
 }
 
+
+// reply to a monitor command
+// if last argument < -1, then use it as index into MCU name array (index: abs(num)-1)
+void gdbReplyMessagePSTR(const char pstr[],long num) 
+{
+  gdbMessagePSTR(pstr, num, false);
+}
+
 // send a message the user can see, if last argument positive, then send the number
 // if last argument < -1, then use it as index into MCU name array (index: abs(num)-1)
-void gdbDebugMessagePSTR(const char pstr[],long num) {
+void gdbDebugMessagePSTR(const char pstr[],long num) 
+{
+  gdbMessagePSTR(pstr, num, true);
+  
+}
+
+// send a message, either prefixed by 'O' or not
+void gdbMessagePSTR(const char pstr[],long num, boolean oprefix)
+{
   byte i = 0, j = 0, c;
   byte numbuf[10];
   char *str;
 
-  buf[i++] = 'O';
+  if (oprefix) buf[i++] = 'O';
   do {
     c = pgm_read_byte(&pstr[j++]);
     if (c) {
@@ -2167,6 +2230,7 @@ int targetConnect(void)
   if (quality > UNCONNRISETIME) return -1;
   else if (quality > MAXRISETIME) return -4;
 #endif
+  _delay_ms(100); // allow for startup of MCU
   if (doBreak()) {
     DEBLN(F("targetConnect: doBreak done"));
     sig = DWgetChipId();
