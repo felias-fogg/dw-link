@@ -546,13 +546,15 @@ int targetTests(int &num) {
   failed += testResult(succ && ctx.wpc == 0xd8 && ctx.regs[17] == 0x91);
 
   gdbDebugMessagePSTR(PSTR("Test targetReset: "), testnum++);
-  DWwriteIOreg(0x3F, 0xFF); // SREG
-  DEBPR(F("SREG before: ")); DEBLNF(DWreadIOreg(0x3F),HEX);
+  ctx.sreg= 0xFF; // SREG
+  DEBPR(F("SREG before: ")); DEBLNF(ctx.sreg,HEX);
+  DEBPR(F("WPC before:  ")); DEBLNF(ctx.wpc,HEX);
   targetRestoreRegisters();
   targetReset(); // response is taken care of by the function itself
   targetSaveRegisters();
-  DEBPR(F("SREG after: ")); DEBLNF(DWreadIOreg(0x3F),HEX);
-  failed += testResult(ctx.wpc == 0 && DWreadIOreg(0x3F) == 0);
+  DEBPR(F("SREG after: ")); DEBLNF(ctx.sreg,HEX);
+  DEBPR(F("WPC after:  ")); DEBLNF(ctx.wpc,HEX);
+  failed += testResult((ctx.wpc & 0x7F) == 0 && ctx.sreg == 0); // PC can be set to boot area!
 
   gdbDebugMessagePSTR(PSTR("Test targetIllegalOpcode (mul r16, r16): "), testnum++);
   failed += testResult(targetIllegalOpcode(0x9F00) == !mcu.avreplus);

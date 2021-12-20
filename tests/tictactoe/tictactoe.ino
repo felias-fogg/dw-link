@@ -1,11 +1,9 @@
 // Program intended to be used for testing dw-link
+// Only boards with > 4K flash
+#include <Arduino.h>
+#include <unistd.h>
 
-#include <stdio.h>
-#include <string.h>
-#include "src/picoUART.h"
-#include "src/pu_print.h"
-
-// #define DETERMINISTIC
+#define DETERMINISTIC
 
 #define LOOSELEVEL 4 // try to loose starting with this round!
 #define NOBLOCKLEVEL 6 // starting with this round, do not block any more!
@@ -25,6 +23,24 @@ int8_t move;
 int8_t movenumber = 0;
 int8_t gameround = 0;
 bool computer_looses = false;
+char key;
+
+int8_t minimax(int8_t player);
+int8_t chooseMove(void);
+int8_t blockWin(void);
+int8_t checkWon(void);
+inline bool checkDraw(void);
+inline bool checkTerminated(void);
+int8_t readFieldNum();
+boolean askAnotherGame(void);
+boolean yesNoQuestion(void);
+boolean leftOrRightQuestion(char left, char right);
+int8_t readKey(char left, char right);
+int8_t askMove(void);
+void drawBoard(void);
+void gosleep(void);
+void error(int8_t num);
+void initGame(void);
 
 // evaluates board position when it is player's turn
 // it minimizes for the human and maximizes for the computer
@@ -138,7 +154,7 @@ int8_t checkWon(void)
   return(EMPTY);
 }
 
-inline bool checkDraw()
+inline bool checkDraw(void)
 {
   if (movenumber == 9) return true;
   else return false;
@@ -155,22 +171,23 @@ inline bool checkTerminated(void)
 
 int8_t readFieldNum()
 {
-  char ch = NOKEY;
-  
+  key = NOKEY;
   while (true) {
-    if (ch >= '1' && ch <='9') return ch - '0';
-    ch = purx();
+    if (key >= '1' && key <='9') return key - '0';
+    if (Serial.available()) {
+      key = Serial.read();
+    }
   } 
 }
 
 boolean askAnotherGame(void)
 {
 
-  prints_P(PSTR("\n\rAnother game (Y/N)? "));
+  Serial.print(F("\n\rAnother game (Y/N)? "));
   return (yesNoQuestion());
 }
 
-boolean yesNoQuestion()
+boolean yesNoQuestion(void)
 {
   return leftOrRightQuestion('Y', 'N');
 }
@@ -188,19 +205,20 @@ boolean leftOrRightQuestion(char left, char right)
 
 int8_t readKey(char left, char right)
 {
-  char ch = NOKEY;
-  
+  key = NOKEY;
   while (true) {
-    ch = toupper(ch);
-    if (ch == left) {
-      putx(left);
+    key = toupper(key);
+    if (key == left) {
+      Serial.print((char)left);
       return LEFTKEY;
     }
-    if (ch == right) {
-      putx(right);
+    if (key == right) {
+      Serial.print((char)right);
       return RIGHTKEY;
     }
-    ch = purx();
+    if (Serial.available()) {
+      key = Serial.read();
+    }
   } 
 }
 
@@ -209,7 +227,7 @@ int8_t askMove(void)
 {
   int8_t reply = NOKEY;
 
-  prints_P(PSTR("\n\rYour move: "));
+  Serial.print(F("\n\rYour move: "));
   reply = readFieldNum();
   return (reply - 1);
 }
@@ -218,25 +236,24 @@ void drawBoard(void)
 {
 
   for (byte i=0; i < 10; i += 3) {
-    prints_P(PSTR("\n\r+---+---+---+"));
+    Serial.print(F("\n\r+---+---+---+"));
     if (i == 9) break;
-    prints_P(PSTR("\n\r| "));
+    Serial.print(F("\n\r| "));
     for (byte j=i; j < i+3; j++) {
       switch(board[j]) {
-      case EMPTY: prints_P(PSTR(" ")); break;
-      case X: prints_P(PSTR("X")); break;
-      case O: prints_P(PSTR("O")); break;
+      case EMPTY: Serial.print(F(" ")); break;
+      case X: Serial.print(F("X")); break;
+      case O: Serial.print(F("O")); break;
       }
-      prints_P(PSTR(" | "));
+      Serial.print(F(" | "));
     }
   }
-  prints("\n\r");
-
+  Serial.println();
 }
 
-void gosleep()
+void gosleep(void)
 {
-  prints_P(PSTR("\n\rBye\n\r"));
+  Serial.println(F("\n\rBye"));
   gameround = 0;
   delay(3000);
 }
@@ -244,8 +261,8 @@ void gosleep()
 void error(int8_t num)
 {
 
-  prints_P(PSTR("Internal error "));
-  prints(num + '0');
+  Serial.print(F("\n\rInternal error "));
+  Serial.println(num);
 
   gosleep();
 }
@@ -257,14 +274,15 @@ void setup(void)
 #else
   srand(micros()+millis()+analogRead(0));
 #endif
+  Serial.begin(9600);
 }
 
 void initGame(void)
 {
 
-  prints_P(PSTR("\n\rT I C T A C T O E"));
-  prints_P(PSTR("\n\r=================\n\r"));
-  prints_P(PSTR("\n\rDo you want to start? (Y/N): "));
+  Serial.print(F("\n\rT I C T A C T O E"));
+  Serial.print(F("\n\r=================\n\r"));
+  Serial.print(F("\n\rDo you want to start? (Y/N): "));
   gameround = 1;
   if (yesNoQuestion()) 
    human = X;
@@ -276,12 +294,12 @@ void loop(void)
 {
   if (gameround == 0) initGame();
   if (gameround == 0) return;
-  prints_P(PSTR("\n\rGame "));
-  putx(gameround + '0');
+  Serial.print(F("\n\rGame "));
+  Serial.print(gameround);
   gameround++;
 
-  if (human == X) prints_P(PSTR("\n\rYou start..."));
-  else prints_P(PSTR("\n\rI start..."));
+  if (human == X) Serial.print(F("\n\rYou start..."));
+  else Serial.print(F("\n\rI start..."));
   if (gameround == 0) return;
   
   for (int8_t i=0; i< 9; i++) board[i] = EMPTY;
@@ -295,35 +313,35 @@ void loop(void)
       if (move < 0) gosleep();
       if (gameround == 0) return;
       if (board[move] != EMPTY) {
-	putx(move+1+'0');
+	Serial.print(move+1);
 	continue;
       }
       board[move] = human;
     } else {
       delay(200);
-      prints_P(PSTR("\n\rI am thinking ..."));
+      Serial.print(F("\n\rI am thinking ..."));
       delay(2000);
 
       move = chooseMove();
 
-      prints_P(PSTR("\n\rI play: "));
+      Serial.print(F("\n\rI play: "));
 
       board[move] = -human;
     }
-    putx(move+1+'0');
+    Serial.print(move+1);
     drawBoard();
     turn = -turn;
     movenumber++;
   }
 
   if (checkWon() == human) {
-    prints_P(PSTR("\n\rCongratulation, you won!"));
+    Serial.print(F("\n\rCongratulation, you won!"));
   } else if (checkWon() == -human) {
 
-    prints_P(PSTR("\n\rI won!"));
+    Serial.print(F("\n\rI won!"));
 
   } else {
-    prints_P(PSTR("\n\rThis is a draw."));
+    Serial.print(F("\n\rThis is a draw."));
   }
   human = -human;
 

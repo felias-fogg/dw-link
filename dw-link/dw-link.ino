@@ -39,9 +39,9 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4.
 
-#define VERSION "1.0.8"
+#define VERSION "1.0.9"
 
-#define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400 are alternatives)
+#define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -52,7 +52,7 @@
 #endif
 
 #ifndef SIM2WORD    // simulate 2 word instructions at break points instead of executing them
-#define SIM2WORD 1  // although exeuction appears to work, one does not know when it will fail
+#define SIM2WORD 1  // although execution appears to work, one does not know when it will fail
 #endif
 #ifndef VARSPEED    // for changing debugWIRE communication speed to maximal speed
 #define VARSPEED 1
@@ -61,7 +61,7 @@
 #define ADAPTSPEED 1
 #endif
 #ifndef TXODEBUG        // for debugging the debugger!
-#define TXODEBUG    1   
+#define TXODEBUG    0   
 #endif
 #ifndef SCOPEDEBUG
 #define SCOPEDEBUG 0
@@ -70,7 +70,7 @@
 #define FREERAM  0   
 #endif
 #ifndef UNITALL      // test all units
-#define UNITALL 0 
+#define UNITALL 1 
 #elif UNITALL == 1
 #define UNITDW 1
 #define UNITTG 1
@@ -93,6 +93,7 @@
 // Similarly, UNO, Leonardo and Mega use the same shield
 //-----------------------------------------------------------
 #if defined(DIRECTISP)   // Binding for a modified ISP plug
+#define ID     "DISP"
 #define SCK    13        // SCK  -- directly connected to ISP socket
 #define MOSI   11        // MOSI -- directly connected to ISP socket
 #define MISO   12        // MISO -- directly connected to ISP socket
@@ -103,7 +104,8 @@
 //#define LEDPORT PORTB    // port register of system LED
 //#define LEDPIN  PB5      // pin (=D13)
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_UNO)  
+#elif defined(ARDUINO_AVR_UNO)
+#define ID      "UNO"
 #define VHIGH   2        // switch, low signals that one should use the 5V supply
 #define VON     5        // switch, low signals that dw-probe should deliver the supply charge
 #define V5      9        // a low level switches the MOSFET for 5 volt on 
@@ -121,7 +123,8 @@
 #define LEDPORT PORTB    // port register of system LED
 #define LEDPIN  PB5      // pin (=D13)
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_LEONARDO)  
+#elif defined(ARDUINO_AVR_LEONARDO)
+#define ID      "LEONARDO"
 #define VHIGH   2        // switch, low signals that one should use the 5V supply
 #define VON     5        // switch, low signals that dw-probe should deliver the supply charge
 #define V5      9        // a low level switches the MOSFET for 5 volt on 
@@ -139,7 +142,8 @@
 #define LEDPORT PORTC    // port register of system LED
 #define LEDPIN  PC7      // pin (=D13)
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_MEGA2560) 
+#elif defined(ARDUINO_ AVR_MEGA2560)
+#define ID      "MEGA"
 #define VHIGH   2        // switch, low signals that one should use the 5V supply
 #define VON     5        // switch, low signals that dw-probe should deliver the supply charge
 #define V5      9        // a low level switches the MOSFET for 5 volt on 
@@ -168,10 +172,12 @@
 #define SCK     3        // SCK
 #define PROG    2        // if low, signals that one wants to use the ISP programming feature
 #if NANOVERSION == 3
+#define ID      "NANO3"
 #define MOSI   16        // MOSI
 #define MISO   19        // MISO
 #define DEBTX  18        // TX line for TXOnlySerial
 #else
+#define ID      "NANO2"
 #define MOSI   19        // MOSI
 #define MISO   16        // MISO
 #define DEBTX  17        // TX line for TXOnlySerial
@@ -182,6 +188,7 @@
 #define LEDPIN  PB5      // Arduino pin 13
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_PRO)  // on a Pro Mini board
+#define ID      "PRO"
 #define VHIGH  16        // switch, low signals that one should use the 5V supply
 #define VON     2        // switch, low signals tha dw-probe should deliver the supply charge
 #define V33    14        // a low level switches the MOSFET for 3.3 volt on 
@@ -200,6 +207,7 @@
 //#define LEDPIN  PC7      // not connected to the outside world!
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_PROMICRO)  // Pro Micro, i.e., that is a Mega 32U4
+#define ID      "PRO MICRO"
 #define VHIGH  20        // switch, low signals that one should use the 5V supply
 #define VON     2        // switch, low signals tha dw-probe should deliver the supply charge
 #define V33    18        // a low level switches the MOSFET for 3.3 volt on 
@@ -218,6 +226,7 @@
 #define LEDPIN  PB0      // Arduino pin 17
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MICRO)  // Micro, i.e., that is a Mega 32U4
+#define ID      "MICRO"
 #define VHIGH   7        // switch, low signals that one should use the 5V supply
 #define VON    19        // switch, low signals tha dw-probe should deliver the supply charge
 #define V33     5        // a low level switches the MOSFET for 3.3 volt on 
@@ -248,7 +257,7 @@
 #include "src/dwSerial.h"
 #include "src/SingleWireSerial_config.h"
 #ifdef TXODEBUG
-#include <TXOnlySerial.h> // only needed for (meta-)debuging
+#include "src/TXOnlySerial.h" // only needed for (meta-)debuging
 #endif
 #include "src/debug.h" // some (meta-)debug macros
 
@@ -302,6 +311,7 @@
 #define NO_STEP_FATAL 116 // could not do a single-step operation
 #define RELEVANT_BP_NOT_PRESENT 117 // identified relevant BP not present any longer 
 #define INPUT_OVERLFOW_FATAL 118 // input buffer overflow - should not happen at all!
+#define WRONG_FUSE_SPEC_FATAL 119 // specification of a fuse we are not prepafred to change
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -527,7 +537,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
 const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
-unsigned long speedlimit = SPEEDHIGH;
+unsigned long speedlimit = SPEEDLOW;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, Erase, DWEN };
 
@@ -594,7 +604,7 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 /******************* setup & loop ******************************/
 void setup(void) {
   DEBINIT(); 
-  DEBLN(F("dw-link V" VERSION));
+  DEBLN(F("dw-link (" ID ") V" VERSION));
   TIMSK0 = 0; // no millis interrupts
   Serial.begin(INITIALBPS);
   ctx.hostbps = INITIALBPS;
@@ -652,12 +662,8 @@ void loop(void) {
 //   if not: vary the speed and send '-' to provoke resending
 //           if one gets a response, send it again through the filter
 void detectRSPCommSpeed(void) {
-  int initix, ix;
+  int ix;
   int timeout;
-
-  initix = -1;
-  for (ix = 0; ix <= maxbpsix; ix++)
-    if (rsp_bps[ix] == INITIALBPS) initix = ix;
 
   while (1) {
     if (!Serial.available()) continue;
@@ -672,7 +678,7 @@ void detectRSPCommSpeed(void) {
     while (ix > 0) {
       ix--;
       if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
-      DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
+      //DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
       Serial.begin(rsp_bps[ix]);
       Serial.print("-");  // ask for retransmission
       timeout = 2000;
@@ -734,9 +740,9 @@ void configureSupply(void)
 #if defined(VHIGH) && defined(VON) && defined(V33) && defined (V5)
     if (ctx.vhigh != !digitalRead(VHIGH) || ctx.von != !digitalRead(VON)) { // something changed
       _delay_ms(30); // debounce
-      DEBLN(F("Some change"));
-      DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(VHIGH));
-      DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(VON));
+      //DEBLN(F("Some change"));
+      //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(VHIGH));
+      //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(VON));
       ctx.vhigh = !digitalRead(VHIGH);
       ctx.von = !digitalRead(VON);
       pinMode(V33, INPUT); // switch off both supply lines
@@ -864,7 +870,7 @@ void gdbHandleCmd(void)
 	gdbSendState(SIGINT);
       } else {
 	gdbSendState(SIGHUP);
-	DEBLN(F("Connection lost"));
+	//DEBLN(F("Connection lost"));
       }
     }
     break;
@@ -918,6 +924,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'k':                                          /* kill request */
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit! */
+    setSysState(NOTCONN_STATE);                      /* set to unconnected state, will reconnect if "run" follows */
     break;
   case 'c':                                          /* continue */
   case 'C':                                          /* continue with signal - just ignore signal! */
@@ -935,6 +942,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          /* Run command */
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {
+      setSysState(CONN_STATE);                       /* "reconnect" after kill cpmmand */
       gdbReset();                                    /* reset MCU and initialize registers */
       gdbSendState(SIGTRAP);                         /* stop at start address (= 0x000) */
                                                      /* GDB will auto restart! */
@@ -950,15 +958,12 @@ void gdbParsePacket(const byte *buff)
 	initSession();                               /* init all vars when gdb (re-)connects */
 	gdbConnect(false);                           /* and try to connect */
 	gdbSendPSTR((const char *)PSTR("PacketSize=FF")); 
-    } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)
-      /* current thread is always 1 */
-      gdbSendReply("QC01");
+    } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
+      gdbSendReply("QC01");                          /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
-      /* always 1 thread*/
-      gdbSendReply("m01");
+      gdbSendReply("m01");                           /* always 1 thread*/
     else if (memcmp_P(buf, (void *)PSTR("qsThreadInfo"), 12) == 0)
-      /* send end of list */
-      gdbSendReply("l");
+      gdbSendReply("l");                             /* send end of list */
     /* ioreg query does not work!
     else if (memcmp_P(buf, (void *)PSTR("qRavr.io_reg"), 12) == 0) 
       if (mcu.rambase == 0x100) gdbSendReply("e0");
@@ -1015,7 +1020,7 @@ void gdbParseMonitorPacket(const byte *buf)
   else if (memcmp_P(buf, (void *)PSTR("34627000"), max(2,min(8,clen))) == 0)
     gdbSetMaxBPs(4);                                                        /* 4[bp] */
   else if (memcmp_P(buf, (void *)PSTR("7370"), 2) == 0)
-    gdbSetSpeed(buf);
+    gdbSetSpeed(buf);                                                       /* sp[eed] [h|l] */
 #if UNITDW
   else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)
     DWtests(para);                                                          /* testdw */
@@ -1032,12 +1037,20 @@ void gdbParseMonitorPacket(const byte *buf)
   else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)
     alltests();                                                             /* testall */
 #endif
+  else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
+    gdbVersion();                                                           /* version */
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
   } else gdbSendReply("");
 }
 
+// show version
+inline void gdbVersion(void)
+{
+  gdbReplyMessagePSTR(PSTR("dw-link (" ID ") V" VERSION), -1);
+}
+  
 // show connectio speed to host
 inline void gdbReportRSPbps(void)
 {
@@ -1053,7 +1066,6 @@ inline void gdbGetSpeed(void)
 // set DW communication speed
 void gdbSetSpeed(const byte cmd[])
 {
-  unsigned int newexp;
   byte arg;
   DEBLN(F("gdbSetSpeed"));
   byte argix = findArg(cmd);
@@ -1296,6 +1308,7 @@ void gdbSetFuses(Fuses fuse)
   case CkExt: gdbDebugMessagePSTR(PSTR("Clock source is now the EXTernal oscillator"),-1); break;
   case CkXtal: gdbDebugMessagePSTR(PSTR("Clock source is now the XTAL oscillator"),-1); break;
   case Erase: gdbDebugMessagePSTR(PSTR("Flash memory erased"),-1); break;
+  default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
   }
   _delay_ms(200);
   flushInput();
@@ -1708,7 +1721,7 @@ void gdbRemoveBreakpoint(unsigned int waddr)
 }
 
 // after a restart, go through table
-// and cleanup, by making all BPs inactive,
+// and cleanup by making all BPs inactive,
 // counting the used ones and finally call 'update'
 void gdbCleanupBreakpointTable(void)
 {
@@ -2169,7 +2182,7 @@ void gdbMessagePSTR(const char pstr[],long num, boolean oprefix)
 {
   byte i = 0, j = 0, c;
   byte numbuf[10];
-  char *str;
+  const char *str;
 
   if (oprefix) buf[i++] = 'O';
   do {
@@ -2736,7 +2749,7 @@ boolean expectUCalibrate() {
   }
   if ((100*(abs((long)ctx.bps-(long)newbps)))/newbps <= 1)  { // less than 2% deviation -> ignore change
     DEBLN(F("No change: return"));
-    return;
+    return true;
   }
   dw.begin(newbps);
   for (speed = maxspeedexp; speed > 0; speed--) {
@@ -3476,7 +3489,6 @@ boolean setMcuAttr(unsigned int id)
 {
   int ix = 0;
   unsigned int sig;
-  unsigned int *ptr;
   measureRam();
 
   while ((sig = pgm_read_word(&mcu_info[ix].sig))) {

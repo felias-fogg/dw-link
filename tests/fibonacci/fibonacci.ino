@@ -1,49 +1,25 @@
 // Program intended to be used for testing dw-link
 
-#include <stdio.h>
-#include <string.h>
-#include "src/picoUART.h"
-#include "src/pu_print.h"
+#define LED SCK // use always the SCK pin so one can see something flashing.
+#define MAXDEPTH 7 // that is OK for the ATtiny13
 
-#define MAXDEPTH 20
+int callcnt;
+int memo[MAXDEPTH];
+int lookups;
 
-unsigned long memo[MAXDEPTH];
-unsigned long lookups;
-unsigned long callcnt;
-
-char *convnum(unsigned long num)
-{
-  static char numstr[11];
-  unsigned long div = 100000000UL;
-  boolean nodigit = true;
-  byte i = 0;
-
-  while (div != 0) {
-    if (num/div == 0 && nodigit && div != 1) div /= 10;
-    else {
-      numstr[i++] = num/div + '0';
-      num %= div;
-      div /= 10;
-      nodigit = false;
-    }
-  }
-  numstr[i] = '\0';
-  return numstr;
-}
-
-unsigned long fib(unsigned long n)
+int fib(int n)
 {
   callcnt++;
-  if (n <= 1) return n;
+  if (n <= 2) return 1;
   else return fib(n-1) + fib(n-2);
 }
 
-unsigned long mfib(unsigned long n)
+int mfib(int n)
 {
-  unsigned long res;
+  int res;
   
   callcnt++;
-  if (n <= 1) return n;
+  if (n <= 2) return 1;
   else if (memo[n]) {
     lookups++;
     return memo[n];
@@ -54,28 +30,70 @@ unsigned long mfib(unsigned long n)
   }
 }
 
-int main(void)
+void setup()
 {
-  prints_P(PSTR("\n\n\rCalling fib and mfib with increasing parameters\n\r"));
-  for (byte i=0; i <= MAXDEPTH; i++) {
-    prints_P(PSTR("fib("));
-    prints(convnum(i));
-    prints_P(PSTR(")="));
-    callcnt = 0;
-    prints(convnum(fib(i)));
-    prints_P(PSTR(" Calls="));
-    prints(convnum(callcnt));
-    prints_P(PSTR(" mfib("));
-    prints(convnum(i));
-    prints_P(PSTR(")="));
-    callcnt = 0;
-    for (byte j=0; j < MAXDEPTH; j++) memo[j] = 0;
-    prints(convnum(mfib(i)));
-    prints_P(PSTR(" Calls="));
-    prints(convnum(callcnt));
-    prints_P(PSTR(" Lookups="));
-    prints(convnum(lookups));
-    prints_P(PSTR("\n\r"));
-  }
-  
+#ifdef Serial
+  Serial.begin(9600);
+#endif
+  pinMode(LED, OUTPUT);
+#ifdef  LED_BUILTIN
+  pinMode(LED_BUILTIN, OUTPUT);
+#endif
+}
+
+void loop(void)
+{
+  int result, arg;
+  byte j;
+
+  arg = MAXDEPTH;
+  /* ordinary recursive call */
+  callcnt = 0;
+  result = fib(arg);
+#ifdef Serial
+  Serial.print(F("fib("));
+  Serial.print(arg);
+  Serial.print(F(")="));
+  Serial.println(result);
+  Serial.print(F(" Calls="));
+  Serial.println(callcnt);
+#endif
+  ledControl(true);
+  delay(result);
+  ledControl(false);
+  delay(300);
+  ledControl(true);
+  delay(callcnt);
+  ledControl(false);
+  delay(500);
+
+  /* memoizing */
+  callcnt = 0;
+  for (j=0; j < MAXDEPTH; j++) memo[j] = 0;
+  result = mfib(arg);
+#ifdef Serial
+  Serial.print(F("fib("));
+  Serial.print(arg);
+  Serial.print(F(")="));
+  Serial.println(result);
+  Serial.print(F(" Calls="));
+  Serial.println(callcnt);
+  Serial.print(F(" Lookups="));
+#endif
+  ledControl(true);
+  delay(result);
+  ledControl(false);
+  delay(1000);
+  ledControl(true);
+  delay(callcnt);
+  ledControl(false);
+  delay(2000);
+}
+
+inline void ledControl(boolean on)
+{
+  digitalWrite(LED, on);
+#ifdef LED_BUILTIN
+  digitalWrite(LED_BUILTIN, on);
+#endif
 }

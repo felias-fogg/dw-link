@@ -3,7 +3,7 @@
 #define LED SCK // use always the SCK pin so one can see something flashing.
 
 volatile byte cycle = 0; // cycle counter
-volatile unsigned long privmillis = 0; 
+volatile unsigned long privmillis = 0;
 
 #ifdef TIM0_COMPA_vect
 ISR(TIM0_COMPA_vect)
@@ -12,9 +12,9 @@ ISR(TIMER0_COMPA_vect)
 #endif
 {
   if (cycle < 5) 
-    privmillis++;
+    privmillis += (16000000UL/F_CPU);
   else
-    privmillis += 5; // time is 5 times faster!
+    privmillis += (16000000UL/F_CPU); // time is 5 times faster!
 }
 
 unsigned long mymillis(void) {
@@ -47,6 +47,12 @@ void setup() {
   TCCR0B = 0x02;         // set prescaler 8 on slow ATtinys
 #endif
 #endif
+  // now force that the interrupt is actually used
+  unsigned long start = millis();
+  start += 100;
+  delay(100);
+  start = start/millis();
+  delay(start);
 }
 
 // the loop function runs over and over again forever

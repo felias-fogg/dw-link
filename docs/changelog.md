@@ -101,7 +101,7 @@
   - now we use TIMER1 for measuring the delay instead of counting execution cycles in
     OnePinSerial: much more accurate!
   - since this is still not enough, the millis and the status blinking interrupts have been
-    disabled (we now use _delay_ms and _delay_us); actually, the blink IRQ is now only used
+    disabled (we now use \_delay\_ms and \_delay\_us); actually, the blink IRQ is now only used
     for error blinking and for power-cycle
     flashing -- all other interrupts are disabled, except, of course, for the
     PCI interrupt for the debugWIRE line and the interrupt for the serial line;
@@ -117,7 +117,7 @@
 
 ## Version 0.9.3 (04-Jul-21)
 
-  - Now it seems to work with targets running at 16 MHz. With SCOPE_TIMING enabled in OnePinSerial,
+  - Now it seems to work with targets running at 16 MHz. With SCOPE\_TIMING enabled in OnePinSerial,
     it worked beautifully; without, there were a number of glitches when reading.
     So I put in some NOPs when SCOPE_TIMING is disabled ... and it
     works. The only problem is, I do not know why, and this makes me nervous. Maybe time
@@ -301,7 +301,7 @@ Version 0.9.9 (14-Nov-21)
     four all fit into the socket on the same adapter board that
     has level shifting and switching electronic on board,
     for the former three, I will design a shield
-  - put type casts into mcu_attr array in order to get rid of warning
+  - put type casts into mcu\_attr array in order to get rid of warning
   - adapted the unit tests functions so that they only give an error
     reply in case of a not connected target system when they are called
     in isolation; in addition, they now always return a zero when
@@ -380,7 +380,7 @@ Version 0.9.9 (14-Nov-21)
      
 ## Version 1.0.6 (07-Dec-21)
 
-   - made the blinking ISR an ISR_NOBLOCK in order to minimize
+   - made the blinking ISR an ISR\_NOBLOCK in order to minimize
      interrupt latency
    - integrated communication speed control so that regardless of
      MCU clock frequency one has a reasonable communication speed;
@@ -388,7 +388,7 @@ Version 0.9.9 (14-Nov-21)
    - one strange observation in this contect is that communication
      speed is reduced to clk/256 after a program has been stopped by
      CTRL-C, which results in a break condition on the RESET line;
-     this does NOT happen when doing the same with the Atnmel-ICE,
+     this does NOT happen when doing the same with the Atmel-ICE,
      and I have no idea why
    - implemented communication speed limit control: "monitor speed \<option>",
      where \<option> can be 'l' (low speed = 62500), 'n' (normal speed
@@ -404,7 +404,7 @@ Version 0.9.9 (14-Nov-21)
    - adaptive communication speed to host: 230400, 115200, 57600,
      38400, 19200, and 9600 (the GDB default) are possible; so
      one only has to set the speed in avr-gdb; dw-link will adapt
-     to it!
+     to it; can be disabled by setting ADAPTSPEED = 0
    - inserted configureSupply into setup so that the target could
      be powered up early on; otherwise DW is not active when the
      first doBreak is issued; DW apparently needs to be powered up
@@ -433,3 +433,20 @@ Version 0.9.9 (14-Nov-21)
      more hickups with it, so no Leonardo etc. yet as a debugger
      (changed documentation as well)
    - only high (250k) and low (125k) speed limit for DW communication
+
+## Version 1.0.9 (20-Dec-21)
+   - set sysstate to 'unconnect' when 'kill' command is executed;
+     necessary because 'quit' just issues a 'kill'; systate is set to
+     connected when 'run' command is used afterwards (which is only
+     accepted when target has been connected)
+   - prepared test scripts for unit tests, blink, flashtest,
+     and fibonacci
+   - included TXOnlySerial into the the libraries in 'src'
+   - tried out importing dw-link into PlatformIO, seems to work after
+     a few changes such as importing TXOnlySerial
+   - new monitor command: "monitor version"
+   - New default DW speed is now 125k since I had some spurious errors
+   - almost all test sketches appear to work wit their debugging
+     scripts in test.py (which is now part of the distribution)
+   
+	 
