@@ -181,6 +181,72 @@ oop_script = ("oop test", "oop",
     ("detach","[Inferior 1 (Remote target) detached]"),
     ("quit", ""))
 
+#tests terminal I/O and heavy IRQ load
+tictactoe_script = ("tictactoe test", "tictactoe",
+    ("set style enabled off", ""),
+    ("set trace-commands on", ""),
+    ("set logging file tictactoe.log", ""),
+    ("set logging overwrite off", ""),
+    ("set logging on",  ""),
+    ("target extended-remote $PORT", "0x00000000 in __vectors ()"),
+    ("monitor dwconnect",  "debugWIRE is now enabled"),
+    ("monitor reset", ""),
+    ("load", "Start address 0x00000000,"),
+    ("b tictactoe.ino:211","line 211"),
+    ("b tictactoe.ino:176","line 176"),
+    ("b minimax", "line 48"),
+    ("c", "211"),
+    ("set key='Y'", ""),
+    ("p key", "$1 = 89 'Y'"),
+    ("n", "215"),
+    ("n", "219"),
+    ("n", "210"),
+    ("n", "211"),
+    ("n", "212"),
+    ("n", "return LEFTKEY"),
+    ("c", "176"),
+    ("set key='9'", ""), # we play 9
+    ("c", "Breakpoint 3, minimax (player=1"),
+    ("c", "Breakpoint 3, minimax (player=player@entry=-1"),
+    ("disable 3", ""),
+    ("c", "176"), # player played 5
+    ("set key='3'", ""), # we play 3
+    ("c", "176"), # player played 6
+    ("set key='1'", ""), # we play 1
+    ("c", "211"), # player playd 4 -- and won
+    ("set key='N'", ""), # we do not want play any longer
+    ("c", "211"),
+    ("detach","[Inferior 1 (Remote target) detached]"),
+    ("quit", ""))
+
+# tests offline single-step execution 
+# INT 0 is enabled and switched active by setting the IRQ pin as an output
+isr_script = ("single-step test", "isr",
+    ("set style enabled off", ""),
+    ("set trace-commands on", ""),
+    ("set logging file isr.log", ""),
+    ("set logging overwrite off", ""),
+    ("set logging on",  ""),
+    ("target extended-remote $PORT", "0x00000000 in __vectors ()"),
+    ("monitor dwconnect",  "debugWIRE is now enabled"),
+    ("monitor reset", ""),
+    ("load", "Start address 0x00000000,"),
+    ("b loop", "line 53"),
+    ("c", "Breakpoint 1"),
+    ("n", "digitalWrite(IRQPIN,LOW);"),
+    ("n", "55"),
+    ("display outsidecount", "= 1"),
+    ("display irqcount", ""),
+    ("p (int)(irqcount == 0)", "$1 = 0"),
+    ("set irqcount = 0", ""),
+    ("n", "irqcount = 0"),
+    ("n", "outsidecount = 2"),
+    ("p (int)(irqcount == 1)", "$2 = 0"),
+    ("detach", "[Inferior 1 (Remote target) detached]"),
+    ("quit", ""))
+
+# switch off debugWIRE mode
+# this test script should be run last for each MCU/clock combination
 dwoff_script = ("dwoff test", "",
     ("set style enabled off", ""),
     ("set trace-commands on", ""),
@@ -192,10 +258,13 @@ dwoff_script = ("dwoff test", "",
     ("detach","[Inferior 1 (Remote target) detached]"),
     ("quit", ""))
 
-# the unit_script needs always to run first because it sets the clock frequency!
-smallarduinos = (unit_script, blink_script, flash_script, fib_script, dwoff_script)
-largearduinos = (unit_script, blink_script, flash_script, fib_script, oop_script, dwoff_script)
-exoticavr = (unit_script, dwoff_script)
+# the unit_script needs always to run first because it sets the clock frequency,
+# the dwoff_script should run last in order to set the MCU back to normal mode
+small_arduino = (unit_script, blink_script, flash_script, fib_script, isr_script, dwoff_script)
+medium_arduino = (unit_script, blink_script, flash_script, fib_script, oop_script, isr_script, dwoff_script)
+large_arduino =  (unit_script, blink_script, flash_script, fib_script, oop_script,
+                      tictactoe_script, isr_script, dwoff_script)
+exotic_avr = (unit_script, dwoff_script)
 
 # combination of clock source + CKDIV8 setting + naming for the particular core
 MicroRcAndExt = (("ext", "ck1", "16M"), ("rc", "ck1", "9M6"), ("rc", "ck8", "1M2"))
@@ -204,62 +273,60 @@ ATTRcAndExt = (("ext", "ck1", "16external"), ("rc", "ck1", "8internal"), ("rc", 
 ATTRcAndXtal = (("xtal", "ck1", "16external"), ("rc", "ck1", "8internal"), ("rc", "ck8", "1internal"))
 MiniRcAndXtal = (("xtal", "ck1", "16MHz_external"), ("rc", "ck1",  "8MHz_internal"), ("rc", "ck8", "1MHz_internal"))
 
-
-
-attiny13 = ("ATtiny13", 2, -1, -1, MicroRcAndExt, smallarduinos, "MicroCore:avr:13:clock=",
+attiny13 = ("ATtiny13", 2, -1, -1, MicroRcAndExt, small_arduino, "MicroCore:avr:13:clock=",
                 "Programmer-ZF")
-attiny2313 = ("ATtiny2313", 5, -1, -1, ATTRcAndExt, smallarduinos, "ATTinyCore:avr:attinyx313:chip=2313,clock=",
+attiny2313 = ("ATtiny2313", 5, -1, -1, ATTRcAndExt, small_arduino, "ATTinyCore:avr:attinyx313:chip=2313,clock=",
                   "Programmer-ZF")
-attiny4313 = ("ATtiny4313", 5, 2, 3, ATTRcAndExt, largearduinos, "ATTinyCore:avr:attinyx313:chip=4313,clock=",
+attiny4313 = ("ATtiny4313", 5, 2, 3, ATTRcAndExt, medium_arduino, "ATTinyCore:avr:attinyx313:chip=4313,clock=",
                  "Programmer-ZF")
-attiny43u = ("ATtiny43U", -1, 17, 18, ATTOnlyRc,  largearduinos, "ATTinyCore:avr:attiny43:clock=",
+attiny43u = ("ATtiny43U", -1, 17, 18, ATTOnlyRc,  medium_arduino, "ATTinyCore:avr:attiny43:clock=",
                   "Breakout Board")
-attiny24 = ("ATtiny24", 2, 11, 12, ATTRcAndExt, smallarduinos, "ATTinyCore:avr:attinyx4:chip=24,clock=",
+attiny24 = ("ATtiny24", 2, 11, 12, ATTRcAndExt, small_arduino, "ATTinyCore:avr:attinyx4:chip=24,clock=",
                   "Programmer-ZF")
-attiny44 = ("ATtiny44", 2, 11, 12, ATTRcAndExt, largearduinos, "ATTinyCore:avr:attinyx4:chip=44,clock=",
+attiny44 = ("ATtiny44", 2, 11, 12, ATTRcAndExt, medium_arduino, "ATTinyCore:avr:attinyx4:chip=44,clock=",
                   "Programmer-ZF")
-attiny84 = ("ATtiny84", 2, 11, 12, ATTRcAndExt, largearduinos, "ATTinyCore:avr:attinyx4:chip=84,clock=",
+attiny84 = ("ATtiny84", 2, 11, 12, ATTRcAndExt, large_arduino, "ATTinyCore:avr:attinyx4:chip=84,clock=",
                   "Programmer-ZF")
-attiny841 = ("ATtiny841", -1, 11, 12, ATTRcAndXtal, largearduinos, "ATTinyCore:avr:attinyx41:chip=841,clock=",
+attiny841 = ("ATtiny841", -1, 11, 12, ATTOnlyRc, large_arduino, "ATTinyCore:avr:attinyx41:chip=841,clock=",
                   "Breakout Board")
-attiny25 = ("ATtiny25", 2, 6, 5, ATTRcAndExt, smallarduinos, "ATTinyCore:avr:attinyx5:chip=25,clock=",
+attiny25 = ("ATtiny25", 2, 6, 5, ATTRcAndExt, small_arduino, "ATTinyCore:avr:attinyx5:chip=25,clock=",
                   "Programmer-ZF")
-attiny45 = ("ATtiny45", 2, 6, 5, ATTRcAndExt, largearduinos, "ATTinyCore:avr:attinyx5:chip=45,clock=",
+attiny45 = ("ATtiny45", 2, 6, 5, ATTRcAndExt, medium_arduino, "ATTinyCore:avr:attinyx5:chip=45,clock=",
                   "Programmer-ZF")
-attiny85 = ("ATtiny85", 2, 6, 5, ATTRcAndExt, largearduinos, "ATTinyCore:avr:attinyx5:chip=85,clock=",
+attiny85 = ("ATtiny85", 2, 6, 5, ATTRcAndExt, large_arduino, "ATTinyCore:avr:attinyx5:chip=85,clock=",
                   "Programmer-ZF")
-attiny261 = ("ATtiny261", -1, 11, 12, ATTRcAndXtal, smallarduinos, "ATTinyCore:avr:attinyx61:chip=261,clock=",
+attiny261 = ("ATtiny261", -1, 11, 12, ATTRcAndXtal, small_arduino, "ATTinyCore:avr:attinyx61:chip=261,clock=",
                  "Breakout Board")
-attiny461 = ("ATtiny461", -1, 11, 12, ATTRcAndXtal, largearduinos, "ATTinyCore:avr:attinyx61:chip=461,clock=",
+attiny461 = ("ATtiny461", -1, 11, 12, ATTRcAndXtal, medium_arduino, "ATTinyCore:avr:attinyx61:chip=461,clock=",
                  "Breakout Board")
-attiny861 = ("ATtiny861", -1, 11, 12, ATTRcAndXtal, smallarduinos, "ATTinyCore:avr:attinyx61:chip=861,clock=",
+attiny861 = ("ATtiny861", -1, 11, 12, ATTRcAndXtal, large_arduino, "ATTinyCore:avr:attinyx61:chip=861,clock=",
                  "Breakout Board")
-attiny167 = ("ATtiny167", -1, 1, 2, ATTRcAndXtal,  largearduinos, "ATTinyCore:avr:attinyx7:chip=167,clock=",
+attiny167 = ("ATtiny167", -1, 1, 2, ATTRcAndXtal,  large_arduino, "ATTinyCore:avr:attinyx7:chip=167,clock=",
                  "Breakout Board")
-attiny88 = ("ATtiny88", -1, 13, 12, ATTOnlyRc,  largearduinos, "ATTinyCore:avr:attinyx8:chip=88,clock=",
+attiny88 = ("ATtiny88", -1, 13, 12, ATTOnlyRc,  large_arduino, "ATTinyCore:avr:attinyx8:chip=88,clock=",
                 "Programmer-ZF")
-attiny828 = ("ATtiny828", -1, 1, 2, ATTOnlyRc,  largearduinos, "ATTinyCore:avr:attiny828:clock=",
+attiny828 = ("ATtiny828", -1, 1, 2, ATTOnlyRc,  large_arduino, "ATTinyCore:avr:attiny828:clock=",
                  "Breakout Board")
-attiny1634 = ("ATtiny1634", -1, 2, 1, ATTOnlyRc, largearduinos, "ATTinyCore:avr:attiny1634:clock=",
+attiny1634 = ("ATtiny1634", -1, 2, 1, ATTOnlyRc, large_arduino, "ATTinyCore:avr:attiny1634:clock=",
                 "Breakout Board")
 
-atmega48a = ("ATmega48A", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:48:variant=modelNonP,bootloader=no_bootloader,clock=",
+atmega48a = ("ATmega48A", -1, 2, 3, MiniRcAndXtal, medium_arduino, "MiniCore:avr:48:variant=modelNonP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega48pa = ("ATmega48PA", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:48:variant=modelP,bootloader=no_bootloader,clock=",
+atmega48pa = ("ATmega48PA", -1, 2, 3, MiniRcAndXtal, medium_arduino, "MiniCore:avr:48:variant=modelP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega88a = ("ATmega88A", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:88:variant=modelNonP,bootloader=no_bootloader,clock=",
+atmega88a = ("ATmega88A", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:88:variant=modelNonP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega88pa = ("ATmega88PA", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:88:variant=modelP,bootloader=no_bootloader,clock=",
+atmega88pa = ("ATmega88PA", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:88:variant=modelP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega168a = ("ATmega168A", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:168:variant=modelNonP,bootloader=no_bootloader,clock=",
+atmega168a = ("ATmega168A", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:168:variant=modelNonP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega168pa = ("ATmega168PA", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:168:variant=modelP,bootloader=no_bootloader,clock=",
+atmega168pa = ("ATmega168PA", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:168:variant=modelP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega328a = ("ATmega328A", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:328:variant=modelNonP,bootloader=no_bootloader,clock=",
+atmega328a = ("ATmega328A", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelNonP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega328pa = ("ATmega328PA", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:328:variant=modelP,bootloader=no_bootloader,clock=",
+atmega328pa = ("ATmega328PA", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega328pb = ("ATmega328PB", -1, 2, 3, MiniRcAndXtal, largearduinos, "MiniCore:avr:328:variant=modelPB,bootloader=no_bootloader,clock=",
+atmega328pb = ("ATmega328PB", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelPB,bootloader=no_bootloader,clock=",
                  "Breakout Board")
 
 tinylist = (attiny13, attiny2313, attiny4313, attiny43u, attiny24, attiny44, attiny84, attiny841,
@@ -270,7 +337,7 @@ megalist = (atmega48a, atmega48pa, atmega88a, atmega88pa, atmega168a, atmega168p
 exoticlist = ( )
     
     
-    
+# should be called in the 'tests' directory    
 def test_mcu(port, description):
     mcu_name = description[0]
     external_clock_pin =  description[1]
@@ -293,7 +360,7 @@ def test_mcu(port, description):
         print("Type 'G' to start, 'S' to skip, 'X' to exit. ", end="")  
         response = input("Response: ")
         if response.lower().find("g") != -1: break;
-        if response.lower().find("s") != -1: return (0,0,0)
+        if response.lower().find("s") != -1: return (0,0,len(ck_list)*len(script_list))
         if response.lower().find("x") != -1: return (-1,-1,-1)
     for ck in ck_list:
         for script in script_list:
@@ -312,9 +379,14 @@ def test_mcu(port, description):
                 continue
             if not run_script(script, port, ck[0], ck[1]):
                 failed_scripts += 1
+    print(mcu_name + " test: ", end='')
+    if failed_comp + failed_scripts == 0:
+        print("OK")
+    else:
+        print("*** SOME FAILURES ****")
     return(failed_comp, failed_scripts, tests_done)
                             
-
+# should be called in the 'tests' directory
 def run_script(script, port, cksource, ckfuse):
     testname = script[0]
     print("Running " + testname + ": " + port + " / " + cksource + " / " + ckfuse ) 
@@ -368,10 +440,11 @@ def run_script(script, port, cksource, ckfuse):
     print("\nSUCCEEDED: " + script[0])
     return True
 
+# should be called in the 'tests' directory
 def run_all_tests(port):
     result = (0,0,0)
 
-    for test in (attiny13, attiny4313, attiny85): #tinylist + megalist + exoticlist:
+    for test in tinylist + megalist + exoticlist:
         result = tuple(map(operator.add,result,test_mcu(port,test)))
 
     print();
@@ -379,7 +452,9 @@ def run_all_tests(port):
     print("Compilations failed: ", result[0])
     print("Scripts failed:      ", result[1])
     
-#run_all_tests("/dev/cu.usbmodem1442101")
 
-print(test_mcu("/dev/cu.usbmodem1442101", attiny1634))
 
+#print(run_script(isr_script, "/dev/cu.usbmodem1442101", "rc", "ck1"))
+
+run_all_tests("/dev/cu.usbmodem1442101")
+#print(test_mcu("/dev/cu.usbmodem1442101", attiny1634))

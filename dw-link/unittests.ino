@@ -597,7 +597,7 @@ int DWtests(int &num)
   DWwriteRegister(31, 0xFF);
   failed += testResult(DWreadRegister(0) == 0x55 && DWreadRegister(15) == 0x9F && DWreadRegister(31) == 0xFF);
 
-  
+#if 0
   // write registers in one go and read them in one go (much faster than writing/reading individually) 
   gdbDebugMessagePSTR(PSTR("Test DWwriteRegisters/DWreadRegisters: "), testnum++);
   for (byte i=0; i < 32; i++) membuf[i] = i*2+1;
@@ -612,6 +612,7 @@ int DWtests(int &num)
     }
   }
   failed += testResult(succ);
+#endif
 
   // write to and read from an IO reg (0x3F = SREG)
   gdbDebugMessagePSTR(PSTR("Test DWwriteIOreg/DWreadIOreg: "), testnum++);

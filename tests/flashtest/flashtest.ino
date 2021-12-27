@@ -80,7 +80,7 @@ byte *flashptr;
 void setup()
 {
   pinMode(LED, OUTPUT);
-#ifdef LED_BUILTIN
+#ifdef LED_BUILTIN  && FLASHEND+1 > 2048
   pinMode(LED_BUILTIN, OUTPUT);
 #endif
 }
@@ -108,14 +108,14 @@ void flasherror()
 {
   while (1) {
     digitalWrite(LED, HIGH);
-#ifdef LED_BUILTIN
+#ifdef LED_BUILTIN && FLASHEND+1 > 2048
   digitalWrite(LED_BUILTIN, HIGH);
 #endif
 
     delay(200);
 
     digitalWrite(LED, LOW);
-#ifdef LED_BUILTIN
+#ifdef LED_BUILTIN  && FLASHEND+1 > 2048
     digitalWrite(LED_BUILTIN, LOW);
 #endif
 
@@ -125,9 +125,8 @@ void flasherror()
 
 void flashOK()
 {
-#ifdef LED_BUILTIN
+#ifdef LED_BUILTIN  && FLASHEND+1 > 2048
   digitalWrite(LED_BUILTIN, HIGH);
 #endif
-  digitalWrite(LED, HIGH);
   while (1);
 }

@@ -16,7 +16,7 @@
 
 The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notes that a lot of important features are missing. In particular, the current IDE does not support any kind of debugging. So what can you do, when you want to debug your Arduino project on small ATmegas (such as the popular ATmega328) or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support [on-chip debugging](https://en.wikipedia.org/wiki/In-circuit_emulation#On-chip_debugging) via [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
 
-When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE, but then you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). You may try to get the open-source software AVaRICE running; I was not successful in doing that on a Mac, though.
+When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE and you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). You may try to get the open-source software AVaRICE running; I was not successful in doing that on a Mac, though.
 
 So, are there alternatives if you are in need of a debugging tool and you either want to develop on a Mac or you do not want to spend more than € 100 (or both)? Preferably, such a solution should interface to `avr-gdb`, the [GNU debugger](https://www.gnu.org/software/gdb/) for AVR MCUs.  This would make it possible to use IDEs such as [Eclipse](https://www.eclipse.org/) and [PlatformIO](https://platformio.org). Perhaps, one will also be able to integrate such a solution into the new Arduino IDE 2.0. 
 
@@ -45,17 +45,17 @@ Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line c
 
 ## 2. The debugWIRE interface
 
-The basic idea of ***debugWIRE*** is that one uses the RESET line as a communication line between the ***target system*** (the system you want to debug) and the development machine or ***host***, which runs a debug program such as `gdb` or in our case `avr-gdb`. This idea is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU. Firmware uploads are possible over the debugWIRE interface, they are a bit slower, however. 
+The basic idea of ***debugWIRE*** is that one uses the RESET line as a communication line between the ***target system*** (the system you want to debug) and the **hardware debugger**, which in turn can then communicate with the development machine or ***host***, which runs a debug program such as `gdb` or in our case `avr-gdb`. The idea of using only a single line that is not used otherwise is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU. Firmware uploads are possible over the debugWIRE interface, they are a bit slower, however. 
 
 Do not get nervous when your MCU does not react any longer as you expect it, but try to understand in which state the MCU is. With respect to the debugWIRE protocol there are basically three states your MCU could be in:
 
 1. The **normal** **state** in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitionary** **state**.
-2. The **transitionary** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** state.
+2. The **transitionary** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** **state**.
 3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to a transition to the **transitionary** **state**, from which one can reach the **normal state** using ordinary ISP programming. 
 
 The hardware debugger will take care of bringing you from state 1 to state 3 when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from state 3 to state 1 can be achieved by the GDB command ```monitor dwoff```.
 
-Having said all that, I have to admit that I encountered strange situations that I did not fully understand, and which led to "bricking" MCUs. Sometimes MCUs started up with a much lower communication speed than is standard and only after a debugWIRE RESET command they offered the full speed. I have taken this into account now and this behavior should not lead to any problems.  In any case, there is no guarantee that the hardware debugger will not brick your MCU. Usually, it can be [resurrected by using a high-voltage programmer](#worstcase), though.
+Having said all that, I have to admit that I encountered strange situations that I did not fully understand, and which led to "bricking" MCUs. Sometimes MCUs started up with a lower communication speed than is standard and only after a debugWIRE RESET command they offered the full speed. I have taken this into account now and this behavior should not lead to any problems.  In any case, there is no guarantee that the hardware debugger will not brick your MCU. Usually, it can be [resurrected by using a high-voltage programmer](#worstcase), though.
 
 <a name="section3"></a>
 
@@ -84,7 +84,7 @@ The most basic solution is to use the Uno board and connect the cables as it is 
 
 ### 3.2 MCUs with debugWIRE interface
 
-In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs can be debugged using this interface:
+In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs that are supported by the Arduino [MicroCore](https://github.com/MCUdude/MicroCore), [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), or [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
 
 * __ATtiny13__
 * __ATtiny43U__
@@ -97,18 +97,19 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATtiny828__
 * ATtiny48, __ATtiny88__
 * __ATtiny1634__
-* __ATmega48A__, __ATmega48PA__, ATmega48PB, __ATmega88A__, __ATmega88PA__, Atmega88PB, __ATmega168A__, __ATmega168PA__, ATmega168PB, __ATmega328__, __ATmega328P__, <u>ATmega328PB</u>
-* <u>ATmega8U2</u>, ATmega16U2, <u>ATmega32U2</u>
-* ATmega32C1, <strike>ATmega64C1</strike>, ATmega16M1, <u>ATmega32M1</u>, <strike>ATmega64M</strike>
-* AT90USB82, <u>AT90USB162</u>
+* __ATmega48A__, __ATmega48PA__, ATmega48PB, __ATmega88A__, __ATmega88PA__, Atmega88PB, __ATmega168A__, __ATmega168PA__, ATmega168PB, __ATmega328__, __ATmega328P__, __ATmega328PB__
+
+I have tested the debugger on the MCUs marked bold and will (really soon) test the others. Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
+
+* ATmega8U2, ATmega16U2, ATmega32U2
+* ATmega32C1, <strike>ATmega64C1</strike>, ATmega16M1, ATmega32M1, <strike>ATmega64M</strike>
+* AT90USB82, AT90USB162
 * AT90PWM1, AT90PWM2B, AT90PWM3B
 * AT90PWM81, AT90PWM161
 * AT90PWM216, AT90PWM316
 * <font color="grey">ATmega8HVA, ATmega16HVA, ATmega16HVB, ATmega32HVA, ATmega32HVB, ATmega64HVE2</font>
 
-This list should be complete, but one never knows. The debugger supports (in principle) all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have a flash address space that is too large for the current implementation. I have tested the debugger on the MCUs marked bold and will (really soon) test the underlined ones. The remaining MCUs were either currently impossible to get or only sold in large quantities. The debugger will probably work on these untested MCUs too. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
-
-In case you wonder how the Arduino IDE (and PlatformIO) supports the chips mentioned above, there is good news. All the *ATtinys* are supported by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), which you need to install in the board manager (after having  inserted `http://drazzy.com/package_drazzy.com_index.json` in the list of `Additional Boards Manager URLs` in the preference menu). All the *ATmegaX8s* are supported by [MiniCore](https://github.com/MCUdude/MiniCore) (add `https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json` to `Additional Boards Manager URLs`). For the remaining chips, I was not able to locate any recent Arduino cores. So, in these cases, testing is only done using the unit tests of the debugger.
+The debugger contains code for supporting all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have a flash address space that is too large for the current implementation. I expect the debugger to work on the supported MCUs. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances, some did not accept the full set of debugWIRE commands, and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
 
 <a name="section33"></a>
 
@@ -424,8 +425,11 @@ mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz 
 mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
 mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
 mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
-mo[nitor] sp[eed] [<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **h** is the default; without an argument, the current communication speed is printed 
+mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **l** is the default; without an argument, the current communication speed is printed 
 mo[onitor] ser[ial] | print current communication speed of the connection to the host computer
+mo[onitor] er[ase] | erases the flash memory 
+mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen during single-stepping 
+mo[nitor] un[safestep] | single stepping is interruptible and time advances during single-stepping 
 
 <a name="section6"></a>
 
@@ -647,27 +651,39 @@ In addition, there is the debugger command `monitor flashcount`, which returns t
 
 ### 8.2 Slow responses when loading or single-stepping
 
-Sometimes, in particular when using a clock speed below 1 MHz, the responses from the MCU are quite sluggish. This happens, e.g., when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 16, which is roughly 62500 baud in case of a 1MHz MCU clock. For a 125 kHz clock, it is roughly 8000 bps. Do not even think about setting the CKDIV8 fuse, which divides the clock by 8! Indeed, the [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
+Sometimes, in particular when using a clock speed of 1 MHz (or even lower), the responses from the MCU can be quite sluggish. This shows, e.g., when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 16, which is roughly 62500 baud in case of a 1MHz MCU clock. Indeed, the [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. Note that after executing the commands, the MCU is reset (and the register values of GDB are not valid anymore).
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. Note that after executing the commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore).
 
-In order to cope with high clock frequencies, it is possible to limit the communication speed to either 250 kbps or 125 kbps. The default case is 250 kbps. The other limit can be enforced by using the `monitor speed` command (see [commands for controlling GDB](#controlcommands)).
+In order to cope with high clock frequencies, it is possible to limit the communication speed to either 250 kbps or 125 kbps. The default case is 125 kbps (which appears to be safe). The other limit can be enforced by using the `monitor speed` command (see [commands for controlling GDB](#controlcommands)). 
 
-### 8.3 Limited number of breakpoints
+Another reason for slow loading times can be that the communication speed to the host is low. Check the speed by typing the command `monitor serial`. You can set the speed to 230400 by supplying the speed when using the `set serial baud` command. This has to done *before* connecting to the hardware debugger using the `target remote` command. 
+
+With an optimal setting, i.e., 125 kbps for the debugWIRE line and 230400 kbps for the host communication line, loading is done with 400-500 bytes/second after the flash memory has been erased. It is should be 2-4 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed).
+
+### 8.3 Program execution is very slow when conditional breakpoints are present
+
+If you use *conditional breakpoints*, the program is slowed down significantly.  The reason is that at such a breakpoint, the program has to be stopped, all registers have to be saved, the current values of the variables have to be inspected, and then the program needs to be started again, whereby registers have to be restored first. For all of these operations, debugWIRE communication takes place. This takes roughly 100 ms per stop, even for simple conditions and an MCU running at 8MHz. So, if you have a loop that iterates 1000 times before the condition is met, it may easily take 2 minutes (instead of the fraction of a second) before execution stops.
+
+### 8.4 Single-stepping and interrupt handling clash
+
+In many debuggers, it is impossible to do single-stepping when timer interrupts are active since after each step the program ends up in the interrupt routine. This is not the case with `avr-gdb` and *dw-link*. Instead, time is frozen and interrupts cannot be raised while the debugger single-steps. Only when the the `continue` command is used, interrupts are serviced and the timers are advanced. One can change this behavior by using the command `monitor unsafestep`. However, in this case it can happen that control is transferred to the interrupt vector table while single-stepping.
+
+### 8.5 Limited number of breakpoints
 
 The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints (+1 temporary breakpoint for single-stepping) are supported by default. You can reduce this to 1 by issuing the command `monitor hwbp` ([see above](#paranoid)). If you set more breakpoints than the maximum number, it will not be possible to start execution. Instead one will get the warning `Cannot insert breakpoint ... Command aborted`. You have to delete or disable some breakpoints before program execution can continue. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
 
-### 8.4 Power saving is not operational 
+### 8.6 Power saving is not operational 
 
-When you activate *sleep mode*, the power consumed by the MCU is supposed to go down significantly. If debugWIRE is active, this is not the case. 
+When you activate *sleep mode*, the power consumed by the MCU is supposed to go down significantly. If debugWIRE is active, then some timer/counters will never be stopped and for this reason the power reduction is not as high as in normal state.
 
-<a name="section85"></a>
+<a name="section87"></a>
 
-### 8.5 MCU operations interfering with debugWIRE
+### 8.7 MCU operations interfering with debugWIRE
 
-There are a few more situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) mentions the following:
+There are a few situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) mentions the following:
 
 * BOD and WDT resets lead to loss of connection 
 * The voltage should not be changed during a debug session
@@ -680,19 +696,15 @@ There are a few more situations, which might lead to problems. The above mention
 
 If you do one of these things, either you might lose the connection to the target or, in the last three cases, the instruction might do something wrong. If you loose connection to the target, then it is very likely that there are still BREAK instructions in flash memory. So, after reconnecting, you need to issue the `load` command in order to get a clean copy of your binary into flash memory.
 
-### 8.6 BREAK instructions in your program
+### 8.8 BREAK instructions in your program
 
 It is possible to put the BREAK instruction, which is used to implement breakpoints, in ones program by using the inline assembly statement asm("break"). This does not make any sense since without the debugger, the MCU will stop at this point and will not do anything anymore. Such a BREAK instruction may also be in the program because a previous debugging session was not terminated in a clean way. If such a BREAK is detected, one may want to issue the `load` command again.
 
 When running under the debugger, the program will be stopped in the same way as if there is a software breakpoint set by the user. However, one cannot continue execution from this point with the `step`, `next`, or `continue` command. Instead, the debugger gets an "illegal instruction" signal. So, one either needs to reload the program code or, set the PC to a different value, or restart the debugging session.
 
-### 8.7 The start of the debugger takes a couple of seconds
+### 8.9 The start of the debugger takes a couple of seconds
 
-The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain Uno board or equivalent, then it will spend a couple of seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
-
-### 8.8 Program execution is very slow when conditional breakpoints are present
-
-If you use *conditional breakpoints*, the program is slowed down significantly.  The reason is that at such a breakpoint, the program has to be stopped, all registers have to be saved, the current values of the variables have to be inspected, and then the program needs to be started again, whereby registers have to be restored first. For all of these operations, debugWIRE communication takes place. This takes roughly 100 ms per stop, even for simple conditions and an MCU running at 8MHz. So, if you have a loop that iterates 1000 times before the condition is met, it may easily take 2 minutes (instead of the fraction of a second) before execution stops.
+The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain Uno board or equivalent, then it will spend two seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
 
 <a name="trouble"></a>
 
@@ -714,7 +726,7 @@ This is a generic GDB error message that indicates that the last `monitor` comma
 <a name="lost"></a>
 #### Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and the system LED is off
 
-The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 3.3](#section33)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 8.5](#section85)). Try to identify the reason, eliminate it and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
+The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 3.3](#section33)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 8.7](#section87)). Try to identify the reason, eliminate it and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
 
 
 #### Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*
@@ -724,9 +736,9 @@ The reason is most probably that the communication connection to the target syst
 
 #### Problem: The debugger responses are very sluggish   
 
-One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)).
+<!-- One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)). -->
 
-Another reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed. 
+One reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed. 
 
 You can choose 230400, 115200, 57600, 38400, 19200, or 9600 when starting `avr-gdb` by giving the bit rate as an argument to the `-b` option or by specifying the bit rate as an argument to the command `set serial baud ...` before establishing a connection with the `target` command.
 
@@ -734,9 +746,17 @@ You can choose 230400, 115200, 57600, 38400, 19200, or 9600 when starting `avr-g
 
 You use more than the allowed number of breakpoints, i.e., usually 32 (+1 for a temporary breakpoint for single-stepping). If you have executed the `monitor hwbp` command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.
 
-#### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location, e.g., 0x0010
+#### Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised
 
-The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for gdb. The program is probably stopped in the interrupt vector dispatch table. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
+This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the `continue` command (or when the `next` command skips over a function call). You can change this behavior by using the command `monitor unsafestep`, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping is transferred to an interrupt routine.
+
+#### Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030
+
+This should only happen when you have used the command `monitor unsafestep` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. Set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. 
+
+#### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
+
+The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for gdb. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
 
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution*, you get the message *illegal instruction*, and the program receives a `SIGILL` signal
 
@@ -752,7 +772,7 @@ Not all source lines generate machine code so that it is sometimes impossible to
 
 #### Problem: The debugger does step into a function even though you used the `next` command, which is supposed to step over function calls
 
-This happens when the compiler inlines code (i.e. copies the code of the function where it is called). This happens even if you have chosen the optimization **-Og** (debugging friendly). You can ignore it or recompile with **-O0** and then debug again.
+This happens when the compiler inlines code (i.e. copies the code of the function to the place where it is called). This happens even if you have chosen the optimization **-Og** (debugging friendly). You can ignore it or recompile with **-O0** and then debug again.
 
 #### Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command
 
@@ -760,7 +780,7 @@ This appears to happen even when the optimization level is set to **-Og**, but n
 
 #### Problem: The debugger seems to do things that appear to be strange
 
-I encountered such behavior more than once and it very often turned out that I had forgotten to load the binary into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
+I encountered such behavior more than once and it very often it turned out that I had forgotten to load the binary into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
 
 #### Problem: In PlatformIO, the global variables are not displayed
 

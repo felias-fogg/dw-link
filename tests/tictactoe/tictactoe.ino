@@ -234,7 +234,6 @@ int8_t askMove(void)
 
 void drawBoard(void)
 {
-
   for (byte i=0; i < 10; i += 3) {
     Serial.print(F("\n\r+---+---+---+"));
     if (i == 9) break;
@@ -274,7 +273,7 @@ void setup(void)
 #else
   srand(micros()+millis()+analogRead(0));
 #endif
-  Serial.begin(9600);
+  initSerial();
 }
 
 void initGame(void)
@@ -349,3 +348,10 @@ void loop(void)
   if (gameround == 0) return;
 } 
 
+void initSerial()
+{
+  Serial.begin(9600);
+#ifdef __AVR_ATtiny1634__
+  pinMode(1, INPUT_PULLUP);
+#endif
+}

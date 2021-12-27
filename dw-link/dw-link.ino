@@ -39,9 +39,11 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4.
 
-#define VERSION "1.0.9"
+#define VERSION "1.1.0"
 
 #define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
+
+#define ALWAYSOFFLINE 1
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -54,7 +56,7 @@
 #ifndef SIM2WORD    // simulate 2 word instructions at break points instead of executing them
 #define SIM2WORD 1  // although execution appears to work, one does not know when it will fail
 #endif
-#ifndef VARSPEED    // for changing debugWIRE communication speed to maximal speed
+#ifndef VARSPEED    // for changing debugWIRE communication speed to maximal speed (now only 128kbps)
 #define VARSPEED 1
 #endif
 #ifndef ADAPTSPEED // adaptive communication speed for line to host
@@ -353,6 +355,7 @@ struct context {
   boolean snsgnd:1; // true if SNSGDB pin is low
   unsigned long bps; // debugWIRE communication speed
   unsigned long hostbps; // host communication speed
+  boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
 } ctx;
 
 // use LED to signal system state
@@ -511,7 +514,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
   {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pb}, //*
   {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328},
   {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328p},
-  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328pb}, //*
+  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328pb},
   
   {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega8u2},   //*
   {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16u2},  //*
@@ -760,6 +763,7 @@ void configureSupply(void)
 void initSession(void)
 {
   DEBLN(F("initSession"));
+  ctx.safestep = true;
   bpcnt = 0;
   bpused = 0;
   hwbp = 0xFFFF;
@@ -1037,12 +1041,26 @@ void gdbParseMonitorPacket(const byte *buf)
   else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)
     alltests();                                                             /* testall */
 #endif
+  else if (memcmp_P(buf, (void *)PSTR("736166657374657000"), max(4,min(18,clen))) == 0)
+    gdbSetSteppingMode(true);                                                   /* safestep */
+  else if (memcmp_P(buf, (void *)PSTR("756e736166657374657000"), max(4,min(12,clen))) == 0)
+    gdbSetSteppingMode(false);                                                   /* unsafestep */
   else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
     gdbVersion();                                                           /* version */
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
   } else gdbSendReply("");
+}
+
+// set stepping mode
+inline void gdbSetSteppingMode(boolean safe)
+{
+  ctx.safestep = safe;
+  if (safe)
+    gdbReplyMessagePSTR(PSTR("Single-stepping is now interrupt-free"), -1);
+  else
+    gdbReplyMessagePSTR(PSTR("Single-stepping can now be interrupted"), -1);
 }
 
 // show version
@@ -1322,27 +1340,23 @@ void gdbSetFuses(Fuses fuse)
     gdbSendReply("OK");
 }
 
-
-
-// check whether there should be a BREAK instruction at the current PC address 
-// if so, give back original instruction and second word, if it is a 2-word instructions
-boolean gdbBreakPresent(unsigned int &opcode, unsigned int &addr)
+// retrieve opcode and address at current wpc (regardless of whether it is hidden by break)
+void getInstruction(unsigned int &opcode, unsigned int &addr)
 {
-  int bpix = gdbFindBreakpoint(ctx.wpc);
   opcode = 0;
   addr = 0;
-  if (bpix < 0) return false;
-  if (!bp[bpix].inflash) return false;
-  opcode = bp[bpix].opcode;
-#if SIM2WORD
+  int bpix = gdbFindBreakpoint(ctx.wpc);
+  if ((bpix < 0) || (!bp[bpix].inflash)) 
+    opcode = targetReadFlashWord(ctx.wpc<<1);
+  else
+    opcode = bp[bpix].opcode;
+  DEBPR(F("sim opcode=")); DEBLNF(opcode,HEX);
   if (twoWordInstr(opcode)) {
-    DEBPR(F("towWord/waddr="));
-    DEBLNF(bp[bpix].waddr+1,HEX);
-    addr = targetReadFlashWord((bp[bpix].waddr+1)<<1);
+    DEBPR(F("twoWord/addr="));
+    DEBLNF((ctx.wpc+1)<<1,HEX);
+    addr = targetReadFlashWord((ctx.wpc+1)<<1);
     DEBLNF(addr,HEX);
   }
-#endif
-  return true;
 }
 
 #if SIM2WORD
@@ -1352,26 +1366,9 @@ boolean twoWordInstr(unsigned int opcode)
   return(((opcode & ~0x1F0) == 0x9000) || ((opcode & ~0x1F0) == 0x9200) ||
 	 ((opcode & 0x0FE0E) == 0x940C) || ((opcode & 0x0FE0E) == 0x940E));
 }
-#endif
 
-// If there is a BREAK instruction (a not yet restored SW BP) at the current PC
-// location, we may need to execute the original instruction offline.
-// Call this function in case this is necessary and provide it with the
-// instruction word and the argument word (if necessary). The function gdbBreakPresent
-// will check the condition and provide the opcode.
-// gdbBreakDetour will start with registers in a saved state and return with it
-// in a saved state.
-// If SIM2WORD is true, all 2-word instructions will be simulated. This is 
-// safer than to rely on the fact that 2-word instructions appear to be
-// offline executable.
-inline byte gdbBreakDetour(unsigned int opcode, unsigned int addr)
+inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
 {
-  DEBLN(F("gdbBreakDetour"));
-  if (targetIllegalOpcode(opcode)) {
-    DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
-    return SIGILL;
-  }
-#if SIM2WORD
   if (twoWordInstr(opcode)) {
     byte reg, val;
     if ((opcode & ~0x1F0) == 0x9000) {   // lds 
@@ -1397,14 +1394,9 @@ inline byte gdbBreakDetour(unsigned int opcode, unsigned int addr)
       ctx.sp -= 2; // decrement stack pointer
       ctx.wpc = addr; // the new PC value
     }
-    return SIGTRAP;
   }
-#endif
-  targetRestoreRegisters();
-  DWexecOffline(opcode);
-  targetSaveRegisters();
-  return SIGTRAP;
 }
+#endif
 
 // do one step
 // start with saved registers and return with saved regs
@@ -1413,18 +1405,29 @@ byte gdbStep(void)
 {
   unsigned int opcode, arg;
   unsigned int oldpc = ctx.wpc;
+  int bpix = gdbFindBreakpoint(ctx.wpc);
   byte sig = SIGTRAP; // SIGTRAP (normal), SIGILL (if ill opcode), SIGABRT (fatal)
+
   DEBLN(F("Start step operation"));
   if (fatalerror) return SIGABRT;
   if (targetOffline()) return SIGHUP;
-  if (gdbBreakPresent(opcode, arg)) { // we have a break instruction inserted here
-    return gdbBreakDetour(opcode, arg);
-  } else { // just single-step in flash
-    //DEBPR(F("Opcode: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
-    if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
-      DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
-      return SIGILL;
-    }
+  getInstruction(opcode, arg);
+  if (targetIllegalOpcode(opcode)) {
+    DEBPR(F("Illop: ")); DEBLNF(opcode,HEX);
+    return SIGILL;
+  }
+  if ((bpix >= 0 &&  bp[bpix].inflash) || ctx.safestep) {
+#if SIM2WORD
+    if (twoWordInstr(opcode)) 
+      simTwoWordInstr(opcode, arg);
+    else 
+#endif
+      {
+	targetRestoreRegisters();
+	DWexecOffline(opcode);
+	targetSaveRegisters();
+      }
+  } else {
     targetRestoreRegisters();
     targetStep();
     if (!expectBreakAndU()) {
@@ -1454,10 +1457,7 @@ byte gdbContinue(void)
   else if (targetOffline()) sig = SIGHUP;
   else {
     gdbUpdateBreakpoints(false);  // update breakpoints in flash memory
-    if (gdbBreakPresent(opcode, arg)) { // we have a break instruction inserted here
-      reportFatalError(SELF_BLOCKING_FATAL, false);
-      sig = SIGABRT;
-    }  else if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
+    if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
       //DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
       sig = SIGILL;
     }

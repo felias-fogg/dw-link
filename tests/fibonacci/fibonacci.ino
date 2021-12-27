@@ -32,7 +32,7 @@ int mfib(int n)
 
 void setup()
 {
-#ifdef Serial
+#if FLASHEND >= 4095
   Serial.begin(9600);
 #endif
   pinMode(LED, OUTPUT);
@@ -50,7 +50,7 @@ void loop(void)
   /* ordinary recursive call */
   callcnt = 0;
   result = fib(arg);
-#ifdef Serial
+#if FLASHEND >= 4095
   Serial.print(F("fib("));
   Serial.print(arg);
   Serial.print(F(")="));
@@ -71,7 +71,7 @@ void loop(void)
   callcnt = 0;
   for (j=0; j < MAXDEPTH; j++) memo[j] = 0;
   result = mfib(arg);
-#ifdef Serial
+#if FLASHEND >= 4095
   Serial.print(F("fib("));
   Serial.print(arg);
   Serial.print(F(")="));

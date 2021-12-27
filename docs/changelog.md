@@ -448,5 +448,8 @@ Version 0.9.9 (14-Nov-21)
    - New default DW speed is now 125k since I had some spurious errors
    - almost all test sketches appear to work wit their debugging
      scripts in test.py (which is now part of the distribution)
-   
-	 
+
+## Version 1.1.0 (27-Dec-21)
+   - use offline execution for single-stepping in order to avoid interrupts while single-stepping through the code - works perfectly
+   - new commands: `monitor safestep` and `monitor unsafestep`, the former to enable offline execution for single-stepping, the latter for disabling it
+   - new test: isr.ino - tests the new feature of safe single-stepping
