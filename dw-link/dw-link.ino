@@ -39,7 +39,7 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4.
 
-#define VERSION "1.1.0"
+#define VERSION "1.1.1"
 
 #define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
 
@@ -425,12 +425,12 @@ const char Connected[] PROGMEM = "Connected to ";
 struct {
   unsigned int sig;        // two byte signature
   boolean      avreplus;   // is an AVRe+ architecture MCU (includes MUL instruction)
-  unsigned int ramsz;      // SRAM size
+  unsigned int ramsz;      // SRAM size in bytes
   unsigned int rambase;    // base address of SRAM
-  unsigned int eepromsz;   // size of EEPROM
-  unsigned int flashsz;    // size of flash memory
+  unsigned int eepromsz;   // size of EEPROM in bytes
+  unsigned int flashsz;    // size of flash memory in bytes
   byte         dwdr;       // address of DWDR register
-  unsigned int pagesz;     // page size of flash memory
+  unsigned int pagesz;     // page size of flash memory in bytes
   boolean      erase4pg;   // 1 when the MCU has a 4-page erase operation
   unsigned int bootaddr;   // highest address of possible boot section  (0 if no boot support)
   byte         eecr;       // address of EECR register
@@ -445,6 +445,7 @@ struct {
   byte         eedr;       // address of EEDR (computed from EECR)
   byte         eearl;      // address of EARL (computed from EECR)
   unsigned int targetpgsz; // target page size (depends on pagesize and erase4pg)
+  byte         highbyte;   // fixed bits in high byte of pc
 } mcu;
 
 
@@ -455,7 +456,7 @@ struct mcu_info_type {
   byte         eepromsz_div_64;// size of EEPROM
   byte         flashsz_div_1k; // size of flash memory
   byte         dwdr;           // address of DWDR register
-  byte         pagesz_div_2;   // page size of flash memory
+  byte         pagesz_div_2;   // page size 
   boolean      erase4pg;       // 1 when the MCU has a 4-page erase operation
   unsigned int bootaddr;       // highest address of possible boot section  (0 if no boot support)
   byte         eecr;           // address of EECR register
@@ -1023,7 +1024,7 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetMaxBPs(MAXBREAK);                                                 /* sw[bp] */
   else if (memcmp_P(buf, (void *)PSTR("34627000"), max(2,min(8,clen))) == 0)
     gdbSetMaxBPs(4);                                                        /* 4[bp] */
-  else if (memcmp_P(buf, (void *)PSTR("7370"), 2) == 0)
+  else if (memcmp_P(buf, (void *)PSTR("7370"), 4) == 0)
     gdbSetSpeed(buf);                                                       /* sp[eed] [h|l] */
 #if UNITDW
   else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)
@@ -1042,15 +1043,41 @@ void gdbParseMonitorPacket(const byte *buf)
     alltests();                                                             /* testall */
 #endif
   else if (memcmp_P(buf, (void *)PSTR("736166657374657000"), max(4,min(18,clen))) == 0)
-    gdbSetSteppingMode(true);                                                   /* safestep */
+    gdbSetSteppingMode(true);                                               /* safestep */
   else if (memcmp_P(buf, (void *)PSTR("756e736166657374657000"), max(4,min(12,clen))) == 0)
-    gdbSetSteppingMode(false);                                                   /* unsafestep */
+    gdbSetSteppingMode(false);                                              /* unsafestep */
   else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
     gdbVersion();                                                           /* version */
+  else if (memcmp_P(buf, (void *)PSTR("736967706300"), max(6,min(12,clen))) == 0)
+    gdbSigPc();                                                             /* sigpc */
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
   } else gdbSendReply("");
+}
+
+// display PC after signature query
+// only experimentally
+inline void gdbSigPc(void)
+{
+  unsigned int wpc;
+  char buf[5+5];
+  DWgetChipId();
+  wpc = DWgetWPc(false);
+  buf[0] = nib2hex((wpc >> 12)&0x0F);
+  buf[1] = nib2hex((wpc >> 8)&0x0F);
+  buf[2] = nib2hex((wpc >> 4)&0x0F);
+  buf[3] = nib2hex((wpc >> 0)&0x0F);
+  buf[4] = ' ';
+  DEBPR(F("Uncorrected SigPc: 0x")); DEBLNF(wpc, HEX); DEBLN(buf);
+  wpc = DWgetWPc(true);
+  buf[5] = nib2hex((wpc >> 12)&0x0F);
+  buf[6] = nib2hex((wpc >> 8)&0x0F);
+  buf[7] = nib2hex((wpc >> 4)&0x0F);
+  buf[8] = nib2hex((wpc >> 0)&0x0F);
+  buf[9] = '\0';  
+  DEBPR(F("Corrected SigPc: 0x")); DEBLNF(wpc, HEX); DEBLN(buf);
+  gdbReplyMessage(buf);
 }
 
 // set stepping mode
@@ -2163,30 +2190,42 @@ void gdbSendState(byte signo)
 
 
 // reply to a monitor command
+// use string from PROGMEN
 // if last argument < -1, then use it as index into MCU name array (index: abs(num)-1)
-void gdbReplyMessagePSTR(const char pstr[],long num) 
+void gdbReplyMessagePSTR(const char pstr[], long num) 
 {
-  gdbMessagePSTR(pstr, num, false);
+  gdbMessage(pstr, num, false, true);
+}
+
+
+// reply to a monitor command
+// use string from char array
+void gdbReplyMessage(const char str[])
+{
+  gdbMessage(str, -1, false, false);
+  DEBLN(str);
 }
 
 // send a message the user can see, if last argument positive, then send the number
 // if last argument < -1, then use it as index into MCU name array (index: abs(num)-1)
 void gdbDebugMessagePSTR(const char pstr[],long num) 
 {
-  gdbMessagePSTR(pstr, num, true);
+  gdbMessage(pstr, num, true, true);
   
 }
 
 // send a message, either prefixed by 'O' or not
-void gdbMessagePSTR(const char pstr[],long num, boolean oprefix)
+void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
 {
   byte i = 0, j = 0, c;
   byte numbuf[10];
   const char *str;
 
+  DEBLN(pstr);
+  DEBLN(progmem);
   if (oprefix) buf[i++] = 'O';
   do {
-    c = pgm_read_byte(&pstr[j++]);
+    c = (progmem ? pgm_read_byte(&pstr[j++]) : pstr[j++]);
     if (c) {
       DEBPR((char)c);
       buf[i++] = nib2hex((c >> 4) & 0xf);
@@ -2236,6 +2275,7 @@ void gdbMessagePSTR(const char pstr[],long num, boolean oprefix)
 int targetConnect(void)
 {
   unsigned int sig;
+  unsigned int wpc;
   int result = 0;
 #ifdef LINEQUALITY
   unsigned int quality = DWquality();
@@ -2247,8 +2287,15 @@ int targetConnect(void)
   if (doBreak()) {
     DEBLN(F("targetConnect: doBreak done"));
     sig = DWgetChipId();
-    DEBPR(F("targetConnect: sig=")); DEBLNF(sig,HEX);
     result = setMcuAttr(sig);
+    if (result) {
+      wpc = DWgetWPc(false);
+      DEBPR(F("Uncorrected WPC: "));
+      DEBLNF(wpc,HEX);
+      mcu.highbyte = ((wpc & ~((mcu.flashsz>>1)-1)) >> 8)&0xFF;
+    }
+    DEBPR(F("targetConnect: sig=")); DEBLNF(sig,HEX);
+    DEBPR(F("highByte: 0x")); DEBLNF(mcu.highbyte,HEX);
     DEBPR(F("setMcuAttr=")); DEBLN(result);
     return (result ? 1 : -2);
   }
@@ -2575,7 +2622,7 @@ void targetSaveRegisters(void)
   measureRam();
 
   if (ctx.saved) return; // If the regs have been saved, then the machine regs are clobbered, so do not load again!
-  ctx.wpc = DWgetWPc(); // needs to be done first, because the PC is advanced when executing instrs in the instr reg
+  ctx.wpc = DWgetWPc(true); // needs to be done first, because the PC is advanced when executing instrs in the instr reg
   DWreadRegisters(&ctx.regs[0]); // now get all GP registers
   ctx.sreg = DWreadIOreg(0x3F);
   ctx.sp = DWreadIOreg(0x3D);
@@ -2616,8 +2663,8 @@ void targetContinue(void)
   } else {
     sendCommand((const byte []) { 0x60 }, 1);
   }
-  byte cmd[] = { 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x30};
-  sendCommand(cmd, sizeof(cmd));
+  DWsetWPc(ctx.wpc);
+  sendCommand((const byte []) { 0x30 }, 1);
 }
 
 // make a single step
@@ -2895,8 +2942,8 @@ byte inLow  (byte add, byte reg) {
 void DWwriteRegisters(byte *regs)
 {
   byte wrRegs[] = {0x66,              // read/write
-		   0xD0, 0x00, 0x00,  // start reg
-		   0xD1, 0x00, 0x20,  // end reg
+		   0xD0, mcu.highbyte, 0x00,  // start reg
+		   0xD1, mcu.highbyte, 0x20,  // end reg
 		   0xC2, 0x05,        // write registers
 		   0x20 };              // go
   measureRam();
@@ -2918,8 +2965,8 @@ void DWwriteRegister (byte reg, byte val) {
 void DWreadRegisters (byte *regs)
 {
   byte rdRegs[] = {0x66,
-		   0xD0, 0x00, 0x00, // start reg
-		   0xD1, 0x00, 0x20, // end reg
+		   0xD0, mcu.highbyte, 0x00, // start reg
+		   0xD1, mcu.highbyte, 0x20, // end reg
 		   0xC2, 0x01,       // read registers
 		   0x20 };            // start
   measureRam();
@@ -2944,13 +2991,13 @@ byte DWreadRegister (byte reg) {
 // Write one byte to SRAM address space using an SRAM-based value for <addr>, not an I/O address
 void DWwriteSramByte (unsigned int addr, byte val) {
   byte wrSram[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
-                   0xD0, 0x00, 0x1E,                                  // Set Start Reg number (r30)
-                   0xD1, 0x00, 0x20,                                  // Set End Reg number (r31) + 1
+                   0xD0, mcu.highbyte, 0x1E,                                  // Set Start Reg number (r30)
+                   0xD1, mcu.highbyte, 0x20,                                  // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
 		   (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
-                   0xD0, 0x00, 0x01,
-                   0xD1, 0x00, 0x03,
+                   0xD0, mcu.highbyte, 0x01,
+                   0xD1, mcu.highbyte, 0x03,
                    0xC2, 0x04,                                        // Set simulated "in r?,DWDR; st Z+,r?" instructions
                    0x20,                                              // Go
                    val};
@@ -2975,13 +3022,13 @@ void DWwriteIOreg (byte ioreg, byte val)
 byte DWreadSramByte (unsigned int addr) {
   byte res = 0;
   byte rdSram[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
-                   0xD0, 0x00, 0x1E,                                  // Set Start Reg number (r30)
-                   0xD1, 0x00, 0x20,                                  // Set End Reg number (r31) + 1
+                   0xD0, mcu.highbyte, 0x1E,                                  // Set Start Reg number (r30)
+                   0xD1, mcu.highbyte, 0x20,                                  // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
                    (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
-                   0xD0, 0x00, 0x00,                                  // 
-                   0xD1, 0x00, 0x02,                                  // 
+                   0xD0, mcu.highbyte, 0x00,                                  // 
+                   0xD1, mcu.highbyte, 0x02,                                  // 
                    0xC2, 0x00,                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
                    0x20};                                             // Go
   measureRam();
@@ -3014,13 +3061,13 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   byte rsp;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdSram[] = {0x66,                                            // Set up for read/write using repeating simulated instructions
-                     0xD0, 0x00, 0x1E,                                // Set Start Reg number (r30)
-                     0xD1, 0x00, 0x20,                                // Set End Reg number (r31) + 1
+                     0xD0, mcu.highbyte, 0x1E,                                // Set Start Reg number (r30)
+                     0xD1, mcu.highbyte, 0x20,                                // Set End Reg number (r31) + 1
                      0xC2, 0x05,                                      // Set repeating copy to registers via DWDR
                      0x20,                                            // Go
                      (byte)(addr & 0xFF), (byte)(addr >> 8),          // r31:r30 (Z) = addr
-                     0xD0, 0x00, 0x00,                                // 
-                     0xD1, (byte)(len2 >> 8), (byte)(len2 & 0xFF),    // Set repeat count = len * 2
+                     0xD0, mcu.highbyte, 0x00,                                // 
+                     0xD1, (byte)(len2 >> 8)+mcu.highbyte, (byte)(len2 & 0xFF),    // Set repeat count = len * 2
                      0xC2, 0x00,                                      // Set simulated "ld r?,Z+; out DWDR,r?" instructions
                      0x20};                                           // Go
     measureRam();
@@ -3060,8 +3107,8 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
 byte DWreadEepromByte (unsigned int addr) {
   byte retval;
   byte setRegs[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
-                    0xD0, 0x00, 0x1C,                                   // Set Start Reg number (r28)
-                    0xD1, 0x00, 0x20,                                   // Set End Reg number (r31) + 1
+                    0xD0, mcu.highbyte, 0x1C,                                   // Set Start Reg number (r28)
+                    0xD1, mcu.highbyte, 0x20,                                   // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
                     0x20,                                               // Go
                     0x01, 0x01, (byte)(addr & 0xFF), (byte)(addr >> 8)};// Data written into registers r28-r31
@@ -3087,8 +3134,8 @@ byte DWreadEepromByte (unsigned int addr) {
 
 void DWwriteEepromByte (unsigned int addr, byte val) {
   byte setRegs[] = {0x66,                                                 // Set up for read/write using repeating simulated instructions
-                    0xD0, 0x00, 0x1C,                                     // Set Start Reg number (r30)
-                    0xD1, 0x00, 0x20,                                     // Set End Reg number (r31) + 1
+                    0xD0, mcu.highbyte, 0x1C,                                     // Set Start Reg number (r30)
+                    0xD1, mcu.highbyte, 0x20,                                     // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                           // Set repeating copy to registers via DWDR
                     0x20,                                                 // Go
                     0x04, 0x02, (byte)(addr & 0xFF), (byte)(addr >> 8)};  // Data written into registers r28-r31
@@ -3117,13 +3164,13 @@ boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int lenx2 = len * 2;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdFlash[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
-                      0xD0, 0x00, 0x1E,                                   // Set Start Reg number (r30)
-                      0xD1, 0x00, 0x20,                                   // Set End Reg number (r31) + 1
+                      0xD0, mcu.highbyte, 0x1E,                                   // Set Start Reg number (r30)
+                      0xD1, mcu.highbyte, 0x20,                                   // Set End Reg number (r31) + 1
                       0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
                       0x20,                                               // Go
                       (byte)(addr & 0xFF), (byte)(addr >> 8),             // r31:r30 (Z) = addr
-                      0xD0, 0x00, 0x00,                                   // Set start = 0
-                      0xD1, (byte)(lenx2 >> 8),(byte)(lenx2),             // Set end = repeat count = sizeof(flashBuf) * 2
+                      0xD0, mcu.highbyte, 0x00,                                   // Set start = 0
+                      0xD1, (byte)(lenx2 >> 8)+mcu.highbyte,(byte)(lenx2),             // Set end = repeat count = sizeof(flashBuf) * 2
                       0xC2, 0x02,                                         // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
                       0x20};                                              // Go
     DWflushInput();
@@ -3252,12 +3299,17 @@ byte DWreadSPMCSR(void)
   return DWreadRegister(30);
 }
 
-unsigned int DWgetWPc () {
+unsigned int DWgetWPc (boolean corrected) {
   DWflushInput();
   sendCommand((const byte[]) {0xF0}, 1);
   unsigned int pc = getWordResponse();
-  //  DEBPR(F("Get PC=")); DEBLNF((pc-1)*2,HEX);
-  return (pc - 1);
+  DEBPR(F("Get uncorrected WPC=")); DEBLNF(pc,HEX);
+  if (corrected) {
+    pc &= ~(mcu.highbyte<<8);
+    pc--;
+    DEBPR(F("Corrected WPC=")); DEBLNF(pc,HEX);
+  }
+  return (pc);
 }
 
 // get hardware breakpoint word address 
@@ -3274,16 +3326,16 @@ unsigned int DWgetChipId () {
   return (getWordResponse());
 }
 
-// set PC (word address)
-void DWsetWPc (unsigned int wpc) {
-  // DEBPR(F("Set PC=")); DEBLNF(wpc*2,HEX);
-  byte cmd[] = {0xD0, (byte)(wpc >> 8), (byte)(wpc & 0xFF)};
+// set PC Reg (word address) - that is set all the bits (including the ones in the highbyte)
+void DWsetWPc (unsigned int wpcreg) {
+  DEBPR(F("Set WPCReg=")); DEBLNF(wpcreg,HEX);
+  byte cmd[] = {0xD0, (byte)(wpcreg >> 8)+mcu.highbyte, (byte)(wpcreg & 0xFF)};
   sendCommand(cmd, sizeof(cmd));
 }
 
 // set hardware breakpoint at word address
 void DWsetWBp (unsigned int wbp) {
-  byte cmd[] = {0xD1, (byte)(wbp >> 8), (byte)(wbp & 0xFF)};
+  byte cmd[] = {0xD1, (byte)(wbp >> 8)+mcu.highbyte, (byte)(wbp & 0xFF)};
   sendCommand(cmd, sizeof(cmd));
 }
 

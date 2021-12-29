@@ -86,20 +86,23 @@ The most basic solution is to use the Uno board and connect the cables as it is 
 
 In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs that are supported by the Arduino [MicroCore](https://github.com/MCUdude/MicroCore), [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), or [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
 
-* __ATtiny13__
+* __ATtiny13(A)__
 * __ATtiny43U__
-* __ATtiny2313__, __ATtiny4313__
-* __ATtiny24__, __ATtiny44__, __ATtiny84__
+* __ATtiny2313(A)__, __ATtiny4313__
+* __ATtiny24(A)__, __ATtiny44(A)__, __ATtiny84(A)__
 * ATtiny441, __ATtiny841__
 * __ATtiny25__, __ATtiny45__, __ATtiny85__
-* __ATtiny261__, __ATtiny461__, __ATtiny861__
+* __ATtiny261(A)__, __ATtiny461(A)__, __ATtiny861(A)__
 * ATtiny87, __ATtiny167__
 * __ATtiny828__
 * ATtiny48, __ATtiny88__
 * __ATtiny1634__
-* __ATmega48A__, __ATmega48PA__, ATmega48PB, __ATmega88A__, __ATmega88PA__, Atmega88PB, __ATmega168A__, __ATmega168PA__, ATmega168PB, __ATmega328__, __ATmega328P__, __ATmega328PB__
+* __ATmega48__, __ATmega48A__, __ATmega48PA__, ATmega48PB, 
+* __ATmega88__, __ATmega88A__, __ATmega88PA__, Atmega88PB, 
+* __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
+* __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on the MCUs marked bold and will (really soon) test the others. Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
+I have tested the debugger on MCUs marked bold and will (really soon) test the others. Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
 * ATmega8U2, ATmega16U2, ATmega32U2
 * ATmega32C1, <strike>ATmega64C1</strike>, ATmega16M1, ATmega32M1, <strike>ATmega64M</strike>
@@ -109,7 +112,7 @@ I have tested the debugger on the MCUs marked bold and will (really soon) test t
 * AT90PWM216, AT90PWM316
 * <font color="grey">ATmega8HVA, ATmega16HVA, ATmega16HVB, ATmega32HVA, ATmega32HVB, ATmega64HVE2</font>
 
-The debugger contains code for supporting all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have a flash address space that is too large for the current implementation. I expect the debugger to work on the supported MCUs. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances, some did not accept the full set of debugWIRE commands, and the ATmega328 (I possess) claims to be an ATmega328P when debugWIRE is activated. 
+The debugger contains code for supporting all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have flash address spaces and a page sizes that are too large for the current implementation. I expect the debugger to work on the supported MCUs. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances, some ATmegaX8 have a funny way to deal with the program counter, and some ATmegaX8(A) claim to be ATmegaX8P(A) when debugWIRE is activated. 
 
 <a name="section33"></a>
 
@@ -119,7 +122,7 @@ Since the RESET line of the target system is used as an [open-drain](https://en.
 
 If your target system is an Arduino Uno, you have to be aware that there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
-![Solder bridge on Uno board](pics/cut.jpg)
+![Solder bridge on Uno board](pics/cut.JPG)
 <center>Solder bridge</center> 
 
 A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper. Alternatively, you could always manually reset the Uno before the Arduino IDE attempts to upload a sketch. The trick is to release the reset button just when the compilation process has finished. 
@@ -702,7 +705,11 @@ It is possible to put the BREAK instruction, which is used to implement breakpoi
 
 When running under the debugger, the program will be stopped in the same way as if there is a software breakpoint set by the user. However, one cannot continue execution from this point with the `step`, `next`, or `continue` command. Instead, the debugger gets an "illegal instruction" signal. So, one either needs to reload the program code or, set the PC to a different value, or restart the debugging session.
 
-### 8.9 The start of the debugger takes a couple of seconds
+### 8.9 Some older MCUs have "unclean" program counters
+
+Some older debugWIRE MCUs appear to have program counters in which some unused bits are stuck at one. For instance, (older?) ATmega48s (without the A-suffix) have their PC bits 11 and 12 always stuck at one. In other words the PC has at least the value 0x1800. The debugger can deal with it, but GDB gets confused when trying to perform a stack backtrace. The only way to deal with this problem is to use an ATmega48A, ATmega48PA, or ATmega48PB. 
+
+### 8.10 The start of the debugger takes a couple of seconds
 
 The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain Uno board or equivalent, then it will spend two seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger.
 

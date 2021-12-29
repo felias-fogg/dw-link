@@ -200,11 +200,13 @@ int gdbTests(int &num) {
   ctx.wpc = 0xd5;
   gdbContinue();
   succ = expectBreakAndU();
+  DEBLN(F("Execution did not stop"));
   if (!succ) {
     targetBreak();
     expectUCalibrate();
   }
   targetSaveRegisters();
+  DEBPR(F("WPC = ")); DEBLNF(ctx.wpc,HEX);
   failed += testResult(succ && ctx.wpc == 0xd6);
 
   // execute starting at 0xdc (an RCALL instruction) and stop at the software breakpoint at 0xe4
@@ -214,13 +216,19 @@ int gdbTests(int &num) {
   gdbContinue();
   succ = expectBreakAndU();
   if (!succ) {
+    DEBLN(F("Execution did not stop"));
     targetBreak();
     expectUCalibrate();
   }
   targetSaveRegisters();
   targetReadSram(ctx.sp+1,membuf,2); // return addr
+  DEBPR(F("WPC = ")); DEBLNF(ctx.wpc,HEX);
+  DEBPR(F("Return addr = ")); DEBLNF((membuf[0]<<8)+membuf[1], HEX);
+  DEBPR(F("oldsp = ")); DEBLNF(oldsp,HEX);
+  DEBPR(F("ctx.sp = ")); DEBLNF(ctx.sp,HEX);
+  DEBPR(succ);DEBPR(ctx.wpc == 0xe4); DEBPR(ctx.sp == oldsp - 2); DEBPR(((membuf[0]<<8)+membuf[1]) == (0xDF+mcu.highbyte));
   failed += testResult(succ && ctx.wpc == 0xe4 && ctx.sp == oldsp - 2
-		       && (membuf[0]<<8)+membuf[1] == 0xDF);
+		       && ((membuf[0]<<8)+membuf[1]) == (0xDF+(mcu.highbyte<<8)));
   
   // remove the first 3 breakpoints from being active (they are still marked as used and the BREAK
   // instruction is still in flash)
@@ -253,7 +261,7 @@ int gdbTests(int &num) {
 
   // perform a single stop at location 0xe5 at which a BREAK instruction has been inserted,
   // replacing a "ldi r17, 0x91" instruction
-  // execution is done via offline execution in debugWIRE
+  // execution is done by simulation
   gdbDebugMessagePSTR(PSTR("Test gdbStep on 2-byte instr LDI r17,0x91 hidden by BREAK: "), testnum++);
   ctx.regs[17] = 0xFF;
   ctx.wpc = 0xe4;
@@ -733,15 +741,22 @@ int DWtests(int &num)
     failed += testResult(succ);
   }
 
+
   // get chip id
   gdbDebugMessagePSTR(PSTR("Test DWgetChipId: "), testnum++);
-  failed += testResult(mcu.sig != 0 && DWgetChipId() == mcu.sig);
-
+  failed += testResult(mcu.sig != 0 && (DWgetChipId() == mcu.sig ||
+					mcu.sig == 0x9514 && DWgetChipId() == 0x950F || // imposter 328P!
+					mcu.sig == 0x9406 && DWgetChipId() == 0x940B || // imposter 168PA!
+					mcu.sig == 0x930A && DWgetChipId() == 0x930F || // imposter 88PA!
+					mcu.sig == 0x9205 && DWgetChipId() == 0x920A)); // imposter 48PA!
+  
   // Set/get PC (word address)
   gdbDebugMessagePSTR(PSTR("Test DWsetWPc/DWgetWPc: "), testnum++);
-  const int pc = 0x3F; 
+  unsigned int pc = 0x3F; 
   DWsetWPc(pc);
-  failed += testResult(DWgetWPc() == pc - 1);
+  unsigned int newpc = DWgetWPc(true);
+  DEBLNF(newpc, HEX);
+  failed += testResult(newpc == pc - 1);
 
   // Set/get hardware breakpoint
   gdbDebugMessagePSTR(PSTR("Test DWsetWBp/DWgetWBp: "), testnum++);
@@ -749,32 +764,33 @@ int DWtests(int &num)
   failed += testResult(DWgetWBp() == pc);
 
   // execute one instruction offline
-  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (eor r1,r1 at WPC=0x003F): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (eor r1,r1 at WPC=0x013F): "), testnum++);
   DWwriteIOreg(0x3F, 0); // write SREG
   DWwriteRegister(1, 0x55);
+  pc = 0x13F;
   DWsetWPc(pc);
   DWexecOffline(0x2411); // specify opcode as MSB LSB (bigendian!)
   succ = false;
-  if (pc + 1 == DWgetWPc()) // PC advanced by one, then +1 for break, but this is autmatically subtracted
+  if (pc + 1 == DWgetWPc(true)) // PC advanced by one, then +1 for break, but this is autmatically subtracted
     if (DWreadRegister(1) == 0)  // reg 1 should be zero now
       if (DWreadIOreg(0x3F) == 0x02) // in SREG, only zero bit should be set
 	succ = true;
   failed += testResult(succ);
 
   // execute MUL offline
-  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (mul r16, r16 at WPC=0x003F): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (mul r16, r16 at WPC=0x013F): "), testnum++);
   DWwriteRegister(16, 5);
   DWwriteRegister(1, 0x55);
   DWwriteRegister(0, 0x55);
   DWsetWPc(pc);
   DWexecOffline(0x9F00); // specify opcode as MSB LSB (bigendian!)
-  int newpc = DWgetWPc();
+  newpc = DWgetWPc(true);
   succ = false;
   DEBPR(F("reg 1:")); DEBLN(DWreadRegister(1));
   DEBPR(F("reg 0:")); DEBLN(DWreadRegister(0));
   DEBLN(mcu.avreplus);
   DEBLNF(newpc,HEX);
-  if (0x0040 == newpc) // PC advanced by one, then +1 for break, but this is autmatically subtracted
+  if (pc+1 == newpc) // PC advanced by one, then +1 for break, but this is autmatically subtracted
     succ = ((DWreadRegister(0) == 25 && DWreadRegister(1) == 0 && mcu.avreplus) ||
 	    (DWreadRegister(0) == 0x55 && DWreadRegister(0) == 0x55 && !mcu.avreplus));
   failed += testResult(succ);
@@ -783,7 +799,7 @@ int DWtests(int &num)
   gdbDebugMessagePSTR(PSTR("Test DWexecOffline (rjmp 0x002E at WPC=0x0001 (word addresses)): "), testnum++);
   DWsetWPc(0x01);
   DWexecOffline(0xc02C);
-  failed += testResult(DWgetWPc() == 0x2E); // = byte addr 0x005C
+  failed += testResult(DWgetWPc(true) == 0x2E); // = byte addr 0x005C
 
   
   if (num >= 1) {

@@ -453,3 +453,6 @@ Version 0.9.9 (14-Nov-21)
    - use offline execution for single-stepping in order to avoid interrupts while single-stepping through the code - works perfectly
    - new commands: `monitor safestep` and `monitor unsafestep`, the former to enable offline execution for single-stepping, the latter for disabling it
    - new test: isr.ino - tests the new feature of safe single-stepping
+
+## Version 1.1.1 (29-Dec-21)
+   - deal with MCUs that have "unclean" program counters
