@@ -6,7 +6,6 @@
 
 #define AR(num) const byte a ## num[] PROGMEM = SEQ
 
-
 AR(00);
 AR(01);
 #if (FLASHEND+1 <= 1024)

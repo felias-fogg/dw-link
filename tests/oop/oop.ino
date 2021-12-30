@@ -82,7 +82,7 @@ void setup(void)
 {
   Serial.begin(9600);
   Serial.println(); Serial.println();
-  Serial.print(F("c position: ")); c.printPos(); Serial.println();
+  //Serial.print(F("c position: ")); c.printPos(); Serial.println();
   Serial.print(F("  area: ")); Serial.print(c.area()); Serial.println();
   Serial.print(F("r position: ")); r.printPos(); Serial.println();
   Serial.print(F("  area: ")); Serial.print(r.area()); Serial.println();

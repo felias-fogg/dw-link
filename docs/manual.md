@@ -90,19 +90,21 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATtiny43U__
 * __ATtiny2313(A)__, __ATtiny4313__
 * __ATtiny24(A)__, __ATtiny44(A)__, __ATtiny84(A)__
-* ATtiny441, __ATtiny841__
+* __ATtiny441__, __ATtiny841__
 * __ATtiny25__, __ATtiny45__, __ATtiny85__
 * __ATtiny261(A)__, __ATtiny461(A)__, __ATtiny861(A)__
-* ATtiny87, __ATtiny167__
+* __ATtiny87__, __ATtiny167__
 * __ATtiny828__
 * ATtiny48, __ATtiny88__
 * __ATtiny1634__
-* __ATmega48__, __ATmega48A__, __ATmega48PA__, ATmega48PB, 
-* __ATmega88__, __ATmega88A__, __ATmega88PA__, Atmega88PB, 
+* <s>ATmega48</s>, __ATmega48A__, __ATmega48PA__, ATmega48PB, 
+* <s>ATmega88</s>, __ATmega88A__, __ATmega88PA__, Atmega88PB, 
 * __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on MCUs marked bold and will (really soon) test the others. Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
+I have tested the debugger on MCUs marked bold and will (really soon) test the others, except for the PB types, which appear to be very hard to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them. Since these were exemplars that have been produced 10 years ago I ordered recently produced MCUs and will test those.
+
+Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
 * ATmega8U2, ATmega16U2, ATmega32U2
 * ATmega32C1, <strike>ATmega64C1</strike>, ATmega16M1, ATmega32M1, <strike>ATmega64M</strike>
@@ -123,7 +125,6 @@ Since the RESET line of the target system is used as an [open-drain](https://en.
 If your target system is an Arduino Uno, you have to be aware that there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
 ![Solder bridge on Uno board](pics/cut.JPG)
-<center>Solder bridge</center> 
 
 A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper. Alternatively, you could always manually reset the Uno before the Arduino IDE attempts to upload a sketch. The trick is to release the reset button just when the compilation process has finished. 
 
@@ -145,7 +146,7 @@ There are only a few steps necessary for installing the program on an ATmega328 
 
 ### 4.1 Software installation
 
-Since the firmware of the hardware debugger comes in form of an Arduino sketch, you need to download first of all the [Arduino IDE](https://www.arduino.cc/en/software), if you have not done that already. Note that for some of the later software components (e.g., the ATTinyCore) a reasonably recent version is required. It is probably best when you upgrade your installation now.
+Since the firmware of the hardware debugger comes in form of an Arduino sketch, you need to download first of all the [Arduino IDE](https://www.arduino.cc/en/software), if you have not done that already. Note that for some of the later software components (e.g., the ATTinyCore) a reasonably recent version is required. It is probably best when you upgrade your installation now. 
 
 Second, you need to download this repository somewhere, where the IDE is able to find the Arduino sketch. 
 
@@ -670,9 +671,11 @@ With an optimal setting, i.e., 125 kbps for the debugWIRE line and 230400 kbps f
 
 If you use *conditional breakpoints*, the program is slowed down significantly.  The reason is that at such a breakpoint, the program has to be stopped, all registers have to be saved, the current values of the variables have to be inspected, and then the program needs to be started again, whereby registers have to be restored first. For all of these operations, debugWIRE communication takes place. This takes roughly 100 ms per stop, even for simple conditions and an MCU running at 8MHz. So, if you have a loop that iterates 1000 times before the condition is met, it may easily take 2 minutes (instead of the fraction of a second) before execution stops.
 
+<a name="section84"></a>
+
 ### 8.4 Single-stepping and interrupt handling clash
 
-In many debuggers, it is impossible to do single-stepping when timer interrupts are active since after each step the program ends up in the interrupt routine. This is not the case with `avr-gdb` and *dw-link*. Instead, time is frozen and interrupts cannot be raised while the debugger single-steps. Only when the the `continue` command is used, interrupts are serviced and the timers are advanced. One can change this behavior by using the command `monitor unsafestep`. However, in this case it can happen that control is transferred to the interrupt vector table while single-stepping.
+In many debuggers, it is impossible to do single-stepping when timer interrupts are active since after each step the program ends up in the interrupt routine. This is not the case with `avr-gdb` and *dw-link*. Instead, time is frozen and interrupts cannot be raised while the debugger single-steps. Only when the `continue` command is used, interrupts are serviced and the timers are advanced. One can change this behavior by using the command `monitor unsafestep`. In this case it can happen that control is transferred to the interrupt vector table while single-stepping.
 
 ### 8.5 Limited number of breakpoints
 
@@ -705,9 +708,13 @@ It is possible to put the BREAK instruction, which is used to implement breakpoi
 
 When running under the debugger, the program will be stopped in the same way as if there is a software breakpoint set by the user. However, one cannot continue execution from this point with the `step`, `next`, or `continue` command. Instead, the debugger gets an "illegal instruction" signal. So, one either needs to reload the program code or, set the PC to a different value, or restart the debugging session.
 
-### 8.9 Some older MCUs have "unclean" program counters
+<a name="section89"></a>
 
-Some older debugWIRE MCUs appear to have program counters in which some unused bits are stuck at one. For instance, (older?) ATmega48s (without the A-suffix) have their PC bits 11 and 12 always stuck at one. In other words the PC has at least the value 0x1800. The debugger can deal with it, but GDB gets confused when trying to perform a stack backtrace. The only way to deal with this problem is to use an ATmega48A, ATmega48PA, or ATmega48PB. 
+### 8.9 Some older MCUs have stuck-at-one bits in the program counter
+
+Some older debugWIRE MCUs appear to have program counters in which some unused bits are stuck at one. Older ATmega48s and ATmega88s (without the A-suffix) have their PC bits 11 and 12 or only PC bit 12 always stuck at one. In other words the PC has at least the value 0x1800 or 0x1000, respectively (note that the AVR program counter addresses words, not bytes!). The hardware debugger can deal with it, but GDB gets confused when trying to perform a stack backtrace. It gets also confused when trying to step over a function call or tries to finalize a function call. For these reasons, debugging these MCUs does not make much sense and dw-link rejects these MCUs with an error message when one tries to connect to one of those (see also [this blog entry](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/)). 
+
+ The only reasonable way to deal with this problem is to use a different MCU, one with an A, PA, or PB suffix. If you really need to debug this particular MCU and are aware of the problems, you can recompile the sketch with the compile time constant `STUCKAT1PC` set to 1.
 
 ### 8.10 The start of the debugger takes a couple of seconds
 
@@ -755,11 +762,11 @@ You use more than the allowed number of breakpoints, i.e., usually 32 (+1 for a 
 
 #### Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised
 
-This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the `continue` command (or when the `next` command skips over a function call). You can change this behavior by using the command `monitor unsafestep`, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping is transferred to an interrupt routine.
+This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the `continue` command (or when the `next` command skips over a function call). You can change this behavior by using the command `monitor unsafestep`, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping control is transferred into an interrupt routine.
 
 #### Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030
 
-This should only happen when you have used the command `monitor unsafestep` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. Set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. 
+This should only happen when you have used the command `monitor unsafestep` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. If you want to avoid this behavior in the future, issue the debugger command `monitor safestep`. 
 
 #### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
 
@@ -817,10 +824,8 @@ Error #  | Meaning
 1 | Connection error: No response to ISP and debugWIRE communication; check wiring
 2 | Connection error: MCU type is not supported
 3 | Connection error: Lock bits are set; erase MCU and try again
-4 | Connection error: Bad line quality
-5 | Connection error: No response from debugWIRE after DWEN fuse has been programmed; probably capacitive load or weak pull-up resistor on RESET line
-6 | Connection error: Could not determine bps for communication with host 
-7 | Unknown connection error
+4 | Connection error: MCU has PC with stuck-at-one bits 
+5 | Unknown connection error
 101 | No free slot in breakpoint table
 102 | Packet length too large
 103 | Wrong memory type

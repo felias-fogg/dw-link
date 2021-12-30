@@ -289,6 +289,8 @@ attiny84 = ("ATtiny84", 2, 11, 12, ATTRcAndExt, large_arduino, "ATTinyCore:avr:a
                   "Programmer-ZF")
 attiny841 = ("ATtiny841", -1, 11, 12, ATTOnlyRc, large_arduino, "ATTinyCore:avr:attinyx41:chip=841,clock=",
                   "Breakout Board")
+attiny441 = ("ATtiny441", -1, 11, 12, ATTOnlyRc, medium_arduino, "ATTinyCore:avr:attinyx41:chip=441,clock=",
+                  "Breadboard setup")
 attiny25 = ("ATtiny25", 2, 6, 5, ATTRcAndExt, small_arduino, "ATTinyCore:avr:attinyx5:chip=25,clock=",
                   "Programmer-ZF")
 attiny45 = ("ATtiny45", 2, 6, 5, ATTRcAndExt, medium_arduino, "ATTinyCore:avr:attinyx5:chip=45,clock=",
@@ -301,6 +303,8 @@ attiny461 = ("ATtiny461", -1, 11, 12, ATTRcAndXtal, medium_arduino, "ATTinyCore:
                  "Breakout Board")
 attiny861 = ("ATtiny861", -1, 11, 12, ATTRcAndXtal, large_arduino, "ATTinyCore:avr:attinyx61:chip=861,clock=",
                  "Breakout Board")
+attiny87 = ("ATtiny87", -1, 1, 2, ATTRcAndXtal,  large_arduino, "ATTinyCore:avr:attinyx7:chip=87,clock=",
+                 "Breakout Board")
 attiny167 = ("ATtiny167", -1, 1, 2, ATTRcAndXtal,  large_arduino, "ATTinyCore:avr:attinyx7:chip=167,clock=",
                  "Breakout Board")
 attiny88 = ("ATtiny88", -1, 13, 12, ATTOnlyRc,  large_arduino, "ATTinyCore:avr:attinyx8:chip=88,clock=",
@@ -309,6 +313,7 @@ attiny828 = ("ATtiny828", -1, 1, 2, ATTOnlyRc,  large_arduino, "ATTinyCore:avr:a
                  "Breakout Board")
 attiny1634 = ("ATtiny1634", -1, 2, 1, ATTOnlyRc, large_arduino, "ATTinyCore:avr:attiny1634:clock=",
                 "Breakout Board")
+
 
 atmega48a = ("ATmega48A", -1, 2, 3, MiniRcAndXtal, medium_arduino, "MiniCore:avr:48:variant=modelNonP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
@@ -322,21 +327,21 @@ atmega168a = ("ATmega168A", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:av
                  "ATmega-ZF")
 atmega168pa = ("ATmega168PA", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:168:variant=modelP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega328a = ("ATmega328A", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelNonP,bootloader=no_bootloader,clock=",
+atmega328 = ("ATmega328", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelNonP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
-atmega328pa = ("ATmega328PA", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelP,bootloader=no_bootloader,clock=",
+atmega328p = ("ATmega328P", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelP,bootloader=no_bootloader,clock=",
                  "ATmega-ZF")
 atmega328pb = ("ATmega328PB", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:avr:328:variant=modelPB,bootloader=no_bootloader,clock=",
                  "Breakout Board")
 
 tinylist = (attiny13, attiny2313, attiny4313, attiny43u, attiny24, attiny44, attiny84, attiny841,
-                 attiny25, attiny45, attiny85, attiny261, attiny461, attiny861, attiny167,
+                 attiny25, attiny45, attiny85, attiny261, attiny461, attiny861, attiny87, attiny167,
                  attiny88, attiny828, attiny1634)
-megalist = (atmega48a, atmega48pa, atmega88a, atmega88pa, atmega168a, atmega168pa,  atmega328a,
-                atmega328pa, atmega328pb)
+megalist = (atmega48a, atmega48pa, atmega88a, atmega88pa, atmega168a, atmega168pa,  atmega328,
+                atmega328p, atmega328pb)
 exoticlist = ( )
-    
-    
+
+
 # should be called in the 'tests' directory    
 def test_mcu(port, description):
     mcu_name = description[0]
@@ -412,7 +417,7 @@ def run_script(script, port, cksource, ckfuse):
         if logging:
             print("\nCOMMAND:  " + cmd)
         child.sendline(cmd)
-        resp = child.expect([ "\(gdb\)", pexpect.TIMEOUT, pexpect.EOF ],timeout=(240 if cmd == 'load' else 20))
+        resp = child.expect([ "\(gdb\)", pexpect.TIMEOUT, pexpect.EOF ],timeout=(240 if cmd == 'load' else 30))
         if resp == 1:
             if (interact[1] == pexpect.TIMEOUT):
                 if logging: print("RESPONSE: TIMEOUT")
@@ -453,8 +458,8 @@ def run_all_tests(port):
     print("Scripts failed:      ", result[1])
     
 
+#print(run_script(tictactoe_script, "/dev/cu.usbmodem1442101", "rc", "ck1"))
 
-#print(run_script(isr_script, "/dev/cu.usbmodem1442101", "rc", "ck1"))
+print(test_mcu("/dev/cu.usbmodem1442101", attiny441))
 
-run_all_tests("/dev/cu.usbmodem1442101")
-#print(test_mcu("/dev/cu.usbmodem1442101", attiny1634))
+#run_all_tests("/dev/cu.usbmodem1442101")

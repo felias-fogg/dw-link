@@ -354,4 +354,7 @@ void initSerial()
 #ifdef __AVR_ATtiny1634__
   pinMode(1, INPUT_PULLUP);
 #endif
+#ifdef __AVR_ATmega328PB__
+  pinMode(0, INPUT_PULLUP);
+#endif
 }

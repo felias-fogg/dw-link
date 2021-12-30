@@ -226,9 +226,9 @@ int gdbTests(int &num) {
   DEBPR(F("Return addr = ")); DEBLNF((membuf[0]<<8)+membuf[1], HEX);
   DEBPR(F("oldsp = ")); DEBLNF(oldsp,HEX);
   DEBPR(F("ctx.sp = ")); DEBLNF(ctx.sp,HEX);
-  DEBPR(succ);DEBPR(ctx.wpc == 0xe4); DEBPR(ctx.sp == oldsp - 2); DEBPR(((membuf[0]<<8)+membuf[1]) == (0xDF+mcu.highbyte));
+  DEBPR(succ);DEBPR(ctx.wpc == 0xe4); DEBPR(ctx.sp == oldsp - 2); DEBPR(((membuf[0]<<8)+membuf[1]) == (0xDF+mcu.stuckat1byte));
   failed += testResult(succ && ctx.wpc == 0xe4 && ctx.sp == oldsp - 2
-		       && ((membuf[0]<<8)+membuf[1]) == (0xDF+(mcu.highbyte<<8)));
+		       && ((membuf[0]<<8)+membuf[1]) == (0xDF+(mcu.stuckat1byte<<8)));
   
   // remove the first 3 breakpoints from being active (they are still marked as used and the BREAK
   // instruction is still in flash)
@@ -758,11 +758,13 @@ int DWtests(int &num)
   DEBLNF(newpc, HEX);
   failed += testResult(newpc == pc - 1);
 
+  /*
   // Set/get hardware breakpoint
   gdbDebugMessagePSTR(PSTR("Test DWsetWBp/DWgetWBp: "), testnum++);
   DWsetWBp(pc);
   failed += testResult(DWgetWBp() == pc);
-
+  */
+  
   // execute one instruction offline
   gdbDebugMessagePSTR(PSTR("Test DWexecOffline (eor r1,r1 at WPC=0x013F): "), testnum++);
   DWwriteIOreg(0x3F, 0); // write SREG

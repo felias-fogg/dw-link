@@ -39,18 +39,18 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4.
 
-#define VERSION "1.1.1"
-
-#define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
-
-#define ALWAYSOFFLINE 1
+#define VERSION "1.1.2"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
 #endif
 
-#if F_CPU < 16000000UL
-#error "dw-link needs at least 16 MHz clock frequency"
+#ifndef INITIALBPS 
+#define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
+#endif
+
+#ifndef STUCKAT1PC
+#define STUCKAT1PC 0
 #endif
 
 #ifndef SIM2WORD    // simulate 2 word instructions at break points instead of executing them
@@ -72,10 +72,14 @@
 #define FREERAM  0   
 #endif
 #ifndef UNITALL      // test all units
-#define UNITALL 1 
-#elif UNITALL == 1
+#define UNITALL 1
+#endif
+#if UNITALL == 1
+#undef  UNITDW
 #define UNITDW 1
+#undef  UNITTG
 #define UNITTG 1
+#undef  UNITGDB
 #define UNITGDB 1
 #endif
 #ifndef UNITDW
@@ -88,7 +92,9 @@
 #define UNITGDB 0
 #endif
 
-
+#if F_CPU < 16000000UL
+#error "dw-link needs at least 16 MHz clock frequency"
+#endif
 
 // Pins for different boards
 // Note that Nano, Pro Mini, Pro Micro, and Micro use the same socket
@@ -292,9 +298,8 @@
 #define CONNERR_NO_ISP_OR_DW_REPLY 1 // connection error: no ISP or DW reply
 #define CONNERR_UNSUPPORTED_MCU 2 // connection error: MCU not supported
 #define CONNERR_LOCK_BITS 3 // connection error: lock bits are set
-#define CONNERR_WEAK_PULLUP 4 // connection error: weak pullup
-#define CONNERR_NO_DW_AFTER_DWEN 5 // connection error: no DW afetr DWEN has been programmed
-#define CONNERR_UNKNOWN 6 // unknown connection error
+#define CONNERR_STUCKAT1_PC 4 // connection error: MCU has PC with stuck-at-one bits
+#define CONNERR_UNKNOWN 5 // unknown connection error
 #define NO_FREE_SLOT_FATAL 101 // no free slot in BP structure
 #define PACKET_LEN_FATAL 102 // packet length too large
 #define WRONG_MEM_FATAL 103 // wrong memory type
@@ -445,7 +450,7 @@ struct {
   byte         eedr;       // address of EEDR (computed from EECR)
   byte         eearl;      // address of EARL (computed from EECR)
   unsigned int targetpgsz; // target page size (depends on pagesize and erase4pg)
-  byte         highbyte;   // fixed bits in high byte of pc
+  byte         stuckat1byte;   // fixed bits in high byte of pc
 } mcu;
 
 
@@ -1048,36 +1053,10 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetSteppingMode(false);                                              /* unsafestep */
   else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
     gdbVersion();                                                           /* version */
-  else if (memcmp_P(buf, (void *)PSTR("736967706300"), max(6,min(12,clen))) == 0)
-    gdbSigPc();                                                             /* sigpc */
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
   } else gdbSendReply("");
-}
-
-// display PC after signature query
-// only experimentally
-inline void gdbSigPc(void)
-{
-  unsigned int wpc;
-  char buf[5+5];
-  DWgetChipId();
-  wpc = DWgetWPc(false);
-  buf[0] = nib2hex((wpc >> 12)&0x0F);
-  buf[1] = nib2hex((wpc >> 8)&0x0F);
-  buf[2] = nib2hex((wpc >> 4)&0x0F);
-  buf[3] = nib2hex((wpc >> 0)&0x0F);
-  buf[4] = ' ';
-  DEBPR(F("Uncorrected SigPc: 0x")); DEBLNF(wpc, HEX); DEBLN(buf);
-  wpc = DWgetWPc(true);
-  buf[5] = nib2hex((wpc >> 12)&0x0F);
-  buf[6] = nib2hex((wpc >> 8)&0x0F);
-  buf[7] = nib2hex((wpc >> 4)&0x0F);
-  buf[8] = nib2hex((wpc >> 0)&0x0F);
-  buf[9] = '\0';  
-  DEBPR(F("Corrected SigPc: 0x")); DEBLNF(wpc, HEX); DEBLN(buf);
-  gdbReplyMessage(buf);
 }
 
 // set stepping mode
@@ -1191,86 +1170,88 @@ inline void gdbReportRamUsage(void)
 // this might imply that the user has to power-cycle the target system
 boolean gdbConnect(boolean verbose)
 {
-  int retry = 0;
-  byte b;
-  int conncode;
+  int conncode = -CONNERR_UNKNOWN;
 
-  conncode = targetConnect();
-  DEBPR(F("conncode=")); DEBLN(conncode);
-  switch (conncode) {
-
-  case 1: // everything OK since we are already connected
+  _delay_ms(100); // allow for startup of MCU initially
+  mcu.sig = 0;
+  if (targetDWConnect()) {
+    conncode = 1;
+  } else {
+    conncode = targetISPConnect();
+    if (conncode == 0) {
+      if (powerCycle(verbose)) 
+	conncode = 1;
+      else
+	conncode = -1;
+    }
+  }
+  if (conncode == 1) {
+#if STUCKAT1PC
+    mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
+    DEBPR(F("stuckat1byte=")); DEBLNF(mcu.stuckat1byte,HEX);
+#else
+    mcu.stuckat1byte = 0;
+    if (DWgetWPc(false) > (mcu.flashsz>>1)) conncode = -4;
+#endif
+  }
+  if (conncode == 1) {
     setSysState(CONN_STATE);
     if (verbose) {
       gdbDebugMessagePSTR(Connected,-2);
       gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
     }
     gdbCleanupBreakpointTable();
-    // flushInput();
-    // gdbSendReply("OK");
     return true;
-    break;
-  case 0: // we have changed the fuse and need to powercycle
-    dw.enable(false);
-    setSysState(PWRCYC_STATE);
-    while (retry < 60) {
-      DEBPR(F("retry=")); DEBLN(retry);
-      if (retry%3 == 0) { // try to power-cycle
-	DEBLN(F("Power cycle!"));
-	power(false); // cutoff power to target
-	_delay_ms(500);
-	power(true); // power target again
-	_delay_ms(200); // wait for target to startup
-	DEBLN(F("Power cycling done!"));	
-      }
-      if ((retry++)%3 == 0 && retry >= 3) {
-	do {
-	  //	  flushInput();
-	  if (verbose) {
-	    gdbDebugMessagePSTR(PSTR("Please power-cycle the target system"),-1);
-	    b = gdbReadByte();
-	  } else b ='+';
-	} while (b == '-');
-      }
-      _delay_ms(1000);
-      dw.enable(true);
-      if (doBreak()) {
-	setSysState(CONN_STATE);
-	// flushInput();
-	// gdbReset();
-	if (verbose) {
-	  gdbDebugMessagePSTR(Connected,-2);
-	  gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
-	  _delay_ms(100);
-	}
-	// flushInput();
-	gdbCleanupBreakpointTable();
-	// gdbSendReply("OK");
-	return true;
-      }
-    }
-    if (verbose)
-      gdbDebugMessagePSTR(PSTR("Cannot connect after setting DWEN fuse"),-1);
-    conncode = -5;
-    break;
-  default:
-    setSysState(ERROR_STATE);
-    flushInput();
+  }
+  if (verbose) {
     switch (conncode) {
     case -1: gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1); break;
     case -2: gdbDebugMessagePSTR(PSTR("Cannot connect: Unsupported MCU type"),-1); break;
     case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits are set"),-1); break;
-#ifdef LINEQUALITY
-    case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: Weak pull-up or capacitive load on RESET line"),-1); break;
-#endif
-    default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -6; break;
+    case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: MCU has PC with stuck-at-one bits"),-1); break;
+    default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
     }
-    break;
   }
   if (fatalerror == NO_FATAL) fatalerror = -conncode;
   setSysState(ERROR_STATE);
   flushInput();
-  // gdbSendReply("E05");
+  return false;
+}
+
+// power-cycle and check periodically whether it is possible
+// to establish a debugWIRE connection, return false when we timeout
+boolean powerCycle(boolean verbose)
+{
+  int retry = 0;
+  byte b;
+
+  dw.enable(false);
+  setSysState(PWRCYC_STATE);
+  while (retry < 20) {
+    DEBPR(F("retry=")); DEBLN(retry);
+    if (retry%3 == 0) { // try to power-cycle
+      DEBLN(F("Power cycle!"));
+      power(false); // cutoff power to target
+      _delay_ms(500);
+      power(true); // power target again
+      _delay_ms(200); // wait for target to startup
+      DEBLN(F("Power cycling done!"));	
+    }
+    if ((retry++)%3 == 0 && retry >= 3) {
+      do {
+	if (verbose) {
+	  gdbDebugMessagePSTR(PSTR("Please power-cycle the target system"),-1);
+	  b = gdbReadByte();
+	} else b ='+';
+      } while (b == '-');
+    }
+    _delay_ms(1000);
+    dw.enable(true);
+    if (targetDWConnect()) {
+      setSysState(CONN_STATE);
+      return true;
+    }
+  }
   return false;
 }
 
@@ -1355,6 +1336,7 @@ void gdbSetFuses(Fuses fuse)
   case Erase: gdbDebugMessagePSTR(PSTR("Flash memory erased"),-1); break;
   default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
   }
+  if (!offline) gdbDebugMessagePSTR(PSTR("Reconnecting ..."),-1);
   _delay_ms(200);
   flushInput();
   if (offline) {
@@ -2262,44 +2244,34 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
 
 /****************** target functions *************/
 
-// try to establish DW connection 
-// if not possible, try to establish ISP connection
+// try to connect to debugWIRE by issuing a break condition
+// set mcu struct if not already set
+// return true if successful
+boolean targetDWConnect(void)
+{
+  unsigned int sig;
+
+  if (doBreak()) {
+    DEBLN(F("targetConnect: doBreak done"));
+    sig = DWgetChipId();
+    if (mcu.sig == 0) setMcuAttr(sig);
+    return true;
+  }
+  return false;
+}
+
+// try to establish an ISP connection and program the DWEN fuse
 // if possible, set DWEN fuse
 //   1 if we are in debugWIRE mode and connected 
 //   0 if we need to powercycle
 //   -1 if we cannot connect
 //   -2 if unknown MCU type
 //   -3 if lock bits set
-//   -4 if connection quality is not good enough
-
-int targetConnect(void)
+int targetISPConnect(void)
 {
   unsigned int sig;
-  unsigned int wpc;
-  int result = 0;
-#ifdef LINEQUALITY
-  unsigned int quality = DWquality();
-
-  if (quality > UNCONNRISETIME) return -1;
-  else if (quality > MAXRISETIME) return -4;
-#endif
-  _delay_ms(100); // allow for startup of MCU
-  if (doBreak()) {
-    DEBLN(F("targetConnect: doBreak done"));
-    sig = DWgetChipId();
-    result = setMcuAttr(sig);
-    if (result) {
-      wpc = DWgetWPc(false);
-      DEBPR(F("Uncorrected WPC: "));
-      DEBLNF(wpc,HEX);
-      mcu.highbyte = ((wpc & ~((mcu.flashsz>>1)-1)) >> 8)&0xFF;
-    }
-    DEBPR(F("targetConnect: sig=")); DEBLNF(sig,HEX);
-    DEBPR(F("highByte: 0x")); DEBLNF(mcu.highbyte,HEX);
-    DEBPR(F("setMcuAttr=")); DEBLN(result);
-    return (result ? 1 : -2);
-  }
-  // so we need to set the DWEN fuse bit
+  int result;
+  
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
   if (sig == 0) { // no reasonable signature
@@ -2317,6 +2289,8 @@ int targetConnect(void)
   DEBPR(F("Programming result: ")); DEBLN(result);
   return result;
 }
+
+
 
 
 // disable debugWIRE mode
@@ -2942,8 +2916,8 @@ byte inLow  (byte add, byte reg) {
 void DWwriteRegisters(byte *regs)
 {
   byte wrRegs[] = {0x66,              // read/write
-		   0xD0, mcu.highbyte, 0x00,  // start reg
-		   0xD1, mcu.highbyte, 0x20,  // end reg
+		   0xD0, mcu.stuckat1byte, 0x00,  // start reg
+		   0xD1, mcu.stuckat1byte, 0x20,  // end reg
 		   0xC2, 0x05,        // write registers
 		   0x20 };              // go
   measureRam();
@@ -2965,8 +2939,8 @@ void DWwriteRegister (byte reg, byte val) {
 void DWreadRegisters (byte *regs)
 {
   byte rdRegs[] = {0x66,
-		   0xD0, mcu.highbyte, 0x00, // start reg
-		   0xD1, mcu.highbyte, 0x20, // end reg
+		   0xD0, mcu.stuckat1byte, 0x00, // start reg
+		   0xD1, mcu.stuckat1byte, 0x20, // end reg
 		   0xC2, 0x01,       // read registers
 		   0x20 };            // start
   measureRam();
@@ -2991,13 +2965,13 @@ byte DWreadRegister (byte reg) {
 // Write one byte to SRAM address space using an SRAM-based value for <addr>, not an I/O address
 void DWwriteSramByte (unsigned int addr, byte val) {
   byte wrSram[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
-                   0xD0, mcu.highbyte, 0x1E,                                  // Set Start Reg number (r30)
-                   0xD1, mcu.highbyte, 0x20,                                  // Set End Reg number (r31) + 1
+                   0xD0, mcu.stuckat1byte, 0x1E,                                  // Set Start Reg number (r30)
+                   0xD1, mcu.stuckat1byte, 0x20,                                  // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
 		   (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
-                   0xD0, mcu.highbyte, 0x01,
-                   0xD1, mcu.highbyte, 0x03,
+                   0xD0, mcu.stuckat1byte, 0x01,
+                   0xD1, mcu.stuckat1byte, 0x03,
                    0xC2, 0x04,                                        // Set simulated "in r?,DWDR; st Z+,r?" instructions
                    0x20,                                              // Go
                    val};
@@ -3022,13 +2996,13 @@ void DWwriteIOreg (byte ioreg, byte val)
 byte DWreadSramByte (unsigned int addr) {
   byte res = 0;
   byte rdSram[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
-                   0xD0, mcu.highbyte, 0x1E,                                  // Set Start Reg number (r30)
-                   0xD1, mcu.highbyte, 0x20,                                  // Set End Reg number (r31) + 1
+                   0xD0, mcu.stuckat1byte, 0x1E,                                  // Set Start Reg number (r30)
+                   0xD1, mcu.stuckat1byte, 0x20,                                  // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
                    (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
-                   0xD0, mcu.highbyte, 0x00,                                  // 
-                   0xD1, mcu.highbyte, 0x02,                                  // 
+                   0xD0, mcu.stuckat1byte, 0x00,                                  // 
+                   0xD1, mcu.stuckat1byte, 0x02,                                  // 
                    0xC2, 0x00,                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
                    0x20};                                             // Go
   measureRam();
@@ -3061,13 +3035,13 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   byte rsp;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdSram[] = {0x66,                                            // Set up for read/write using repeating simulated instructions
-                     0xD0, mcu.highbyte, 0x1E,                                // Set Start Reg number (r30)
-                     0xD1, mcu.highbyte, 0x20,                                // Set End Reg number (r31) + 1
+                     0xD0, mcu.stuckat1byte, 0x1E,                                // Set Start Reg number (r30)
+                     0xD1, mcu.stuckat1byte, 0x20,                                // Set End Reg number (r31) + 1
                      0xC2, 0x05,                                      // Set repeating copy to registers via DWDR
                      0x20,                                            // Go
                      (byte)(addr & 0xFF), (byte)(addr >> 8),          // r31:r30 (Z) = addr
-                     0xD0, mcu.highbyte, 0x00,                                // 
-                     0xD1, (byte)(len2 >> 8)+mcu.highbyte, (byte)(len2 & 0xFF),    // Set repeat count = len * 2
+                     0xD0, mcu.stuckat1byte, 0x00,                                // 
+                     0xD1, (byte)(len2 >> 8)+mcu.stuckat1byte, (byte)(len2 & 0xFF),    // Set repeat count = len * 2
                      0xC2, 0x00,                                      // Set simulated "ld r?,Z+; out DWDR,r?" instructions
                      0x20};                                           // Go
     measureRam();
@@ -3107,8 +3081,8 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
 byte DWreadEepromByte (unsigned int addr) {
   byte retval;
   byte setRegs[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
-                    0xD0, mcu.highbyte, 0x1C,                                   // Set Start Reg number (r28)
-                    0xD1, mcu.highbyte, 0x20,                                   // Set End Reg number (r31) + 1
+                    0xD0, mcu.stuckat1byte, 0x1C,                                   // Set Start Reg number (r28)
+                    0xD1, mcu.stuckat1byte, 0x20,                                   // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
                     0x20,                                               // Go
                     0x01, 0x01, (byte)(addr & 0xFF), (byte)(addr >> 8)};// Data written into registers r28-r31
@@ -3134,8 +3108,8 @@ byte DWreadEepromByte (unsigned int addr) {
 
 void DWwriteEepromByte (unsigned int addr, byte val) {
   byte setRegs[] = {0x66,                                                 // Set up for read/write using repeating simulated instructions
-                    0xD0, mcu.highbyte, 0x1C,                                     // Set Start Reg number (r30)
-                    0xD1, mcu.highbyte, 0x20,                                     // Set End Reg number (r31) + 1
+                    0xD0, mcu.stuckat1byte, 0x1C,                                     // Set Start Reg number (r30)
+                    0xD1, mcu.stuckat1byte, 0x20,                                     // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                           // Set repeating copy to registers via DWDR
                     0x20,                                                 // Go
                     0x04, 0x02, (byte)(addr & 0xFF), (byte)(addr >> 8)};  // Data written into registers r28-r31
@@ -3164,13 +3138,13 @@ boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int lenx2 = len * 2;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdFlash[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
-                      0xD0, mcu.highbyte, 0x1E,                                   // Set Start Reg number (r30)
-                      0xD1, mcu.highbyte, 0x20,                                   // Set End Reg number (r31) + 1
+                      0xD0, mcu.stuckat1byte, 0x1E,                                   // Set Start Reg number (r30)
+                      0xD1, mcu.stuckat1byte, 0x20,                                   // Set End Reg number (r31) + 1
                       0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
                       0x20,                                               // Go
                       (byte)(addr & 0xFF), (byte)(addr >> 8),             // r31:r30 (Z) = addr
-                      0xD0, mcu.highbyte, 0x00,                                   // Set start = 0
-                      0xD1, (byte)(lenx2 >> 8)+mcu.highbyte,(byte)(lenx2),             // Set end = repeat count = sizeof(flashBuf) * 2
+                      0xD0, mcu.stuckat1byte, 0x00,                                   // Set start = 0
+                      0xD1, (byte)(lenx2 >> 8)+mcu.stuckat1byte,(byte)(lenx2),             // Set end = repeat count = sizeof(flashBuf) * 2
                       0xC2, 0x02,                                         // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
                       0x20};                                              // Go
     DWflushInput();
@@ -3305,19 +3279,21 @@ unsigned int DWgetWPc (boolean corrected) {
   unsigned int pc = getWordResponse();
   DEBPR(F("Get uncorrected WPC=")); DEBLNF(pc,HEX);
   if (corrected) {
-    pc &= ~(mcu.highbyte<<8);
+    pc &= ~(mcu.stuckat1byte<<8);
     pc--;
     DEBPR(F("Corrected WPC=")); DEBLNF(pc,HEX);
   }
   return (pc);
 }
 
+/*
 // get hardware breakpoint word address 
 unsigned int DWgetWBp () {
   DWflushInput();
   sendCommand((const byte[]) {0xF1}, 1);
   return (getWordResponse());
 }
+*/
 
 // get chip signature
 unsigned int DWgetChipId () {
@@ -3326,16 +3302,16 @@ unsigned int DWgetChipId () {
   return (getWordResponse());
 }
 
-// set PC Reg (word address) - that is set all the bits (including the ones in the highbyte)
+// set PC Reg (word address) - that is set all the bits (including the ones in the stuckat1byte)
 void DWsetWPc (unsigned int wpcreg) {
   DEBPR(F("Set WPCReg=")); DEBLNF(wpcreg,HEX);
-  byte cmd[] = {0xD0, (byte)(wpcreg >> 8)+mcu.highbyte, (byte)(wpcreg & 0xFF)};
+  byte cmd[] = {0xD0, (byte)(wpcreg >> 8)+mcu.stuckat1byte, (byte)(wpcreg & 0xFF)};
   sendCommand(cmd, sizeof(cmd));
 }
 
 // set hardware breakpoint at word address
 void DWsetWBp (unsigned int wbp) {
-  byte cmd[] = {0xD1, (byte)(wbp >> 8)+mcu.highbyte, (byte)(wbp & 0xFF)};
+  byte cmd[] = {0xD1, (byte)(wbp >> 8)+mcu.stuckat1byte, (byte)(wbp & 0xFF)};
   sendCommand(cmd, sizeof(cmd));
 }
 

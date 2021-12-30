@@ -456,3 +456,17 @@ Version 0.9.9 (14-Nov-21)
 
 ## Version 1.1.1 (29-Dec-21)
    - deal with MCUs that have "unclean" program counters
+
+## Version 1.1.2 (30-Dec-21)
+   - removed DWgetWBp, since it is not used anywhere, but in the unit tests
+   - since the unused stuck-at-one bits in the program counter of
+     ATmega48 and 88 confuse GDB, the connection to MCUs with such PCs
+     is rejected by default; if you really want to use the debugger on
+     these MCUs, you have to set STUCKAT1PC to the value 1
+   - gdbConnect and targetConnect rewritten
+   - All ATtinys pass the tests now, execept for the ATtiny48, which has not arrived yet
+   - Concerning the ATmegaX8, I still wait for newer versions of
+	 ATmega48 and ATmega88; perhaps they are better 
+	 behaved than the more than 10 year old exemplars
+   - Inserted "Reconnecting..." message after changing fuses/erasing
+     memory and deleted double "Connected now ..." message
