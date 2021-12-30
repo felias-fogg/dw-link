@@ -94,6 +94,7 @@ void setupTestCode()
    membuf[17] = 0x00;
  }
  targetWriteFlash(0x1aa, membuf, sizeof(testcode));
+ targetFlushFlashProg();
 }
 
 /********************************* GDB interface function specific tests ******************************************/
@@ -368,28 +369,28 @@ int targetTests(int &num) {
   DWreenableRWW();
   validpg = false;
   for (i=0; i < mcu.targetpgsz; i++) page[i] = 0;
-  for (i=0; i < mcu.targetpgsz; i++) membuf[i] = i;
-  targetWriteFlashPage(flashaddr, membuf);
+  for (i=0; i < mcu.targetpgsz; i++) newpage[i] = i;
+  targetWriteFlashPage(flashaddr);
   lastflashcnt = flashcnt;
   failed += testResult(fatalerror == NO_FATAL);
 
   // write same page again (since cache is valid, should not happen)
   gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage (no 2nd write when vaildpg): "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
-  targetWriteFlashPage(flashaddr, membuf);
+  targetWriteFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
   
   // write same page again (cache valid flag cleared), but since contents is tha same, do not write
   gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage (no 2nd write when same contents): "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
   validpg = false;
-  targetWriteFlashPage(flashaddr, membuf);
+  targetWriteFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
 
   // try to write a cache page at an address that is not at a page boundary -> fatal error
   gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage (addr error): "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
-  targetWriteFlashPage(flashaddr+2, membuf);
+  targetWriteFlashPage(flashaddr+2);
   failed += testResult(fatalerror != NO_FATAL && lastflashcnt == flashcnt);
 
   // read page (should be done from cache)
@@ -410,19 +411,6 @@ int targetTests(int &num) {
     if (page[i] != i) succ = false;
   }
   failed += testResult(fatalerror == NO_FATAL && succ);
-
-  // write and read two bytes to/from flash
-  gdbDebugMessagePSTR(PSTR("Test targetReadFlash/targetWriteFlash (read bytes from flash - not chache!): "), testnum++);
-  fatalerror = NO_FATAL; setSysState(CONN_STATE);
-  membuf[0] = 22; 
-  membuf[1] = 33;
-  targetWriteFlash(flashaddr+2, membuf, 2);
-  membuf[0] = 0;
-  membuf[1] = 0;
-  for (i=0; i < mcu.targetpgsz; i++) page[i] = 0;
-  validpg = false;
-  targetReadFlash(flashaddr+2, membuf, 2);
-  failed += testResult(fatalerror == NO_FATAL && membuf[0] == 22 && membuf[1] == 33);
 
   // restore registers (send to target) and save them (read from target)
   gdbDebugMessagePSTR(PSTR("Test targetRestoreRegisters/targetSaveRegisters: "), testnum++);

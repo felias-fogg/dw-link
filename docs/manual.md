@@ -84,7 +84,7 @@ The most basic solution is to use the Uno board and connect the cables as it is 
 
 ### 3.2 MCUs with debugWIRE interface
 
-In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs that are supported by the Arduino [MicroCore](https://github.com/MCUdude/MicroCore), [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), or [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
+In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs that are supported by the Arduino standard core, by [MicroCore](https://github.com/MCUdude/MicroCore), by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), and/or by [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
 
 * __ATtiny13(A)__
 * __ATtiny43U__
@@ -107,14 +107,14 @@ I have tested the debugger on MCUs marked bold and will (really soon) test the o
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
 * ATmega8U2, ATmega16U2, ATmega32U2
-* ATmega32C1, <strike>ATmega64C1</strike>, ATmega16M1, ATmega32M1, <strike>ATmega64M</strike>
+* ATmega32C1, ATmega64C1, ATmega16M1, ATmega32M1, ATmega64M1
 * AT90USB82, AT90USB162
 * AT90PWM1, AT90PWM2B, AT90PWM3B
 * AT90PWM81, AT90PWM161
 * AT90PWM216, AT90PWM316
 * <font color="grey">ATmega8HVA, ATmega16HVA, ATmega16HVB, ATmega32HVA, ATmega32HVB, ATmega64HVE2</font>
 
-The debugger contains code for supporting all listed MCUs except for the ones marked grey, which are obsolete, and the ones stroke out, which have flash address spaces and a page sizes that are too large for the current implementation. I expect the debugger to work on the supported MCUs. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances, some ATmegaX8 have a funny way to deal with the program counter, and some ATmegaX8(A) claim to be ATmegaX8P(A) when debugWIRE is activated. 
+The debugger contains code for supporting all listed MCUs except for the ones marked grey, which are obsolete. I expect the debugger to work on the supported MCUs. However, there are always surprises. For example, some of my ATmegaX8s require a particular way of changing fuses under some yet not clearly identified circumstances, some ATmegaX8 have a funny way to deal with the program counter, and some ATmegaX8(A) claim to be ATmegaX8P(A) when debugWIRE is activated. 
 
 <a name="section33"></a>
 
@@ -738,7 +738,7 @@ Probably, the serial connection to the hardware debugger could not be establishe
 This is a generic GDB error message that indicates that the last `monitor` command you typed could not be successfully executed. Usually, also a more specific error message is displayed, e.g., *debugWIRE could NOT be disabled*. These messages are suppressed in some GUIs, though. 
 
 <a name="lost"></a>
-#### Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and the system LED is off
+#### Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and/or the system LED is off
 
 The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the necessary electrical requirements (see [Section 3.3](#section33)). Other reasons might be that the program disturbed the communication by changing, e.g., the MCU clock frequency (see [Section 8.7](#section87)). Try to identify the reason, eliminate it and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
 
@@ -804,11 +804,11 @@ I have no idea, why that is the case. If you want to see the value of a global v
 
 Older versions of avr-gdb had a problem with disassembly: [https://sourceware.org/bugzilla/show_bug.cgi?id=13519](https://sourceware.org/bugzilla/show_bug.cgi?id=13519). In the current version the problem has been fixed, though. So, you might want to get hold of a current version.
 
-#### Problem: The system LED blinks furiously and the program receives an `ABORT` signal when trying to start execution
+#### Problem: The system LED blinks furiously and/or the program receives an `ABORT` signal when trying to start execution
 
 In this case some serious internal error had happened. You have to stop the current debug session and restart. 
 
-The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. If not, you can find out what kind of error happened by examining the memory at address `0xFFFFFFFF`. Type the following command:
+The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. If it is a connection error that happened when you tried to establish a connection, you may get the error message by typing `monitor dwconnect`. You can also find out what kind of error happened by examining the memory at address `0xFFFFFFFF`. Type the following command:
 
 ```
 x/db 0xFFFFFFFF
@@ -845,3 +845,4 @@ Error #  | Meaning
 117 | A relevant breakpoint has disappeared
 118 | Input buffer overflow
 119 | Wrong fuse 
+120 | Breakpoint update while flash programming is active 

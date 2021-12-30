@@ -12,4 +12,3 @@
 * recovery for RAM and flash read and flash programming errors
 * port to 32U4 boards, such as Pro Micro, Leonardo, etc., perhaps
   making use of the serial interface as an input channel
-* implement alternative (hopefully faster) flash load

@@ -445,13 +445,15 @@ Version 0.9.9 (14-Nov-21)
    - tried out importing dw-link into PlatformIO, seems to work after
      a few changes such as importing TXOnlySerial
    - new monitor command: "monitor version"
-   - New default DW speed is now 125k since I had some spurious errors
+   - new default DW speed is now 125k since I had some spurious errors
    - almost all test sketches appear to work wit their debugging
      scripts in test.py (which is now part of the distribution)
 
 ## Version 1.1.0 (27-Dec-21)
-   - use offline execution for single-stepping in order to avoid interrupts while single-stepping through the code - works perfectly
-   - new commands: `monitor safestep` and `monitor unsafestep`, the former to enable offline execution for single-stepping, the latter for disabling it
+   - use offline execution for single-stepping in order to avoid
+     interrupts while single-stepping through the code - works perfectly
+   - new commands: `monitor safestep` and `monitor unsafestep`, the
+     former to enable offline execution for single-stepping, the latter for disabling it
    - new test: isr.ino - tests the new feature of safe single-stepping
 
 ## Version 1.1.1 (29-Dec-21)
@@ -464,9 +466,19 @@ Version 0.9.9 (14-Nov-21)
      is rejected by default; if you really want to use the debugger on
      these MCUs, you have to set STUCKAT1PC to the value 1
    - gdbConnect and targetConnect rewritten
-   - All ATtinys pass the tests now, execept for the ATtiny48, which has not arrived yet
-   - Concerning the ATmegaX8, I still wait for newer versions of
+   - all ATtinys pass the tests now, execept for the ATtiny48, which has not arrived yet
+   - concerning the ATmegaX8, I still wait for newer versions of
 	 ATmega48 and ATmega88; perhaps they are better 
 	 behaved than the more than 10 year old exemplars
-   - Inserted "Reconnecting..." message after changing fuses/erasing
+   - inserted "Reconnecting..." message after changing fuses/erasing
      memory and deleted double "Connected now ..." message
+
+## Version 1.1.3
+  - new "lazy" way of loading flash memory:
+
+    + close a page (i.e., write it to flash) when a byte needs to be
+      stored into a new page or some other operation should be performed
+	+ open a page, i.e., load it from flash for modification, when a new byte should be stored in a new page
+    + store a byte into an open page when it belongs there
+  - this is much faster then the old way (50% for MCUs with 128 byte pages, 20% for MCUs with 64 byte pages, and 10% for MCUs with 32 byte pages) and it opens the way to deal with MCUs that have 256 byte pages (Atmega64C1/M1), because it needs less memory than the old way
+  - the only drawback is that the last page is only written when another command is sent from GDB to dw-link

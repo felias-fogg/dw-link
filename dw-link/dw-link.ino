@@ -37,9 +37,9 @@
 // It is also planned to run the sketch on ATmega32U4 boards
 // and there exist already the pin assignments and conditional
 // compilation statements. However, it turns out to be non-trivial
-// to adapt the sketch to the ATmega32U4.
+// to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.2"
+#define VERSION "1.1.3"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -271,8 +271,11 @@
 
 // some size restrictions
 
-#define MAXBUF 255
+#define MAXBUF 150 // input buffer for GDB communication
+#define MAXMEMBUF 150 // size of memory buffer
+#define MAXPAGESIZE 256 // maximum number of bytes in one page (for the 64K MCUs)
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries!)
+
 
 // communication bit rates 
 #define SPEEDHIGH     275000UL // maximum communication speed limit for DW
@@ -319,6 +322,8 @@
 #define RELEVANT_BP_NOT_PRESENT 117 // identified relevant BP not present any longer 
 #define INPUT_OVERLFOW_FATAL 118 // input buffer overflow - should not happen at all!
 #define WRONG_FUSE_SPEC_FATAL 119 // specification of a fuse we are not prepafred to change
+#define BREAKPOINT_UPDATE_WHILE_FLASH_PROGRAMMING_FATAL 120 // should not happen!
+
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -342,7 +347,7 @@ struct breakpoint
 
 byte bpcnt;             // number of ACTIVE breakpoints (there may be as many as MAXBREAK used ones from the last execution!)
 byte bpused;            // number of USED breakpoints, which may not all be active
-byte maxbreak = MAXBREAK; // actual number of breakpoints allowed
+byte maxbreak = MAXBREAK; // actual number of active breakpoints allowed
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
@@ -433,7 +438,7 @@ struct {
   unsigned int ramsz;      // SRAM size in bytes
   unsigned int rambase;    // base address of SRAM
   unsigned int eepromsz;   // size of EEPROM in bytes
-  unsigned int flashsz;    // size of flash memory in bytes
+  unsigned int     flashsz;    // size of flash memory in bytes
   byte         dwdr;       // address of DWDR register
   unsigned int pagesz;     // page size of flash memory in bytes
   boolean      erase4pg;   // 1 when the MCU has a 4-page erase operation
@@ -488,7 +493,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
   {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny44},
   {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny84},
   
-  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny441}, //*
+  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny441}, 
   {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny841},
   
   {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny25},
@@ -499,48 +504,48 @@ const mcu_info_type mcu_info[] PROGMEM = {
   {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny461},
   {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny861},
   
-  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, attiny87},  //*
+  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, attiny87},  
   {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, attiny167},
 
   {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, 0, attiny828},
 
-  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, attiny48},  //*
+  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, attiny48},  // untested
   {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, attiny88},
   
   {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x2F, 0, attiny1634},
   
   {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48a},
   {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48pa},
-  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48pb}, //*
+  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48pb}, // untested
   {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88a},
   {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88pa},
-  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88pb}, //*
+  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88pb}, // untested
   {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168a},
   {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pa},
-  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pb}, //*
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pb}, // untested
   {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328},
   {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328p},
   {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328pb},
   
-  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega8u2},   //*
-  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16u2},  //*
-  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32u2},  //*
+  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega8u2},   // untested
+  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16u2},  // untested
+  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32u2},  // untested
 
-  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16m1},  //*
-  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32c1},  //*
-  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32m1},  //*
-  //  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64c1},  //*
-  //  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64m1},  //*
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16m1},  // untested
+  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32c1},  // untested
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32m1},  // untested
+  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64c1},  // untested
+  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64m1},  // untested
 
-  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb82},   //*
-  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb162},  //*
+  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb82},   // untested
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb162},  // untested
 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm12b3b},//* 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm12b3b},// untested 
 
-  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm81},  //*
-  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm161}, //*
+  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm81},  // untested
+  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm161}, // untested
 
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm216316},  //*
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm216316},  // untested
   {0},
 };
 
@@ -564,15 +569,16 @@ int freeram = 2048; // minimal amount of free memory (only if enabled)
 
 // communcation interface to target
 dwSerial      dw;
-char          rpt[16];                // Repeat command buffer
 byte          lastsignal;
 
 // communication and memory buffer
-byte membuf[256]; // used for storing sram, flash, and eeprom values
-byte newpage[128]; // one page of flash to program
-byte page[128]; // cached page contents - never overwrite it in the program! 
+byte membuf[MAXMEMBUF]; // used for storing sram, flash, and eeprom values
+byte newpage[MAXPAGESIZE]; // one page of flash to program
+byte page[MAXPAGESIZE]; // cached page contents - never overwrite it in the program! 
 unsigned int lastpg; // address of the cached page
 boolean validpg = false; // if cached page contents is valid
+boolean flashidle; // flash programming is not active
+unsigned int flashpageaddr; // current page to be programmed next
 byte buf[MAXBUF+1]; // for gdb i/o
 int buffill; // how much of the buffer is filled up
 byte fatalerror = NO_FATAL;
@@ -769,6 +775,7 @@ void configureSupply(void)
 void initSession(void)
 {
   DEBLN(F("initSession"));
+  flashidle = true;
   ctx.safestep = true;
   bpcnt = 0;
   bpused = 0;
@@ -897,6 +904,13 @@ void gdbParsePacket(const byte *buff)
   byte s;
 
   DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
+  if (!flashidle) {
+    if (*buff != 'X' && *buff != 'M')
+      targetFlushFlashProg();                        /* finalize flash programming before doing something else */
+  } else {
+    if (*buff == 'X' || *buff == 'M')
+      gdbUpdateBreakpoints(true);                    /* remove all BREAKS before writing into flash */
+  }
   switch (*buff) {
   case '?':                                          /* last signal */
     gdbSendSignal(lastsignal);  
@@ -917,11 +931,9 @@ void gdbParsePacket(const byte *buff)
     gdbReadMemory(buff + 1);
     break;
   case 'M':                                          /* write memory */
-    gdbUpdateBreakpoints(true);                      /* remove all BREAKS beforehand! */
     gdbWriteMemory(buff + 1);
     break;
   case 'X':                                          /* write memory from binary data */
-    gdbUpdateBreakpoints(true);                      /* remove all BREAKS before writing into flash */
     gdbWriteBinMemory(buff + 1); 
     break;
   case 'D':                                          /* detach the debugger */
@@ -967,7 +979,7 @@ void gdbParsePacket(const byte *buff)
         DEBLN(F("qSupported"));
 	initSession();                               /* init all vars when gdb (re-)connects */
 	gdbConnect(false);                           /* and try to connect */
-	gdbSendPSTR((const char *)PSTR("PacketSize=FF")); 
+	gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                          /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
@@ -1460,7 +1472,6 @@ byte gdbStep(void)
 byte gdbContinue(void)
 {
   byte sig = 0;
-  unsigned int opcode, arg;
   DEBLN(F("Start continue operation"));
   if (fatalerror) sig = SIGABRT;
   else if (targetOffline()) sig = SIGHUP;
@@ -1506,14 +1517,17 @@ byte gdbContinue(void)
 void gdbUpdateBreakpoints(boolean cleanup)
 {
   int i, j, ix, rel = 0;
-  unsigned int relevant[MAXBREAK*2+1];
+  unsigned int relevant[MAXBREAK*2+1]; // word addresses of relevant locations in flash
   unsigned int addr = 0;
 
   measureRam();
 
+  if (!flashidle) {
+    reportFatalError(BREAKPOINT_UPDATE_WHILE_FLASH_PROGRAMMING_FATAL, false);
+    return;
+  }
+  
   DEBPR(F("Update Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
-  // return immediately if there are too many bps active
-  // because in this case we will not start to execute
   // if there are no used entries, we also can return immediately
   // if the target is not connected, we cannot update breakpoints in any case
   if (bpused == 0 || targetOffline()) return;
@@ -1588,7 +1602,7 @@ void gdbUpdateBreakpoints(boolean cleanup)
 	  }
 	}
       }
-      targetWriteFlashPage(addr, newpage);
+      targetWriteFlashPage(addr);
     }
     addr += mcu.targetpgsz;
   }
@@ -1751,7 +1765,7 @@ void gdbReadRegisters(void)
   byte a;
   unsigned int b;
   char c;
-  unsigned long pc = (unsigned long)ctx.wpc << 1;	/* convert word address to byte address used by gdb */
+  unsigned int pc = (unsigned long)ctx.wpc << 1;	/* convert word address to byte address used by gdb */
   byte i = 0;
 
   a = 32;	/* in the loop, send R0 thru R31 */
@@ -1795,7 +1809,7 @@ void gdbReadRegisters(void)
 void gdbWriteRegisters(const byte *buff)
 {
   byte a;
-  unsigned long pc;
+  unsigned int pc;
   a = 32;	/* in the loop, receive R0 thru R31 */
   byte *ptr = &(ctx.regs[0]);
 
@@ -1833,7 +1847,8 @@ void gdbWriteRegisters(const byte *buff)
 // read out some of the memory and send to it GDB
 void gdbReadMemory(const byte *buff)
 {
-  unsigned long addr, sz, flag;
+  unsigned long addr;
+  unsigned long sz, flag;
   byte i, b;
 
   measureRam();
@@ -1842,10 +1857,10 @@ void gdbReadMemory(const byte *buff)
   /* skip 'xxx,' */
   parseHex(buff + 1, &sz);
   
-  if (sz > 127) { // should not happen because we required packet length = 255:
+  if (sz > MAXMEMBUF || sz*2 > MAXBUF) { // should not happen because we required packet length to be less
     gdbSendReply("E05");
     reportFatalError(PACKET_LEN_FATAL, false);
-    //DEBLN(F("***Packet length > 127"));
+    //DEBLN(F("***Packet length too large"));
     return;
   }
 
@@ -1885,7 +1900,7 @@ void gdbReadMemory(const byte *buff)
 void gdbHideBREAKs(unsigned int startaddr, byte membuf[], int size)
 {
   int bpix;
-  unsigned int addr;
+  unsigned long addr;
 
   measureRam();
 
@@ -1915,12 +1930,19 @@ void gdbWriteMemory(const byte *buff)
     gdbSendReply("E01");
     return;
   }
-  
+
   buff += parseHex(buff, &addr);
   /* skip 'xxx,' */
   buff += parseHex(buff + 1, &sz);
   /* skip , and : delimiters */
   buff += 2;
+
+  if (sz > MAXMEMBUF) { // should not happen because we required packet length to be less
+    gdbSendReply("E05");
+    reportFatalError(PACKET_LEN_FATAL, false);
+    //DEBLN(F("***Write packet length too large"));
+    return;
+  }
 
   for ( i = 0; i < sz; ++i) {
     membuf[i]  = hex2nib(*buff++) << 4;
@@ -1966,6 +1988,14 @@ static void gdbWriteBinMemory(const byte *buff) {
     //DEBLN(F("***Negative packet size"));
     return;
   }
+
+  if (memsz > MAXMEMBUF) { // should not happen because we required packet length to be less
+    gdbSendReply("E05");
+    reportFatalError(PACKET_LEN_FATAL, false);
+    //DEBLN(F("***Write packet length too large"));
+    return;
+  }
+
   
   flag = addr & MEM_SPACE_MASK;
   addr &= ~MEM_SPACE_MASK;
@@ -2351,7 +2381,7 @@ int targetSetFuses(Fuses fuse)
 void targetReadFlashPage(unsigned int addr)
 {
   //DEBPR(F("Reading flash page starting at: "));DEBLNF(addr,HEX);
-  if (addr != (addr & ~(mcu.targetpgsz-1))) {
+  if (addr != (addr & ~((unsigned int)(mcu.targetpgsz-1)))) {
     // DEBLN(F("***Page address error when reading"));
     reportFatalError(READ_PAGE_ADDR_FATAL, false);
     return;
@@ -2401,7 +2431,7 @@ void targetReadEeprom(unsigned int addr, byte *mem, unsigned int len)
   }
 }
 
-// write a flash page,
+// write a flash page from buffer 'newpage'
 // check whether the data is already in this flash page,
 // if so, do nothing,
 // check whether we can get away with simply overwriting,
@@ -2410,7 +2440,7 @@ void targetReadEeprom(unsigned int addr, byte *mem, unsigned int len)
 // remember page content in 'page' buffer
 // if the MCU use the 4-page erase operation, then
 // do 4 load/program cycles for the 4 sub-pages
-void targetWriteFlashPage(unsigned int addr, byte *mem)
+void targetWriteFlashPage(unsigned int addr)
 {
   byte subpage;
   boolean succ = true;
@@ -2432,7 +2462,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   targetReadFlashPage(addr);
   // check whether something changed
   // DEBPR(F("Check for change: "));
-  if (memcmp(mem, page, mcu.targetpgsz) == 0) {
+  if (memcmp(newpage, page, mcu.targetpgsz) == 0) {
     DEBLN(F("page unchanged"));
     return;
   }
@@ -2441,10 +2471,10 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
 #ifdef TXODEBUG
   DEBLN(F("Changes in flash page:"));
   for (unsigned int i=0; i<mcu.targetpgsz; i++) {
-    if (page[i] != mem[i]) {
+    if (page[i] != newpage[i]) {
       DEBPRF(i+addr, HEX);
       DEBPR(": ");
-      DEBPRF(mem[i], HEX);
+      DEBPRF(newpage[i], HEX);
       DEBPR(" -> ");
       DEBPRF(page[i], HEX);
       DEBLN("");
@@ -2455,7 +2485,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   // check whether we need to erase the page
   boolean dirty = false;
   for (byte i=0; i < mcu.targetpgsz; i++) 
-    if (~page[i] & mem[i]) {
+    if (~page[i] & newpage[i]) {
       dirty = true;
       break;
     }
@@ -2477,7 +2507,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     DWreenableRWW();
     // maybe the new page is also empty?
     memset(page, 0xFF, mcu.targetpgsz);
-    if (memcmp(mem, page, mcu.targetpgsz) == 0) {
+    if (memcmp(newpage, page, mcu.targetpgsz) == 0) {
       // DEBLN(" nothing to write");
       validpg = true;
       return;
@@ -2487,7 +2517,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
   // now do the programming; for 4-page erase MCUs four subpages
   for (subpage = 0; subpage < 1+(3*mcu.erase4pg); subpage++) {
     //DEBPR(F("writing subpage at ")); DEBLNF(addr+subpage*mcu.pagesz,HEX);
-    if (!DWloadFlashPageBuffer(addr+(subpage*mcu.pagesz), &mem[subpage*mcu.pagesz])) {
+    if (!DWloadFlashPageBuffer(addr+(subpage*mcu.pagesz), &newpage[subpage*mcu.pagesz])) {
       DWreenableRWW();
       reportFatalError(NO_LOAD_FLASH_FATAL, true);
       // DEBPR(F("\n***Cannot load page buffer "));
@@ -2501,7 +2531,7 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
 
   // remember the last programmed page
   if (succ) {
-    memcpy(page, mem, mcu.targetpgsz);
+    memcpy(page, newpage, mcu.targetpgsz);
     validpg = true;
     lastpg = addr;
     //DEBLN(F(" page flashed"));
@@ -2509,49 +2539,47 @@ void targetWriteFlashPage(unsigned int addr, byte *mem)
     // DEBLN(F("\n***Could not program flash memory"));
     reportFatalError(PROGRAM_FLASH_FAIL_FATAL, true);
   }
-
 }
 
-// write some chunk of data to flash,
-// break it up into pages and flash also the
-// the partial pages in the beginning and in the end
+// write some chunk of data to flash in a lazy way:
+// - if empty length, write active page to flash and return
+// - if a new byte to be written leaves the current page, write the page before anything else
+// - if this is the first new byte for a page, retrieve this page
+// - insert new byte into page
+
 void targetWriteFlash(unsigned int addr, byte *mem, unsigned int len)
 {
-  unsigned int pageoffmsk = mcu.targetpgsz-1;
-  unsigned int pagebasemsk = ~pageoffmsk;
-  unsigned int partbase = addr & pagebasemsk;
-  unsigned int partoffset = addr & pageoffmsk;
-  unsigned int partlen = min(mcu.targetpgsz-partoffset, len);
-
+  unsigned int ix;
+  unsigned int newaddr;
+  
   measureRam();
 
-  if (len == 0) return;
-
-  if (addr & pageoffmsk)  { // mem starts in the middle of a page
-    targetReadFlashPage(partbase);
-    memcpy(newpage, page, mcu.targetpgsz);
-    memcpy(newpage + partoffset, mem, partlen);
-    targetWriteFlashPage(partbase, newpage);
-    addr += partlen;
-    mem += partlen;
-    len -= partlen;
+  if (len == 0) {
+    if (!flashidle) targetWriteFlashPage(flashpageaddr);
+    flashidle = true;
+    return;
   }
 
-  // now write whole pages
-  while (len >= mcu.targetpgsz) {
-    targetWriteFlashPage(addr, mem);
-    addr += mcu.targetpgsz;
-    mem += mcu.targetpgsz;
-    len -= mcu.targetpgsz;
+  for (ix = 0; ix < len; ix++) {
+    newaddr = addr + ix;
+    if ((newaddr < flashpageaddr || newaddr > flashpageaddr + mcu.targetpgsz - 1) && !flashidle) {
+      targetWriteFlashPage(flashpageaddr);
+      flashidle = true;
+    }
+    if (flashidle) {
+      flashpageaddr = newaddr & ~(mcu.targetpgsz-1);
+      targetReadFlashPage(flashpageaddr);
+      memcpy(newpage, page, mcu.targetpgsz);
+      flashidle = false;
+    }
+    newpage[newaddr-flashpageaddr] = mem[ix];
   }
+}
 
-  // write remaining partial page (if any)
-  if (len) {
-    targetReadFlashPage(addr);
-    memcpy(newpage, page, mcu.targetpgsz);
-    memcpy(newpage, mem, len);
-    targetWriteFlashPage(addr, newpage);
-  }
+// flush any bytes that still have to be written to flash memory
+inline void targetFlushFlashProg(void)
+{
+  targetWriteFlash(0, membuf, 0);
 }
 
 // write SRAM chunk
@@ -3138,13 +3166,13 @@ boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int lenx2 = len * 2;
   for (byte ii = 0; ii < 4; ii++) {
     byte rdFlash[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
-                      0xD0, mcu.stuckat1byte, 0x1E,                                   // Set Start Reg number (r30)
-                      0xD1, mcu.stuckat1byte, 0x20,                                   // Set End Reg number (r31) + 1
+                      0xD0, mcu.stuckat1byte, 0x1E,                       // Set Start Reg number (r30)
+                      0xD1, mcu.stuckat1byte, 0x20,                       // Set End Reg number (r31) + 1
                       0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
                       0x20,                                               // Go
                       (byte)(addr & 0xFF), (byte)(addr >> 8),             // r31:r30 (Z) = addr
-                      0xD0, mcu.stuckat1byte, 0x00,                                   // Set start = 0
-                      0xD1, (byte)(lenx2 >> 8)+mcu.stuckat1byte,(byte)(lenx2),             // Set end = repeat count = sizeof(flashBuf) * 2
+                      0xD0, mcu.stuckat1byte, 0x00,                       // Set start = 0
+                      0xD1, (byte)(lenx2 >> 8)+mcu.stuckat1byte,(byte)(lenx2),// Set end = repeat count = sizeof(flashBuf) * 2
                       0xC2, 0x02,                                         // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
                       0x20};                                              // Go
     DWflushInput();
