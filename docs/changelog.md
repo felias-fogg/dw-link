@@ -490,3 +490,9 @@ Version 0.9.9 (14-Nov-21)
    - unified gdbWriteMem and gdbWriteBinMem and added checks for
      address bounds so that you now get an error message when loading
      a file that is supposed to be for an MCU with more memory
+
+## Version 1.1.5 (31-Dec21)
+   - integrated build actions
+   - fixed two typos in dw-link (blank in __AVR_MEGA2560__) and
+     tiny85blink (quit) -- thanks to the build actions!
+   
