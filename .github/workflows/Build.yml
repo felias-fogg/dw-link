@@ -49,9 +49,9 @@ jobs:
             platform-url: http://drazzy.com/package_drazzy.com_index.json
             sketches-exclude: dw-link
 
-	  - arduino-boards-fqbn:  MicroCore:avr:13:clock=1M2
-	    platform-url: https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
-	    sketches-exclude: dw-link, megablink, tiny85blink, oop, tictactoe
+          - arduino-boards-fqbn:  MicroCore:avr:13:clock=1M2
+            platform-url: https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+            sketches-exclude: dw-link, megablink, tiny85blink, oop, tictactoe
 
       # Do not cancel all jobs / architectures if one job fails
       fail-fast: false
