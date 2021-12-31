@@ -53,7 +53,7 @@ jobs:
             platform-url: https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
             sketches-exclude: dw-link, megablink, tiny85blink, oop, tictactoe, unittests
 
-          - arduino:avr:mega
+          - arduino-boards-fqbn: arduino:avr:mega
             sketches-exclude: unittests, isr, flashtest, oop, fibonacci, tictactoe
 
       # Do not cancel all jobs / architectures if one job fails
