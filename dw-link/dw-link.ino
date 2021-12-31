@@ -39,7 +39,7 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.4"
+#define VERSION "1.1.5"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
