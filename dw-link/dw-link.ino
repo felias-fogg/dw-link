@@ -150,7 +150,7 @@
 #define LEDPORT PORTC    // port register of system LED
 #define LEDPIN  PC7      // pin (=D13)
 //-----------------------------------------------------------
-#elif defined(ARDUINO_ AVR_MEGA2560)
+#elif defined(ARDUINO_AVR_MEGA2560)
 #define ID      "MEGA"
 #define VHIGH   2        // switch, low signals that one should use the 5V supply
 #define VON     5        // switch, low signals that dw-probe should deliver the supply charge

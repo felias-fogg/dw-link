@@ -47,11 +47,14 @@ jobs:
         include:
           - arduino-boards-fqbn: ATTinyCore:avr:attinyx5:chip=85,clock=1internal
             platform-url: http://drazzy.com/package_drazzy.com_index.json
-            sketches-exclude: dw-link
+            sketches-exclude: dw-link, unittests
 
           - arduino-boards-fqbn:  MicroCore:avr:13:clock=1M2
             platform-url: https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
-            sketches-exclude: dw-link, megablink, tiny85blink, oop, tictactoe
+            sketches-exclude: dw-link, megablink, tiny85blink, oop, tictactoe, unittests
+
+          - arduino:avr:mega
+            sketches-exclude: unittests, isr, flashtest, oop, fibonacci, tictactoe
 
       # Do not cancel all jobs / architectures if one job fails
       fail-fast: false
@@ -65,6 +68,6 @@ jobs:
         with:
           arduino-board-fqbn: ${{ matrix.arduino-boards-fqbn }}
           platform-url: ${{ matrix.platform-url }}
-          sketches-exclude: ${{ matrix.sketches-exclude }}
+          sketches-exclude: unittests, ${{ matrix.sketches-exclude }}
           build-properties: ${{ toJson(matrix.build-properties) }}
 

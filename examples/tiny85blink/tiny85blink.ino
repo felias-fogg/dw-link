@@ -1,4 +1,3 @@
-quit
 #define LED 4
 
 byte thisByte = 0;
