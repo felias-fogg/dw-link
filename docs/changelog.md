@@ -473,7 +473,7 @@ Version 0.9.9 (14-Nov-21)
    - inserted "Reconnecting..." message after changing fuses/erasing
      memory and deleted double "Connected now ..." message
 
-## Version 1.1.3
+## Version 1.1.3 (30-Dec-21)
   - new "lazy" way of loading flash memory:
 
     + close a page (i.e., write it to flash) when a byte needs to be
@@ -482,3 +482,11 @@ Version 0.9.9 (14-Nov-21)
     + store a byte into an open page when it belongs there
   - this is much faster then the old way (50% for MCUs with 128 byte pages, 20% for MCUs with 64 byte pages, and 10% for MCUs with 32 byte pages) and it opens the way to deal with MCUs that have 256 byte pages (Atmega64C1/M1), because it needs less memory than the old way
   - the only drawback is that the last page is only written when another command is sent from GDB to dw-link
+
+## Version 1.1.4 (31-Dec-21)
+   - added code in gdbMessage to prevent an output buffer overflow -
+     that led to failed unit tests because the title of the test was
+     too long (sigh!)
+   - unified gdbWriteMem and gdbWriteBinMem and added checks for
+     address bounds so that you now get an error message when loading
+     a file that is supposed to be for an MCU with more memory
