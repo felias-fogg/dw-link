@@ -12,10 +12,10 @@ Why is this good news? The current version of the Arduino IDE does not support d
 
 This repository contains the following directories:
 
-* **dw-link**: Contains the Arduino sketch that turns your Arduino board into a hardware debugger
-* **examples**: Contains a tiny Arduino sketch, a PlatformIO project, and a file you need to install in the Arduino packages
-* **tests**: Contains some test cases and a Python script for running them semi-automatically
-* **docs**: Contains the documentation, in particular the [manual](docs/manual.md)
-* **pcb**: Contains design data (Eagle and Gerber) for the (optional) adapter boards 
+* [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger
+* [**examples**](examples/): Contains a tiny Arduino sketch, a PlatformIO project, and a file you need to install in the Arduino packages
+* [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
+* [**docs**](docs/): Contains the documentation, in particular the [manual](docs/manual.md)
+* [**pcb**](pcb/): Contains design data (Eagle and Gerber) for the (optional) adapter boards 
 
 Note that the debugger is an alpha release and may contain bugs. If you encounter behavior that you think is wrong, try to be as specific as possible so that I can reproduce the behavior. For that I need a description of the problem, the source code that leads to the behavior, the way one reproduces the problem, and the type of target chip you used. I have prepared an [issue form](docs/issue_form.md) for that purpose. Current issues, known bugs, and limitations are listed in Section 8 of the [manual](docs/manual.md).
