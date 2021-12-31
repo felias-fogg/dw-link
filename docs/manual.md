@@ -665,7 +665,7 @@ In order to cope with high clock frequencies, it is possible to limit the commun
 
 Another reason for slow loading times can be that the communication speed to the host is low. Check the speed by typing the command `monitor serial`. You can set the speed to 230400 by supplying the speed when using the `set serial baud` command. This has to done *before* connecting to the hardware debugger using the `target remote` command. 
 
-With an optimal setting, i.e., 125 kbps for the debugWIRE line and 230400 kbps for the host communication line, loading is done with 400-500 bytes/second after the flash memory has been erased. It is should be 2-4 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed).
+With an optimal setting, i.e., 125 kbps for the debugWIRE line and 230400 kbps for the host communication line, loading is done with 500-700 bytes/second. It is should be 3-5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed).
 
 ### 8.3 Program execution is very slow when conditional breakpoints are present
 

@@ -39,7 +39,7 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.3"
+#define VERSION "1.1.4"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -438,7 +438,7 @@ struct {
   unsigned int ramsz;      // SRAM size in bytes
   unsigned int rambase;    // base address of SRAM
   unsigned int eepromsz;   // size of EEPROM in bytes
-  unsigned int     flashsz;    // size of flash memory in bytes
+  unsigned int flashsz;    // size of flash memory in bytes
   byte         dwdr;       // address of DWDR register
   unsigned int pagesz;     // page size of flash memory in bytes
   boolean      erase4pg;   // 1 when the MCU has a 4-page erase operation
@@ -931,10 +931,10 @@ void gdbParsePacket(const byte *buff)
     gdbReadMemory(buff + 1);
     break;
   case 'M':                                          /* write memory */
-    gdbWriteMemory(buff + 1);
+    gdbWriteMemory(buff + 1, false);
     break;
   case 'X':                                          /* write memory from binary data */
-    gdbWriteBinMemory(buff + 1); 
+    gdbWriteMemory(buff + 1, true); 
     break;
   case 'D':                                          /* detach the debugger */
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
@@ -1919,10 +1919,11 @@ void gdbHideBREAKs(unsigned int startaddr, byte membuf[], int size)
 }
 
 // write to target memory
-void gdbWriteMemory(const byte *buff)
+void gdbWriteMemory(const byte *buff, boolean binary)
 {
-  unsigned long flag, addr, sz;
-  byte i;
+  unsigned long sz, flag, addr;
+  int i;
+  long memsz;
 
   measureRam();
 
@@ -1937,75 +1938,54 @@ void gdbWriteMemory(const byte *buff)
   /* skip , and : delimiters */
   buff += 2;
 
+  // convert to binary data by deleting the escapes
   if (sz > MAXMEMBUF) { // should not happen because we required packet length to be less
     gdbSendReply("E05");
     reportFatalError(PACKET_LEN_FATAL, false);
-    //DEBLN(F("***Write packet length too large"));
     return;
   }
-
-  for ( i = 0; i < sz; ++i) {
-    membuf[i]  = hex2nib(*buff++) << 4;
-    membuf[i] |= hex2nib(*buff++);
+  if (binary) {
+    memsz = gdbBin2Mem(buff, membuf, sz);
+    if (memsz < 0) { 
+      gdbSendReply("E05");
+      reportFatalError(NEG_SIZE_FATAL, false);
+      return;
+    }
+    sz = (unsigned long)memsz;
+  } else {
+    for ( i = 0; i < sz; ++i) {
+      membuf[i]  = hex2nib(*buff++) << 4;
+      membuf[i] |= hex2nib(*buff++);
+    }
   }
-
-  flag = addr & MEM_SPACE_MASK;
-  addr &= ~MEM_SPACE_MASK;
-  if (flag == SRAM_OFFSET) targetWriteSram(addr, membuf, sz);
-  else if (flag == FLASH_OFFSET) targetWriteFlash(addr, membuf, sz);
-  else if (flag == EEPROM_OFFSET) targetWriteEeprom(addr, membuf, sz);
-  else {
-    gdbSendReply("E05"); 
-    reportFatalError(WRONG_MEM_FATAL, false);
-    //DEBLN(F("***Wrong memory type in gdbWriteMemory"));
-    return;
-  }
-  gdbSendReply("OK");
-}
-
-static void gdbWriteBinMemory(const byte *buff) {
-  unsigned long flag, addr, sz;
-  int memsz;
-
-  measureRam();
     
-  if (targetOffline()) {
-    gdbSendReply("E01");
-    return;
-  }
-
-  buff += parseHex(buff, &addr);
-  /* skip 'xxx,' */
-  buff += parseHex(buff + 1, &sz);
-  /* skip , and : delimiters */
-  buff += 2;
-  
-  // convert to binary data by deleting the escapes
-  memsz = gdbBin2Mem(buff, membuf, sz);
-  if (memsz < 0) { 
-    gdbSendReply("E05");
-    reportFatalError(NEG_SIZE_FATAL, false);
-    //DEBLN(F("***Negative packet size"));
-    return;
-  }
-
-  if (memsz > MAXMEMBUF) { // should not happen because we required packet length to be less
-    gdbSendReply("E05");
-    reportFatalError(PACKET_LEN_FATAL, false);
-    //DEBLN(F("***Write packet length too large"));
-    return;
-  }
-
-  
   flag = addr & MEM_SPACE_MASK;
   addr &= ~MEM_SPACE_MASK;
-  if (flag == SRAM_OFFSET) targetWriteSram(addr, membuf, memsz);
-  else if (flag == FLASH_OFFSET) targetWriteFlash(addr, membuf, memsz);
-  else if (flag == EEPROM_OFFSET) targetWriteEeprom(addr, membuf, memsz);
-  else {
+  switch (flag) {
+  case SRAM_OFFSET:
+    if (addr+sz > mcu.ramsz+mcu.rambase) {
+      gdbSendReply("E01"); 
+      return;
+    }
+    targetWriteSram(addr, membuf, sz);
+    break;
+  case FLASH_OFFSET:
+    if (addr+sz > mcu.flashsz) {
+      gdbSendReply("E01"); 
+      return;
+    }
+    targetWriteFlash(addr, membuf, sz);
+    break;
+  case EEPROM_OFFSET:
+    if (addr+sz > mcu.eepromsz) {
+      gdbSendReply("E01"); 
+      return;
+    }
+    targetWriteEeprom(addr, membuf, sz);
+    break;
+  default:
     gdbSendReply("E05"); 
     reportFatalError(WRONG_MEM_FATAL, false);
-    //DEBLN(F("***Wrong memory type in gdbWriteBinMemory"));
     return;
   }
   gdbSendReply("OK");
@@ -2229,7 +2209,7 @@ void gdbDebugMessagePSTR(const char pstr[],long num)
 // send a message, either prefixed by 'O' or not
 void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
 {
-  byte i = 0, j = 0, c;
+  int i = 0, j = 0, c;
   byte numbuf[10];
   const char *str;
 
@@ -2240,6 +2220,7 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
     c = (progmem ? pgm_read_byte(&pstr[j++]) : pstr[j++]);
     if (c) {
       DEBPR((char)c);
+      if (i+4 >= MAXBUF) continue;
       buf[i++] = nib2hex((c >> 4) & 0xf);
       buf[i++] = nib2hex((c >> 0) & 0xf);
     }
@@ -2248,21 +2229,23 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
     convNum(numbuf,num);
     j = 0;
     while (numbuf[j] != '\0') j++;
-    while (j-- > 0) {
+    while (j-- > 0 ) {
       DEBPR((char)numbuf[j]);
+      if (i+4 >= MAXBUF) continue;
       buf[i++] = nib2hex((numbuf[j] >> 4) & 0xf);
       buf[i++] = nib2hex((numbuf[j] >> 0) & 0xf);
     }
-  } else if (num == -2) { // print MCU name
+  } else if (num == -2 ) { // print MCU name
     str = mcu.name;
     do {
       c = pgm_read_byte(str++);
       if (c) {
 	DEBPR((char)c);
+	if (i+4 >= MAXBUF) continue;
 	buf[i++] = nib2hex((c >> 4) & 0xf);
 	buf[i++] = nib2hex((c >> 0) & 0xf);
       }
-    } while (c);
+    } while (c );
   }
   buf[i++] = '0';
   buf[i++] = 'A';

@@ -288,22 +288,22 @@ int gdbTests(int &num) {
   // check the "BREAK hiding" feature by loading part of the flash memory and
   // replacing BREAKs with the original instructions in the buffer to be sent to gdb
   gdbDebugMessagePSTR(PSTR("Test gdbHideBREAKs: "), testnum++);
-  targetReadFlash(0x1ad, membuf, 0x1C); // from 0x1ad (uneven) to 0x1e4 (even)
-  succ = (membuf[0x1ad-0x1ad] == 0x00 && membuf[0x1b4-0x1ad] == 0x98
-	  && membuf[0x1b4-0x1ad+1] == 0x95 && membuf[0x1c8-0x1ad] == 0x98);
-  //DEBLNF(membuf[0x1ad-0x1ad],HEX);
-  //DEBLNF(membuf[0x1b4-0x1ad],HEX);
-  //DEBLNF(membuf[0x1b4-0x1ad+1],HEX);
-  //DEBLNF(membuf[0x1c8-0x1ad],HEX);
+  targetReadFlash(0x1ad, newpage, 0x1C); // from 0x1ad (uneven) to 0x1e4 (even)
+  succ = (newpage[0x1ad-0x1ad] == 0x00 && newpage[0x1b4-0x1ad] == 0x98
+	  && newpage[0x1b4-0x1ad+1] == 0x95 && newpage[0x1c8-0x1ad] == 0x98);
+  //DEBLNF(newpage[0x1ad-0x1ad],HEX);
+  //DEBLNF(newpage[0x1b4-0x1ad],HEX);
+  //DEBLNF(newpage[0x1b4-0x1ad+1],HEX);
+  //DEBLNF(newpage[0x1c8-0x1ad],HEX);
   //DEBLN();
-  gdbHideBREAKs(0x1ad, membuf, 0x1C);
-  //DEBLNF(membuf[0x1ad-0x1ad],HEX);
-  //DEBLNF(membuf[0x1b4-0x1ad],HEX);
-  //DEBLNF(membuf[0x1b4-0x1ad+1],HEX);
-  //DEBLNF(membuf[0x1c8-0x1ad],HEX);
+  gdbHideBREAKs(0x1ad, newpage, 0x1C);
+  //DEBLNF(newpage[0x1ad-0x1ad],HEX);
+  //DEBLNF(newpage[0x1b4-0x1ad],HEX);
+  //DEBLNF(newpage[0x1b4-0x1ad+1],HEX);
+  //DEBLNF(newpage[0x1c8-0x1ad],HEX);
   //DEBLN();
-  failed += testResult(succ && membuf[0x1ad-0x1ad] == 0x00 && membuf[0x1b4-0x1ad] == 0x20
-		       && membuf[0x1b4-0x1ad+1] == 0x93 && membuf[0x1c8-0x1ad] == 0x11);
+  failed += testResult(succ && newpage[0x1ad-0x1ad] == 0x00 && newpage[0x1b4-0x1ad] == 0x20
+		       && newpage[0x1b4-0x1ad+1] == 0x93 && newpage[0x1c8-0x1ad] == 0x11);
 
   // cleanup
   gdbDebugMessagePSTR(PSTR("Test delete BPs and BP update: "), testnum++);
@@ -350,7 +350,7 @@ int targetTests(int &num) {
   int failed = 0;
   bool succ;
   int testnum;
-  byte i;
+  int i;
   long lastflashcnt;
 
   if (targetOffline()) {
@@ -593,7 +593,6 @@ int DWtests(int &num)
   DWwriteRegister(31, 0xFF);
   failed += testResult(DWreadRegister(0) == 0x55 && DWreadRegister(15) == 0x9F && DWreadRegister(31) == 0xFF);
 
-#if 0
   // write registers in one go and read them in one go (much faster than writing/reading individually) 
   gdbDebugMessagePSTR(PSTR("Test DWwriteRegisters/DWreadRegisters: "), testnum++);
   for (byte i=0; i < 32; i++) membuf[i] = i*2+1;
@@ -608,7 +607,6 @@ int DWtests(int &num)
     }
   }
   failed += testResult(succ);
-#endif
 
   // write to and read from an IO reg (0x3F = SREG)
   gdbDebugMessagePSTR(PSTR("Test DWwriteIOreg/DWreadIOreg: "), testnum++);
@@ -668,31 +666,33 @@ int DWtests(int &num)
 
   // read the freshly cleared flash page
   gdbDebugMessagePSTR(PSTR("Test DWreadFlash (empty page): "), testnum++);
-  for (byte i=0; i < mcu.pagesz; i++) membuf[i] = 0;
+  for (int i=0; i < mcu.pagesz; i++) newpage[i] = 0;
   succ = true;
   DWreenableRWW();
-  DWreadFlash(flashaddr, membuf, mcu.pagesz);
-  for (byte i=0; i < mcu.pagesz; i++) {
-    if (membuf[i] != 0xFF) succ = false;
+  DWreadFlash(flashaddr, newpage, mcu.pagesz);
+  for (int i=0; i < mcu.pagesz; i++) {
+    if (newpage[i] != 0xFF) succ = false;
   }
   failed += testResult(succ);
     
   // program one flash page (only check for error code returns)
   gdbDebugMessagePSTR(PSTR("Test DWloadFlashPage/DWprogramFlashPage: "), testnum++);
-  for (byte i=0; i < mcu.pagesz; i++) membuf[i] = 255-i;
-  DWloadFlashPageBuffer(flashaddr, membuf);
+  for (int i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
+  DWloadFlashPageBuffer(flashaddr, newpage);
   failed += testResult(DWprogramFlashPage(flashaddr));
 
   // now try to read the freshly flashed page
   gdbDebugMessagePSTR(PSTR("Test DWreenableRWW/DWreadFlash: "), testnum++);
-  for (byte i=0; i < mcu.pagesz; i++) membuf[i] = 0;
+  for (int i=0; i < mcu.pagesz; i++) newpage[i] = 0;
+  DEBLN(F("newpage cleared"));
   succ = true;
   DWreenableRWW();
-  DWreadFlash(flashaddr, membuf, mcu.pagesz);
+  DEBLN(F("reeanbledRWW"));
+  DWreadFlash(flashaddr, newpage, mcu.pagesz);
   DEBLN(F("Read Flash:"));
-  for (byte i=0; i < mcu.pagesz; i++) {
-    DEBLNF(membuf[i],HEX);
-    if (membuf[i] != 255-i) {
+  for (int i=0; i < mcu.pagesz; i++) {
+    DEBLNF(newpage[i],HEX);
+    if (newpage[i] != 255-i) {
       succ = false;
     }
   }
@@ -700,14 +700,14 @@ int DWtests(int &num)
 
   // if a device with boot sector, try everything immediately after each other in the boot area 
   if (mcu.bootaddr != 0) {
-    for (byte i=0; i < mcu.pagesz; i++) membuf[i] = 255-i;
-    gdbDebugMessagePSTR(PSTR("Test DWloadFlashPageBuffer/DWprogramFlashPage/DWreenableRWW/DWreadFlash (boot section): "), testnum++);
+    for (int i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
+    gdbDebugMessagePSTR(PSTR("Test DWFlash programming in boot section: "), testnum++);
     succ = DWeraseFlashPage(mcu.bootaddr);
     if (succ) {
       //DEBLN(F("erase successful"));
       DWreenableRWW();
-      succ = DWloadFlashPageBuffer(mcu.bootaddr, membuf);
-      //for (byte i=0; i < mcu.pagesz; i++) DEBLN(membuf[i]);
+      succ = DWloadFlashPageBuffer(mcu.bootaddr, newpage);
+      //for (int i=0; i < mcu.pagesz; i++) DEBLN(newpage[i]);
     }
     if (succ) {
       //DEBLN(F("load temp successful"));
@@ -716,11 +716,11 @@ int DWtests(int &num)
     if (succ) {
       DWreenableRWW();
       DEBLN(F("program successful"));
-      for (byte i=0; i < mcu.pagesz; i++) membuf[i] = 0;
-      DWreadFlash(mcu.bootaddr, membuf, mcu.pagesz);
-      for (byte i=0; i < mcu.pagesz; i++) {
+      for (int i=0; i < mcu.pagesz; i++) newpage[i] = 0;
+      DWreadFlash(mcu.bootaddr, newpage, mcu.pagesz);
+      for (int i=0; i < mcu.pagesz; i++) {
 	DEBLN(membuf[i]);
-	if (membuf[i] != 255-i) {
+	if (newpage[i] != 255-i) {
 	  DEBPR(F("Now wrong!"));
 	  succ = false;
 	}
