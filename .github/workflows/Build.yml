@@ -57,6 +57,9 @@ jobs:
           - arduino-boards-fqbn: arduino:avr:mega
             sketches-exclude: unittests, isr, flashtest, oop, fibonacci, tictactoe
 
+          - arduino-boards-fqbn: arduino:avr:mega
+            sketches-exclude: unittests, isr, flashtest, oop, fibonacci, tictactoe
+
       # Do not cancel all jobs / architectures if one job fails
       fail-fast: false
 
