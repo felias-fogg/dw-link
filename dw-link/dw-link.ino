@@ -72,7 +72,7 @@
 #define FREERAM  0   
 #endif
 #ifndef UNITALL      // test all units
-#define UNITALL 1
+#define UNITALL 0
 #endif
 #if UNITALL == 1
 #undef  UNITDW

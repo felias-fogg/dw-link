@@ -498,8 +498,10 @@ Version 0.9.9 (14-Nov-21)
 
 ## Version 1.1.6 (03-Jan-22)
 
-- unified pin names ISP (in docu) and PROG (in sketch) to TISP
-- renamed the constants SCK, MISO, and MOSI to TSCK, TMISO, TMOSI, respectively to avoid name clashes with the predefined constants
-- developed sketch `dptest` to test the different functions of the adapter board
-- added code to enable ISP interface when using dw-probe
-- noticed that one of my (el cheapo) Nanos cannot communicate at 230400 bps, but only at 115200 bps
+   - unified pin names ISP (in docu) and PROG (in sketch) to TISP
+   - renamed the constants SCK, MISO, and MOSI to TSCK, TMISO, TMOSI, respectively to avoid name clashes with the predefined constants
+   - developed sketch `dptest` to test the different functions of the adapter board
+   - added code to enable ISP interface when using dw-probe
+   - noticed that one of my (el cheapo) Nanos cannot communicate at 230400 bps, but only at 115200 bps
+   - unit tests are noew by default disabled so that dw-link compiles
+     for a Nano without a problem
