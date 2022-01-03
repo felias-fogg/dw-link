@@ -1,6 +1,6 @@
 // This is an implementation of the GDB remote serial protocol for debugWIRE.
 // It should run on all ATmega328 boards and provides a hardware debugger
-// for the classic ATtinys and some small ATmegas (see below)
+// for the classic ATtinys and some small ATmegas 
 //
 // NOTE: The RESET line of the target should have a 10k pull-up resistor and there
 //       should not be capacitative load on the RESET line. So, when you want
@@ -32,14 +32,14 @@
 // The former one has the A0 pin close to 5V pin, version 3 boards
 // have the A0 pin close to the REF pin.  If you use the adapter
 // board with a Nano, you need to set the compile time constant
-// NANOVERSION, which by defualt is 3.
+// NANOVERSION, which by default is 3.
 
 // It is also planned to run the sketch on ATmega32U4 boards
 // and there exist already the pin assignments and conditional
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.5"
+#define VERSION "1.1.6"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -102,9 +102,9 @@
 //-----------------------------------------------------------
 #if defined(DIRECTISP)   // Binding for a modified ISP plug
 #define ID     "DISP"
-#define SCK    13        // SCK  -- directly connected to ISP socket
-#define MOSI   11        // MOSI -- directly connected to ISP socket
-#define MISO   12        // MISO -- directly connected to ISP socket
+#define TSCK    13        // SCK  -- directly connected to ISP socket
+#define TMOSI   11        // MOSI -- directly connected to ISP socket
+#define TMISO    12        // MISO -- directly connected to ISP socket
 #define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
 #define VSUP    9        // needs to be an extra pin so that we can power-cycle
 #define DEBTX   3        // TX line for TXOnlySerial
@@ -121,11 +121,11 @@
 #define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 14        // If low, then we use a shield
 #define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define SCK    12        // SCK
-#define MOSI   10        // MOSI
-#define MISO   11        // MISO
+#define TSCK    12        // SCK
+#define TMOSI   10        // MOSI
+#define TMISO   11        // MISO
 #define DEBTX   3        // TX line for TXOnlySerial
-#define PROG    6        // if low, signals that one wants to use the ISP programming feature
+#define TISP  6        // if low, signals that one wants to use the ISP programming feature
 // System LED = Arduino pin 13
 #define LEDDDR  DDRB     // DDR of system LED
 #define LEDPORT PORTB    // port register of system LED
@@ -140,11 +140,11 @@
 #define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 18        // If low, then we use a shield
 #define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define SCK    12        // SCK
-#define MOSI   10        // MOSI
-#define MISO   11        // MISO
+#define TSCK    12        // SCK
+#define TMOSI   10        // MOSI
+#define TMISO   11        // MISO
 #define DEBTX   3        // TX line for TXOnlySerial
-#define PROG    6        // if low, signals that one wants to use the ISP programming feature
+#define TISP  6        // if low, signals that one wants to use the ISP programming feature
 // System LED = Arduino pin 13
 #define LEDDDR  DDRC     // DDR of system LED
 #define LEDPORT PORTC    // port register of system LED
@@ -159,11 +159,11 @@
 #define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 54        // If low, then we use a shield
 #define DWLINE 49        // RESET line 
-#define SCK    12        // SCK
-#define MOSI   10        // MOSI
-#define MISO   11        // MISO
+#define TSCK    12        // SCK
+#define TMOSI   10        // MOSI
+#define TMISO   11        // MISO
 #define DEBTX   3        // TX line for TXOnlySerial
-#define PROG    6        // if low, signals that one wants to use the ISP programming feature
+#define TISP  6        // if low, signals that one wants to use the ISP programming feature
 // System LED = Arduino pin 13
 #define LEDDDR  DDRB     // DDR of system LED
 #define LEDPORT PORTB    // port register of system LED
@@ -177,17 +177,17 @@
 #define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 11        // If low, then we are on the adapter board
 #define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define SCK     3        // SCK
-#define PROG    2        // if low, signals that one wants to use the ISP programming feature
+#define TSCK     3       // SCK
+#define TISP  2          // if low, signals that one wants to use the ISP programming feature
 #if NANOVERSION == 3
 #define ID      "NANO3"
-#define MOSI   16        // MOSI
-#define MISO   19        // MISO
+#define TMOSI   16        // MOSI
+#define TMISO   19        // MISO
 #define DEBTX  18        // TX line for TXOnlySerial
 #else
 #define ID      "NANO2"
-#define MOSI   19        // MOSI
-#define MISO   16        // MISO
+#define TMOSI   19        // MOSI
+#define TMISO   16        // MISO
 #define DEBTX  17        // TX line for TXOnlySerial
 #endif
 // System LED = Arduino pin 13 (builtin LED) (pin TX0 on Pro Micro/Mini)
@@ -204,11 +204,11 @@
 #define VSUP   15        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 10        // If low, then we are on the adapter board
 #define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define SCK    12        // SCK
-#define MOSI    3        // MOSI
-#define MISO    6        // MISO
+#define TSCK    12        // SCK
+#define TMOSI    3        // MOSI
+#define TMISO    6        // MISO
 #define DEBTX   5        // TX line for TXOnlySerial
-#define PROG   11        // if low, signals that one wants to use the ISP programming feature
+#define TISP   11        // if low, signals that one wants to use the ISP programming feature
 // System LED = Arduino pin 13 (builtin LED) (pin D4 on Nano and D15 on Pro Micro)
 //#define LEDDDR  DDRC     // DDR of system LED
 //#define LEDPORT PORTC    // port register of system LED
@@ -223,11 +223,11 @@
 #define VSUP   19        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 10        // If low, then we are on the adapter board
 #define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define SCK    14        // SCK
-#define MOSI    3        // MOSI
-#define MISO    6        // MISO
+#define TSCK    14        // SCK
+#define TMOSI    3        // MOSI
+#define TMISO    6        // MISO
 #define DEBTX   5        // TX line for TXOnlySerial
-#define PROG   16        // if low, signals that one wants to use the ISP programming feature
+#define TISP   16        // if low, signals that one wants to use the ISP programming feature
 // System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
 #define LEDDDR  DDRB     // DDR of system LED
 #define LEDPORT PORTB    // port register of system LED
@@ -242,11 +242,11 @@
 #define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
 #define SNSGND 11        // If low, then we are on the adapter board
 #define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define SCK     3        // SCK
-#define MOSI   20        // MOSI
-#define MISO   23        // MISO
+#define TSCK     3        // SCK
+#define TMOSI   20        // MOSI
+#define TMISO   23        // MISO
 #define DEBTX  22        // TX line for TXOnlySerial
-#define PROG    2        // if low, signals that one wants to use the ISP programming feature
+#define TISP    2        // if low, signals that one wants to use the ISP programming feature
 // System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
 #define LEDDDR  DDRB     // DDR of system LED
 #define LEDPORT PORTB    // port register of system LED
@@ -254,7 +254,6 @@
 //-----------------------------------------------------------#else
 #error "Board is not supported yet. dw-link works only on Uno, Leonardo, Mega, Nano, Pro Mini, Micro, and Pro Micro (yet)" 
 #endif
-
 
 #include <stddef.h>
 #include <stdio.h>
@@ -644,11 +643,16 @@ void setup(void) {
   DDRC = 0xFF;
 #endif
   initSession(); // initialize all critical global variables
+  DEBLN(F("Now configuereSupply"));
   configureSupply(); // configure suppy already here
+  DEBLN(F("configuereSupply done"));
+  pinMode(TISP, OUTPUT);
+  digitalWrite(TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
 #if ADAPTSPEED
   detectRSPCommSpeed(); // check for coummication speed and select the right one
 #endif
+  DEBLN(F("Setup done"));
 }
 
 void loop(void) {
@@ -692,8 +696,8 @@ void detectRSPCommSpeed(void) {
     ix = maxbpsix + 1;
     while (ix > 0) {
       ix--;
-      if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
-      //DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
+      //if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
+      DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
       Serial.begin(rsp_bps[ix]);
       Serial.print("-");  // ask for retransmission
       timeout = 2000;
@@ -3377,34 +3381,36 @@ unsigned int DWquality(void)
 
 
 void enableSpiPins () {
-  DEBLN(F("ESP ..."));
+  DEBLN(F("Eenable SPI ..."));
   pinMode(DWLINE, OUTPUT);
   digitalWrite(DWLINE, LOW);
   DEBLN(F("RESET low"));
   _delay_us(1);
   DEBLN(F("waited"));
-  pinMode(SCK, OUTPUT);
-  digitalWrite(SCK, LOW);
-  pinMode(MOSI, OUTPUT);
-  digitalWrite(MOSI, HIGH);
-  pinMode(MISO, INPUT);
+  pinMode(TSCK, OUTPUT);
+  digitalWrite(TSCK, LOW);
+  pinMode(TMOSI, OUTPUT);
+  digitalWrite(TMOSI, HIGH);
+  pinMode(TMISO, INPUT);
+  digitalWrite(TISP, LOW);
 }
 
 void disableSpiPins () {
-  pinMode(SCK, INPUT); 
-  pinMode(MOSI, INPUT);
-  pinMode(MISO, INPUT);
+  digitalWrite(TISP, HIGH);
+  pinMode(TSCK, INPUT); 
+  pinMode(TMOSI, INPUT);
+  pinMode(TMISO, INPUT);
 }
 
 byte ispTransfer (byte val) {
   measureRam();
 
   for (byte ii = 0; ii < 8; ++ii) {
-    digitalWrite(MOSI, (val & 0x80) ? HIGH : LOW);
-    digitalWrite(SCK, HIGH);
+    digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
+    digitalWrite(TSCK, HIGH);
     _delay_us(4);
-    val = (val << 1) + digitalRead(MISO);
-    digitalWrite(SCK, LOW);
+    val = (val << 1) + digitalRead(TMISO);
+    digitalWrite(TSCK, LOW);
     _delay_us(4);
   }
   return val;

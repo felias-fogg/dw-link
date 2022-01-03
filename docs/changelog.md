@@ -491,8 +491,15 @@ Version 0.9.9 (14-Nov-21)
      address bounds so that you now get an error message when loading
      a file that is supposed to be for an MCU with more memory
 
-## Version 1.1.5 (31-Dec21)
+## Version 1.1.5 (31-Dec-21)
    - integrated build actions
-   - fixed two typos in dw-link (blank in __AVR_MEGA2560__) and
+   - fixed two typos in dw-link (blank in \_\_AVR_MEGA2560\_\_) and
      tiny85blink (quit) -- thanks to the build actions!
-   
+
+## Version 1.1.6 (03-Jan-22)
+
+- unified pin names ISP (in docu) and PROG (in sketch) to TISP
+- renamed the constants SCK, MISO, and MOSI to TSCK, TMISO, TMOSI, respectively to avoid name clashes with the predefined constants
+- developed sketch `dptest` to test the different functions of the adapter board
+- added code to enable ISP interface when using dw-probe
+- noticed that one of my (el cheapo) Nanos cannot communicate at 230400 bps, but only at 115200 bps

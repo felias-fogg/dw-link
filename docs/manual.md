@@ -39,7 +39,7 @@ If you have performed all the above steps, then the setup should look like as in
 ### Warning
 </font>
 
-Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements.
+Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements. Further, do not set the MCU clock to anything less than 1 MHz before starting debugging. These clock frequencies have not been tested yet and you might be not able to disable debugWIRE with such low clock frequencies.
 
 <a name="section2"></a>
 
@@ -494,7 +494,7 @@ This works very well on an Arduino Uno. <!-- On a Leonardo, you need to use Ardu
 
 ### 7.2 A shield with level shifters
 
-If you often work with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. 
+If you work with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. 
 
 ![dw-probe-fritzing V 0.2](pics/dw-probe0.2.png)
 
@@ -515,11 +515,11 @@ So, it would be great to have a board with the following features:
 * level-shifter on the ISP lines, and
 * tri-state buffers for the two output signals (MOSI and SCK).
 
-I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The PCB design looks as follows (you'll find the design files in the directory **pcb**)
+I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board.
 
-![PCB V1.0](pics/dw-probe1.0.png)
+<img src="pics/dwprobe1.0-in-action.png" alt="Action" style="zoom:67%;" />
 
-The board is currently produced in a PCB fab and should arrive soon. I also plan to design a shield for the Uno sized boards. 
+The Eagle design files are in the pcb directory. I also plan to design a shield for the Uno sized boards as well.
 
 
 #### 7.3.1 DIP switch configuration
@@ -543,10 +543,10 @@ Functional pin | Direction | Explanation
 DEBTX | Output | Serial line for debugging output (when debugging the debugger) 
 DWLINE | Input/Output | debugWIRE communication line to be connected to RESET on the target board
 GND | Supply | Ground
-ISP | Output | If low, then ISP programming is enabled
-MISO | Input | SPI signal "Master In, Slave Out"
-MOSI | Output | SPI signal "Master Out, Slave In"
-SCK | Output | SPI signal "Master clock"
+TISP | Output | Control line: If low, then ISP programming is enabled 
+TMISO | Input | SPI signal "Master In, Slave Out"
+TMOSI | Output | SPI signal "Master Out, Slave In"
+TSCK | Output | SPI signal "Master clock"
 SNSGND | Input | If low, signals that the debugger board sits on the adapter board
 V33 | Output | Control line to the MOSFET to switch on 3.3 volt supply for target
 V5  | Output | Control line to switch on the 5 volt line
@@ -562,9 +562,9 @@ If you plug in your Arduino into the adapter board or use the shield, you do not
 
 When you use an Arduino Nano, you should be aware that  there are apparently two different versions around, namely version 2 and version 3. The former one has the A0 pin close to the 5V pin, while version 3 boards have the A0 pin close to the REF pin. If you use a Nano on the adapter board, you need to set the compile time constant `NANOVERSION`, either by changing the value in the source or by defining the value when compiling. The default value is 3.
 
-In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. For a standalone setting, only the pins marked in the last column are required. The **DWLINE** pin is the debugWIRE line, which needs to be connected to the target. MOSI, MISO, and SCK are the usual signals for ISP programming by SPI.
+In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. For a standalone setting, only the pins marked in the last column are required. The **DWLINE** pin is the debugWIRE line, which needs to be connected to the target. TMOSI, TMISO, and TSCK are the usual signals for ISP programming by SPI.
 
-The **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a standalone setting, there is no level-shifting done, so you only should debug 5 V systems.
+In the standalone mode, the **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a standalone setting, there is no level-shifting done, so you should debug only 5 V systems.
 
 <!-- Pin | Nano V2 | Nano V3 | Micro | Pro Micro | Pro Mini | Uno | Leo-nardo | Mega | Stand alone -->
 <!-- --- | --- | --- | --- | --- | --- | --- | --- | --- | --- -->
@@ -585,19 +585,19 @@ The **VSUP** pin should only be used if the current requirement by the target in
 
 Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega | Stand alone 
 --- | --- | --- | --- | --- | --- | --- 
-DEB-TX |A3= D17|A4= D18| D5 |D3|D3| 
+DEB-TX |A3= D17|A4= D18| D5 |D3|D3|
 DW-LINE | D8 | D8 |D8| D8 |D49| **+** 
 GND | GND | GND | GND | GND | GND | **+** 
-ISP | D2 | D2 | D11 |D6|D6| 
-MISO | A2= D16 | A5= D19 | D6 |D11|D11| **+** 
-MOSI | A5= D19 | A2= D16 | D3 |D10|D10| **+** 
-SCK | D3 | D3 | D12 |D12|D12| **+** 
-SNS-GND | D11 | D11 | D10 |A0= D14|A0= D54| 
-V33 | D5 | D5 | A0= D14 |D7|D7| 
-V5 | D6 | D6  | A1= D15 |D9|D9| 
+TISP | D2 | D2 | D11 |D6|D6|
+TMISO | A2= D16 | A5= D19 | D6 |D11|D11| **+** 
+TMOSI | A5= D19 | A2= D16 | D3 |D10|D10| **+** 
+TSCK | D3 | D3 | D12 |D12|D12| **+** 
+SNS-GND | D11 | D11 | D10 |A0= D14|A0= D54|
+V33 | D5 | D5 | A0= D14 |D7|D7|
+V5 | D6 | D6  | A1= D15 |D9|D9|
 Vcc | 5V | 5V | Vcc |5V|5V| (+) 
 VHIGH | D7 | D7  | A2= D16 |D2|D2|
-VON | A1= D15 | A1= D15  | D2 |D5|D5| 
+VON | A1= D15 | A1= D15  | D2 |D5|D5|
 VSUP | D6 | D6 | A1= D15 |D9|D9 | **+** 
 
 
@@ -605,7 +605,7 @@ VSUP | D6 | D6 | A1= D15 |D9|D9 | **+**
 
 #### 7.3.4 System LED
 
-As the system LED, we use the builtin LED on pin13 for most boards. <!-- On the Pro Micro, the RXI LED is used. --> On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board (which we plan to support in the future). So, if you use the Pro Mini, you do not have a system LED that signals the internal state. For a future version of the board, I will add an extra solder bridge into the design that can be closed for accommodating the Arduino Micro and allows to use the builtin LED of a Pro Mini board otherwise.
+As the system LED, we use the builtin LED on pin13 for most boards. <!-- On the Pro Micro, the TXI LED is used. --> On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board (which we plan to support in the future). So, if you use the Pro Mini, you do not have a system LED that signals the internal state. For a future version of the board, I will add an extra solder bridge into the design that can be closed for accommodating the Arduino Micro and allows to use the builtin LED of a Pro Mini board otherwise.
 
 <a name="section8"></a>
 
@@ -632,7 +632,7 @@ First of all, *dw-link* leaves the breakpoint in memory, even when gdb requests 
 
 Second, if there are many breakpoints on the same flash page, then the page is reprogrammed only once instead of reprogramming it for each breakpoint individually.
 
-Third, when one restarts from a location where a breakpoint has been set, gdb removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-link* does not update flash memory before single-stepping. Instead, it checks whether the current location contains a BREAK instruction. If this is not the case, *dw-link* issues simply a single-step command. Otherwise, if the instruction is a single-word instructions, it loads the original instruction into the *instruction register* of the MCU and executes it there. 
+Third, when one restarts from a location where a breakpoint has been set, gdb removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-link* does not update flash memory before single-stepping. Instead, if the instruction is a single-word instructions, it loads the original instruction into the *instruction register* of the MCU and executes it there. 
 
 For two-word instructions (i.e., LDS, STS, JUMP, and CALL), things are a bit more complicated. The Microchip documents state that one should refrain from  inserting breakpoints at double word instructions, implying that this would create problems. Indeed, RikusW noted in his [reverse engineering notes about debugWIRE](http://www.ruemohr.org/docs/debugwire.html):
 >Seems that its not possible to execute a 32 bit instruction this way.
@@ -649,7 +649,7 @@ With all of that in mind, you do not have to worry too much about flash memory w
 <a name="paranoid"></a>
 For the really paranoid,  there is the option that permits only one breakpoint, i.e., the hardware breakpoint: `monitor hwbp`. In this case, one either can set one breakpoint or on can single-step, but not both. So, if you want to continue after a break by single-stepping, you first have to delete the breakpoint. By the way, with `monitor swbp`, one switches back to normal mode, in which 32 (+1 temporary) breakpoints are allowed.
 
-In addition, there is the debugger command `monitor flashcount`, which returns the number of how many flash page reprogramming commands have been executed since the debugger had been started.
+In addition, there is the debugger command `monitor flashcount`, which returns the number of how many flash page reprogramming commands have been executed since the debugger had been started. This includes also the flash reprogramming commands needed when loading code.
 
 <a name="section82"></a>
 
@@ -732,7 +732,7 @@ One common problem is that the debug environment is not the first environment or
 
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
-Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino accepts 230400, 115200, 57600, 38400, 19200, and 9600 bps. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. Another (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
+Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 230400, 115200, 57600, 38400, 19200, and 9600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. I have also seen Arduinos that had a low quality serial interface so that only lower bitrates worked reliably.  A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
 
 #### Problem: You receive the message *Protocol error with Rcmd* 
 This is a generic GDB error message that indicates that the last `monitor` command you typed could not be successfully executed. Usually, also a more specific error message is displayed, e.g., *debugWIRE could NOT be disabled*. These messages are suppressed in some GUIs, though. 
