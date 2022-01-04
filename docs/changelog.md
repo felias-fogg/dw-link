@@ -504,7 +504,7 @@ Version 0.9.9 (14-Nov-21)
    - added code to enable ISP interface when using dw-probe
    - noticed that one of my (el cheapo) Nanos cannot communicate at 230400 bps, but only at 115200 bps
    - unit tests are now by default disabled so that dw-link compiles
-   for a Nano without a problem
+      for a Nano without a problem
 
 ## Version 1.1.7 (04-Jan-21)
    - changed compile-time constant VARSPEED to VARDWSPEED
@@ -514,3 +514,12 @@ Version 0.9.9 (14-Nov-21)
    - Added a monitor function to the top-level polling loop that
      resets LOAD\_STATE to CONN\_STATE when no input activity for 50
      msec. At the same time, it flushes the flash page buffer
+
+## Version 1.1.8  (04-Jan-21)
+   - we no longer assume that the session is started internally with a
+     RESET implying that when a qsupported command is
+     received we will assume a continuation, provided the system state
+     is still CONN_STATE
+   - this means that a connect is much faster since we do not have to
+     wait for the bootloader to finish its wait time
+   - on the hardware side, this has to be supported by a cap between RESET and GND, at least for the non-32U4 boards

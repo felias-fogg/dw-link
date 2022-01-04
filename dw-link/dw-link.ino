@@ -39,7 +39,7 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.7"
+#define VERSION "1.1.8"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -940,7 +940,7 @@ void gdbParsePacket(const byte *buff)
   }
   switch (*buff) {
   case '?':                                          /* last signal */
-    gdbSendSignal(lastsignal);  
+    gdbSendSignal(lastsignal);
     break;
   case 'H':                                          /* Set thread, always OK */
     gdbSendReply("OK");
@@ -1004,7 +1004,7 @@ void gdbParsePacket(const byte *buff)
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
         DEBLN(F("qSupported"));
-	initSession();                               /* init all vars when gdb (re-)connects */
+	if (ctx.state != CONN_STATE) initSession();  /* init all vars when gdb connects */
 	gdbConnect(false);                           /* and try to connect */
 	gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
