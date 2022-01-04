@@ -39,12 +39,15 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.6"
+#define VERSION "1.1.7"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
 #endif
 
+#ifndef ADAPTSPEED // adaptive communication speed for line to host
+#define ADAPTSPEED 1
+#endif
 #ifndef INITIALBPS 
 #define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
 #endif
@@ -56,11 +59,8 @@
 #ifndef SIM2WORD    // simulate 2 word instructions at break points instead of executing them
 #define SIM2WORD 1  // although execution appears to work, one does not know when it will fail
 #endif
-#ifndef VARSPEED    // for changing debugWIRE communication speed to maximal speed (now only 128kbps)
-#define VARSPEED 1
-#endif
-#ifndef ADAPTSPEED // adaptive communication speed for line to host
-#define ADAPTSPEED 1
+#ifndef VARDWSPEED    // for changing debugWIRE communication speed to maximal speed (now only 128kbps)
+#define VARDWSPEED 1
 #endif
 #ifndef TXODEBUG        // for debugging the debugger!
 #define TXODEBUG    0   
@@ -350,7 +350,7 @@ byte maxbreak = MAXBREAK; // actual number of active breakpoints allowed
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
-enum statetype {NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, RUN_STATE};
+enum statetype {NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, LOAD_STATE, RUN_STATE};
 
 struct context {
   unsigned int wpc; // pc (using word addresses)
@@ -372,9 +372,10 @@ struct context {
 // LED flashing every second = power-cycle target in order to enable debugWIRE
 // LED blinking every 1/10 second = could not connect to target board
 // LED constantly on = connected to target and target is halted
+// LED on, but every second off for 1/10 sec = loading code
 // Led blinks every 1/3 second = target is running
-const unsigned int ontimes[5] =  {0,  100, 150, 1, 700};
-const unsigned int offtimes[5] = {1, 1000, 150, 0, 700};
+const unsigned int ontimes[6] =  {0,  100, 150, 1, 1000, 700};
+const unsigned int offtimes[6] = {1, 1000, 150, 0, 100, 700};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 
@@ -656,6 +657,11 @@ void setup(void) {
 }
 
 void loop(void) {
+#if SCOPEDEBUG
+  PORTC = 0xff;
+  PORTC = 0x00;
+#endif
+  monitorSystemLoadState();
   configureSupply();
   if (Serial.available()) {
     gdbHandleCmd();
@@ -674,6 +680,22 @@ void loop(void) {
 }
 
 /****************** system state routines ***********************/
+
+// monitor the system state LOAD_STATE
+// if no input any longer, then flush flash page buffer and
+// set state back to connected
+void monitorSystemLoadState(void) {
+  static unsigned int noinput = 0;
+
+  if (Serial.available()) noinput = 0;
+  noinput++;
+  if (noinput == 2777) { // roughly 50 msec, based on the fact that one loop is 18 usec
+    if (ctx.state == LOAD_STATE) {
+      setSysState(CONN_STATE);
+      targetFlushFlashProg();
+    }
+  }
+}
 
 // find out communication speed of host
 // try to identify a qSupported packet
@@ -837,6 +859,7 @@ void setSysState(statetype newstate)
   DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
+
 /****************** gdbserver routines **************************/
 
 
@@ -897,7 +920,7 @@ void gdbHandleCmd(void)
     break;
     
   default:
-    gdbSendReply(""); /* not supported */
+    // simply ignore, we only accept records or ACK/NACK
     break;
   }
 }
@@ -1975,9 +1998,14 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     break;
   case FLASH_OFFSET:
     if (addr+sz > mcu.flashsz) {
+      DEBPR(F("addr,sz,flashsz="));
+      DEBLN(addr);
+      DEBLN(sz);
+      DEBLN(mcu.flashsz);
       gdbSendReply("E01"); 
       return;
     }
+    setSysState(LOAD_STATE);
     targetWriteFlash(addr, membuf, sz);
     break;
   case EEPROM_OFFSET:
@@ -2034,7 +2062,7 @@ int gdbBin2Mem(const byte *buf, byte *mem, int count) {
 boolean targetOffline(void)
 {
   measureRam();
-  if (ctx.state == CONN_STATE || ctx.state == RUN_STATE) return false;
+  if (ctx.state == CONN_STATE || ctx.state == RUN_STATE || ctx.state == LOAD_STATE) return false;
   return true;
 }
 
@@ -2792,7 +2820,7 @@ boolean expectUCalibrate() {
     if ((newbps << speed) <= speedlimit) break;
   }
   DEBPR(F("Set speedexp: ")); DEBLN(speed);
-#if VARSPEED
+#if VARDWSPEED
   DWsetSpeed(speed);
   ctx.bps = dw.calibrate(); // calibrate again
   DEBPR(F("Rsync (2): ")); DEBLN(ctx.bps);

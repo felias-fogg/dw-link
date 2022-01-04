@@ -97,12 +97,12 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATtiny828__
 * ATtiny48, __ATtiny88__
 * __ATtiny1634__
-* <s>ATmega48</s>, __ATmega48A__, __ATmega48PA__, ATmega48PB, 
-* <s>ATmega88</s>, __ATmega88A__, __ATmega88PA__, Atmega88PB, 
+* <s>__ATmega48__</s>, __ATmega48A__, __ATmega48PA__, ATmega48PB, 
+* <s>__ATmega88__</s>, __ATmega88A__, __ATmega88PA__, Atmega88PB, 
 * __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on MCUs marked bold and will (really soon) test the others, except for the PB types, which appear to be very hard to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them. Since these were exemplars that have been produced 10 years ago I ordered recently produced MCUs and will test those.
+I have tested the debugger on MCUs marked bold and will (really soon) test the others, except for the PB types, which appear to be very hard to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them. 
 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
@@ -171,15 +171,40 @@ We are now good to go and 'only' need to install the additional debugging softwa
 
 ### 4.3 States of the hardware debugger
 
-There are basically 5 states, the debugger can be in and each is signaled by a different blink pattern of the system LED:
+There are six states, the debugger can be in and each is signaled by a different blink pattern of the system LED:
 
 * not connected (LED is off)
-* waiting for power-cycling the target (LED flashes every second for 100 ms)
+* waiting for power-cycling the target (LED flashes every second for 0.1 sec)
 * target is connected (LED is on)
-* target is running (LED blinks 0.5 sec on / 0.5 sec off)
-* error state, i.e., not possible to connect to target, connection has been lost, or other internal error (LED blinks furiously every 100 ms)
+* target loads an executable (LED is on, but will be off for 0.1 sec each second)
+* target is running (LED blinks 0.7 sec on / 0.7 sec off)
+* error state, i.e., not possible to connect to target, connection has been lost, or other internal error (LED blinks furiously every 0.1 sec)
 
-If the hardware debugger is in the error state, one should  finish the GDB session, reset the debugger, and restart everything. If the problem persists, please check the section on [trouble shooting](#trouble).
+If the hardware debugger is in the error state, one should try to find out the reason by typing the command `x/1db 0xffffffff`, study the [error message table](#fatalerror) at the end of the document, finish the GDB session, reset the debugger, and restart everything. If the problem persists, please check the section on [trouble shooting](#trouble).
+
+### 4.4 Configuring dw-link by setting compile-time constants
+
+Usually, it should not be necessary to change a compile-time constant in dw-link. I will nevertheless document all these constants here. If you want to change one of them them, you can do that when using `arduino-cli` by using the `--build-property` option or by changing the value in the source code.
+
+ Name | Default | Meaning
+ --- | --- | ---
+__VERSION__ | current version number | Current version number; should not be changed. 
+__NANOVERSION__ | 3 | The version of the Nano board used as a hardware debugger; this value is relevant only if a Nano board is used. 
+__ADAPTSPEED__ | 1 | If 1, then dw-link will try out different communication speeds to the host. 
+__INITIALBPS__ | 230400 | The initial communication speed for communicating with the host; if communcation using this value cannot be established, 115200, 57600, 38400, 19200, 9600 bps are tried if __ADAPTSPEED__ is set to 1. 
+__STUCKAT1PC__ | 0 | If this value is set to 1, then dw-link will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. 
+__SIM2WORD__ | 1 | If 1, then 2-word instructions at breakpoints and when single-stepping will be simulated inside the hardware debugger; if 0, then they will be  executed off-line in the debugWIRE instruction register. While the latter alternative appears to work, one has no guarantee that it will always work. In any case, there should be no visible difference in behavior between the two alternatives. 
+__VARDWSPEED__ | 1 | If 1, the communication speed to the target will be changed so that it is as fast as possible, given the restriction that speed should not exceed 125000 bps. If 0, the initial speed of clk/128 is used.
+__TXODEBUG__ | 0 | If 1, debug output over the debug serial line is enabled.
+__SCOPEDEBUG__ | 0 | If 1, `DDRC` is used for signaling the internal state by producing pulses on `PORTC`.
+__FREERAM__ | 0 | If 1, then the amount of free RAM is measured, which can be queried using the command `monitor ramusage`.
+__UNITALL__ | 0 | If 1, all unit tests are activated; they can be executed by using the command `monitor testall`.
+__UNITDW__ | 0 | If 1, the unit tests for the debugWIRE layer are activated; execute them by using `monitor testdw`.
+__UNITTG__ | 0 | If 1, the unit tests for the target layer are activated; use `monitor testtg` to execute them.
+__UNITGDB__ | 0 | If 1, the unit tests for the GDB layer are activated, use `monitor testgdb` to execute them. 
+__DIRECTISP__ | undef | Pin binding for the case when you want to use a modified ISP cable,, where only the RESET line is broken out (a cable you can also use when you use the Arduino as an ISP-programmer).
+__ARDUINO\_AVR\___*XXX* | | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping (see [Section 7.3.2 & 7.3.3](#section732)). 
+
 
 <a name="section5"></a>
 
@@ -710,11 +735,11 @@ When running under the debugger, the program will be stopped in the same way as 
 
 <a name="section89"></a>
 
-### 8.9 Some older MCUs have stuck-at-one bits in the program counter
+### 8.9 Some MCUs have stuck-at-one bits in the program counter
 
-Some older debugWIRE MCUs appear to have program counters in which some unused bits are stuck at one. Older ATmega48s and ATmega88s (without the A-suffix) have their PC bits 11 and 12 or only PC bit 12 always stuck at one. In other words the PC has at least the value 0x1800 or 0x1000, respectively (note that the AVR program counter addresses words, not bytes!). The hardware debugger can deal with it, but GDB gets confused when trying to perform a stack backtrace. It gets also confused when trying to step over a function call or tries to finalize a function call. For these reasons, debugging these MCUs does not make much sense and dw-link rejects these MCUs with an error message when one tries to connect to one of those (see also [this blog entry](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/)). 
+Some debugWIRE MCUs appear to have program counters in which some unused bits are stuck at one. ATmega48s and ATmega88s (without the A-suffix), which I have sitting on my bench,  have their PC bits 11 and 12 or only PC bit 12 always stuck at one. In other words the PC has at least the value 0x1800 or 0x1000, respectively (note that the AVR program counter addresses words, not bytes!). The hardware debugger can deal with it, but GDB gets confused when trying to perform a stack backtrace. It gets also confused when trying to step over a function call or tries to finalize a function call. For these reasons, debugging these MCUs does not make much sense and dw-link rejects these MCUs with an error message when one tries to connect to one of those (see also [this blog entry](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/)). 
 
- The only reasonable way to deal with this problem is to use a different MCU, one with an A, PA, or PB suffix. If you really need to debug this particular MCU and are aware of the problems, you can recompile the sketch with the compile time constant `STUCKAT1PC` set to 1.
+ The only reasonable way to deal with this problem is to use a different MCU, one with an A, PA, or PB suffix. If you really need to debug this particular MCU and are aware of the problems and limitations, you can recompile the sketch with the compile time constant `STUCKAT1PC` set to 1.
 
 ### 8.10 The start of the debugger takes a couple of seconds
 
@@ -733,6 +758,10 @@ One common problem is that the debug environment is not the first environment or
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
 Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 230400, 115200, 57600, 38400, 19200, and 9600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. I have also seen Arduinos that had a low quality serial interface so that only lower bitrates worked reliably.  A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
+
+#### Problem: It is not possible to connect to an ATmega48 or ATmega88 using the *target remote* command
+
+This is most probably an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
 
 #### Problem: You receive the message *Protocol error with Rcmd* 
 This is a generic GDB error message that indicates that the last `monitor` command you typed could not be successfully executed. Usually, also a more specific error message is displayed, e.g., *debugWIRE could NOT be disabled*. These messages are suppressed in some GUIs, though. 
@@ -803,6 +832,8 @@ I have no idea, why that is the case. If you want to see the value of a global v
 #### Problem: The disassembly cannot be displayed
 
 Older versions of avr-gdb had a problem with disassembly: [https://sourceware.org/bugzilla/show_bug.cgi?id=13519](https://sourceware.org/bugzilla/show_bug.cgi?id=13519). In the current version the problem has been fixed, though. So, you might want to get hold of a current version.
+
+<a name="fatalerror"></a>
 
 #### Problem: The system LED blinks furiously and/or the program receives an `ABORT` signal when trying to start execution
 

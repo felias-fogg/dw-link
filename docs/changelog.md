@@ -503,5 +503,14 @@ Version 0.9.9 (14-Nov-21)
    - developed sketch `dptest` to test the different functions of the adapter board
    - added code to enable ISP interface when using dw-probe
    - noticed that one of my (el cheapo) Nanos cannot communicate at 230400 bps, but only at 115200 bps
-   - unit tests are noew by default disabled so that dw-link compiles
-     for a Nano without a problem
+   - unit tests are now by default disabled so that dw-link compiles
+   for a Nano without a problem
+
+## Version 1.1.7 (04-Jan-21)
+   - changed compile-time constant VARSPEED to VARDWSPEED
+   - Introduced new system state: LOAD_STATE, when data is loaded to
+     flash memory
+   - The new state has the following blink pattern: 1 sec on, 1/10 sec off
+   - Added a monitor function to the top-level polling loop that
+     resets LOAD\_STATE to CONN\_STATE when no input activity for 50
+     msec. At the same time, it flushes the flash page buffer
