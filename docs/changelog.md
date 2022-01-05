@@ -506,7 +506,7 @@ Version 0.9.9 (14-Nov-21)
    - unit tests are now by default disabled so that dw-link compiles
       for a Nano without a problem
 
-## Version 1.1.7 (04-Jan-21)
+## Version 1.1.7 (04-Jan-22)
    - changed compile-time constant VARSPEED to VARDWSPEED
    - Introduced new system state: LOAD_STATE, when data is loaded to
      flash memory
@@ -515,7 +515,7 @@ Version 0.9.9 (14-Nov-21)
      resets LOAD\_STATE to CONN\_STATE when no input activity for 50
      msec. At the same time, it flushes the flash page buffer
 
-## Version 1.1.8  (04-Jan-21)
+## Version 1.1.8  (04-Jan-22)
    - we no longer assume that the session is started internally with a
      RESET implying that when a qsupported command is
      received we will assume a continuation, provided the system state
@@ -524,6 +524,6 @@ Version 0.9.9 (14-Nov-21)
      wait for the bootloader to finish its wait time
    - on the hardware side, this has to be supported by a cap between RESET and GND, at least for the non-32U4 boards
 
-## Version 1.1.9
+## Version 1.1.9 (05-Jan-22)
 
 - ISP speed has been lowered to 12500 bps; with that we should be able to deal with MCUs running on a 128 kHz clock source; since we only change fuses, one does not notice the speed reduction
