@@ -523,3 +523,7 @@ Version 0.9.9 (14-Nov-21)
    - this means that a connect is much faster since we do not have to
      wait for the bootloader to finish its wait time
    - on the hardware side, this has to be supported by a cap between RESET and GND, at least for the non-32U4 boards
+
+## Version 1.1.9
+
+- ISP speed has been lowered to 12500 bps; with that we should be able to deal with MCUs running on a 128 kHz clock source; since we only change fuses, one does not notice the speed reduction

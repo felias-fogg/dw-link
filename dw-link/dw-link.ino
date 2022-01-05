@@ -26,7 +26,7 @@
 // 
 // You can run it on an Uno, a Mega, a Nano V2, A Nano V3, or a Pro Mini.
 // For the three latter ones, there exists an
-// adapter board, which fits both of them, using, of course,
+// adapter board, which fits all sof them, using, of course,
 // different pin assignments.  For the Nano board, there are
 // apparently two different versions around, version 2 and version 3.
 // The former one has the A0 pin close to 5V pin, version 3 boards
@@ -39,7 +39,7 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.8"
+#define VERSION "1.1.9"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -67,6 +67,9 @@
 #endif
 #ifndef SCOPEDEBUG
 #define SCOPEDEBUG 0
+#endif
+#ifndef SDEBUG
+#define SDEBUG 0   // serial debug (only for 32U4 chips)
 #endif
 #ifndef FREERAM      // for checking how much memory is left on the stack
 #define FREERAM  0   
@@ -598,8 +601,8 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   static int cnt = 0;
   static byte busy = 0;
 
-  if (busy) return;
-  busy++; // if this IRQ routine is already active, leave immediately
+  if (busy) return; // if this IRQ routine is already active, leave immediately
+  busy++; 
   cnt--;
   if (LEDPORT & _BV(LEDPIN)) {
     if (cnt < 0) {
@@ -618,18 +621,22 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 
 /******************* setup & loop ******************************/
 void setup(void) {
+  Serial.begin(INITIALBPS);
+  while (!Serial);
   DEBINIT(); 
   DEBLN(F("dw-link (" ID ") V" VERSION));
+#if SDEBUG
+  Serial1.begin(115200);
+  Serial.println(F("dw-link (" ID ") V" VERSION));
+#endif
   TIMSK0 = 0; // no millis interrupts
-  Serial.begin(INITIALBPS);
   ctx.hostbps = INITIALBPS;
   while (!Serial); // wait for serial port to connect (only needed for native USB ports)
   ctx.von = false;
   ctx.vhigh = false;
-  ctx.snsgnd = false;
-  
+  ctx.snsgnd = false;  
 #ifdef LEDDDR
-  LEDDDR |= LEDPIN; // switch on output for system LED
+  LEDDDR |= _BV(LEDPIN); // switch on output for system LED
 #endif
 #ifdef VON
   pinMode(VON, INPUT_PULLUP); // configure Von as input from switch
@@ -641,26 +648,29 @@ void setup(void) {
   pinMode(SNSGND, INPUT_PULLUP);
 #endif
 #if SCOPEDEBUG
-  DDRC = 0xFF;
+#ifdef __AVR_ATmega32U4__
+#define DDDR DDRF
+#define DPORT PORTF
+#else
+#define DDDR DDRC
+#define DPORT PORTC
+#endif
+  DDDR = 0xFF;
 #endif
   initSession(); // initialize all critical global variables
-  DEBLN(F("Now configuereSupply"));
+  //  DEBLN(F("Now configuereSupply"));
   configureSupply(); // configure suppy already here
-  DEBLN(F("configuereSupply done"));
+  //  DEBLN(F("configuereSupply done"));
   pinMode(TISP, OUTPUT);
   digitalWrite(TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
 #if ADAPTSPEED
   detectRSPCommSpeed(); // check for coummication speed and select the right one
 #endif
-  DEBLN(F("Setup done"));
+  //  DEBLN(F("Setup done"));
 }
 
 void loop(void) {
-#if SCOPEDEBUG
-  PORTC = 0xff;
-  PORTC = 0x00;
-#endif
   monitorSystemLoadState();
   configureSupply();
   if (Serial.available()) {
@@ -711,7 +721,7 @@ void detectRSPCommSpeed(void) {
     ix = maxbpsix + 1;
     if (rightSpeed()) { // already found right speed
       Serial.print("-"); // ask for retransmission
-      DEBLN(F("Initial guess right"));
+      //DEBLN(F("Initial guess right"));
       return; 
     }
     // Now send "-" in all possible speeds and wait for response
@@ -719,7 +729,7 @@ void detectRSPCommSpeed(void) {
     while (ix > 0) {
       ix--;
       //if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
-      DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
+      //DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
       Serial.begin(rsp_bps[ix]);
       Serial.print("-");  // ask for retransmission
       timeout = 2000;
@@ -800,7 +810,7 @@ void configureSupply(void)
 // init all global vars when the debugger connects
 void initSession(void)
 {
-  DEBLN(F("initSession"));
+  //DEBLN(F("initSession"));
   flashidle = true;
   ctx.safestep = true;
   bpcnt = 0;
@@ -830,8 +840,7 @@ void reportFatalError(byte errnum, boolean checkio)
       return;
     }
   }
-  DEBPR(F("***Report fatal error: "));
-  DEBLN(errnum);
+  // DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
   if (fatalerror == NO_FATAL) fatalerror = errnum;
   setSysState(ERROR_STATE);
 }
@@ -840,7 +849,7 @@ void reportFatalError(byte errnum, boolean checkio)
 // switch on blink IRQ when run, error, or power-cycle state
 void setSysState(statetype newstate)
 {
-  DEBPR(F("setSysState: ")); DEBLN(newstate);
+  //DEBPR(F("setSysState: ")); DEBLN(newstate);
   if (ctx.state == ERROR_STATE && fatalerror) return;
   TIMSK0 &= ~_BV(OCIE0A); // switch off!
   ctx.state = newstate;
@@ -855,8 +864,8 @@ void setSysState(statetype newstate)
     TIMSK0 |= _BV(OCIE0A);
   }
 #endif
-  DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
-  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
+  //DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
+  //DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
 
@@ -930,7 +939,7 @@ void gdbParsePacket(const byte *buff)
 {
   byte s;
 
-  DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
+  //DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
   if (!flashidle) {
     if (*buff != 'X' && *buff != 'M')
       targetFlushFlashProg();                        /* finalize flash programming before doing something else */
@@ -1003,7 +1012,7 @@ void gdbParsePacket(const byte *buff)
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"), 6) == 0)   /* monitor command */
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
-        DEBLN(F("qSupported"));
+      //DEBLN(F("qSupported"));
 	if (ctx.state != CONN_STATE) initSession();  /* init all vars when gdb connects */
 	gdbConnect(false);                           /* and try to connect */
 	gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
@@ -1036,8 +1045,8 @@ void gdbParseMonitorPacket(const byte *buf)
   gdbUpdateBreakpoints(true);  // update breakpoints in memory before any monitor ops
 
   int clen = strlen((const char *)buf);
-  DEBPR(F("clen=")); DEBLN(clen);
-  DEBLN((const char *)buf);
+  //DEBPR(F("clen=")); DEBLN(clen);
+  //DEBLN((const char *)buf);
   
   if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
     gdbStop();                                                              /* dwo[ff] */
@@ -1130,13 +1139,13 @@ inline void gdbGetSpeed(void)
 void gdbSetSpeed(const byte cmd[])
 {
   byte arg;
-  DEBLN(F("gdbSetSpeed"));
+  //DEBLN(F("gdbSetSpeed"));
   byte argix = findArg(cmd);
   if (argix == 0) {
     gdbSendReply("");
     return;
   }
-  DEBPR(F("argix=")); DEBPR(argix); DEBPR(F(" arg=")); DEBPR((char)cmd[argix]); DEBLN((char)cmd[argix+1]);
+  //DEBPR(F("argix=")); DEBPR(argix); DEBPR(F(" arg=")); DEBPR((char)cmd[argix]); DEBLN((char)cmd[argix+1]);
   if (cmd[argix] == '\0') arg = '\0';
   else arg = (hex2nib(cmd[argix])<<4) + hex2nib(cmd[argix+1]);
   switch (arg) {
@@ -1157,22 +1166,22 @@ void gdbSetSpeed(const byte cmd[])
 byte findArg(const byte cmd[])
 {
   byte ix = 4;
-  DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
+  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
   if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
   if (cmd[ix] =='\0') return ix;
   if (cmd[ix] != '6' || cmd[ix+1] != '5')  return 0;
   ix += 2;
-  DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
+  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
   if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
   if (cmd[ix] == '\0') return ix;
   if (cmd[ix] != '6' || cmd[ix+1] != '5')  return 0;
   ix +=2;
-  DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
+  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
   if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
   if (cmd[ix] =='\0') return ix;
   if (cmd[ix] != '6' || cmd[ix+1] != '4')  return 0;
   ix += 2;
-  DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
+  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
   if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
   if (cmd[ix] =='\0') return ix;
   return 0;
@@ -1227,7 +1236,7 @@ boolean gdbConnect(boolean verbose)
   if (conncode == 1) {
 #if STUCKAT1PC
     mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
-    DEBPR(F("stuckat1byte=")); DEBLNF(mcu.stuckat1byte,HEX);
+    //DEBPR(F("stuckat1byte=")); DEBLNF(mcu.stuckat1byte,HEX);
 #else
     mcu.stuckat1byte = 0;
     if (DWgetWPc(false) > (mcu.flashsz>>1)) conncode = -4;
@@ -1267,14 +1276,14 @@ boolean powerCycle(boolean verbose)
   dw.enable(false);
   setSysState(PWRCYC_STATE);
   while (retry < 20) {
-    DEBPR(F("retry=")); DEBLN(retry);
+    //DEBPR(F("retry=")); DEBLN(retry);
     if (retry%3 == 0) { // try to power-cycle
-      DEBLN(F("Power cycle!"));
+      //DEBLN(F("Power cycle!"));
       power(false); // cutoff power to target
       _delay_ms(500);
       power(true); // power target again
       _delay_ms(200); // wait for target to startup
-      DEBLN(F("Power cycling done!"));	
+      //DEBLN(F("Power cycling done!"));	
     }
     if ((retry++)%3 == 0 && retry >= 3) {
       do {
@@ -1296,15 +1305,15 @@ boolean powerCycle(boolean verbose)
 
 void power(boolean on)
 {
-  DEBPR(F("Power: ")); DEBLN(on);
+  //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
     if (!ctx.snsgnd) {
-      DEBLN(F("VSUP up"));
+      //DEBLN(F("VSUP up"));
       digitalWrite(VSUP, HIGH);
     } else {
       if (ctx.von) {
 #if defined(V5) && defined(V33)
-	DEBLN(F("VXX up"));
+	//DEBLN(F("VXX up"));
 	if (ctx.vhigh) pinMode(V5, OUTPUT);
 	else pinMode(V33, OUTPUT);
 #endif
@@ -1398,12 +1407,11 @@ void getInstruction(unsigned int &opcode, unsigned int &addr)
     opcode = targetReadFlashWord(ctx.wpc<<1);
   else
     opcode = bp[bpix].opcode;
-  DEBPR(F("sim opcode=")); DEBLNF(opcode,HEX);
+  //DEBPR(F("sim opcode=")); DEBLNF(opcode,HEX);
   if (twoWordInstr(opcode)) {
-    DEBPR(F("twoWord/addr="));
-    DEBLNF((ctx.wpc+1)<<1,HEX);
+    //DEBPR(F("twoWord/addr=")); DEBLNF((ctx.wpc+1)<<1,HEX);
     addr = targetReadFlashWord((ctx.wpc+1)<<1);
-    DEBLNF(addr,HEX);
+    //DEBLNF(addr,HEX);
   }
 }
 
@@ -1426,10 +1434,10 @@ inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
       ctx.wpc += 2;
     } else if ((opcode & ~0x1F0) == 0x9200) { // sts 
       reg = (opcode & 0x1F0) >> 4;
-      DEBPR(F("Reg="));
-      DEBLN(reg);
-      DEBPR(F("addr="));
-      DEBLNF(addr,HEX);
+      //DEBPR(F("Reg="));
+      //DEBLN(reg);
+      //DEBPR(F("addr="));
+      //DEBLNF(addr,HEX);
       DWwriteSramByte(addr,ctx.regs[reg]);
       ctx.wpc += 2;
     } else if ((opcode & 0x0FE0E) == 0x940C) { // jmp 
@@ -1456,12 +1464,12 @@ byte gdbStep(void)
   int bpix = gdbFindBreakpoint(ctx.wpc);
   byte sig = SIGTRAP; // SIGTRAP (normal), SIGILL (if ill opcode), SIGABRT (fatal)
 
-  DEBLN(F("Start step operation"));
+  //DEBLN(F("Start step operation"));
   if (fatalerror) return SIGABRT;
   if (targetOffline()) return SIGHUP;
   getInstruction(opcode, arg);
   if (targetIllegalOpcode(opcode)) {
-    DEBPR(F("Illop: ")); DEBLNF(opcode,HEX);
+    //DEBPR(F("Illop: ")); DEBLNF(opcode,HEX);
     return SIGILL;
   }
   if ((bpix >= 0 &&  bp[bpix].inflash) || ctx.safestep) {
@@ -1499,7 +1507,7 @@ byte gdbStep(void)
 byte gdbContinue(void)
 {
   byte sig = 0;
-  DEBLN(F("Start continue operation"));
+  //DEBLN(F("Start continue operation"));
   if (fatalerror) sig = SIGABRT;
   else if (targetOffline()) sig = SIGHUP;
   else {
@@ -1998,10 +2006,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     break;
   case FLASH_OFFSET:
     if (addr+sz > mcu.flashsz) {
-      DEBPR(F("addr,sz,flashsz="));
-      DEBLN(addr);
-      DEBLN(sz);
-      DEBLN(mcu.flashsz);
+      //DEBPR(F("addr,sz,flashsz=")); DEBLN(addr); DEBLN(sz); DEBLN(mcu.flashsz);
       gdbSendReply("E01"); 
       return;
     }
@@ -2078,13 +2083,22 @@ void flushInput()
 inline void gdbSendByte(byte b)
 {
   Serial.write(b);
+#if SDEBUG
+  Serial1.write(b);
+#endif
 }
 
 // blocking read byte from host
 inline byte gdbReadByte(void)
 {
   while (!Serial.available());
+#if SDEBUG
+  byte b = Serial.read();
+  Serial1.write(b);
+  return(b);
+#else
   return Serial.read();
+#endif
 } 
 
 void gdbSendReply(const char *reply)
@@ -2227,7 +2241,7 @@ void gdbReplyMessagePSTR(const char pstr[], long num)
 void gdbReplyMessage(const char str[])
 {
   gdbMessage(str, -1, false, false);
-  DEBLN(str);
+  // DEBLN(str);
 }
 
 // send a message the user can see, if last argument positive, then send the number
@@ -2245,13 +2259,13 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
   byte numbuf[10];
   const char *str;
 
-  DEBLN(pstr);
-  DEBLN(progmem);
+  //DEBLN(pstr);
+  //DEBLN(progmem);
   if (oprefix) buf[i++] = 'O';
   do {
     c = (progmem ? pgm_read_byte(&pstr[j++]) : pstr[j++]);
     if (c) {
-      DEBPR((char)c);
+      //DEBPR((char)c);
       if (i+4 >= MAXBUF) continue;
       buf[i++] = nib2hex((c >> 4) & 0xf);
       buf[i++] = nib2hex((c >> 0) & 0xf);
@@ -2262,7 +2276,7 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
     j = 0;
     while (numbuf[j] != '\0') j++;
     while (j-- > 0 ) {
-      DEBPR((char)numbuf[j]);
+      //DEBPR((char)numbuf[j]);
       if (i+4 >= MAXBUF) continue;
       buf[i++] = nib2hex((numbuf[j] >> 4) & 0xf);
       buf[i++] = nib2hex((numbuf[j] >> 0) & 0xf);
@@ -2272,7 +2286,7 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
     do {
       c = pgm_read_byte(str++);
       if (c) {
-	DEBPR((char)c);
+	//DEBPR((char)c);
 	if (i+4 >= MAXBUF) continue;
 	buf[i++] = nib2hex((c >> 4) & 0xf);
 	buf[i++] = nib2hex((c >> 0) & 0xf);
@@ -2283,7 +2297,7 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
   buf[i++] = 'A';
   buf[i] = 0;
   gdbSendBuff(buf, i);
-  DEBLN();
+  //DEBLN();
 }
 
 
@@ -2297,7 +2311,7 @@ boolean targetDWConnect(void)
   unsigned int sig;
 
   if (doBreak()) {
-    DEBLN(F("targetConnect: doBreak done"));
+    //DEBLN(F("targetConnect: doBreak done"));
     sig = DWgetChipId();
     if (mcu.sig == 0) setMcuAttr(sig);
     return true;
@@ -2709,10 +2723,10 @@ boolean targetReset(void)
   ctx.bps = 0; // set to zero in order to force new speed after reset
   //  if (expectBreakAndU()) {
   if (expectUCalibrate()) {
-    DEBLN(F("RESET successful"));
+    // DEBLN(F("RESET successful"));
     return true;
   } else {
-    DEBLN(F("***RESET failed"));
+    // DEBLN(F("***RESET failed"));
     reportFatalError(RESET_FAILED_FATAL, true);
     return false;
   }
@@ -2789,10 +2803,10 @@ boolean doBreak () {
   ctx.bps = 0; // forget about previous connection
   dw.sendBreak(); // send a break
   if (!expectUCalibrate()) {
-    DEBLN(F("No response from debugWIRE on sending break"));
+    //DEBLN(F("No response from debugWIRE on sending break"));
     return false;
   }
-  DEBPR(F("Successfully connected with bps: ")); DEBLN(ctx.bps);
+  //DEBPR(F("Successfully connected with bps: ")); DEBLN(ctx.bps);
   return true;
 }
 
@@ -3432,14 +3446,16 @@ void disableSpiPins () {
 
 byte ispTransfer (byte val) {
   measureRam();
-
+  // ISP frequency is now 12500
+  // that should be slow enough even for
+  // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
     digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
     digitalWrite(TSCK, HIGH);
-    _delay_us(4);
+    _delay_us(4*10); 
     val = (val << 1) + digitalRead(TMISO);
     digitalWrite(TSCK, LOW);
-    _delay_us(4);
+    _delay_us(4*10);
   }
   return val;
 }
