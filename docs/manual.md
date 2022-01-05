@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**December 2021**
+**January 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -124,7 +124,7 @@ Since the RESET line of the target system is used as an [open-drain](https://en.
 
 If your target system is an Arduino Uno, you have to be aware that there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting a solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
-![Solder bridge on Uno board](pics/cut.JPG)
+![Solder bridge on Uno board](pics/cutconn.jpg)
 
 A recovery method may be to either put a bit of soldering  on the bridge or better to solder two pins on the board and use a jumper. Alternatively, you could always manually reset the Uno before the Arduino IDE attempts to upload a sketch. The trick is to release the reset button just when the compilation process has finished. 
 
@@ -159,13 +159,25 @@ Third, you have to connect your ATmega328 (or similar) board to your computer, s
 Before you can start to debug, you have to setup the hardware. I'll use an ATtiny85 on a breadboard as the example target system and an Uno as the example debugger. However, any MCU listed above would do as a target. You have to adapt the steps where I describe the modification of configuration files in [Section 5](#section5) accordingly, though. 
 
 <a name="Fritzing"></a>
-![ATtiny85 on a breadboard](pics/debug-attiny85_Steckplatine.png)
+![ATtiny85 on a breadboard](pics/debug-attiny85_Steckplatine.jpg)
 
-
-As you can see, the Vcc rail is connected to pin D9 of the Arduino Uno so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino Uno is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pullup resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino Uno and ATtiny are MOSI (Arduino Uno D10), MISO (Arduino Uno D11) and SCK (Arduino Uno D11), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
+As you can see, the Vcc rail is connected to pin D9 of the Arduino Uno so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino Uno is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pullup resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino Uno and ATtiny are MOSI (Arduino Uno D10), MISO (Arduino Uno D11) and SCK (Arduino Uno D12), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
 
 
 ![ATtiny85 pinout](https://raw.githubusercontent.com/SpenceKonde/ATTinyCore/master/avr/extras/ATtiny_x5.png)
+
+Here is table so that you can check that you have made all the connections. It is ordered by the ATtiny pin numbers.
+
+ATtiny pin# | Arduino Uno pin | component
+--- | --- | ---
+1 (Reset) | D8 | 10k resistor to Vcc 
+2 (D3) |  | 200 Ω resistor to LED 
+3 (D4) |  | 
+4 (GND) | GND | LED, decoupling cap 
+5 (D0, MOSI) | D10 | 
+6 (D1, MISO) | D11 | 
+7 (D2, SCK) | D12 | 
+8 (Vcc) | D9 | 10k resistor, decoupling cap 
 
 We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED (the Arduino builtin LED on Arduino Uno pin D13).
 
@@ -188,7 +200,7 @@ Usually, it should not be necessary to change a compile-time constant in dw-link
 
  Name | Default | Meaning
  --- | --- | ---
-__VERSION__ | current version number | Current version number; should not be changed. 
+__VERSION__ | current version number | Current version number of dw-link; should not be changed. 
 __NANOVERSION__ | 3 | The version of the Nano board used as a hardware debugger; this value is relevant only if a Nano board is used. 
 __ADAPTSPEED__ | 1 | If 1, then dw-link will try out different communication speeds to the host. 
 __INITIALBPS__ | 230400 | The initial communication speed for communicating with the host; if communcation using this value cannot be established, 115200, 57600, 38400, 19200, 9600 bps are tried if __ADAPTSPEED__ is set to 1. 
@@ -512,7 +524,7 @@ It is actually very straightforward to build a basic hardware debugger that can 
 In reality, it probably will more look like as in the next picture.
 
 
-![dw-probe-proto V 0.1](pics/proto.png)
+![dw-probe-proto V 0.1](pics/proto.jpg)
 
 
 This works very well on an Arduino Uno. <!-- On a Leonardo, you need to use Arduino pin 4 instead of 8 for the RESET line. Or better yet, you connect the two pins.--> On an Arduino Mega, you have to use Arduino pin 49, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-link.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
@@ -526,7 +538,7 @@ If you work with 3.3 volt systems, you probably would like to have a version wit
 
 Now the reality check! How could a prototype look like? 
 
-![dw-probe-proto V 0.1](pics/proto0.2.jpg)
+![dw-probe-proto V 0.2](pics/proto0.2.jpg)
 
 
 Maybe it does not look completely convincing, but it does what it is supposed to do. In particular, the level-shifting works flawlessly. However, it is definitely not made for eternity. And even when I would give it a more sustainable form, this prototype has a few shortcomings. First, it has pull-up resistors at the outgoing SPI lines, i.e., it changes the electrical properties of these lines considerably. Second, when powering it with 3.3 volt from the Arduino board, one should source not more than 50 mA. Third, the board cannot power-cycle the target board when interfacing to a 3.3V board.
@@ -535,14 +547,16 @@ Maybe it does not look completely convincing, but it does what it is supposed to
 
 So, it would be great to have a board with the following features: 
 
-* switchable power supply (supporting power-cycling),
-* 5 volt and 3.3 volt supply at 200 mA,
-* level-shifter on the ISP lines, and
-* tri-state buffers for the two output signals (MOSI and SCK).
+* switchable target power supply (supporting power-cycling by the hardware debugger),
+* offering 5 volt and 3.3 volt supply at 200 mA, 
+* a bidirectional level-shifter on the debugWIRE line,
+* an optional pull-up resistor of 10 kΩ on this line,
+* unidirectional level-shifters on the ISP lines, and
+* tri-state buffers for the two output signals MOSI and SCK.
 
-I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board.
+I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board. It all works flawlessly. The only problem I encountered is that one of Nanos with a CH340 serial chip is not able to use a communication speed faster than 115200 to the host. 
 
-<img src="pics/dwprobe1.0-in-action.png" alt="Action" style="zoom:67%;" />
+![dw-probe 1.0](pics/dwprobe1.0-in-action.jpg)
 
 The Eagle design files are in the pcb directory. I also plan to design a shield for the Uno sized boards as well.
 
@@ -741,7 +755,7 @@ Some debugWIRE MCUs appear to have program counters in which some unused bits ar
 
  The only reasonable way to deal with this problem is to use a different MCU, one with an A, PA, or PB suffix. If you really need to debug this particular MCU and are aware of the problems and limitations, you can recompile the sketch with the compile time constant `STUCKAT1PC` set to 1.
 
-### <!-- 8.10 The start of the debugger takes a couple of seconds -->
+<!-- 8.10 The start of the debugger takes a couple of seconds -->
 
 <!-- The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain Uno board or equivalent, then it will spend two seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger. -->
 

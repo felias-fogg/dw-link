@@ -527,3 +527,11 @@ Version 0.9.9 (14-Nov-21)
 ## Version 1.1.9 (05-Jan-22)
 
 - ISP speed has been lowered to 12500 bps; with that we should be able to deal with MCUs running on a 128 kHz clock source; since we only change fuses, one does not notice the speed reduction
+
+## Version 1.1.10 (05-Jan-22)
+
+- only changes to the documentation:
+  - Corrected a bug concerning the connection in the introductory example
+  - added table for checking wiring
+  - changed image resolution
+- last version before 1.2.0, which will bring support for the Leonardo (hopefully)
