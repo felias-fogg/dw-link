@@ -39,7 +39,7 @@
 // compilation statements. However, it turns out to be non-trivial
 // to adapt the sketch to the ATmega32U4. So, this may take a while.
 
-#define VERSION "1.1.9"
+#define VERSION "1.2.0-usbblock"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -48,10 +48,14 @@
 #ifndef ADAPTSPEED // adaptive communication speed for line to host
 #define ADAPTSPEED 1
 #endif
+#ifdef __AVR_ATmega32U4__
+#undef ADAPTSPEED
+#define ADAPTSPEED 0 // not needed when using USB as the connection to the host
+#endif
+
 #ifndef INITIALBPS 
 #define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
 #endif
-
 #ifndef STUCKAT1PC
 #define STUCKAT1PC 0
 #endif
@@ -275,21 +279,16 @@
 
 #define MAXBUF 150 // input buffer for GDB communication
 #define MAXMEMBUF 150 // size of memory buffer
-#define MAXPAGESIZE 256 // maximum number of bytes in one page (for the 64K MCUs)
+#define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
+#if RAMEND > 2600
+#define MAXBREAK 65 // with the 32U4, 126, or 256, we have enough RAM for that!
+#else
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries!)
-
+#endif
 
 // communication bit rates 
 #define SPEEDHIGH     275000UL // maximum communication speed limit for DW
 #define SPEEDLOW   137000UL // normal speed limit
-
-#ifdef LINEQUALITY
-// maximal rise time for RESET line in clock cycles
-#define MAXRISETIME 20 // actually 7-8 cycles are achievable (=500ns),  20 cycles means 1.25us
-                       // with weak pullup (50-100k) you have 56 (= 3.5us),
-                       // similarly with 1nF, you get 59 (=3.75us)
-#define UNCONNRISETIME 60000 // rise time result when unconnected (more than 3.5 ms)
-#endif
 
 // signals
 #define SIGHUP  1     // connection to target lost
@@ -549,7 +548,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
   {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm161}, // untested
 
   {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm216316},  // untested
-  {0},
+  {0,      0,  0,  0, 0,  0,     0,  0, 0,      0,    0,    0,    0,    0,    0, 0},
 };
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
@@ -588,7 +587,7 @@ byte fatalerror = NO_FATAL;
 
 DEBDECLARE();
 
-/****************** Interrupt blink routine *********************/
+/****************** Interrupt routines *********************/
 
 #ifdef LEDPIN // is only used if there is a LEDPIN designed
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
@@ -617,6 +616,15 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   }
   busy--;
 }
+#endif
+
+// Block USB interrupts
+#ifdef __AVR_ATmega32U4__
+#define BLOCKUSB() byte sUDIEN = UDIEN; UDIEN = 0; byte sUENUM = UENUM; UENUM = 0; byte sUEIENX = UEIENX; UEIENX = 0
+#define UNBLOCKUSB() UEIENX = sUEIENX; UENUM = sUENUM; UDIEN = sUDIEN
+#else
+#define BLOCKUSB() 
+#define UNBLOCKUSB()
 #endif
 
 /******************* setup & loop ******************************/
@@ -655,7 +663,7 @@ void setup(void) {
 #define DDDR DDRC
 #define DPORT PORTC
 #endif
-  DDDR = 0xFF;
+  DDDR = 0x7F; // without the MSB, because this is used on some boards, e.g. Leonardo
 #endif
   initSession(); // initialize all critical global variables
   //  DEBLN(F("Now configuereSupply"));
@@ -2652,8 +2660,8 @@ void targetSaveRegisters(void)
 {
   measureRam();
 
-  if (ctx.saved) return; // If the regs have been saved, then the machine regs are clobbered, so do not load again!
-  ctx.wpc = DWgetWPc(true); // needs to be done first, because the PC is advanced when executing instrs in the instr reg
+  if (ctx.saved) return;         // If the regs have been saved, then the machine regs are clobbered, so do not load again!
+  ctx.wpc = DWgetWPc(true);      // needs to be done first, because the PC is advanced when executing instrs in the instr reg
   DWreadRegisters(&ctx.regs[0]); // now get all GP registers
   ctx.sreg = DWreadIOreg(0x3F);
   ctx.sp = DWreadIOreg(0x3D);
@@ -2715,17 +2723,20 @@ boolean targetReset(void)
   unsigned long timeout = 100000;
   
   sendCommand((const byte[]) {0x07}, 1);
-  // dw.begin(ctx.bps*2); // could be that communication speed is higer after reset!
+  // dw.begin(ctx.bps*2); // could be that communication speed is higher after reset!
   _delay_us(10);
   while (digitalRead(DWLINE) && timeout) timeout--;
+  BLOCKUSB();
   _delay_us(1);
   
   ctx.bps = 0; // set to zero in order to force new speed after reset
   //  if (expectBreakAndU()) {
   if (expectUCalibrate()) {
     // DEBLN(F("RESET successful"));
+    UNBLOCKUSB();
     return true;
   } else {
+    UNBLOCKUSB();
     // DEBLN(F("***RESET failed"));
     reportFatalError(RESET_FAILED_FATAL, true);
     return false;
@@ -2799,14 +2810,17 @@ boolean doBreak () {
 
   DEBLN(F("doBreak"));
   pinMode(DWLINE, INPUT);
-  _delay_ms(10); 
+  _delay_ms(10);
+  BLOCKUSB();
   ctx.bps = 0; // forget about previous connection
   dw.sendBreak(); // send a break
   if (!expectUCalibrate()) {
     //DEBLN(F("No response from debugWIRE on sending break"));
+    UNBLOCKUSB();
     return false;
   }
   //DEBPR(F("Successfully connected with bps: ")); DEBLN(ctx.bps);
+  UNBLOCKUSB();
   return true;
 }
 
@@ -2972,11 +2986,11 @@ byte inLow  (byte add, byte reg) {
 // Write all registers 
 void DWwriteRegisters(byte *regs)
 {
-  byte wrRegs[] = {0x66,              // read/write
-		   0xD0, mcu.stuckat1byte, 0x00,  // start reg
-		   0xD1, mcu.stuckat1byte, 0x20,  // end reg
-		   0xC2, 0x05,        // write registers
-		   0x20 };              // go
+  byte wrRegs[] = {0x66,                                // read/write
+		   0xD0, mcu.stuckat1byte, 0x00,        // start reg
+		   0xD1, mcu.stuckat1byte, 0x20,        // end reg
+		   0xC2, 0x05,                          // write registers
+		   0x20 };                              // go
   measureRam();
   sendCommand(wrRegs,  sizeof(wrRegs));
   sendCommand(regs, 32);
@@ -2984,9 +2998,9 @@ void DWwriteRegisters(byte *regs)
 
 // Set register <reg> by building and executing an "in <reg>,DWDR" instruction via the CMD_SET_INSTR register
 void DWwriteRegister (byte reg, byte val) {
-  byte wrReg[] = {0x64,                                               // Set up for single step using loaded instruction
-                  0xD2, inHigh(mcu.dwdr, reg), inLow(mcu.dwdr, reg), 0x23,    // Build "in reg,DWDR" instruction
-                  val};                                               // Write value to register via DWDR
+  byte wrReg[] = {0x64,                                                    // Set up for single step using loaded instruction
+                  0xD2, inHigh(mcu.dwdr, reg), inLow(mcu.dwdr, reg), 0x23, // Build "in reg,DWDR" instruction
+                  val};                                                    // Write value to register via DWDR
   measureRam();
 
   sendCommand(wrReg,  sizeof(wrReg));
@@ -2998,32 +3012,36 @@ void DWreadRegisters (byte *regs)
   byte rdRegs[] = {0x66,
 		   0xD0, mcu.stuckat1byte, 0x00, // start reg
 		   0xD1, mcu.stuckat1byte, 0x20, // end reg
-		   0xC2, 0x01,       // read registers
-		   0x20 };            // start
+		   0xC2, 0x01};                  // read registers
   measureRam();
   DWflushInput();
   sendCommand(rdRegs,  sizeof(rdRegs));
-  getResponse(regs, 32);               // Get value sent as response
+  BLOCKUSB();
+  sendCommand((const byte[]) {0x20}, 1);         // Go
+  getResponse(regs, 32);                         // Get value sent as response
+  UNBLOCKUSB();
 }
 
 // Read register <reg> by building and executing an "out DWDR,<reg>" instruction via the CMD_SET_INSTR register
 byte DWreadRegister (byte reg) {
   byte res = 0;
-  byte rdReg[] = {0x64,                                               // Set up for single step using loaded instruction
-                  0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg),        // Build "out DWDR, reg" instruction
-                  0x23};                                              // Execute loaded instruction
+  byte rdReg[] = {0x64,                                                 // Set up for single step using loaded instruction
+                  0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg)}; // Build "out DWDR, reg" instruction
   measureRam();
   DWflushInput();
   sendCommand(rdReg,  sizeof(rdReg));
-  getResponse(&res, 1);                                                     // Get value sent as response
+  BLOCKUSB();
+  sendCommand((const byte[]) {0x23}, 1);                                // Go
+  getResponse(&res,1);
+  UNBLOCKUSB();
   return res;
 }
 
 // Write one byte to SRAM address space using an SRAM-based value for <addr>, not an I/O address
 void DWwriteSramByte (unsigned int addr, byte val) {
-  byte wrSram[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
-                   0xD0, mcu.stuckat1byte, 0x1E,                                  // Set Start Reg number (r30)
-                   0xD1, mcu.stuckat1byte, 0x20,                                  // Set End Reg number (r31) + 1
+  byte wrSram[] = {0x66,                                              // Set up for read/write 
+                   0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
+                   0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
 		   (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
@@ -3052,20 +3070,22 @@ void DWwriteIOreg (byte ioreg, byte val)
 // Read one byte from SRAM address space using an SRAM-based value for <addr>, not an I/O address
 byte DWreadSramByte (unsigned int addr) {
   byte res = 0;
-  byte rdSram[] = {0x66,                                              // Set up for read/write using repeating simulated instructions
-                   0xD0, mcu.stuckat1byte, 0x1E,                                  // Set Start Reg number (r30)
-                   0xD1, mcu.stuckat1byte, 0x20,                                  // Set End Reg number (r31) + 1
+  byte rdSram[] = {0x66,                                              // Set up for read/write 
+                   0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
+                   0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
                    (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
                    0xD0, mcu.stuckat1byte, 0x00,                                  // 
                    0xD1, mcu.stuckat1byte, 0x02,                                  // 
-                   0xC2, 0x00,                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
-                   0x20};                                             // Go
+                   0xC2, 0x00};                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
   measureRam();
   DWflushInput();
   sendCommand(rdSram, sizeof(rdSram));
+  BLOCKUSB();
+  sendCommand((const byte[]) {0x20}, 1);                              // Go
   getResponse(&res,1);
+  UNBLOCKUSB();
   return res;
 }
 
@@ -3073,15 +3093,17 @@ byte DWreadSramByte (unsigned int addr) {
 byte DWreadIOreg (byte ioreg)
 {
   byte res = 0;
-  byte rdIOreg[] = {0x64,                                               // Set up for single step using loaded instruction
-		    0xD2, inHigh(ioreg, 0), inLow(ioreg, 0),        // Build "out DWDR, reg" instruction
+  byte rdIOreg[] = {0x64,                                              // Set up for single step using loaded instruction
+		    0xD2, inHigh(ioreg, 0), inLow(ioreg, 0),           // Build "out DWDR, reg" instruction
 		    0x23,
-		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0),        // Build "out DWDR, 0" instruction
-		    0x23};
+		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0)};  // Build "out DWDR, 0" instruction
   measureRam();
   DWflushInput();
   sendCommand(rdIOreg, sizeof(rdIOreg));
+  BLOCKUSB();
+  sendCommand((const byte[]) {0x23}, 1);                            // Go
   getResponse(&res,1);
+  UNBLOCKUSB();
   return res;
 }
 
@@ -3090,21 +3112,23 @@ byte DWreadIOreg (byte ioreg)
 boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   unsigned int len2 = len * 2;
   byte rsp;
-  for (byte ii = 0; ii < 4; ii++) {
-    byte rdSram[] = {0x66,                                            // Set up for read/write using repeating simulated instructions
-                     0xD0, mcu.stuckat1byte, 0x1E,                                // Set Start Reg number (r30)
-                     0xD1, mcu.stuckat1byte, 0x20,                                // Set End Reg number (r31) + 1
+  for (byte ii = 0; ii < 10; ii++) {
+    byte rdSram[] = {0x66,                                            // Set up for read/write using 
+                     0xD0, mcu.stuckat1byte, 0x1E,                    // Set Start Reg number (r30)
+                     0xD1, mcu.stuckat1byte, 0x20,                    // Set End Reg number (r31) + 1
                      0xC2, 0x05,                                      // Set repeating copy to registers via DWDR
                      0x20,                                            // Go
                      (byte)(addr & 0xFF), (byte)(addr >> 8),          // r31:r30 (Z) = addr
-                     0xD0, mcu.stuckat1byte, 0x00,                                // 
+                     0xD0, mcu.stuckat1byte, 0x00,                    
                      0xD1, (byte)(len2 >> 8)+mcu.stuckat1byte, (byte)(len2 & 0xFF),    // Set repeat count = len * 2
-                     0xC2, 0x00,                                      // Set simulated "ld r?,Z+; out DWDR,r?" instructions
-                     0x20};                                           // Go
+                     0xC2, 0x00};                                     // Set simulated "ld r?,Z+; out DWDR,r?" instructions
     measureRam();
     DWflushInput();
     sendCommand(rdSram, sizeof(rdSram));
+    BLOCKUSB();
+    sendCommand((const byte[]) {0x20}, 1);                            // Go
     rsp = getResponse(mem, len);
+    UNBLOCKUSB();
     if (rsp == len) {
       break;
     } else {
@@ -3137,17 +3161,17 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
 
 byte DWreadEepromByte (unsigned int addr) {
   byte retval;
-  byte setRegs[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
-                    0xD0, mcu.stuckat1byte, 0x1C,                                   // Set Start Reg number (r28)
-                    0xD1, mcu.stuckat1byte, 0x20,                                   // Set End Reg number (r31) + 1
-                    0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
-                    0x20,                                               // Go
-                    0x01, 0x01, (byte)(addr & 0xFF), (byte)(addr >> 8)};// Data written into registers r28-r31
+  byte setRegs[] = {0x66,                                                        // Set up for read/write 
+                    0xD0, mcu.stuckat1byte, 0x1C,                                // Set Start Reg number (r28)
+                    0xD1, mcu.stuckat1byte, 0x20,                                // Set End Reg number (r31) + 1
+                    0xC2, 0x05,                                                  // Set repeating copy to registers via DWDR
+                    0x20,                                                        // Go
+                    0x01, 0x01, (byte)(addr & 0xFF), (byte)(addr >> 8)};         // Data written into registers r28-r31
   byte doReadH[] = {0xD2, outHigh(mcu.eearh, 31), outLow(mcu.eearh, 31), 0x23};  // out EEARH,r31  EEARH = ah  EEPROM Address MSB
-  byte doRead[]  = {0xD2, outHigh(mcu.eearl, 30), outLow(mcu.eearl, 30), 0x23,  // out EEARL,r30  EEARL = al  EEPROMad Address LSB
-                    0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,    // out EECR,r28   EERE = 01 (EEPROM Read Enable)
-                    0xD2, inHigh(mcu.eedr, 29), inLow(mcu.eedr, 29), 0x23,      // in  r29,EEDR   Read data from EEDR
-                    0xD2, outHigh(mcu.dwdr, 29), outLow(mcu.dwdr, 29), 0x23};   // out DWDR,r29   Send data back via DWDR reg
+  byte doRead[]  = {0xD2, outHigh(mcu.eearl, 30), outLow(mcu.eearl, 30), 0x23,   // out EEARL,r30  EEARL = al  EEPROM Address LSB
+                    0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,     // out EECR,r28   EERE = 01 (EEPROM Read Enable)
+                    0xD2, inHigh(mcu.eedr, 29), inLow(mcu.eedr, 29), 0x23,       // in  r29,EEDR   Read data from EEDR
+                    0xD2, outHigh(mcu.dwdr, 29), outLow(mcu.dwdr, 29)};          // out DWDR,r29   Send data back via DWDR reg
   measureRam();
   DWflushInput();
   sendCommand(setRegs, sizeof(setRegs));
@@ -3155,7 +3179,10 @@ byte DWreadEepromByte (unsigned int addr) {
   if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
     sendCommand(doReadH, sizeof(doReadH));
   sendCommand(doRead, sizeof(doRead));                                  // set rest of control regs and query
+  BLOCKUSB();
+  sendCommand((const byte[]) {0x23}, 1);                                // Go
   getResponse(&retval,1);                                               // Read data from EEPROM location
+  UNBLOCKUSB(); 
   return retval;
 }
 
@@ -3164,25 +3191,25 @@ byte DWreadEepromByte (unsigned int addr) {
 //   
 
 void DWwriteEepromByte (unsigned int addr, byte val) {
-  byte setRegs[] = {0x66,                                                 // Set up for read/write using repeating simulated instructions
-                    0xD0, mcu.stuckat1byte, 0x1C,                                     // Set Start Reg number (r30)
-                    0xD1, mcu.stuckat1byte, 0x20,                                     // Set End Reg number (r31) + 1
-                    0xC2, 0x05,                                           // Set repeating copy to registers via DWDR
-                    0x20,                                                 // Go
-                    0x04, 0x02, (byte)(addr & 0xFF), (byte)(addr >> 8)};  // Data written into registers r28-r31
-  byte doWriteH[] ={0xD2, outHigh(mcu.eearh, 31), outLow(mcu.eearh, 31), 0x23};    // out EEARH,r31  EEARH = ah  EEPROM Address MSB
+  byte setRegs[] = {0x66,                                                         // Set up for read/write 
+                    0xD0, mcu.stuckat1byte, 0x1C,                                 // Set Start Reg number (r30)
+                    0xD1, mcu.stuckat1byte, 0x20,                                 // Set End Reg number (r31) + 1
+                    0xC2, 0x05,                                                   // Set repeating copy to registers via DWDR
+                    0x20,                                                         // Go
+                    0x04, 0x02, (byte)(addr & 0xFF), (byte)(addr >> 8)};          // Data written into registers r28-r31
+  byte doWriteH[] ={0xD2, outHigh(mcu.eearh, 31), outLow(mcu.eearh, 31), 0x23};   // out EEARH,r31  EEARH = ah  EEPROM Address MSB
   byte doWrite[] = {0xD2, outHigh(mcu.eearl, 30), outLow(mcu.eearl, 30), 0x23,    // out EEARL,r30  EEARL = al  EEPROM Address LSB
                     0xD2, inHigh(mcu.dwdr, 30), inLow(mcu.dwdr, 30), 0x23,        // in  r30,DWDR   Get data to write via DWDR
-                    val,                                                  // Data written to EEPROM location
+                    val,                                                          // Data written to EEPROM location
                     0xD2, outHigh(mcu.eedr, 30), outLow(mcu.eedr, 30), 0x23,      // out EEDR,r30   EEDR = data
                     0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,      // out EECR,r28   EECR = 04 (EEPROM Master Program Enable)
                     0xD2, outHigh(mcu.eecr, 29), outLow(mcu.eecr, 29), 0x23};     // out EECR,r29   EECR = 02 (EEPROM Program Enable)
   measureRam();
   sendCommand(setRegs, sizeof(setRegs));
-  if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
+  if (mcu.eearh)                                                                  // if there is a high byte EEAR reg, set it
     sendCommand(doWriteH, sizeof(doWriteH));
   sendCommand(doWrite, sizeof(doWrite));
-  _delay_ms(5);                                                        // allow EEPROM write to complete
+  _delay_ms(5);                                                                   // allow EEPROM write to complete
 }
 
 //
@@ -3193,8 +3220,8 @@ boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int rsp;
   // DEBPR(F("Read flash ")); DEBPRF(addr,HEX); DEBPR("-"); DEBLNF(addr+len-1, HEX);
   unsigned int lenx2 = len * 2;
-  for (byte ii = 0; ii < 4; ii++) {
-    byte rdFlash[] = {0x66,                                               // Set up for read/write using repeating simulated instructions
+  for (byte ii = 0; ii < 10; ii++) {
+    byte rdFlash[] = {0x66,                                               // Set up for read/write
                       0xD0, mcu.stuckat1byte, 0x1E,                       // Set Start Reg number (r30)
                       0xD1, mcu.stuckat1byte, 0x20,                       // Set End Reg number (r31) + 1
                       0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
@@ -3202,11 +3229,13 @@ boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
                       (byte)(addr & 0xFF), (byte)(addr >> 8),             // r31:r30 (Z) = addr
                       0xD0, mcu.stuckat1byte, 0x00,                       // Set start = 0
                       0xD1, (byte)(lenx2 >> 8)+mcu.stuckat1byte,(byte)(lenx2),// Set end = repeat count = sizeof(flashBuf) * 2
-                      0xC2, 0x02,                                         // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
-                      0x20};                                              // Go
+                      0xC2, 0x02};                                        // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
     DWflushInput();
     sendCommand(rdFlash, sizeof(rdFlash));
-    rsp = getResponse(mem, len);                                         // Read len bytes
+    BLOCKUSB();
+    sendCommand((const byte[]) {0x20}, 1);                                // Go
+    rsp = getResponse(mem, len);                                          // Read len bytes
+    UNBLOCKUSB();
     if (rsp ==len) {
       break;
     } else {
@@ -3232,9 +3261,13 @@ boolean DWeraseFlashPage(unsigned int addr) {
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		    outLow(0x37, 29), 
 		    0x23,  // execute
-		    0xD2, 0x95 , 0xE8, 0x33 }; // execute SPM
+		    0xD2, 0x95 , 0xE8 }; // execute SPM
   sendCommand(eflash, sizeof(eflash));
-  return expectBreakAndU();
+  BLOCKUSB();
+  sendCommand((const byte[]) {0x33}, 1);
+  boolean succ = expectBreakAndU();
+  UNBLOCKUSB();
+  return succ; 
 }
 		    
 // now move the page from temp memory to flash
@@ -3256,11 +3289,15 @@ boolean DWprogramFlashPage(unsigned int addr)
 		   outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		   outLow(0x37, 29), 
 		   0x23,  // execute
-		   0xD2, 0x95 , 0xE8, 0x33 }; // execute SPM
+		   0xD2, 0x95 , 0xE8}; // execute SPM
   sendCommand(eprog, sizeof(eprog));
+
+  BLOCKUSB();
+  sendCommand((const byte[]) {0x33}, 1);
   succ = expectBreakAndU(); // wait for feedback
+  UNBLOCKUSB();
   
-  if (mcu.bootaddr) { // no bootloader
+  if (mcu.bootaddr && succ) { // no bootloader
     _delay_us(100);
     while ((DWreadSPMCSR() & 0x1F) != 0 && timeout-- != 0) { 
       _delay_us(100);
@@ -3332,8 +3369,10 @@ byte DWreadSPMCSR(void)
 
 unsigned int DWgetWPc (boolean corrected) {
   DWflushInput();
+  BLOCKUSB();
   sendCommand((const byte[]) {0xF0}, 1);
   unsigned int pc = getWordResponse();
+  UNBLOCKUSB();
   DEBPR(F("Get uncorrected WPC=")); DEBLNF(pc,HEX);
   if (corrected) {
     pc &= ~(mcu.stuckat1byte<<8);
@@ -3343,20 +3382,16 @@ unsigned int DWgetWPc (boolean corrected) {
   return (pc);
 }
 
-/*
-// get hardware breakpoint word address 
-unsigned int DWgetWBp () {
-  DWflushInput();
-  sendCommand((const byte[]) {0xF1}, 1);
-  return (getWordResponse());
-}
-*/
 
 // get chip signature
 unsigned int DWgetChipId () {
+  unsigned int result;
   DWflushInput();
+  BLOCKUSB();
   sendCommand((const byte[]) {0xF3}, 1);
-  return (getWordResponse());
+  result = getWordResponse();
+  UNBLOCKUSB();
+  return result;
 }
 
 // set PC Reg (word address) - that is set all the bits (including the ones in the stuckat1byte)
@@ -3391,33 +3426,6 @@ void DWflushInput(void)
     // DEBLN(c);
   }
 }
-
-#ifdef LINEQUALITY
-// test quality of DW line by measuring rise time (in clock cycles)
-// and return it
-unsigned int DWquality(void)
-{
-  unsigned int rise;
-  byte savesreg;
-  
-  TCCRA = 0;
-  TCCRC = 0;
-  TCCRB = _BV(CS0) |  _BV(ICES) | _BV(ICNC);// prescaler = 1 + noise canceler + rising edge
-  ICDDR |= _BV(ICBIT); // make RESET line an output = low (2 cycles after timer start)
-  _delay_ms(5);        // stabilize voltage
-  DEBLN(F("Reset timer and go high"));
-  savesreg =SREG;
-  cli();
-  TCNT = 0;            // reset counter
-  ICDDR &= ~_BV(ICBIT); // make it an input = high
-  while ((TIFR & _BV(ICF)) == 0 && TCNT < UNCONNRISETIME); // wait for edge
-  if (TCNT < UNCONNRISETIME) rise = ICR-2;  // get time from input capture (4 cycles late because of noise cancelation)
-  else rise = TCNT;
-  SREG = savesreg; 
-  DEBPR(F("rise time=")); DEBLN(rise);
-  return rise;
-}
-#endif
 
 /***************************** a little bit of SPI programming ********/
 
@@ -3477,12 +3485,12 @@ boolean enterProgramMode ()
 {
   byte timeout = 5;
 
-  DEBLN(F("Entering progmode"));
+  //DEBLN(F("Entering progmode"));
   dw.enable(false);
   do {
-    DEBLN(F("Do ..."));
+    //DEBLN(F("Do ..."));
     enableSpiPins();
-    DEBLN(F("Pins enabled ..."));
+    //DEBLN(F("Pins enabled ..."));
     digitalWrite(DWLINE, HIGH); 
     _delay_us(30);             // short positive RESET pulse of at least 2 clock cycles
     digitalWrite(DWLINE, LOW);  
@@ -3491,10 +3499,10 @@ boolean enterProgramMode ()
   } while (--timeout);
   if (timeout == 0) {
     leaveProgramMode();
-    DEBLN(F("... not successful"));
+    //DEBLN(F("... not successful"));
     return false;
   } else {
-    DEBLN(F("... successful"));
+    //DEBLN(F("... successful"));
     _delay_ms(15);            // wait after enable programming - avrdude does that!
     return true;
   }
@@ -3502,7 +3510,7 @@ boolean enterProgramMode ()
 
 void leaveProgramMode()
 {
-  DEBLN(F("Leaving progmode"));
+  //DEBLN(F("Leaving progmode"));
   disableSpiPins();
   _delay_ms(10);
   pinMode(DWLINE, INPUT); // allow MCU to run or to communicate via debugWIRE
@@ -3517,8 +3525,8 @@ unsigned int ispGetChipId ()
   if (ispSend(0x30, 0x00, 0x00, 0x00, true) != 0x1E) return 0;
   id = ispSend(0x30, 0x00, 0x01, 0x00, true) << 8;
   id |= ispSend(0x30, 0x00, 0x02, 0x00, true);
-  DEBPR(F("ISP SIG:   "));
-  DEBLNF(id,HEX);
+  //DEBPR(F("ISP SIG:   "));
+  //DEBLNF(id,HEX);
   return id;
 }
 
@@ -3648,7 +3656,6 @@ boolean setMcuAttr(unsigned int id)
   // DEBPR(F("Could not determine MCU type with SIG: ")); DEBLNF(id, HEX);
   return false;
 }
-
 
 
 /***************************** some conversion routines **************/
