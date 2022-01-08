@@ -14,7 +14,7 @@
 
 ## 1. Introduction
 
-The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notes that a lot of important features are missing. In particular, the current IDE does not support any kind of debugging. So what can you do, when you want to debug your Arduino project on small ATmegas (such as the popular ATmega328) or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support [on-chip debugging](https://en.wikipedia.org/wiki/In-circuit_emulation#On-chip_debugging) via [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
+The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notes that a lot of important features are missing. In particular, the current IDE does not support any kind of debugging. So what can you do when you want to debug your Arduino project on small ATmegas (such as the popular ATmega328) or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support [on-chip debugging](https://en.wikipedia.org/wiki/In-circuit_emulation#On-chip_debugging) via [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
 
 When you want real debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE and you have to use the development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). You may try to get the open-source software AVaRICE running; I was not successful in doing that on a Mac, though.
 
@@ -41,7 +41,7 @@ The connection between dw-link and the target is something that finally might ne
 ### Warning
 </font>
 
-Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements. Further, do not set the MCU clock to anything less than 1 MHz before starting debugging. These clock frequencies have not been tested yet and you might be not able to disable debugWIRE with such low clock frequencies.
+Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements. Further, do not set the MCU clock to anything less than 1 MHz before starting debugging. Clock frequencies less than 1 MHz have not been tested yet and you might be not able to disable debugWIRE with such low clock frequencies.
 
 <a name="section2"></a>
 
@@ -54,18 +54,22 @@ Do not get nervous when your MCU does not react any longer as you expect it, but
 1. The **normal** **state** in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitionary** **state**.
 2. The **transitionary** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** **state**.
 3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to a transition to the **transitionary** **state**, from which one can reach the **normal state** using ordinary ISP programming. 
-
-```mermaid
- stateDiagram
- 	normal --> transitionary: set DWEN 
-  transitionary --> debugWIRE: power cycle
-  debugWIRE --> transitionary: disable debugWIRE
-  transitionary --> normal: clear DWEN
-```
-
-
+   
 
 The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state can be achieved by the GDB command ```monitor dwoff```. If things seemed to have not worked out, you can simply reconnect the target to the hardware debugger and try out the two commands again.
+
+<!-- 
+mermaid
+    stateDiagram
+    normal --\> transitionary: set DWEN 
+    transitionary --\> normal: clear DWEN
+    normal --\> debugWIRE: monitor dwconnect
+    transitionary --\> debugWIRE: power cycle
+    debugWIRE --\> transitionary: disable debugWIRE
+    debugWIRE --\> normal: monitor dwoff
+-->
+
+![state diagram](pics/state-diagram.png)
 
 Having said all that, I have to admit that I encountered strange situations that I did not fully understand, and which led to "bricking" MCUs.  Usually, MCUs can be [resurrected by using a high-voltage programmer](#worstcase), though.
 
@@ -208,7 +212,7 @@ If the hardware debugger is in the error state, one should try to find out the r
 
 ### 4.4 Configuring dw-link by setting compile-time constants
 
-Usually, it should not be necessary to change a compile-time constant in dw-link. I will nevertheless document all these constants here. If you want to change one of them them, you can do that when using `arduino-cli` by using the `--build-property` option or by changing the value in the source code.
+Usually, it should not be necessary to change a compile-time constant in dw-link. I will nevertheless document all these constants here. If you want to change one of them, you can do that when using `arduino-cli` by using the `--build-property` option or by changing the value in the source code.
 
  Name | Default | Meaning
  --- | --- | ---
@@ -523,7 +527,11 @@ There are two ways of switching off the debugWIRE mode. If you click on the ant 
 
 ## 7. A "real" hardware debugger
 
-While one can use the setting as described in [Section 4.2](#section42), it would be much nicer if you just could plug an ISP cable on the one side into the debugger and on the other side into the target system. In other words, it would be nice to have a "real" hardware debugger. 
+The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 flying wires to connect dw-link to your target as described in [Section 4.2](#section42). However, if you want to use this tool more than once, then there should be at least something like a ISP cable connection. As a first approximation, I built something along  this line using a 6-wire Dupont jumper cable and heat shrink tubing.
+
+![ISP cable](pics/ispcable.jpg)
+
+While it is better then just 6 flying wires, you still have to remember which wire has to be connected to which Arduino pin. 
 
 ### 7.1 A simple shield
 
@@ -543,12 +551,12 @@ This works very well on an Arduino Uno. <!-- On a Leonardo, you need to use Ardu
 
 ### 7.2 A shield with level shifters
 
-If you work with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. 
+If you work also with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. Note that the target can now be powered with 3.3 V or 5 V and the level-shifter will take care of it; that is, even if no level-shifting is needed, it will work.
 
 ![dw-probe-fritzing V 0.2](pics/dw-probe0.2.png)
 
 
-Now the reality check! How could a prototype look like? 
+Now the reality check! How could a prototype look like? Instead of soldering it, I used a breadboard prototype shield with the level shifter breakout hidden under jumper wires on the left side of the breadboard.
 
 ![dw-probe-proto V 0.2](pics/proto0.2.jpg)
 
@@ -566,11 +574,11 @@ So, it would be great to have a board with the following features:
 * unidirectional level-shifters on the ISP lines, and
 * tri-state buffers for the two output signals MOSI and SCK.
 
-I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board. It all works flawlessly. The only problem I encountered is that one of Nanos with a CH340 serial chip is not able to use a communication speed faster than 115200 to the host. 
+I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board. It all works flawlessly. The only problem I encountered is that Arduino Nanos with a CH340 serial chip appear not to be able to use a communication speed faster than 115200 to the host. 
 
 ![dw-probe 1.0](pics/dwprobe1.0-in-action.jpg)
 
-The Eagle design files are in the pcb directory. I also plan to design a shield for the Uno sized boards as well.
+The Eagle design files of the Version 1.1 board are in the [pcb](../pcb/) directory. This design is currently untested but should work based on the (faulty) V1.0 design. There is also a design for an Uno-sized shield in the directory, untested as well. 
 
 
 #### 7.3.1 DIP switch configuration
@@ -751,7 +759,7 @@ There are a few situations, which might lead to problems. The above mentioned li
 * Do not single step over a SLEEP instruction
 * Do not insert breakpoints immediately after an LPM instruction
 
-If you do one of these things, either you might lose the connection to the target or, in the last three cases, the instruction might do something wrong. If you loose connection to the target, then it is very likely that there are still BREAK instructions in flash memory. So, after reconnecting, you need to issue the `load` command in order to get a clean copy of your binary into flash memory.
+If you do one of these things, either you might lose the connection to the target or, in the last three cases, the instruction might do something wrong. If you lose connection to the target, then it is very likely that there are still BREAK instructions in flash memory. So, after reconnecting, you need to issue the `load` command in order to get a clean copy of your binary into flash memory.
 
 ### 8.8 BREAK instructions in your program
 
@@ -783,7 +791,7 @@ One common problem is that the debug environment is not the first environment or
 
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
-Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 230400, 115200, 57600, 38400, 19200, and 9600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. I have also seen Arduino Nanos that had a low quality serial interface so that only lower bitrates worked reliably.  A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
+Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 230400, 115200, 57600, 38400, 19200, and 9600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. I also noticed that some Arduino Nanos that use the CH340 USB-to-serial converter should not be used with high bitrates. The highest sustainable bitrate appears to be 115200  bps for those boards. A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
 
 #### Problem: It is not possible to connect to an ATmega48 or ATmega88 using the *target remote* command
 
