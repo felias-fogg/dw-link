@@ -24,7 +24,7 @@
 // Jeremy Bennett's description of an implementation of an RSP server:
 //    https://www.embecosm.com/appnotes/ean4/embecosm-howto-rsp-server-ean4-issue-2.html
 // 
-// You can run it on an Uno, a Mega, a Nano V2, A Nano V3, or a Pro Mini.
+// You can run it on an Uno, a Mega, a Nano V2, a Nano V3, or a Pro Mini.
 // For the three latter ones, there exists an
 // adapter board, which fits all sof them, using, of course,
 // different pin assignments.  For the Nano board, there are
@@ -34,12 +34,7 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
 
-// It is also planned to run the sketch on ATmega32U4 boards
-// and there exist already the pin assignments and conditional
-// compilation statements. However, it turns out to be non-trivial
-// to adapt the sketch to the ATmega32U4. So, this may take a while.
-
-#define VERSION "1.2.0-usbblock"
+#define VERSION "1.1.11"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -72,9 +67,6 @@
 #ifndef SCOPEDEBUG
 #define SCOPEDEBUG 0
 #endif
-#ifndef SDEBUG
-#define SDEBUG 0   // serial debug (only for 32U4 chips)
-#endif
 #ifndef FREERAM      // for checking how much memory is left on the stack
 #define FREERAM  0   
 #endif
@@ -104,8 +96,8 @@
 #endif
 
 // Pins for different boards
-// Note that Nano, Pro Mini, Pro Micro, and Micro use the same socket
-// Similarly, UNO, Leonardo and Mega use the same shield
+// Note that Nano (V2 and V3) and Pro Mini use the same adapter board
+// Similarly, UNO and Mega use the same shield
 //-----------------------------------------------------------
 #if defined(DIRECTISP)   // Binding for a modified ISP plug
 #define ID     "DISP"
@@ -137,25 +129,6 @@
 #define LEDDDR  DDRB     // DDR of system LED
 #define LEDPORT PORTB    // port register of system LED
 #define LEDPIN  PB5      // pin (=D13)
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_LEONARDO)
-#define ID      "LEONARDO"
-#define VHIGH   2        // switch, low signals that one should use the 5V supply
-#define VON     5        // switch, low signals that dw-probe should deliver the supply charge
-#define V5      9        // a low level switches the MOSFET for 5 volt on 
-#define V33     7        // a low level switches the MOSFET for 3.3 volt on 
-#define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 18        // If low, then we use a shield
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define TSCK    12        // SCK
-#define TMOSI   10        // MOSI
-#define TMISO   11        // MISO
-#define DEBTX   3        // TX line for TXOnlySerial
-#define TISP  6        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13
-#define LEDDDR  DDRC     // DDR of system LED
-#define LEDPORT PORTC    // port register of system LED
-#define LEDPIN  PC7      // pin (=D13)
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MEGA2560)
 #define ID      "MEGA"
@@ -221,45 +194,8 @@
 //#define LEDPORT PORTC    // port register of system LED
 //#define LEDPIN  PC7      // not connected to the outside world!
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_PROMICRO)  // Pro Micro, i.e., that is a Mega 32U4
-#define ID      "PRO MICRO"
-#define VHIGH  20        // switch, low signals that one should use the 5V supply
-#define VON     2        // switch, low signals tha dw-probe should deliver the supply charge
-#define V33    18        // a low level switches the MOSFET for 3.3 volt on 
-#define V5     19        // a low level switches the MOSFET for 5 volt on 
-#define VSUP   19        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 10        // If low, then we are on the adapter board
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define TSCK    14        // SCK
-#define TMOSI    3        // MOSI
-#define TMISO    6        // MISO
-#define DEBTX   5        // TX line for TXOnlySerial
-#define TISP   16        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB0      // Arduino pin 17
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_MICRO)  // Micro, i.e., that is a Mega 32U4
-#define ID      "MICRO"
-#define VHIGH   7        // switch, low signals that one should use the 5V supply
-#define VON    19        // switch, low signals tha dw-probe should deliver the supply charge
-#define V33     5        // a low level switches the MOSFET for 3.3 volt on 
-#define V5      6        // a low level switches the MOSFET for 5 volt on 
-#define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 11        // If low, then we are on the adapter board
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define TSCK     3        // SCK
-#define TMOSI   20        // MOSI
-#define TMISO   23        // MISO
-#define DEBTX  22        // TX line for TXOnlySerial
-#define TISP    2        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB0      // Arduino pin 17
-//-----------------------------------------------------------#else
-#error "Board is not supported yet. dw-link works only on Uno, Leonardo, Mega, Nano, Pro Mini, Micro, and Pro Micro (yet)" 
+#else
+#error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini (yet)" 
 #endif
 
 #include <stddef.h>
@@ -656,14 +592,7 @@ void setup(void) {
   pinMode(SNSGND, INPUT_PULLUP);
 #endif
 #if SCOPEDEBUG
-#ifdef __AVR_ATmega32U4__
-#define DDDR DDRF
-#define DPORT PORTF
-#else
-#define DDDR DDRC
-#define DPORT PORTC
-#endif
-  DDDR = 0x7F; // without the MSB, because this is used on some boards, e.g. Leonardo
+  DDRC = 0x7F; //
 #endif
   initSession(); // initialize all critical global variables
   //  DEBLN(F("Now configuereSupply"));

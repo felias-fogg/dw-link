@@ -10590,10 +10590,8 @@ Source: &lt;a href="http://uk.rs-online.com/web/p/products/1698939"&gt; Datashee
 <part name="R7" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="R0805" package3d_urn="urn:adsk.eagle:package:23553/2" value="10k"/>
 <part name="P+1" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="VCC" device=""/>
 <part name="IC3" library="74xx-little-us" library_urn="urn:adsk.eagle:library:87" deviceset="74*1G125" device="DBV" package3d_urn="urn:adsk.eagle:package:2406/1" technology="LVC"/>
-<part name="RX-IC" library="pinhead" library_urn="urn:adsk.eagle:library:325" deviceset="PINHD-1X2" device="" package3d_urn="urn:adsk.eagle:package:22435/2"/>
 <part name="C3" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="C-EU" device="C0805" package3d_urn="urn:adsk.eagle:package:23617/2" value="10uF"/>
 <part name="GND2" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="MICRO" library="pinhead" library_urn="urn:adsk.eagle:library:325" deviceset="PINHD-1X2" device="" package3d_urn="urn:adsk.eagle:package:22435/2"/>
 </parts>
 <sheets>
 <sheet>
@@ -10703,20 +10701,12 @@ Source: &lt;a href="http://uk.rs-online.com/web/p/products/1698939"&gt; Datashee
 <attribute name="NAME" x="152.4" y="38.735" size="1.778" layer="95" rot="MR0"/>
 <attribute name="VALUE" x="152.4" y="30.48" size="1.778" layer="96" rot="MR0"/>
 </instance>
-<instance part="RX-IC" gate="G$1" x="22.86" y="78.74" smashed="yes" rot="R180">
-<attribute name="NAME" x="29.21" y="73.025" size="1.778" layer="95" rot="R180"/>
-<attribute name="VALUE" x="29.21" y="83.82" size="1.778" layer="96" rot="R180"/>
-</instance>
 <instance part="C3" gate="G$1" x="88.9" y="27.94" smashed="yes" rot="R90">
 <attribute name="NAME" x="88.519" y="29.464" size="1.778" layer="95" rot="R90"/>
 <attribute name="VALUE" x="93.599" y="29.464" size="1.778" layer="96" rot="R90"/>
 </instance>
 <instance part="GND2" gate="1" x="93.98" y="25.4" smashed="yes">
 <attribute name="VALUE" x="91.44" y="22.86" size="1.778" layer="96"/>
-</instance>
-<instance part="MICRO" gate="G$1" x="104.14" y="25.4" smashed="yes" rot="R270">
-<attribute name="NAME" x="102.87" y="20.955" size="1.778" layer="95"/>
-<attribute name="VALUE" x="99.06" y="31.75" size="1.778" layer="96" rot="R270"/>
 </instance>
 </instances>
 <busses>
@@ -11026,13 +11016,6 @@ Source: &lt;a href="http://uk.rs-online.com/web/p/products/1698939"&gt; Datashee
 <wire x1="86.36" y1="27.94" x2="81.28" y2="27.94" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$21" class="0">
-<segment>
-<pinref part="U$1" gate="G$1" pin="3V"/>
-<pinref part="RX-IC" gate="G$1" pin="2"/>
-<wire x1="45.72" y1="78.74" x2="25.4" y2="78.74" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="N$22" class="0">
 <segment>
 <pinref part="Q1" gate="G$1" pin="D"/>
@@ -11052,27 +11035,12 @@ Source: &lt;a href="http://uk.rs-online.com/web/p/products/1698939"&gt; Datashee
 <wire x1="40.64" y1="86.36" x2="40.64" y2="76.2" width="0.1524" layer="91"/>
 <junction x="40.64" y="66.04"/>
 <wire x1="40.64" y1="76.2" x2="40.64" y2="66.04" width="0.1524" layer="91"/>
-<pinref part="RX-IC" gate="G$1" pin="1"/>
-<wire x1="25.4" y1="76.2" x2="40.64" y2="76.2" width="0.1524" layer="91"/>
-<junction x="40.64" y="76.2"/>
 <pinref part="R2" gate="G$1" pin="1"/>
 <wire x1="86.36" y1="71.12" x2="101.6" y2="71.12" width="0.1524" layer="91"/>
 <wire x1="101.6" y1="71.12" x2="101.6" y2="76.2" width="0.1524" layer="91"/>
 <junction x="86.36" y="71.12"/>
 <wire x1="101.6" y1="60.96" x2="101.6" y2="71.12" width="0.1524" layer="91"/>
 <junction x="101.6" y="71.12"/>
-<pinref part="MICRO" gate="G$1" pin="1"/>
-<wire x1="106.68" y1="27.94" x2="106.68" y2="60.96" width="0.1524" layer="91"/>
-<junction x="106.68" y="60.96"/>
-</segment>
-</net>
-<net name="N$23" class="0">
-<segment>
-<pinref part="U$1" gate="G$1" pin="D4*"/>
-<wire x1="81.28" y1="60.96" x2="99.06" y2="60.96" width="0.1524" layer="91"/>
-<wire x1="99.06" y1="60.96" x2="99.06" y2="27.94" width="0.1524" layer="91"/>
-<pinref part="MICRO" gate="G$1" pin="2"/>
-<wire x1="99.06" y1="27.94" x2="104.14" y2="27.94" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>

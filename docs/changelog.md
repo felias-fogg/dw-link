@@ -522,16 +522,23 @@ Version 0.9.9 (14-Nov-21)
      is still CONN_STATE
    - this means that a connect is much faster since we do not have to
      wait for the bootloader to finish its wait time
-   - on the hardware side, this has to be supported by a cap between RESET and GND, at least for the non-32U4 boards
+   - on the hardware side, this has to be supported by a cap between RESET and GND
 
 ## Version 1.1.9 (05-Jan-22)
 
-- ISP speed has been lowered to 12500 bps; with that we should be able to deal with MCUs running on a 128 kHz clock source; since we only change fuses, one does not notice the speed reduction
+  - ISP speed has been lowered to 12500 bps; with that we should be able to deal with MCUs running on a 128 kHz clock source; since we only change fuses, one does not notice the speed reduction
 
 ## Version 1.1.10 (05-Jan-22)
 
-- only changes to the documentation:
+  - only changes to the documentation:
   - Corrected a bug concerning the connection in the introductory example
   - added table for checking wiring
   - changed image resolution
-- last version before 1.2.0, which will bring support for the Leonardo (hopefully)
+
+## Version 1.1.11 (09-Jan-21)
+
+- removed all references and conditional compilations concerning 32U4 boards
+- got the last untested ATtiny, the ATtiny48, and tested it successfully
+- updated the pcb directory with designs not containing jumpers for 32U4
+- added a new example that could be used to present how debugging works: unoblink
+
