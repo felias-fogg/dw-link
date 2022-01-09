@@ -3451,20 +3451,10 @@ design rules under a new name.</description>
 <attribute name="NAME" x="24.4475" y="11.7475" size="1.27" layer="25"/>
 <attribute name="POPULARITY" value="2" x="27.305" y="9.2075" size="1.778" layer="27" display="off"/>
 </element>
-<element name="RX-IC" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X02" package3d_urn="urn:adsk.eagle:package:22435/2" value="" x="5.08" y="6.0325" smashed="yes" rot="R270">
-<attribute name="NAME" x="3.4163" y="3.5687" size="1.27" layer="25" ratio="10" rot="R90"/>
-<attribute name="POPULARITY" value="98" x="5.08" y="6.0325" size="1.778" layer="27" rot="R270" display="off"/>
-<attribute name="VALUE" x="1.905" y="8.5725" size="1.27" layer="27" rot="R270"/>
-</element>
 <element name="C3" library="rcl" library_urn="urn:adsk.eagle:library:334" package="C0805" package3d_urn="urn:adsk.eagle:package:23617/2" value="10uF" x="65.405" y="5.3975" smashed="yes">
 <attribute name="NAME" x="64.4525" y="3.175" size="1.27" layer="25"/>
 <attribute name="POPULARITY" value="88" x="65.405" y="5.3975" size="1.778" layer="27" display="off"/>
 <attribute name="SPICEPREFIX" value="C" x="65.405" y="5.3975" size="1.778" layer="27" display="off"/>
-</element>
-<element name="MICRO" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X02" package3d_urn="urn:adsk.eagle:package:22435/2" value="" x="5.08" y="12.065" smashed="yes" rot="R90">
-<attribute name="NAME" x="3.2512" y="9.4488" size="1.27" layer="25" ratio="10" rot="R90"/>
-<attribute name="POPULARITY" value="98" x="5.08" y="12.065" size="1.778" layer="27" rot="R90" display="off"/>
-<attribute name="VALUE" x="8.255" y="9.525" size="1.27" layer="27" rot="R90"/>
 </element>
 </elements>
 <signals>
@@ -3949,21 +3939,13 @@ design rules under a new name.</description>
 <wire x1="60.6425" y1="4.445" x2="61.595" y2="5.3975" width="0.1524" layer="1"/>
 <wire x1="64.4525" y1="5.3975" x2="64.455" y2="5.3975" width="0.1524" layer="1"/>
 </signal>
-<signal name="N$21">
-<contactref element="U$1" pad="3V3"/>
-<contactref element="RX-IC" pad="2"/>
-<wire x1="6.35" y1="4.7625" x2="6.35" y2="1.27" width="0.1524" layer="16"/>
-<wire x1="5.08" y1="4.7625" x2="6.35" y2="4.7625" width="0.1524" layer="16"/>
-</signal>
 <signal name="N$22">
 <contactref element="Q1" pad="3"/>
 <wire x1="60.0075" y1="16.35125" x2="60.0075" y2="16.44" width="0.1524" layer="1"/>
 <contactref element="U$1" pad="D8"/>
 <contactref element="U$1" pad="A3"/>
 <contactref element="U$1" pad="NC7"/>
-<contactref element="RX-IC" pad="1"/>
 <contactref element="R2" pad="1"/>
-<contactref element="MICRO" pad="1"/>
 <wire x1="13.6525" y1="11.58875" x2="13.6525" y2="10.31875" width="0.1524" layer="1"/>
 <wire x1="13.6525" y1="10.31875" x2="13.6525" y2="3.81" width="0.1524" layer="1"/>
 <wire x1="14.605" y1="12.54125" x2="13.6525" y2="11.58875" width="0.1524" layer="1"/>
@@ -3981,28 +3963,16 @@ design rules under a new name.</description>
 <wire x1="15.39875" y1="9.525" x2="31.59125" y2="9.525" width="0.1524" layer="16"/>
 <wire x1="31.59125" y1="9.525" x2="41.275" y2="9.525" width="0.1524" layer="16"/>
 <wire x1="14.605" y1="10.31875" x2="15.39875" y2="9.525" width="0.1524" layer="16"/>
-<wire x1="5.55625" y1="10.31875" x2="13.6525" y2="10.31875" width="0.1524" layer="16"/>
 <wire x1="13.6525" y1="10.31875" x2="14.605" y2="10.31875" width="0.1524" layer="16"/>
-<wire x1="5.08" y1="10.795" x2="5.55625" y2="10.31875" width="0.1524" layer="16"/>
 <wire x1="60.0075" y1="16.35125" x2="60.0075" y2="16.44" width="0.1524" layer="1"/>
 <wire x1="31.59125" y1="3.65125" x2="29.21" y2="1.27" width="0.1524" layer="16"/>
 <wire x1="31.59125" y1="9.36625" x2="31.59125" y2="3.65125" width="0.1524" layer="1"/>
 <wire x1="31.59125" y1="9.525" x2="31.59125" y2="9.36625" width="0.1524" layer="16"/>
-<wire x1="5.08" y1="10.795" x2="5.08" y2="7.3025" width="0.1524" layer="1"/>
 <via x="15.875" y="3.81" extent="1-16" drill="0.35"/>
 <via x="41.43375" y="9.68375" extent="1-16" drill="0.35"/>
 <via x="31.59125" y="3.65125" extent="1-16" drill="0.35"/>
 <via x="31.59125" y="9.36625" extent="1-16" drill="0.35"/>
 <via x="13.6525" y="10.31875" extent="1-16" drill="0.35"/>
-</signal>
-<signal name="N$23">
-<contactref element="U$1" pad="D4"/>
-<contactref element="MICRO" pad="2"/>
-<wire x1="23.1775" y1="15.5575" x2="24.13" y2="16.51" width="0.1524" layer="16"/>
-<wire x1="7.77875" y1="15.5575" x2="23.1775" y2="15.5575" width="0.1524" layer="16"/>
-<wire x1="7.3025" y1="15.5575" x2="7.77875" y2="15.5575" width="0.1524" layer="1"/>
-<wire x1="5.08" y1="13.335" x2="7.3025" y2="15.5575" width="0.1524" layer="1"/>
-<via x="7.77875" y="15.5575" extent="1-16" drill="0.35"/>
 </signal>
 </signals>
 <mfgpreviewcolors>

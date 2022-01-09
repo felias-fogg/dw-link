@@ -85,16 +85,14 @@ There are a few constraints on what kind of board you can use as the base for th
 
 As mentioned above, as a base for the debugger, in principle one can use any ATmega328, ATmega1284, or ATmega2560 based board. The clock speed  must be 16MHz. Currently, the sketch has been tested on the following boards:
 
-* [Arduino Uno](https://store.arduino.cc/products/arduino-uno-rev3) 
-* [Arduino Nano](https://store.arduino.cc/products/arduino-nano)
-* [Arduino Pro Mini](https://docs.arduino.cc/retired/boards/arduino-pro-mini) 
-* [Arduino Mega](https://store.arduino.cc/products/arduino-mega-2560-rev3)
+* [Arduino Uno](https://store.arduino.cc/products/arduino-uno-rev3),
+* [Arduino Nano](https://store.arduino.cc/products/arduino-nano),
+* [Arduino Pro Mini](https://docs.arduino.cc/retired/boards/arduino-pro-mini),
+* [Arduino Mega](https://store.arduino.cc/products/arduino-mega-2560-rev3).
 
-<!-- [Arduino Leonardo](https://store.arduino.cc/products/arduino-leonardo-with-headers) [Arduino Micro](https://store.arduino.cc/products/arduino-micro) [Arduino Pro Micro](https://www.sparkfun.com/products/12640) -->
+If you intend to use a different board, this is possible without too much hassle. You simply need to set up your own pin mapping (see [Sections 7.3.2 & 7.3.3](#section732)) in the source code (a big conditional compilation part in the beginning of the sketch). 
 
-If you intend to use a different board, this is possible without too much hassle. You simply need to set up your own pin mapping (see [Sections 7.3.2 & 7.3.3](#section732)) in the source code (a big conditional compilation part in the beginning of the sketch).
-
-The most basic solution is to use the Uno board and connect the cables as it is shown in the [Fritzing sketch](#Fritzing) further down. If you want to use the debugger more than once, it may payoff to use a prototype shield and put an ISP socket on it. The more luxurious solution is an adapter board for Nano sized Arduino boards or a shield for the Uno sized Arduino boards as described further down in [Section 7](#section7).
+The most basic setup is to use the Uno board and connect the cables as it is shown in the [Fritzing sketch](#Fritzing) further down. If you want to use the debugger more than once, it may payoff to use a prototype shield and put an ISP socket on it. The more luxurious solution is an adapter board for Nano sized Arduino boards or a shield for the Uno sized Arduino boards as described further down in [Section 7](#section7).
 
 <a name="section32"></a>
 
@@ -111,14 +109,14 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATtiny261(A)__, __ATtiny461(A)__, __ATtiny861(A)__
 * __ATtiny87__, __ATtiny167__
 * __ATtiny828__
-* ATtiny48, __ATtiny88__
+* __ATtiny48__, __ATtiny88__
 * __ATtiny1634__
 * <s>__ATmega48__</s>, __ATmega48A__, __ATmega48PA__, ATmega48PB, 
 * <s>__ATmega88__</s>, __ATmega88A__, __ATmega88PA__, Atmega88PB, 
 * __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on MCUs marked bold and will (really soon) test the others, except for the PB types, which appear to be very hard to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them. 
+I have tested the debugger on MCUs marked bold. The untested PB types appear to be very very difficult to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them. 
 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
@@ -182,20 +180,20 @@ As you can see, the Vcc rail is connected to pin D9 of the Arduino Uno so that i
 
 ![ATtiny85 pinout](https://raw.githubusercontent.com/SpenceKonde/ATTinyCore/master/avr/extras/ATtiny_x5.png)
 
-Here is table so that you can check that you have made all the connections. It is ordered by the ATtiny pin numbers.
+Here is a table of all the connections so that you can check that you have made all the connections. 
 
 ATtiny pin# | Arduino Uno pin | component
 --- | --- | ---
 1 (Reset) | D8 | 10k resistor to Vcc 
-2 (D3) |  | 200 Ω resistor to LED 
-3 (D4) |  | 
+2 (D3) |  |  
+3 (D4) |  |220 Ω resistor to LED
 4 (GND) | GND | LED, decoupling cap 
-5 (D0, MOSI) | D10 | 
-6 (D1, MISO) | D11 | 
-7 (D2, SCK) | D12 | 
+5 (D0, MOSI) | D10 |
+6 (D1, MISO) | D11 |
+7 (D2, SCK) | D12 |
 8 (Vcc) | D9 | 10k resistor, decoupling cap 
 
-We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED (the Arduino builtin LED on Arduino Uno pin D13).
+We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED (the Arduino builtin LED on Arduino pin D13).
 
 ### 4.3 States of the hardware debugger
 
@@ -206,7 +204,7 @@ There are six states, the debugger can be in and each is signaled by a different
 * target is connected (LED is on)
 * target loads an executable (LED is on, but will be off for 0.1 sec each second)
 * target is running (LED blinks 0.7 sec on / 0.7 sec off)
-* error state, i.e., not possible to connect to target, connection has been lost, or other internal error (LED blinks furiously every 0.1 sec)
+* error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec)
 
 If the hardware debugger is in the error state, one should try to find out the reason by typing the command `x/1db 0xffffffff`, study the [error message table](#fatalerror) at the end of the document, finish the GDB session, reset the debugger, and restart everything. If the problem persists, please check the section on [trouble shooting](#trouble).
 
@@ -535,7 +533,7 @@ While it is better then just 6 flying wires, you still have to remember which wi
 
 ### 7.1 A simple shield
 
-It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno<!--, Leonardo --> or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
+It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
 
 
 ![dw-probe-fritzing V 0.1](pics/dw-probe0.1.png)
@@ -547,7 +545,7 @@ In reality, it probably will more look like as in the next picture.
 ![dw-probe-proto V 0.1](pics/proto.jpg)
 
 
-This works very well on an Arduino Uno. <!-- On a Leonardo, you need to use Arduino pin 4 instead of 8 for the RESET line. Or better yet, you connect the two pins.--> On an Arduino Mega, you have to use Arduino pin 49, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-link.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
+This works very well on an Arduino Uno. On an Arduino Mega, you have to use Arduino pin 49, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-link.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
 
 ### 7.2 A shield with level shifters
 
@@ -625,23 +623,6 @@ In the table below, the mapping between functional pins of the debugger and the 
 
 In the standalone mode, the **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a standalone setting, there is no level-shifting done, so you should debug only 5 V systems.
 
-<!-- Pin | Nano V2 | Nano V3 | Micro | Pro Micro | Pro Mini | Uno | Leo-nardo | Mega | Stand alone -->
-<!-- --- | --- | --- | --- | --- | --- | --- | --- | --- | --- -->
-<!-- DEB-TX |A3= D17|A4= D18| A4= D22 | D5 | D5 |D3 |D3|D3| -->
-<!-- DW-LINE | D8 | D8 | D4 | D4 |D8| D8 |D4|D49| **+** -->
-<!-- GND | GND | GND | GND | GND | GND | GND | GND | GND | **+** -->
-<!-- ISP | D2 | D2 | D2 | D16 | D11 |D6|D6|D6| -->
-<!-- MISO | A2= D16 | A5= D19 | A5= D23 |D6 | D6 |D11|D11|D11| **+** -->
-<!-- MOSI | A5= D19 | A2= D16 | A2= D20 | D3 | D3 |D10|D10|D10| **+** -->
-<!-- SCK | D3 | D3 | D3 | D14 | D12 |D12|D12|D12| **+** -->
-<!-- SNS-GND | D11 | D11 | D11 | D10 | D10 |A0= D14|A0= D18|A0= D54| -->
-<!-- V33 | D5 | D5 | D5 | A0= D18 | A0= D14 |D7|D7|D7| -->
-<!-- V5 | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9| -->
-<!-- Vcc | 5V | 5V | 5V | Vcc | Vcc |5V|5V|5V| (+) -->
-<!-- VHIGH | D7 | D7 | D7 | A2= D20 | A2= D16 |D2|D2|D2|--> 
-<!-- VON | A1= D15 | A1= D15 | A1= D19 | D2 | D2 |D5|D5|D5| -->
-<!-- VSUP | D6 | D6 | D6 | A1= D19 | A1= D15 |D9|D9|D9 | **+** -->
-
 Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega | Stand alone 
 --- | --- | --- | --- | --- | --- | --- 
 DEB-TX |A3= D17|A4= D18| D5 |D3|D3|
@@ -660,11 +641,6 @@ VON | A1= D15 | A1= D15  | D2 |D5|D5|
 VSUP | D6 | D6 | A1= D15 |D9|D9 | **+** 
 
 
-
-
-#### 7.3.4 System LED
-
-As the system LED, we use the builtin LED on pin13 for most boards. <!-- On the Pro Micro, the TXI LED is used. --> On the Pro Mini, the builtin LED cannot be used since Arduino pin 13 conflicts with the input capture pin of the Micro board (which we plan to support in the future). So, if you use the Pro Mini, you do not have a system LED that signals the internal state. For a future version of the board, I will add an extra solder bridge into the design that can be closed for accommodating the Arduino Micro and allows to use the builtin LED of a Pro Mini board otherwise.
 
 <a name="section8"></a>
 

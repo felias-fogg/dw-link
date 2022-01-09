@@ -41,3 +41,5 @@ VSUP | Output | Used as a target supply line driven directly by an ATmega pin, w
 RST | Control | Common reset line, can be connected via a 10µF cap to ground to prohibit autoresest 
 
 ​          
+
+Note that the 32U4 based boards do not seem to work with the dw-link -- and it is not clear how proceed. So, for now,  we stick to the non-USB-MCU based boards.

@@ -307,6 +307,8 @@ attiny87 = ("ATtiny87", -1, 1, 2, ATTRcAndXtal,  large_arduino, "ATTinyCore:avr:
                  "Breakout Board")
 attiny167 = ("ATtiny167", -1, 1, 2, ATTRcAndXtal,  large_arduino, "ATTinyCore:avr:attinyx7:chip=167,clock=",
                  "Breakout Board")
+attiny48 = ("ATtiny48", -1, 13, 12, ATTOnlyRc,  medium_arduino, "ATTinyCore:avr:attinyx8:chip=48,clock=",
+                "Programmer-ZF")
 attiny88 = ("ATtiny88", -1, 13, 12, ATTOnlyRc,  large_arduino, "ATTinyCore:avr:attinyx8:chip=88,clock=",
                 "Programmer-ZF")
 attiny828 = ("ATtiny828", -1, 1, 2, ATTOnlyRc,  large_arduino, "ATTinyCore:avr:attiny828:clock=",
@@ -336,7 +338,7 @@ atmega328pb = ("ATmega328PB", -1, 2, 3, MiniRcAndXtal, large_arduino, "MiniCore:
 
 tinylist = (attiny13, attiny2313, attiny4313, attiny43u, attiny24, attiny44, attiny84, attiny841,
                  attiny25, attiny45, attiny85, attiny261, attiny461, attiny861, attiny87, attiny167,
-                 attiny88, attiny828, attiny1634)
+                 attiny48, attiny88, attiny828, attiny1634)
 megalist = (atmega48a, atmega48pa, atmega88a, atmega88pa, atmega168a, atmega168pa,  atmega328,
                 atmega328p, atmega328pb)
 exoticlist = ( )
@@ -460,6 +462,6 @@ def run_all_tests(port):
 
 #print(run_script(tictactoe_script, "/dev/cu.usbmodem1442101", "rc", "ck1"))
 
-#print(test_mcu("/dev/cu.usbmodem1442101", attiny85))
+print(test_mcu("/dev/cu.usbmodem1442101", attiny48))
 
-run_all_tests("/dev/cu.usbmodem1442101")
+#run_all_tests("/dev/cu.usbmodem1442101")
