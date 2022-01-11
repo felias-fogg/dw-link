@@ -113,69 +113,69 @@ const int LEDPIN = -1;
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_UNO)
 const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
-const int VON = 5;        // switch, low signals that dw-probe should deliver the supply charge
-const int V5 = 9;        // a low level switches the MOSFET for 5 volt on 
-const int V33 = 7;        // a low level switches the MOSFET for 3.3 volt on 
-const int VSUP = 9;        // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 14;        // If low, then we use a shield
-const int DWLINE = 8;        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
+const int VON = 5;          // switch, low signals that dw-probe should deliver the supply charge
+const int V5 = 9;           // a low level switches the MOSFET for 5 volt on 
+const int V33 = 7;          // a low level switches the MOSFET for 3.3 volt on 
+const int VSUP = 9;         // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 14;      // If low, then we use a shield
+const int DWLINE = 8;       // RESET (needs to be 8 so that we can use it as an input for TIMER1)
 const int TSCK = 12;        // SCK
-const int TMOSI = 10;        // MOSI
-const int TMISO = 11;        // MISO
+const int TMOSI = 10;       // MOSI
+const int TMISO = 11;       // MISO
 const int DEBTX = 3;        // TX line for TXOnlySerial
-const int TISP = 6;        // if low, signals that one wants to use the ISP programming feature
-const int LEDPIN = 5;      // PB5
+const int TISP = 6;         // if low, signals that one wants to use the ISP programming feature
+const int LEDPIN = 5;       // PB5
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MEGA2560)
 const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
-const int VON = 5;        // switch, low signals that dw-probe should deliver the supply charge
-const int V5 = 9;        // a low level switches the MOSFET for 5 volt on 
-const int V33 = 7;        // a low level switches the MOSFET for 3.3 volt on 
-const int VSUP = 9;        // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 54;        // If low, then we use a shield
-const int DWLINE = 49;        // RESET line 
+const int VON = 5;          // switch, low signals that dw-probe should deliver the supply charge
+const int V5 = 9;           // a low level switches the MOSFET for 5 volt on 
+const int V33 = 7;          // a low level switches the MOSFET for 3.3 volt on 
+const int VSUP = 9;         // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 54;      // If low, then we use a shield
+const int DWLINE = 49;      // RESET line 
 const int TSCK = 12;        // SCK
-const int TMOSI = 10;        // MOSI
-const int TMISO = 11;        // MISO
+const int TMOSI = 10;       // MOSI
+const int TMISO = 11;       // MISO
 const int DEBTX = 3;        // TX line for TXOnlySerial
-const int TISP = 6;        // if low, signals that one wants to use the ISP programming feature
-const int LEDPIN = 7;      // PB7
+const int TISP = 6;         // if low, signals that one wants to use the ISP programming feature
+const int LEDPIN = 7;       // PB7
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_NANO)  // on Nano board -- is aligned with Pro Mini and Pro Micro
+#elif defined(ARDUINO_AVR_NANO)  // on Nano board -- is aligned with Pro Mini 
 const int VHIGH = 7;        // switch, low signals that one should use the 5V supply
-const int VON = 15;        // switch, low signals that dw-probe should deliver the supply charge
-const int V33 = 5;        // a low level switches the MOSFET for 3.3 volt on 
-const int V5 = 6;        // a low level switches the MOSFET for 5 volt on 
-const int VSUP = 6;        // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 11;        // If low, then we are on the adapter board
-const int DWLINE = 8;        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-const int TSCK = 3;       // SCK
-const int TISP = 2;          // if low, signals that one wants to use the ISP programming feature
+const int VON = 15;         // switch, low signals that dw-probe should deliver the supply charge
+const int V33 = 5;          // a low level switches the MOSFET for 3.3 volt on 
+const int V5 = 6;           // a low level switches the MOSFET for 5 volt on 
+const int VSUP = 6;         // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 11;      // If low, then we are on the adapter board
+const int DWLINE = 8;       // RESET (needs to be 8 so that we can use it as an input for TIMER1)
+const int TSCK = 3;         // SCK
+const int TISP = 2;         // if low, signals that one wants to use the ISP programming feature
+const int LEDPIN = 5;       // PB5
 #if NANOVERSION == 3
-const int TMOSI = 16;        // MOSI
-const int TMISO = 19;        // MISO
-const int DEBTX = 18;        // TX line for TXOnlySerial
+const int TMOSI = 16;       // MOSI
+const int TMISO = 19;       // MISO
+const int DEBTX = 18;       // TX line for TXOnlySerial
 #else
-const int TMOSI = 19;        // MOSI
-const int TMISO = 16;        // MISO
-const int DEBTX = 17;        // TX line for TXOnlySerial
-const int LEDPIN = 5;      // PB5
+const int TMOSI = 19;       // MOSI
+const int TMISO = 16;       // MISO
+const int DEBTX = 17;       // TX line for TXOnlySerial
 #endif
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_PRO)  // on a Pro Mini board
 const int VHIGH = 16;        // switch, low signals that one should use the 5V supply
-const int VON = 2;        // switch, low signals tha dw-probe should deliver the supply charge
-const int V33 = 14;        // a low level switches the MOSFET for 3.3 volt on 
-const int V5 = 15;        // a low level switches the MOSFET for 5 volt on 
-const int VSUP = 15;        // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 10;        // If low, then we are on the adapter board
+const int VON = 2;           // switch, low signals tha dw-probe should deliver the supply charge
+const int V33 = 14;          // a low level switches the MOSFET for 3.3 volt on 
+const int V5 = 15;           // a low level switches the MOSFET for 5 volt on 
+const int VSUP = 15;         // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 10;       // If low, then we are on the adapter board
 const int DWLINE = 8;        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-const int TSCK = 12;        // SCK
-const int TMOSI = 3;        // MOSI
-const int TMISO = 6;        // MISO
-const int DEBTX = 5;        // TX line for TXOnlySerial
-const int TISP = 11;        // if low, signals that one wants to use the ISP programming feature
-const int LEDPIN = 5;      // PB5
+const int TSCK = 12;         // SCK
+const int TMOSI = 3;         // MOSI
+const int TMISO = 6;         // MISO
+const int DEBTX = 5;         // TX line for TXOnlySerial
+const int TISP = 11;         // if low, signals that one wants to use the ISP programming feature
+const int LEDPIN = 5;        // PB5
 //-----------------------------------------------------------
 #else
 #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini" 
