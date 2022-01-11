@@ -34,7 +34,7 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
 
-#define VERSION "1.1.11"
+#define VERSION "1.1.12"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -42,10 +42,6 @@
 
 #ifndef ADAPTSPEED // adaptive communication speed for line to host
 #define ADAPTSPEED 1
-#endif
-#ifdef __AVR_ATmega32U4__
-#undef ADAPTSPEED
-#define ADAPTSPEED 0 // not needed when using USB as the connection to the host
 #endif
 
 #ifndef INITIALBPS 
@@ -100,102 +96,89 @@
 // Similarly, UNO and Mega use the same shield
 //-----------------------------------------------------------
 #if defined(DIRECTISP)   // Binding for a modified ISP plug
-#define ID     "DISP"
-#define TSCK    13        // SCK  -- directly connected to ISP socket
-#define TMOSI   11        // MOSI -- directly connected to ISP socket
-#define TMISO    12        // MISO -- directly connected to ISP socket
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define VSUP    9        // needs to be an extra pin so that we can power-cycle
-#define DEBTX   3        // TX line for TXOnlySerial
-//#define LEDDDR  DDRB     // DDR of system LED
-//#define LEDPORT PORTB    // port register of system LED
-//#define LEDPIN  PB5      // pin (=D13)
+const int VHIGH = -1;    // switch, low signals that one should use the 5V supply
+const int VON = -1;      // switch, low signals that dw-probe should deliver the supply charge
+const int V5 = -1;       // a low level switches the MOSFET for 5 volt on 
+const int V33 = -1;      // a low level switches the MOSFET for 3.3 volt on 
+const int SNSGND = -1;   // If low, then we use a shield
+const int TSCK = 13;     // SCK  -- directly connected to ISP socket
+const int TMOSI = 11;    // MOSI -- directly connected to ISP socket
+const int TMISO = 12;    // MISO -- directly connected to ISP socket
+const int DWLINE = 8;    // RESET (needs to be 8 so that we can use it as an input for TIMER1)
+const int VSUP = 9;      // needs to be an extra pin so that we can power-cycle
+const int DEBTX = 3;     // TX line for TXOnlySerial
+const int LEDDDR = -1;   // no system LED
+const int LEDPORT = -1; 
+const int LEDPIN = -1;
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_UNO)
-#define ID      "UNO"
-#define VHIGH   2        // switch, low signals that one should use the 5V supply
-#define VON     5        // switch, low signals that dw-probe should deliver the supply charge
-#define V5      9        // a low level switches the MOSFET for 5 volt on 
-#define V33     7        // a low level switches the MOSFET for 3.3 volt on 
-#define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 14        // If low, then we use a shield
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define TSCK    12        // SCK
-#define TMOSI   10        // MOSI
-#define TMISO   11        // MISO
-#define DEBTX   3        // TX line for TXOnlySerial
-#define TISP  6        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB5      // pin (=D13)
+const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
+const int VON = 5;        // switch, low signals that dw-probe should deliver the supply charge
+const int V5 = 9;        // a low level switches the MOSFET for 5 volt on 
+const int V33 = 7;        // a low level switches the MOSFET for 3.3 volt on 
+const int VSUP = 9;        // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 14;        // If low, then we use a shield
+const int DWLINE = 8;        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
+const int TSCK = 12;        // SCK
+const int TMOSI = 10;        // MOSI
+const int TMISO = 11;        // MISO
+const int DEBTX = 3;        // TX line for TXOnlySerial
+const int TISP = 6;        // if low, signals that one wants to use the ISP programming feature
+const int LEDPIN = 5;      // PB5
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MEGA2560)
-#define ID      "MEGA"
-#define VHIGH   2        // switch, low signals that one should use the 5V supply
-#define VON     5        // switch, low signals that dw-probe should deliver the supply charge
-#define V5      9        // a low level switches the MOSFET for 5 volt on 
-#define V33     7        // a low level switches the MOSFET for 3.3 volt on 
-#define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 54        // If low, then we use a shield
-#define DWLINE 49        // RESET line 
-#define TSCK    12        // SCK
-#define TMOSI   10        // MOSI
-#define TMISO   11        // MISO
-#define DEBTX   3        // TX line for TXOnlySerial
-#define TISP  6        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB7      // pin (=D13)
+const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
+const int VON = 5;        // switch, low signals that dw-probe should deliver the supply charge
+const int V5 = 9;        // a low level switches the MOSFET for 5 volt on 
+const int V33 = 7;        // a low level switches the MOSFET for 3.3 volt on 
+const int VSUP = 9;        // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 54;        // If low, then we use a shield
+const int DWLINE = 49;        // RESET line 
+const int TSCK = 12;        // SCK
+const int TMOSI = 10;        // MOSI
+const int TMISO = 11;        // MISO
+const int DEBTX = 3;        // TX line for TXOnlySerial
+const int TISP = 6;        // if low, signals that one wants to use the ISP programming feature
+const int LEDPIN = 7;      // PB7
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_NANO)  // on Nano board -- is aligned with Pro Mini and Pro Micro
-#define VHIGH   7        // switch, low signals that one should use the 5V supply
-#define VON    15        // switch, low signals that dw-probe should deliver the supply charge
-#define V33     5        // a low level switches the MOSFET for 3.3 volt on 
-#define V5      6        // a low level switches the MOSFET for 5 volt on 
-#define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 11        // If low, then we are on the adapter board
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define TSCK     3       // SCK
-#define TISP  2          // if low, signals that one wants to use the ISP programming feature
+const int VHIGH = 7;        // switch, low signals that one should use the 5V supply
+const int VON = 15;        // switch, low signals that dw-probe should deliver the supply charge
+const int V33 = 5;        // a low level switches the MOSFET for 3.3 volt on 
+const int V5 = 6;        // a low level switches the MOSFET for 5 volt on 
+const int VSUP = 6;        // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 11;        // If low, then we are on the adapter board
+const int DWLINE = 8;        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
+const int TSCK = 3;       // SCK
+const int TISP = 2;          // if low, signals that one wants to use the ISP programming feature
 #if NANOVERSION == 3
-#define ID      "NANO3"
-#define TMOSI   16        // MOSI
-#define TMISO   19        // MISO
-#define DEBTX  18        // TX line for TXOnlySerial
+const int TMOSI = 16;        // MOSI
+const int TMISO = 19;        // MISO
+const int DEBTX = 18;        // TX line for TXOnlySerial
 #else
-#define ID      "NANO2"
-#define TMOSI   19        // MOSI
-#define TMISO   16        // MISO
-#define DEBTX  17        // TX line for TXOnlySerial
+const int TMOSI = 19;        // MOSI
+const int TMISO = 16;        // MISO
+const int DEBTX = 17;        // TX line for TXOnlySerial
+const int LEDPIN = 5;      // PB5
 #endif
-// System LED = Arduino pin 13 (builtin LED) (pin TX0 on Pro Micro/Mini)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB5      // Arduino pin 13
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_PRO)  // on a Pro Mini board
-#define ID      "PRO"
-#define VHIGH  16        // switch, low signals that one should use the 5V supply
-#define VON     2        // switch, low signals tha dw-probe should deliver the supply charge
-#define V33    14        // a low level switches the MOSFET for 3.3 volt on 
-#define V5     15        // a low level switches the MOSFET for 5 volt on 
-#define VSUP   15        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 10        // If low, then we are on the adapter board
-#define DWLINE  8        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-#define TSCK    12        // SCK
-#define TMOSI    3        // MOSI
-#define TMISO    6        // MISO
-#define DEBTX   5        // TX line for TXOnlySerial
-#define TISP   11        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13 (builtin LED) (pin D4 on Nano and D15 on Pro Micro)
-//#define LEDDDR  DDRC     // DDR of system LED
-//#define LEDPORT PORTC    // port register of system LED
-//#define LEDPIN  PC7      // not connected to the outside world!
+const int VHIGH = 16;        // switch, low signals that one should use the 5V supply
+const int VON = 2;        // switch, low signals tha dw-probe should deliver the supply charge
+const int V33 = 14;        // a low level switches the MOSFET for 3.3 volt on 
+const int V5 = 15;        // a low level switches the MOSFET for 5 volt on 
+const int VSUP = 15;        // Vcc - direct supply charge (limit it to 20-30 mA!)
+const int SNSGND = 10;        // If low, then we are on the adapter board
+const int DWLINE = 8;        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
+const int TSCK = 12;        // SCK
+const int TMOSI = 3;        // MOSI
+const int TMISO = 6;        // MISO
+const int DEBTX = 5;        // TX line for TXOnlySerial
+const int TISP = 11;        // if low, signals that one wants to use the ISP programming feature
+const int LEDPIN = 5;      // PB5
 //-----------------------------------------------------------
 #else
-#error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini (yet)" 
+#error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini" 
 #endif
 
 #include <stddef.h>
@@ -216,8 +199,8 @@
 #define MAXBUF 150 // input buffer for GDB communication
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
-#if RAMEND > 2600
-#define MAXBREAK 65 // with the 32U4, 126, or 256, we have enough RAM for that!
+#if RAMEND > 3000
+#define MAXBREAK 65 // with the 126, or 256, we have enough RAM for that!
 #else
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries!)
 #endif
@@ -386,6 +369,7 @@ struct {
   byte         rcosc;      // fuse pattern for setting RC osc as clock source
   byte         extosc;     // fuse pattern for setting EXTernal osc as clock source
   byte         xtalosc;    // fuse pattern for setting XTAL osc as clock source
+  byte         slowosc;    // fuse pattern for setting 128 kHz oscillator
   const char*  name;       // pointer to name in PROGMEM
   byte         dwenfuse;   // bit mask for DWEN fuse in high fuse byte
   byte         ckdiv8;     // bit mask for CKDIV8 fuse in low fuse byte
@@ -412,6 +396,7 @@ struct mcu_info_type {
   byte         rcosc;          // fuse pattern for setting RC osc as clock source
   byte         extosc;         // fuse pattern for setting EXTernal osc as clock source
   byte         xtalosc;        // fuse pattern for setting XTAL osc as clock source
+  byte         slowosc;        // fuse pattern for setting 128 kHz oscillator
   boolean      avreplus;       // AVRe+ architecture
   const char*  name;           // pointer to name in PROGMEM
 };
@@ -419,71 +404,71 @@ struct mcu_info_type {
 // mcu infos (for all AVR mcus supporting debugWIRE)
 // untested ones are marked by a star
 const mcu_info_type mcu_info[] PROGMEM = {
-  // sig sram low eep flsh dwdr  pg er4 boot    eecr eearh rcosc extosc xtosc plus name
-  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0, attiny13},
+  // sig sram low eep flsh dwdr  pg er4 boot    eecr eearh rcosc extosc xtosc slosc plus name
+  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0x0B, 0, attiny13},
 
-  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, attiny2313},
-  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0, attiny4313},
+  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0x26, 0, attiny2313},
+  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0x26, 0, attiny4313},
 
-  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x3F, 0, attiny43},
+  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x3F, 0x23, 0, attiny43},
 
-  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny24},   
-  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny44},
-  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny84},
+  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x24, 0, attiny24},   
+  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x24, 0, attiny44},
+  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x24, 0, attiny84},
   
-  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny441}, 
-  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny841},
+  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x00, 0, attiny441}, 
+  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x00, 0, attiny841},
   
-  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny25},
-  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny45},
-  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny85},
+  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x24, 0, attiny25},
+  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x24, 0, attiny45},
+  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x24, 0, attiny85},
   
-  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny261},
-  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny461},
-  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0, attiny861},
+  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x23, 0, attiny261},
+  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x23, 0, attiny461},
+  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x23, 0, attiny861},
   
-  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, attiny87},  
-  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0, attiny167},
+  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 0, attiny87},  
+  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 0, attiny167},
 
-  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, 0, attiny828},
+  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x3E, 0x2C, 0x3E, 0x00, 0, attiny828},
 
-  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, attiny48},  // untested
-  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0, attiny88},
+  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0x23, 0, attiny48},  
+  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x2E, 0x2C, 0x00, 0x23, 0, attiny88},
   
-  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0x22, 0x20, 0x2F, 0, attiny1634},
+  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0x02, 0x00, 0x0F, 0x00, 0, attiny1634},
   
-  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48a},
-  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48pa},
-  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega48pb}, // untested
-  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88a},
-  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88pa},
-  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega88pb}, // untested
-  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168a},
-  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pa},
-  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega168pb}, // untested
-  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328},
-  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328p},
-  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega328pb},
+  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega48a},
+  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega48pa},
+  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega48pb}, // untested
+  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega88a},
+  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega88pa},
+  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega88pb}, // untested
+  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega168a},
+  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega168pa},
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega168pb}, // untested
+  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega328},
+  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega328p},
+  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x23, 1, atmega328pb},
   
-  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega8u2},   // untested
-  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16u2},  // untested
-  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32u2},  // untested
+  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega8u2},   // untested
+  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega16u2},  // untested
+  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega32u2},  // untested
 
-  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega16m1},  // untested
-  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32c1},  // untested
-  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega32m1},  // untested
-  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64c1},  // untested
-  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, atmega64m1},  // untested
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega16m1},  // untested
+  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega32c1},  // untested
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega32m1},  // untested
+  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega64c1},  // untested
+  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x3F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, atmega64m1},  // untested
 
-  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb82},   // untested
-  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90usb162},  // untested
+  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, at90usb82},   // untested
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, at90usb162},  // untested
 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm12b3b},// untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00,  1, at90pwm12b3b},// untested 
 
-  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm81},  // untested
-  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 1, at90pwm161}, // untested
+  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x23, 1, at90pwm81},  // untested
+  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x23, 1, at90pwm161}, // untested
 
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 1, at90pwm216316},  // untested
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, at90pwm216316},  // untested
   {0,      0,  0,  0, 0,  0,     0,  0, 0,      0,    0,    0,    0,    0,    0, 0},
 };
 
@@ -491,7 +476,7 @@ const byte maxspeedexp = 4; // corresponds to a factor of 16
 const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
 unsigned long speedlimit = SPEEDLOW;
 
-enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, Erase, DWEN };
+enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, CkSlow, Erase, DWEN };
 
 const int maxbpsix = 5;
 const unsigned long rsp_bps[] = { 230400, 115200, 57600, 38400, 19200, 9600 };
@@ -525,7 +510,7 @@ DEBDECLARE();
 
 /****************** Interrupt routines *********************/
 
-#ifdef LEDPIN // is only used if there is a LEDPIN designed
+#if LEDPIN >= 0 // is only used if there is a LEDPIN defined
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 {
   // the ISR can be interrupted at any point by itself, the only problem
@@ -539,39 +524,31 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (busy) return; // if this IRQ routine is already active, leave immediately
   busy++; 
   cnt--;
-  if (LEDPORT & _BV(LEDPIN)) {
+  if (PORTB & _BV(LEDPIN)) {
     if (cnt < 0) {
       cnt = offtime;
-      LEDPORT &= ~_BV(LEDPIN);
+      PORTB &= ~_BV(LEDPIN);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      LEDPORT |= _BV(LEDPIN);
+      PORTB |= _BV(LEDPIN);
     }
   }
   busy--;
 }
 #endif
 
-// Block USB interrupts
-#ifdef __AVR_ATmega32U4__
-#define BLOCKUSB() byte sUDIEN = UDIEN; UDIEN = 0; byte sUENUM = UENUM; UENUM = 0; byte sUEIENX = UEIENX; UEIENX = 0
-#define UNBLOCKUSB() UEIENX = sUEIENX; UENUM = sUENUM; UDIEN = sUDIEN
-#else
-#define BLOCKUSB() 
-#define UNBLOCKUSB()
-#endif
 
 /******************* setup & loop ******************************/
 void setup(void) {
   Serial.begin(INITIALBPS);
   while (!Serial);
   DEBINIT(); 
-  DEBLN(F("dw-link (" ID ") V" VERSION));
+  DEBLN(F("dw-link V" VERSION));
 #if SDEBUG
   Serial1.begin(115200);
-  Serial.println(F("dw-link (" ID ") V" VERSION));
+  Serial.println(F("dw-link V" VERSION));
 #endif
   TIMSK0 = 0; // no millis interrupts
   ctx.hostbps = INITIALBPS;
@@ -579,16 +556,16 @@ void setup(void) {
   ctx.von = false;
   ctx.vhigh = false;
   ctx.snsgnd = false;  
-#ifdef LEDDDR
-  LEDDDR |= _BV(LEDPIN); // switch on output for system LED
+#if LEDPIN >= 0
+  DDRB |= _BV(LEDPIN); // switch on output for system LED
 #endif
-#ifdef VON
+#if VON >= 0
   pinMode(VON, INPUT_PULLUP); // configure Von as input from switch
 #endif
-#ifdef VHIGH
+#if VHIGH >= 0
   pinMode(VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
 #endif
-#ifdef SNSGND
+#if SNSGND >= 0
   pinMode(SNSGND, INPUT_PULLUP);
 #endif
 #if SCOPEDEBUG
@@ -716,7 +693,7 @@ boolean rightSpeed(void)
 // configure supply lines according to switch setting
 void configureSupply(void)
 {
-#ifdef SNSGND
+#if SNSGND >= 0
   ctx.snsgnd = !digitalRead(SNSGND);
 #endif
   if (!ctx.snsgnd) {
@@ -792,10 +769,10 @@ void setSysState(statetype newstate)
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-#ifdef LEDDDR
-  LEDDDR |= _BV(LEDPIN);
-  if (ontimes[newstate] == 0) LEDPORT &= ~_BV(LEDPIN);
-  else if (offtimes[newstate] == 0) LEDPORT |= _BV(LEDPIN);
+#if LEDPIN >= 0
+  DDRB |= _BV(LEDPIN);
+  if (ontimes[newstate] == 0) PORTB &= ~_BV(LEDPIN);
+  else if (offtimes[newstate] == 0) PORTB |= _BV(LEDPIN);
   else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
@@ -1006,6 +983,8 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetFuses(CkExt);                                                     /* ex[tosc] */
   else if (memcmp_P(buf, (void *)PSTR("7874616c6f736300"), max(4,min(16,clen))) == 0)
     gdbSetFuses(CkXtal);                                                     /* xt[alosc] */
+  else if (memcmp_P(buf, (void *)PSTR("736c6f776f736300"), max(4,min(16,clen))) == 0)
+    gdbSetFuses(CkSlow);                                                     /* sl[owosc] */
   else if (memcmp_P(buf, (void *)PSTR("6572617365666c61736800"), max(4,min(22,clen))) == 0)
     gdbSetFuses(Erase);                                                     /*er[aseflash]*/
   else if (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)
@@ -1057,7 +1036,7 @@ inline void gdbSetSteppingMode(boolean safe)
 // show version
 inline void gdbVersion(void)
 {
-  gdbReplyMessagePSTR(PSTR("dw-link (" ID ") V" VERSION), -1);
+  gdbReplyMessagePSTR(PSTR("dw-link V" VERSION), -1);
 }
   
 // show connectio speed to host
@@ -1308,6 +1287,7 @@ void gdbSetFuses(Fuses fuse)
     else if (res == -2) gdbDebugMessagePSTR(PSTR("Unsupported MCU type"),-1);
     else if (res == -3) gdbDebugMessagePSTR(PSTR("Fuse programming failed"),-1);
     else if (res == -4) gdbDebugMessagePSTR(PSTR("XTAL is not a possible clock source"),-1);
+    else if (res == -5) gdbDebugMessagePSTR(PSTR("Internal 128 kHz osc. is not a possible clock source"),-1);
     flushInput();
     gdbSendReply("E05");
     return;
@@ -1318,6 +1298,7 @@ void gdbSetFuses(Fuses fuse)
   case CkRc: gdbDebugMessagePSTR(PSTR("Clock source is now the RC oscillator"),-1); break;
   case CkExt: gdbDebugMessagePSTR(PSTR("Clock source is now the EXTernal oscillator"),-1); break;
   case CkXtal: gdbDebugMessagePSTR(PSTR("Clock source is now the XTAL oscillator"),-1); break;
+  case CkSlow: gdbDebugMessagePSTR(PSTR("Clock source is now 128 kHz oscillator"),-1); break;
   case Erase: gdbDebugMessagePSTR(PSTR("Flash memory erased"),-1); break;
   default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
   }
@@ -1767,8 +1748,8 @@ void gdbReadRegisters(void)
   buf[i++] = nib2hex((pc >> 0)  & 0xf);
   buf[i++] = nib2hex((pc >> 12) & 0xf);
   buf[i++] = nib2hex((pc >> 8)  & 0xf);
-  buf[i++] = '0'; /* For AVR with up to 16-bit PC */
-  buf[i++] = nib2hex((pc >> 16) & 0xf);
+  buf[i++] = '0'; /* gdb wants 32-bit value, send 0 */
+  buf[i++] = '0'; /* gdb wants 32-bit value, send 0 */
   buf[i++] = '0'; /* gdb wants 32-bit value, send 0 */
   buf[i++] = '0'; /* gdb wants 32-bit value, send 0 */
   
@@ -1893,8 +1874,7 @@ void gdbHideBREAKs(unsigned int startaddr, byte membuf[], int size)
 // write to target memory
 void gdbWriteMemory(const byte *buff, boolean binary)
 {
-  unsigned long sz, flag, addr;
-  int i;
+  unsigned long sz, flag, addr,  i;
   long memsz;
 
   measureRam();
@@ -2313,6 +2293,7 @@ int targetSetFuses(Fuses fuse)
 
   measureRam();
   if (fuse == CkXtal && mcu.xtalosc == 0) return -4; // this chip does not permit an XTAL as the clock source
+  if (fuse == CkSlow && mcu.slowosc == 0) return -5; // this chip cannot run with 128 kHz
   if (doBreak()) {
     sendCommand((const byte[]) {0x06}, 1); // leave debugWIRE mode
   } 
@@ -2333,6 +2314,7 @@ int targetSetFuses(Fuses fuse)
   case CkRc:   succ = ispProgramFuse(false, mcu.ckmsk, mcu.rcosc); break;
   case CkExt: succ = ispProgramFuse(false, mcu.ckmsk, mcu.extosc); break;
   case CkXtal: succ = ispProgramFuse(false, mcu.ckmsk, mcu.xtalosc); break;
+  case CkSlow: succ = ispProgramFuse(false, mcu.ckmsk, mcu.slowosc); break;
   case Erase: succ = ispEraseFlash(); break;
   case DWEN: succ = ispProgramFuse(true, mcu.dwenfuse, mcu.dwenfuse); break;
   default: succ = false;
@@ -2655,18 +2637,15 @@ boolean targetReset(void)
   // dw.begin(ctx.bps*2); // could be that communication speed is higher after reset!
   _delay_us(10);
   while (digitalRead(DWLINE) && timeout) timeout--;
-  BLOCKUSB();
   _delay_us(1);
   
   ctx.bps = 0; // set to zero in order to force new speed after reset
   //  if (expectBreakAndU()) {
   if (expectUCalibrate()) {
-    // DEBLN(F("RESET successful"));
-    UNBLOCKUSB();
+    DEBLN(F("RESET successful"));
     return true;
   } else {
-    UNBLOCKUSB();
-    // DEBLN(F("***RESET failed"));
+    DEBLN(F("***RESET failed"));
     reportFatalError(RESET_FAILED_FATAL, true);
     return false;
   }
@@ -2740,16 +2719,13 @@ boolean doBreak () {
   DEBLN(F("doBreak"));
   pinMode(DWLINE, INPUT);
   _delay_ms(10);
-  BLOCKUSB();
   ctx.bps = 0; // forget about previous connection
   dw.sendBreak(); // send a break
   if (!expectUCalibrate()) {
-    //DEBLN(F("No response from debugWIRE on sending break"));
-    UNBLOCKUSB();
+    DEBLN(F("No response after break"));
     return false;
   }
   //DEBPR(F("Successfully connected with bps: ")); DEBLN(ctx.bps);
-  UNBLOCKUSB();
   return true;
 }
 
@@ -2757,14 +2733,14 @@ boolean doBreak () {
 // multiply speed by at most 16 up to 250k baud - provided we have another speed than
 // before
 // return false if syncing was unsuccessful
-boolean expectUCalibrate() {
+boolean expectUCalibrate(void) {
   int8_t speed;
   unsigned long newbps;
 
   measureRam();
   newbps = dw.calibrate(); // expect 0x55 and calibrate
   DEBPR(F("Rsync (1): ")); DEBLN(newbps);
-  if (newbps < 100) {
+  if (newbps < 10) {
     ctx.bps = 0;
     return false; // too slow
   }
@@ -2781,7 +2757,7 @@ boolean expectUCalibrate() {
   DWsetSpeed(speed);
   ctx.bps = dw.calibrate(); // calibrate again
   DEBPR(F("Rsync (2): ")); DEBLN(ctx.bps);
-  if (ctx.bps < 1000) {
+  if (ctx.bps < 100) {
     DEBLN(F("Second calibration too slow!"));
     return false; // too slow
   }
@@ -2945,10 +2921,8 @@ void DWreadRegisters (byte *regs)
   measureRam();
   DWflushInput();
   sendCommand(rdRegs,  sizeof(rdRegs));
-  BLOCKUSB();
   sendCommand((const byte[]) {0x20}, 1);         // Go
   getResponse(regs, 32);                         // Get value sent as response
-  UNBLOCKUSB();
 }
 
 // Read register <reg> by building and executing an "out DWDR,<reg>" instruction via the CMD_SET_INSTR register
@@ -2959,10 +2933,8 @@ byte DWreadRegister (byte reg) {
   measureRam();
   DWflushInput();
   sendCommand(rdReg,  sizeof(rdReg));
-  BLOCKUSB();
   sendCommand((const byte[]) {0x23}, 1);                                // Go
   getResponse(&res,1);
-  UNBLOCKUSB();
   return res;
 }
 
@@ -3011,10 +2983,8 @@ byte DWreadSramByte (unsigned int addr) {
   measureRam();
   DWflushInput();
   sendCommand(rdSram, sizeof(rdSram));
-  BLOCKUSB();
   sendCommand((const byte[]) {0x20}, 1);                              // Go
   getResponse(&res,1);
-  UNBLOCKUSB();
   return res;
 }
 
@@ -3029,10 +2999,8 @@ byte DWreadIOreg (byte ioreg)
   measureRam();
   DWflushInput();
   sendCommand(rdIOreg, sizeof(rdIOreg));
-  BLOCKUSB();
   sendCommand((const byte[]) {0x23}, 1);                            // Go
   getResponse(&res,1);
-  UNBLOCKUSB();
   return res;
 }
 
@@ -3049,15 +3017,13 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
                      0x20,                                            // Go
                      (byte)(addr & 0xFF), (byte)(addr >> 8),          // r31:r30 (Z) = addr
                      0xD0, mcu.stuckat1byte, 0x00,                    
-                     0xD1, (byte)(len2 >> 8)+mcu.stuckat1byte, (byte)(len2 & 0xFF),    // Set repeat count = len * 2
+                     0xD1, (byte)((len2 >> 8)+mcu.stuckat1byte), (byte)(len2 & 0xFF),  // Set repeat count = len * 2
                      0xC2, 0x00};                                     // Set simulated "ld r?,Z+; out DWDR,r?" instructions
     measureRam();
     DWflushInput();
     sendCommand(rdSram, sizeof(rdSram));
-    BLOCKUSB();
     sendCommand((const byte[]) {0x20}, 1);                            // Go
     rsp = getResponse(mem, len);
-    UNBLOCKUSB();
     if (rsp == len) {
       break;
     } else {
@@ -3108,10 +3074,8 @@ byte DWreadEepromByte (unsigned int addr) {
   if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
     sendCommand(doReadH, sizeof(doReadH));
   sendCommand(doRead, sizeof(doRead));                                  // set rest of control regs and query
-  BLOCKUSB();
   sendCommand((const byte[]) {0x23}, 1);                                // Go
   getResponse(&retval,1);                                               // Read data from EEPROM location
-  UNBLOCKUSB(); 
   return retval;
 }
 
@@ -3157,14 +3121,12 @@ boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
                       0x20,                                               // Go
                       (byte)(addr & 0xFF), (byte)(addr >> 8),             // r31:r30 (Z) = addr
                       0xD0, mcu.stuckat1byte, 0x00,                       // Set start = 0
-                      0xD1, (byte)(lenx2 >> 8)+mcu.stuckat1byte,(byte)(lenx2),// Set end = repeat count = sizeof(flashBuf) * 2
+                      0xD1, (byte)((lenx2 >> 8)+mcu.stuckat1byte),(byte)(lenx2),// Set end = repeat count = sizeof(flashBuf) * 2
                       0xC2, 0x02};                                        // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
     DWflushInput();
     sendCommand(rdFlash, sizeof(rdFlash));
-    BLOCKUSB();
     sendCommand((const byte[]) {0x20}, 1);                                // Go
     rsp = getResponse(mem, len);                                          // Read len bytes
-    UNBLOCKUSB();
     if (rsp ==len) {
       break;
     } else {
@@ -3192,10 +3154,8 @@ boolean DWeraseFlashPage(unsigned int addr) {
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8 }; // execute SPM
   sendCommand(eflash, sizeof(eflash));
-  BLOCKUSB();
   sendCommand((const byte[]) {0x33}, 1);
   boolean succ = expectBreakAndU();
-  UNBLOCKUSB();
   return succ; 
 }
 		    
@@ -3221,10 +3181,8 @@ boolean DWprogramFlashPage(unsigned int addr)
 		   0xD2, 0x95 , 0xE8}; // execute SPM
   sendCommand(eprog, sizeof(eprog));
 
-  BLOCKUSB();
   sendCommand((const byte[]) {0x33}, 1);
   succ = expectBreakAndU(); // wait for feedback
-  UNBLOCKUSB();
   
   if (mcu.bootaddr && succ) { // no bootloader
     _delay_us(100);
@@ -3298,10 +3256,8 @@ byte DWreadSPMCSR(void)
 
 unsigned int DWgetWPc (boolean corrected) {
   DWflushInput();
-  BLOCKUSB();
   sendCommand((const byte[]) {0xF0}, 1);
   unsigned int pc = getWordResponse();
-  UNBLOCKUSB();
   DEBPR(F("Get uncorrected WPC=")); DEBLNF(pc,HEX);
   if (corrected) {
     pc &= ~(mcu.stuckat1byte<<8);
@@ -3316,23 +3272,21 @@ unsigned int DWgetWPc (boolean corrected) {
 unsigned int DWgetChipId () {
   unsigned int result;
   DWflushInput();
-  BLOCKUSB();
   sendCommand((const byte[]) {0xF3}, 1);
   result = getWordResponse();
-  UNBLOCKUSB();
   return result;
 }
 
 // set PC Reg (word address) - that is set all the bits (including the ones in the stuckat1byte)
 void DWsetWPc (unsigned int wpcreg) {
   DEBPR(F("Set WPCReg=")); DEBLNF(wpcreg,HEX);
-  byte cmd[] = {0xD0, (byte)(wpcreg >> 8)+mcu.stuckat1byte, (byte)(wpcreg & 0xFF)};
+  byte cmd[] = {0xD0, (byte)((wpcreg >> 8)+mcu.stuckat1byte), (byte)(wpcreg & 0xFF)};
   sendCommand(cmd, sizeof(cmd));
 }
 
 // set hardware breakpoint at word address
 void DWsetWBp (unsigned int wbp) {
-  byte cmd[] = {0xD1, (byte)(wbp >> 8)+mcu.stuckat1byte, (byte)(wbp & 0xFF)};
+  byte cmd[] = {0xD1, (byte)((wbp >> 8)+mcu.stuckat1byte), (byte)(wbp & 0xFF)};
   sendCommand(cmd, sizeof(cmd));
 }
 
@@ -3389,10 +3343,10 @@ byte ispTransfer (byte val) {
   for (byte ii = 0; ii < 8; ++ii) {
     digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
     digitalWrite(TSCK, HIGH);
-    _delay_us(4*10); 
+    _delay_us(200); 
     val = (val << 1) + digitalRead(TMISO);
     digitalWrite(TSCK, LOW);
-    _delay_us(4*10);
+    _delay_us(200);
   }
   return val;
 }
@@ -3534,6 +3488,7 @@ boolean setMcuAttr(unsigned int id)
       mcu.rcosc =  pgm_read_byte(&mcu_info[ix].rcosc);
       mcu.extosc =  pgm_read_byte(&mcu_info[ix].extosc);
       mcu.xtalosc =  pgm_read_byte(&mcu_info[ix].xtalosc);
+      mcu.slowosc =  pgm_read_byte(&mcu_info[ix].slowosc);
       mcu.avreplus = pgm_read_byte(&mcu_info[ix].avreplus);
       mcu.name = pgm_read_word(&mcu_info[ix].name);
       // the remaining fields will be derived 
@@ -3569,6 +3524,7 @@ boolean setMcuAttr(unsigned int id)
       DEBPR(F("rco=0x")); DEBLNF(mcu.rcosc,HEX);
       DEBPR(F("ext=0x")); DEBLNF(mcu.extosc,HEX);
       DEBPR(F("xto=0x")); DEBLNF(mcu.xtalosc,HEX);
+      DEBPR(F("slo=0x")); DEBLNF(mcu.slowosc,HEX);
       strcpy_P(buf,mcu.name);
       DEBPR(F("nam=")); DEBLN((char*)buf);
       DEBPR(F("ear=0x")); DEBLNF(mcu.eearl,HEX);

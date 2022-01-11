@@ -350,7 +350,7 @@ int targetTests(int &num) {
   int failed = 0;
   bool succ;
   int testnum;
-  int i;
+  unsigned int i;
   long lastflashcnt;
 
   if (targetOffline()) {
@@ -577,6 +577,7 @@ int DWtests(int &num)
   bool succ;
   int testnum;
   byte temp;
+  unsigned int i;
 
   if (targetOffline()) {
     if (num == 0) gdbSendReply("E00");
@@ -666,31 +667,31 @@ int DWtests(int &num)
 
   // read the freshly cleared flash page
   gdbDebugMessagePSTR(PSTR("Test DWreadFlash (empty page): "), testnum++);
-  for (int i=0; i < mcu.pagesz; i++) newpage[i] = 0;
+  for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
   succ = true;
   DWreenableRWW();
   DWreadFlash(flashaddr, newpage, mcu.pagesz);
-  for (int i=0; i < mcu.pagesz; i++) {
+  for (i=0; i < mcu.pagesz; i++) {
     if (newpage[i] != 0xFF) succ = false;
   }
   failed += testResult(succ);
     
   // program one flash page (only check for error code returns)
   gdbDebugMessagePSTR(PSTR("Test DWloadFlashPage/DWprogramFlashPage: "), testnum++);
-  for (int i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
+  for (i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
   DWloadFlashPageBuffer(flashaddr, newpage);
   failed += testResult(DWprogramFlashPage(flashaddr));
 
   // now try to read the freshly flashed page
   gdbDebugMessagePSTR(PSTR("Test DWreenableRWW/DWreadFlash: "), testnum++);
-  for (int i=0; i < mcu.pagesz; i++) newpage[i] = 0;
+  for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
   DEBLN(F("newpage cleared"));
   succ = true;
   DWreenableRWW();
   DEBLN(F("reeanbledRWW"));
   DWreadFlash(flashaddr, newpage, mcu.pagesz);
   DEBLN(F("Read Flash:"));
-  for (int i=0; i < mcu.pagesz; i++) {
+  for (i=0; i < mcu.pagesz; i++) {
     DEBLNF(newpage[i],HEX);
     if (newpage[i] != 255-i) {
       succ = false;
@@ -700,14 +701,14 @@ int DWtests(int &num)
 
   // if a device with boot sector, try everything immediately after each other in the boot area 
   if (mcu.bootaddr != 0) {
-    for (int i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
+    for (i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
     gdbDebugMessagePSTR(PSTR("Test DWFlash programming in boot section: "), testnum++);
     succ = DWeraseFlashPage(mcu.bootaddr);
     if (succ) {
       //DEBLN(F("erase successful"));
       DWreenableRWW();
       succ = DWloadFlashPageBuffer(mcu.bootaddr, newpage);
-      //for (int i=0; i < mcu.pagesz; i++) DEBLN(newpage[i]);
+      //for (i=0; i < mcu.pagesz; i++) DEBLN(newpage[i]);
     }
     if (succ) {
       //DEBLN(F("load temp successful"));
@@ -716,9 +717,9 @@ int DWtests(int &num)
     if (succ) {
       DWreenableRWW();
       DEBLN(F("program successful"));
-      for (int i=0; i < mcu.pagesz; i++) newpage[i] = 0;
+      for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
       DWreadFlash(mcu.bootaddr, newpage, mcu.pagesz);
-      for (int i=0; i < mcu.pagesz; i++) {
+      for (i=0; i < mcu.pagesz; i++) {
 	DEBLN(membuf[i]);
 	if (newpage[i] != 255-i) {
 	  DEBPR(F("Now wrong!"));
@@ -733,10 +734,10 @@ int DWtests(int &num)
   // get chip id
   gdbDebugMessagePSTR(PSTR("Test DWgetChipId: "), testnum++);
   failed += testResult(mcu.sig != 0 && (DWgetChipId() == mcu.sig ||
-					mcu.sig == 0x9514 && DWgetChipId() == 0x950F || // imposter 328P!
-					mcu.sig == 0x9406 && DWgetChipId() == 0x940B || // imposter 168PA!
-					mcu.sig == 0x930A && DWgetChipId() == 0x930F || // imposter 88PA!
-					mcu.sig == 0x9205 && DWgetChipId() == 0x920A)); // imposter 48PA!
+					(mcu.sig == 0x9514 && DWgetChipId() == 0x950F) || // imposter 328P!
+					(mcu.sig == 0x9406 && DWgetChipId() == 0x940B) || // imposter 168PA!
+					(mcu.sig == 0x930A && DWgetChipId() == 0x930F) || // imposter 88PA!
+					(mcu.sig == 0x9205 && DWgetChipId() == 0x920A))); // imposter 48PA!
   
   // Set/get PC (word address)
   gdbDebugMessagePSTR(PSTR("Test DWsetWPc/DWgetWPc: "), testnum++);

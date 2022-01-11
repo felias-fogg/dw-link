@@ -542,3 +542,11 @@ Version 0.9.9 (14-Nov-21)
 - updated the pcb directory with designs not containing jumpers for 32U4
 - added a new example that could be used to present how debugging works: unoblink
 
+## Version 1.1.12 (11-Jan-21)
+
+- made dw-link PlatformIO compatible (eliminated most warnings, except those about #defines, which are bogus), you just have to copy the files into the PIO src folder
+- SPI speed is now 2500 bps which means that we can deal with MCUs at 16 kHz (MCU clock at 128 kHz with CKDIV8 programmed), and it really works
+- adjusted dwSerial.calibrate so that it now can measure arbitrarily slow communication speeds by using counting timer overflows; well a bit time should not be more than 80 ms, meaning the lower bound is something like 12 bps 
+- adjusted SingleSerialWire.begin so that the class can read and write now with a prescaler of 64 for bps below 4000 bps, which means roughly 40 bps are possible
+- one can really now go down to 16 kHz and still debug things -- it is a bit slow, though!
+

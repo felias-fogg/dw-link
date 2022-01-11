@@ -24,11 +24,11 @@ There exists a software simulator called [SIMAVR](https://github.com/buserror/si
 
 Based on RikusW's work on [reverse engineering the debugWIRE protocol](http://www.ruemohr.org/docs/debugwire.html), you can find a few attempts at building debuggers using debugWIRE. First of all, there is an implementation called [dwire-debug](https://github.com/dcwbrown/dwire-debug) for host systems that use just the serial interface to talk with a target using the debugWIRE interface. This program implements [GDB's remote serial protocol](https://sourceware.org/gdb/current/onlinedocs/gdb/Remote-Protocol.html#Remote-Protocol).  However, only one breakpoint (the hardware breakpoint on the target system) is supported and the particular way of turning a serial interface into a one-wire interface does not seem to work under macOS, as far as I can tell. Additionally, there exists a similar implementation in Pascal called [debugwire-gdb-bridge](https://github.com/ccrause/debugwire-gdb-bridge) that appears to be more 'complete'. However, I was not able to install it. That is probably based on the fact that my knowledge of Pascal is rusty and I have no experience with the Lazarus IDE. Finally, there is the Arduino based hardware debugger called [DebugWireDebuggerProgrammer](https://github.com/wholder/DebugWireDebuggerProgrammer). Unfortunately, it is not able to program flash memory and it does not provide an interface for GDB's remote serial protocol. 
 
-So, I took all of the above ideas (and some of the code) and put it together in order to come up with a cheap debugWIRE hardware debugger supporting GDB's remote serial protocol. Actually, it was a bit more than just throwing the things together. I developed a [new library for single wire serial communication](https://github.com/felias-fogg/SingleWireSerial) that is [much more reliable and robust](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/) than the usually employed SoftwareSerial library. Further, I fixed a few loose ends in the existing implementations, sped up communication and flash programming, implemented an [interrupt-safe way of single-stepping](https://hinterm-ziel.de/index.php/2022/01/02/thats-one-small-step-for-a-man-one-giant-leap-for-a-debugger-on-single-stepping-and-interrupts/), and spent a few nights debugging the debugger. Along the way, I also made [a number of interesting discoveries](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/). 
+So, I took all of the above ideas (and some of the code) and put it together in order to come up with a cheap debugWIRE hardware debugger supporting GDB's remote serial protocol. Actually, it was a bit more than just throwing the things together. I developed a [new library for single wire serial communication](https://github.com/felias-fogg/SingleWireSerial) that is [much more reliable and robust](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/) than the usually employed SoftwareSerial library. Further, I fixed a few loose ends in the existing implementations, sped up communication and flash programming, supported super-slow MCU clocks (16 kHz), implemented an [interrupt-safe way of single-stepping](https://hinterm-ziel.de/index.php/2022/01/02/thats-one-small-step-for-a-man-one-giant-leap-for-a-debugger-on-single-stepping-and-interrupts/), and spent a few nights debugging the debugger. Along the way, I also made [a number of interesting discoveries](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/). 
 
 For your first excursion into the wonderful world of debugging, you need an Arduino Uno (or something equivalent) as the hardware debugger (see [Section 3.1](#section31)) and a chip or board that understands debugWIRE (see [Section 3.2](#section32)). Then you only have to install the firmware for the debugger ([Section 4.1](#section41)) and set up the hardware for a debugging session ([Section 4.2](#section42)). 
 
-Finally, you need to install a debugging environment. I will describe two options for that. The first one, covered in [Section 5](#section5), is the easiest one, which simply adds a ```platform.local.txt``` file to the Arduino configuration and requires you to download ```avr-gdb```. The second option, described in [Section 6](#section6), involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. There are numerous other possibilities. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which applies to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/).
+Finally, you need to install a debugging environment. I will describe two options for that. The first one, covered in [Section 5](#section5), is the easiest one, which simply adds a ```platform.local.txt``` file to the Arduino configuration and requires you to download ```avr-gdb```. The second option, described in [Section 6](#section6), involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. There are numerous other possibilities. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which applies to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/). Unfortunately, so far, I have not been able to get avr-gdb to work under [gdbgui](https://www.gdbgui.com/).
 
 If you have performed all the above steps, then the setup should look like as in the following picture.
 
@@ -41,7 +41,7 @@ The connection between dw-link and the target is something that finally might ne
 ### Warning
 </font>
 
-Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements. Further, do not set the MCU clock to anything less than 1 MHz before starting debugging. Clock frequencies less than 1 MHz have not been tested yet and you might be not able to disable debugWIRE with such low clock frequencies.
+Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line carefully before trying to debug a target system. You might very well "brick" your MCU by enabling debugWIRE on a system which does not satisfy these requirements. 
 
 <a name="section2"></a>
 
@@ -412,24 +412,25 @@ Of course, you could have done that before leaving the debug session in the prev
 
 ### 5.7 GDB commands
 
-In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most interesting commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics).
+In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most interesting commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/).
 
 command | action
 --- | ---
 h[elp] | get help on gdb commands
 h[elp] *command* | get help on a specific command
-s[tep] | single step statement, descending into functions (step in)
-n[ext] | single step statement without descending into functions (step over)
-stepi \| si | single step a machine instruction, descending into functions
-nexti \| ni | single step a machine instruction without descending into functions
+s[tep] [*number*] | single step statement, descending into functions (step in), *number* times 
+n[ext] [*number*] | single step statement without descending into functions (step over)
+stepi \| si [*number*] | single step a machine instruction, descending into functions
+nexti \| ni [*number*] | single step a machine instruction without descending into functions
 fin[ish] | finish current function and return from call (step out)
-c[ontinue] | continue from current position
+c[ontinue] [*number*] | continue from current position
 r[un] | reset MCU and restart program at address 0x0000
 ba[cktrace] \| bt | show call stack
 up | go one stack frame up (in order to display variables)
 down | go one stack frame down (only possible after up)
 b[reak] *function* | set breakpoint at beginning of *function*
-b[reak] *number* | set breakpoint at source code line *number* in the current file
+b[reak] [*file*:]*number* | set breakpoint at source code line *number* in the current file or the given *file* 
+b[reak] **addr* | set a breakpoint at address *addr* 
 i[nfo] b[reakpoints] | list all breakpoints
 dis[able] *number* ... | disable breakpoint(s) *number*
 en[able] *number* ... | enable breakpoint(s) *number*
@@ -470,21 +471,37 @@ command | action
 set se[rial] b[aud] *number* | set baud rate of serial port to the hardware debugger (same as using the `-b` option when starting `avr-gdb`); only effective when called before establishing a connection with the `target` command 
 tar[get] rem[ote] *serialport* | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE (use only after baud rate has been specified!) 
 tar[get] ext[ended-remote] *serialport* | establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command
+det[ach] | release target 
 fil[e] *name*.elf | load the symbol table from the specified ELF file (should be done before establishing the connection to the target)
 lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
+q[uit] | exit from GDB 
+
+<a name="monitor-commands"></a>
+
+Finally, there are commands that control the settings of the debugger and the MCU, which are particular to dw-link. They all start with the keyword `monitor`.
+
+command | action
+--- | ---
 mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected)
 mo[nitor] dwo[ff] | disable debugWIRE mode in the target
 mo[nitor] re[set] | resets the MCU
-mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
+mo[onitor] er[ase] | erases the flash memory 
 mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator)
 mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
+mo[nitor] rc[osc] | set clock source to internal RC oscillator
+mo[nitor] ex[tosc] | set clock source to external clock
+mo[nitor] xt[alosc] | set clock source to crystal oscillator
+mo[nitor] sl[owosc] | set clock source to internal low frequency oscillator (125 kHz)
 mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
 mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
 mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **l** is the default; without an argument, the current communication speed is printed 
 mo[onitor] ser[ial] | print current communication speed of the connection to the host computer
-mo[onitor] er[ase] | erases the flash memory 
-mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen during single-stepping 
+mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
+mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen during single-stepping, which is the default 
 mo[nitor] un[safestep] | single stepping is interruptible and time advances during single-stepping 
+mo[nitor] ve[rsion] | print version number of firmware
+
+Note that all monitor commands that change fuses also implicitly reset the MCU. In other words, all commands except that the last eight will do that.
 
 <a name="section6"></a>
 
@@ -690,13 +707,11 @@ In addition, there is the debugger command `monitor flashcount`, which returns t
 
 ### 8.2 Slow responses when loading or single-stepping
 
-Sometimes, in particular when using a clock speed of 1 MHz (or even lower), the responses from the MCU can be quite sluggish. This shows, e.g., when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 16, which is roughly 62500 baud in case of a 1MHz MCU clock. Indeed, the [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
+Sometimes, in particular when using a clock speed below 1 MHz, responses from the MCU can be quite sluggish. This shows, e.g., when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 8, which is roughly 14000 bps in case of a 128 kHz MCU clock. Indeed, the [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. Note that after executing the commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore).
-
-In order to cope with high clock frequencies, it is possible to limit the communication speed to either 250 kbps or 125 kbps. The default case is 125 kbps (which appears to be safe). The other limit can be enforced by using the `monitor speed` command (see [commands for controlling GDB](#controlcommands)). 
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen (see [monitor commands](#monitor-commands)). Be careful about setting it to XTAL or external clock! You MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing the commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
 
 Another reason for slow loading times can be that the communication speed to the host is low. Check the speed by typing the command `monitor serial`. You can set the speed to 230400 by supplying the speed when using the `set serial baud` command. This has to done *before* connecting to the hardware debugger using the `target remote` command. 
 
@@ -751,9 +766,9 @@ Some debugWIRE MCUs appear to have program counters in which some unused bits ar
 
  The only reasonable way to deal with this problem is to use a different MCU, one with an A, PA, or PB suffix. If you really need to debug this particular MCU and are aware of the problems and limitations, you can recompile the sketch with the compile time constant `STUCKAT1PC` set to 1.
 
-<!-- 8.10 The start of the debugger takes a couple of seconds -->
+### 8.10 The start of the debugger takes a couple of seconds
 
-<!-- The reason is that when `avr-gdb` connects to the hardware debugger, it resets the hardware debugger. If it is a plain Uno board or equivalent, then it will spend two seconds in the bootloader waiting for an upload of data before it starts the user program. If you want to have a faster startup, get rid of the bootloader by, e.g., flashing `dw-link.ino` with an ISP programmer into the hardware debugger. -->
+The reason is that when the host establishes a connection to the debugger, the debugger is reset and the bootloader waits a couple of seconds. You can avoid that by either disabling the auto-reset by putting a capacitor of 10 µF or more between RESET and GND or by cutting the RESET EN solder bridge on an Arduino Uno. Alternatively, you can flash the debugger firmware with an ISP programmer so that the boot loader is not active any longer, speeding up the reset process.
 
 <a name="trouble"></a>
 
@@ -774,6 +789,7 @@ Probably, the serial connection to the hardware debugger could not be establishe
 This is most probably an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
 
 #### Problem: You receive the message *Protocol error with Rcmd* 
+
 This is a generic GDB error message that indicates that the last `monitor` command you typed could not be successfully executed. Usually, also a more specific error message is displayed, e.g., *debugWIRE could NOT be disabled*. These messages are suppressed in some GUIs, though. 
 
 <a name="lost"></a>
@@ -789,9 +805,9 @@ The reason is most probably that the communication connection to the target syst
 
 #### Problem: The debugger responses are very sluggish   
 
-<!-- One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)). -->
+One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)). 
 
-One reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed. 
+Another reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed. 
 
 You can choose 230400, 115200, 57600, 38400, 19200, or 9600 when starting `avr-gdb` by giving the bit rate as an argument to the `-b` option or by specifying the bit rate as an argument to the command `set serial baud ...` before establishing a connection with the `target` command.
 
@@ -833,7 +849,7 @@ This appears to happen even when the optimization level is set to **-Og**, but n
 
 #### Problem: The debugger seems to do things that appear to be strange
 
-I encountered such behavior more than once and it very often it turned out that I had forgotten to load the binary into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
+I encountered such behavior more than once and it very often turned out that I had forgotten to load the binary into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
 
 #### Problem: In PlatformIO, the global variables are not displayed
 

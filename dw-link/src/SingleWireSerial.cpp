@@ -414,9 +414,9 @@ void SingleWireSerial::begin(long speed)
    _receive_buffer_tail = _receive_buffer_head;
    _buffer_overflow = false;
 
-  if (bit_delay100 > 200000UL) {
-    bit_delay100 = bit_delay100/8;
-    prescaler = _BV(CS1); // prescaler = 8
+  if (bit_delay100 > 400000UL) {
+    bit_delay100 = bit_delay100/64;
+    prescaler = _BV(CS1)|_BV(CS0); // prescaler = 64
   } else {
     prescaler = _BV(CS0); // prescaler = 1
   }

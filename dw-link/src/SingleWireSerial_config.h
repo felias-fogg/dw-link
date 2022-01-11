@@ -20,6 +20,7 @@
   #define ICNC ICNC0
   #define TIMSK TIMSK0
   #define TIFR  TIFR0
+  #define TOV   TOV0
   #define ICF   ICF0
   #define ICIE  ICIE0
   #define OCFA  OCF0A
@@ -39,6 +40,7 @@
   #define ICNC ICNC1
   #define TIMSK TIMSK1
   #define TIFR  TIFR1
+  #define TOV   TOV1
   #define ICF   ICF1
   #define ICIE  ICIE1
   #define OCFA  OCF1A
@@ -58,6 +60,7 @@
   #define ICNC ICNC2
   #define TIMSK TIMSK2
   #define TIFR  TIFR2
+  #define TOV   TOV2
   #define ICF   ICF2
   #define ICIE  ICIE2
   #define OCFA  OCF2A
@@ -77,6 +80,7 @@
   #define ICNC ICNC3
   #define TIMSK TIMSK3
   #define TIFR  TIFR3
+  #define TOV   TOV3
   #define ICF   ICF3
   #define ICIE  ICIE3
   #define OCFA  OCF3A
@@ -96,6 +100,7 @@
   #define ICNC ICNC4
   #define TIMSK TIMSK4
   #define TIFR  TIFR4
+  #define TOV   TOV4
   #define ICF   ICF4
   #define ICIE  ICIE4
   #define OCFA  OCF4A
@@ -115,6 +120,7 @@
   #define ICNC ICNC5
   #define TIMSK TIMSK5
   #define TIFR  TIFR5
+  #define TOV   TOV5
   #define ICF   ICF5
   #define ICIE  ICIE5
   #define OCFA  OCF5A
