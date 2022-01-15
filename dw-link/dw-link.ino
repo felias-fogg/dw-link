@@ -34,41 +34,29 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
 
-#define VERSION "1.1.12"
+#define VERSION "1.2.0"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
 #endif
 
-#ifndef ADAPTSPEED // adaptive communication speed for line to host
-#define ADAPTSPEED 1
-#endif
-
 #ifndef INITIALBPS 
 #define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
 #endif
-#ifndef STUCKAT1PC
-#define STUCKAT1PC 0
-#endif
 
-#ifndef SIM2WORD    // simulate 2 word instructions at break points instead of executing them
-#define SIM2WORD 1  // although execution appears to work, one does not know when it will fail
-#endif
-#ifndef VARDWSPEED    // for changing debugWIRE communication speed to maximal speed (now only 128kbps)
-#define VARDWSPEED 1
-#endif
-#ifndef TXODEBUG        // for debugging the debugger!
-#define TXODEBUG    0   
-#endif
-#ifndef SCOPEDEBUG
-#define SCOPEDEBUG 0
-#endif
-#ifndef FREERAM      // for checking how much memory is left on the stack
-#define FREERAM  0   
-#endif
-#ifndef UNITALL      // test all units
-#define UNITALL 0
-#endif
+// #define CONSTHOSTSPEED 1
+// #define CONSTDWSPEED 1
+// #define STUCKAT1PC 1
+// #define OFFEX2WORD 1
+// #define TXODEBUG 1
+// #define SCOPEDEBUG 1
+// #define FREERAM  1
+// #define UNITALL 1
+// #define UNITDW 1
+// #define UNITTG 1
+// #define UNITGDB 1
+// #define ADAPTER 1
+
 #if UNITALL == 1
 #undef  UNITDW
 #define UNITDW 1
@@ -76,15 +64,6 @@
 #define UNITTG 1
 #undef  UNITGDB
 #define UNITGDB 1
-#endif
-#ifndef UNITDW
-#define UNITDW 0
-#endif
-#ifndef UNITTG
-#define UNITTG 0
-#endif
-#ifndef UNITGDB
-#define UNITGDB 0
 #endif
 
 #if F_CPU < 16000000UL
@@ -95,7 +74,7 @@
 // Note that Nano (V2 and V3) and Pro Mini use the same adapter board
 // Similarly, UNO and Mega use the same shield
 //-----------------------------------------------------------
-#if defined(DIRECTISP)   // Binding for a modified ISP plug
+#if ADAPTER == 0   // Binding for a modified ISP plug
 const int VHIGH = -1;    // switch, low signals that one should use the 5V supply
 const int VON = -1;      // switch, low signals that dw-probe should deliver the supply charge
 const int V5 = -1;       // a low level switches the MOSFET for 5 volt on 
@@ -107,9 +86,9 @@ const int TMISO = 12;    // MISO -- directly connected to ISP socket
 const int DWLINE = 8;    // RESET (needs to be 8 so that we can use it as an input for TIMER1)
 const int VSUP = 9;      // needs to be an extra pin so that we can power-cycle
 const int DEBTX = 3;     // TX line for TXOnlySerial
-const int LEDDDR = -1;   // no system LED
-const int LEDPORT = -1; 
-const int LEDPIN = -1;
+const int TISP = -1;     // activation of ISP not necessary if no adapter
+const int SYSLED = 7;    // could be anything (also -1 if not needed) but LED_BUILTIN
+const int LEDGND = 6;    // In order to make life easier for the system LED
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_UNO)
 const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
@@ -124,7 +103,8 @@ const int TMOSI = 10;       // MOSI
 const int TMISO = 11;       // MISO
 const int DEBTX = 3;        // TX line for TXOnlySerial
 const int TISP = 6;         // if low, signals that one wants to use the ISP programming feature
-const int LEDPIN = 5;       // PB5
+const int SYSLED = LED_BUILTIN;
+const int LEDGND = -1;
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MEGA2560)
 const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
@@ -139,7 +119,8 @@ const int TMOSI = 10;       // MOSI
 const int TMISO = 11;       // MISO
 const int DEBTX = 3;        // TX line for TXOnlySerial
 const int TISP = 6;         // if low, signals that one wants to use the ISP programming feature
-const int LEDPIN = 7;       // PB7
+const int SYSLED = LED_BUILTIN;   
+const int LEDGND = -1;
 //-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_NANO)  // on Nano board -- is aligned with Pro Mini 
 const int VHIGH = 7;        // switch, low signals that one should use the 5V supply
@@ -151,7 +132,8 @@ const int SNSGND = 11;      // If low, then we are on the adapter board
 const int DWLINE = 8;       // RESET (needs to be 8 so that we can use it as an input for TIMER1)
 const int TSCK = 3;         // SCK
 const int TISP = 2;         // if low, signals that one wants to use the ISP programming feature
-const int LEDPIN = 5;       // PB5
+const int SYSLED = LED_BUILTIN;
+const int LEDGND = -1;
 #if NANOVERSION == 3
 const int TMOSI = 16;       // MOSI
 const int TMISO = 19;       // MISO
@@ -175,7 +157,8 @@ const int TMOSI = 3;         // MOSI
 const int TMISO = 6;         // MISO
 const int DEBTX = 5;         // TX line for TXOnlySerial
 const int TISP = 11;         // if low, signals that one wants to use the ISP programming feature
-const int LEDPIN = 5;        // PB5
+const int SYSLED = LED_BUILTIN;
+const int LEDGND = -1;
 //-----------------------------------------------------------
 #else
 #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini" 
@@ -510,7 +493,7 @@ DEBDECLARE();
 
 /****************** Interrupt routines *********************/
 
-#if LEDPIN >= 0 // is only used if there is a LEDPIN defined
+#if SYSLED >= 0 // is only used if there is a SYSLED defined
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 {
   // the ISR can be interrupted at any point by itself, the only problem
@@ -524,15 +507,15 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (busy) return; // if this IRQ routine is already active, leave immediately
   busy++; 
   cnt--;
-  if (PORTB & _BV(LEDPIN)) {
+  if (digitalRead(SYSLED)) {
     if (cnt < 0) {
       cnt = offtime;
-      PORTB &= ~_BV(LEDPIN);
+      digitalWrite(SYSLED, LOW);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      PORTB |= _BV(LEDPIN);
+      digitalWrite(SYSLED, HIGH);
     }
   }
   busy--;
@@ -552,13 +535,9 @@ void setup(void) {
 #endif
   TIMSK0 = 0; // no millis interrupts
   ctx.hostbps = INITIALBPS;
-  while (!Serial); // wait for serial port to connect (only needed for native USB ports)
   ctx.von = false;
   ctx.vhigh = false;
   ctx.snsgnd = false;  
-#if LEDPIN >= 0
-  DDRB |= _BV(LEDPIN); // switch on output for system LED
-#endif
 #if VON >= 0
   pinMode(VON, INPUT_PULLUP); // configure Von as input from switch
 #endif
@@ -567,6 +546,10 @@ void setup(void) {
 #endif
 #if SNSGND >= 0
   pinMode(SNSGND, INPUT_PULLUP);
+#endif
+#if LEDGND >= 0
+  pinMode(LEDGND, OUTPUT);
+  digitalWrite(LEDGND, LOW);
 #endif
 #if SCOPEDEBUG
   DDRC = 0x7F; //
@@ -614,7 +597,8 @@ void monitorSystemLoadState(void) {
   if (Serial.available()) noinput = 0;
   noinput++;
   if (noinput == 2777) { // roughly 50 msec, based on the fact that one loop is 18 usec
-    if (ctx.state == LOAD_STATE) {
+    if (ctx.state == LOAD_STATE && ctx.bps >= 30000) { // if too slow, wait for next command
+                                                       // instead of asnychronous load
       setSysState(CONN_STATE);
       targetFlushFlashProg();
     }
@@ -742,7 +726,7 @@ void initSession(void)
 // error will be displayed when trying to execute
 // if checkio is set to true, we will check whether
 // the connection to the target is still there
-// if not, the rror is not recorded, but the conenction is
+// if not, the rror is not recorded, but the connection is
 // marked as not connected
 void reportFatalError(byte errnum, boolean checkio)
 {
@@ -769,10 +753,10 @@ void setSysState(statetype newstate)
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-#if LEDPIN >= 0
-  DDRB |= _BV(LEDPIN);
-  if (ontimes[newstate] == 0) PORTB &= ~_BV(LEDPIN);
-  else if (offtimes[newstate] == 0) PORTB |= _BV(LEDPIN);
+#if SYSLED >= 0
+  pinMode(SYSLED, OUTPUT);
+  if (ontimes[newstate] == 0) digitalWrite(SYSLED, LOW);
+  else if (offtimes[newstate] == 0) digitalWrite(SYSLED, HIGH);
   else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
@@ -783,7 +767,7 @@ void setSysState(statetype newstate)
 }
 
 
-/****************** gdbserver routines **************************/
+/****************** GDB RSP routines **************************/
 
 
 // handle command from client
@@ -1333,7 +1317,7 @@ void getInstruction(unsigned int &opcode, unsigned int &addr)
   }
 }
 
-#if SIM2WORD
+#if OFFEX2WORD == 0
 // check whether an opcode is a 32-bit instruction
 boolean twoWordInstr(unsigned int opcode)
 {
@@ -1391,7 +1375,7 @@ byte gdbStep(void)
     return SIGILL;
   }
   if ((bpix >= 0 &&  bp[bpix].inflash) || ctx.safestep) {
-#if SIM2WORD
+#if OFFEX2WORD == 0
     if (twoWordInstr(opcode)) 
       simTwoWordInstr(opcode, arg);
     else 
@@ -2753,7 +2737,7 @@ boolean expectUCalibrate(void) {
     if ((newbps << speed) <= speedlimit) break;
   }
   DEBPR(F("Set speedexp: ")); DEBLN(speed);
-#if VARDWSPEED
+#if CONSTDWSPEED == 0
   DWsetSpeed(speed);
   ctx.bps = dw.calibrate(); // calibrate again
   DEBPR(F("Rsync (2): ")); DEBLN(ctx.bps);

@@ -53,7 +53,6 @@ unsigned long dwSerial::calibrate()
 {
   unsigned long timeout = 300000UL; // long means roughly 240 ms
   unsigned long bps, eightbits = 0;
-  unsigned long start;
   byte edges;
   byte saveSREG;
 

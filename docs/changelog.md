@@ -535,14 +535,14 @@ Version 0.9.9 (14-Nov-21)
   - added table for checking wiring
   - changed image resolution
 
-## Version 1.1.11 (09-Jan-21)
+## Version 1.1.11 (09-Jan-22)
 
 - removed all references and conditional compilations concerning 32U4 boards
 - got the last untested ATtiny, the ATtiny48, and tested it successfully
 - updated the pcb directory with designs not containing jumpers for 32U4
 - added a new example that could be used to present how debugging works: unoblink
 
-## Version 1.1.12 (11-Jan-21)
+## Version 1.1.12 (11-Jan-22)
 
 - made dw-link PlatformIO compatible (eliminated most warnings, except those about #defines, which are bogus), you just have to copy the files into the PIO src folder
 - SPI speed is now 2500 bps which means that we can deal with MCUs at 16 kHz (MCU clock at 128 kHz with CKDIV8 programmed), and it really works
@@ -550,3 +550,11 @@ Version 0.9.9 (14-Nov-21)
 - adjusted SingleSerialWire.begin so that the class can read and write now with a prescaler of 64 for bps below 4000 bps, which means roughly 40 bps are possible
 - one can really now go down to 16 kHz and still debug things -- it is a bit slow, though!
 
+## Version 1.1.13 (12-Jan-22)
+
+- changed handling of system LED from port manipulation to using Arduino's digitalWrite in order to have it more portable; the additional time in the interrupt routine can be tolerated since the ISR is non-blocking
+- modified example: can now be used with an UNO or an ATtiny85
+
+## Version 1.2.0
+
+- Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, the compiler constant ADAPTER needs to be set to 1 (either in the source code or when calling the compiler). 

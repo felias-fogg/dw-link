@@ -14,7 +14,7 @@ volatile byte mode = 0;
 
 void setup() {
   pinMode(LEDPIN, OUTPUT);       // configure LEDPIN as OUTPUT
-  pinMode(BUTTON, INPUT_PULLUP); // enable pull-up resistor for button 
+  //pinMode(BUTTON, INPUT_PULLUP); // enable pull-up resistor for button 
   TIMSK0 |= _BV(OCIE0A);         // enable Timer0 Compare Match A interrupt
   OCR0A = 0x80;                  // set interrupt time between two millis interrupts
 }

@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**January 2022**
+**Version 1.2 - January 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -34,7 +34,7 @@ If you have performed all the above steps, then the setup should look like as in
 
 ![hardware debugger setup](pics/debugger-setup.png)
 
-The connection between dw-link and the target is something that finally might need some enhancements. Instead of six flying wires, you may want to have a more durable connection using an ISP cable, perhaps even featuring level-shifting and a switchable power-supply. This is all covered in [Section 7](#section7). Finally possible problems and trouble shooting are covered in [Section 8](#section8) and [Section 9](#trouble), respectively.
+The connection between dw-link and the target is something that finally might need some enhancements. Instead of six flying wires, you may want to have a more durable connection using an ISP cable, perhaps even featuring level-shifting and a switchable power-supply. This is all covered in [Section 7](#section7). Finally, possible problems and trouble shooting are covered in [Section 8](#section8) and [Section 9](#trouble), respectively.
 
 <font color="red">
 
@@ -170,12 +170,14 @@ Third, you have to connect your ATmega328 (or similar) board to your computer, s
 
 ### 4.2 Setting up the hardware
 
-Before you can start to debug, you have to setup the hardware. I'll use an ATtiny85 on a breadboard as the example target system and an Uno as the example debugger. However, any MCU listed above would do as a target. You have to adapt the steps where I describe the modification of configuration files in [Section 5](#section5) accordingly, though. 
+Before you can start to debug, you have to setup the hardware. I'll use an ATtiny85 on a breadboard as the example target system and an Uno as the example debugger. However, any MCU listed above would do as a target. You have to adapt the steps where I describe the modification of configuration files in [Section 5](#section5) accordingly, though. And one could even use an Arduino Uno, provided the modification described in [Section 3.3](#section33) are done.
+
+First of all, notice the capacitor of 10 µF or more between RESET and GND on the Uno board. This will disable auto-reset of the Uno board. This is optional and is helpful to speed up the connection process to the host. Second, note the LED and resistor plugged in to pin 7 and 6. This is the system LED which is used to visualise the internal state of the debugger (see below). Again, this is optional, but very helpful. 
 
 <a name="Fritzing"></a>
-![ATtiny85 on a breadboard](pics/debug-attiny85_Steckplatine.jpg)
+![ATtiny85 on a breadboard](pics/debug-attiny85new_Steckplatine.jpg)
 
-As you can see, the Vcc rail is connected to pin D9 of the Arduino Uno so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino Uno is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pullup resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino Uno and ATtiny are MOSI (Arduino Uno D10), MISO (Arduino Uno D11) and SCK (Arduino Uno D12), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
+Third, as you can see, the Vcc rail of the breadboard is connected to pin D9 of the Arduino Uno so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino Uno is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pull-up resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino Uno and ATtiny are MOSI (Arduino Uno D11), MISO (Arduino Uno D12) and SCK (Arduino Uno D13), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
 
 
 ![ATtiny85 pinout](https://raw.githubusercontent.com/SpenceKonde/ATTinyCore/master/avr/extras/ATtiny_x5.png)
@@ -185,13 +187,16 @@ Here is a table of all the connections so that you can check that you have made 
 ATtiny pin# | Arduino Uno pin | component
 --- | --- | ---
 1 (Reset) | D8 | 10k resistor to Vcc 
-2 (D3) |  |  
-3 (D4) |  |220 Ω resistor to LED
-4 (GND) | GND | LED, decoupling cap 
+2 (D3) |  |
+3 (D4) |  |220 Ω resistor to LED (+)
+4 (GND) | GND | LED (-), decoupling cap 100 nF, blocking cap of 10µF (-), 
 5 (D0, MOSI) | D10 |
 6 (D1, MISO) | D11 |
 7 (D2, SCK) | D12 |
-8 (Vcc) | D9 | 10k resistor, decoupling cap 
+8 (Vcc) | D9 | 10k resistor, decoupling cap 100 nF 
+ | RESET | blocking cap of 10 µF (+) 
+ | D7 | system LED (+) 
+ | D6 | 200 Ω to system LED (-) 
 
 We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED (the Arduino builtin LED on Arduino pin D13).
 
@@ -216,11 +221,11 @@ Usually, it should not be necessary to change a compile-time constant in dw-link
  --- | --- | ---
 __VERSION__ | current version number | Current version number of dw-link; should not be changed. 
 __NANOVERSION__ | 3 | The version of the Nano board used as a hardware debugger; this value is relevant only if a Nano board is used. 
-__ADAPTSPEED__ | 1 | If 1, then dw-link will try out different communication speeds to the host. 
 __INITIALBPS__ | 230400 | The initial communication speed for communicating with the host; if communcation using this value cannot be established, 115200, 57600, 38400, 19200, 9600 bps are tried if __ADAPTSPEED__ is set to 1. 
+__CONSTHOSTSPEED__ | 0 | If 0, then dw-link will try out different communication speeds to the host, otherwise it will stick to INITIALBPS 
+__CONSTDWSPEED__ | 0 | If 0, the communication speed to the target will be changed so that it is as fast as possible, given the restriction that speed should not exceed 125000 bps. If 1, the initial speed of clk/128 is used. 
 __STUCKAT1PC__ | 0 | If this value is set to 1, then dw-link will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. 
-__SIM2WORD__ | 1 | If 1, then 2-word instructions at breakpoints and when single-stepping will be simulated inside the hardware debugger; if 0, then they will be  executed off-line in the debugWIRE instruction register. While the latter alternative appears to work, one has no guarantee that it will always work. In any case, there should be no visible difference in behavior between the two alternatives. 
-__VARDWSPEED__ | 1 | If 1, the communication speed to the target will be changed so that it is as fast as possible, given the restriction that speed should not exceed 125000 bps. If 0, the initial speed of clk/128 is used.
+__OFFEX2WORD__ | 0 | If 0, then 2-word instructions at breakpoints and when single-stepping will be simulated inside the hardware debugger; if 1, then they will be  executed off-line in the debugWIRE instruction register. While the latter alternative appears to work, one has no guarantee that it will always work. In any case, there should be no visible difference in behavior between the two alternatives. 
 __TXODEBUG__ | 0 | If 1, debug output over the debug serial line is enabled.
 __SCOPEDEBUG__ | 0 | If 1, `DDRC` is used for signaling the internal state by producing pulses on `PORTC`.
 __FREERAM__ | 0 | If 1, then the amount of free RAM is measured, which can be queried using the command `monitor ramusage`.
@@ -228,8 +233,8 @@ __UNITALL__ | 0 | If 1, all unit tests are activated; they can be executed by us
 __UNITDW__ | 0 | If 1, the unit tests for the debugWIRE layer are activated; execute them by using `monitor testdw`.
 __UNITTG__ | 0 | If 1, the unit tests for the target layer are activated; use `monitor testtg` to execute them.
 __UNITGDB__ | 0 | If 1, the unit tests for the GDB layer are activated, use `monitor testgdb` to execute them. 
-__DIRECTISP__ | undef | Pin binding for the case when you want to use a modified ISP cable,, where only the RESET line is broken out (a cable you can also use when you use the Arduino as an ISP-programmer).
-__ARDUINO\_AVR\___*XXX* | | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping (see [Section 7.3.2 & 7.3.3](#section732)). 
+__ADAPTER__ | 0 | if 0, pin binding for the case when you want to use a modified ISP cable,, where only the RESET line is broken out (a cable you can also use when you use the Arduino as an ISP-programmer). 
+__ARDUINO\_AVR\___*XXX* | undef | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping (see [Section 7.3.2 & 7.3.3](#section732)). 
 
 
 <a name="section5"></a>
@@ -542,15 +547,40 @@ There are two ways of switching off the debugWIRE mode. If you click on the ant 
 
 ## 7. A "real" hardware debugger
 
-The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 flying wires to connect dw-link to your target as described in [Section 4.2](#section42). However, if you want to use this tool more than once, then there should be at least something like a ISP cable connection. As a first approximation, I built something along  this line using a 6-wire Dupont jumper cable and heat shrink tubing.
+The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 jumper wires to connect dw-link to your target as described in [Section 4.2](#section42). However, if you want to use this tool more than once, then there should be at least something like a ISP cable connection. As a first approximation, I built something along  this line using a 6-wire Dupont jumper cable and heat shrink tubing.
 
 ![ISP cable](pics/ispcable.jpg)
 
-While it is better then just 6 flying wires, you still have to remember which wire has to be connected to which Arduino pin. 
+While it is better then just 6 jumpers wires, you still have to remember which wire has to be connected to which Arduino pin. 
+
+For most of the wires, we use the same pins on the debugger and the target. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino Uno as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). And in contrast to such a programmer cable, it makes sense to also break out the Vcc wire.
+
+![isp-cable](pics/isp-cable.jpg)
+
+As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such a wire we have sort of constructed a hardware debugger for less than 10 €, which can be considered as semi-durable.
+
+![el cheapo debugger](pics/debugger-built.jpg)
+
+
+
+The relevant pins are therefore as defined in the following table. 
+
+| Arduino pin          | ISP pin | Function    |
+| -------------------- | ------- | ----------- |
+| D13                  | 3       | SCK         |
+| D12                  | 1       | MISO        |
+| D11                  | 4       | MOSI        |
+| D9 (or Vcc)          | 2       | VTG         |
+| D8 (or D49 for Mega) | 5       | RESET       |
+| GND                  | 6       | GND         |
+| D7                   |         | System LED+ |
+| D6                   |         | System LED- |
+
+
 
 ### 7.1 A simple shield
 
-It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
+Taking it one one step further, one might think about a shield for an Uno or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
 
 
 ![dw-probe-fritzing V 0.1](pics/dw-probe0.1.png)
@@ -561,8 +591,9 @@ In reality, it probably will more look like as in the next picture.
 
 ![dw-probe-proto V 0.1](pics/proto.jpg)
 
+This works very well on an Arduino Uno. On an Arduino Mega, you have to use Arduino pin 49 for the debugWIRE line, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-link.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
 
-This works very well on an Arduino Uno. On an Arduino Mega, you have to use Arduino pin 49, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-link.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
+Note that here we use a somewhat different pin mapping then the one above. In order to have consistent pin mappings for all supported boards, there is a big conditional compilation section in the firmware that gets activated when the compile time constant **`ADAPTER`** is set to 1 (either in the source code or when the compilation is performed). 
 
 ### 7.2 A shield with level shifters
 
@@ -576,7 +607,7 @@ Now the reality check! How could a prototype look like? Instead of soldering it,
 ![dw-probe-proto V 0.2](pics/proto0.2.jpg)
 
 
-Maybe it does not look completely convincing, but it does what it is supposed to do. In particular, the level-shifting works flawlessly. However, it is definitely not made for eternity. And even when I would give it a more sustainable form, this prototype has a few shortcomings. First, it has pull-up resistors at the outgoing SPI lines, i.e., it changes the electrical properties of these lines considerably. Second, when powering it with 3.3 volt from the Arduino board, one should source not more than 50 mA. Third, the board cannot power-cycle the target board when interfacing to a 3.3V board.
+Maybe it does not look completely convincing, but it does what it is supposed to do. In particular, the level-shifting works flawlessly. However, it is definitely not made for eternity. And even when I would give it a more sustainable form, this prototype has a few shortcomings. First, it has pull-up resistors on the SPI lines, i.e., it changes the electrical properties of these lines considerably. Second, when powering it with 3.3 volt from the Arduino board, one should source not more than 50 mA. Third, the board cannot power-cycle the target board when interfacing to a 3.3V board.
 
 ### 7.3 Adapter board/shield with level-shifter and switchable power supply
 
@@ -589,7 +620,7 @@ So, it would be great to have a board with the following features:
 * unidirectional level-shifters on the ISP lines, and
 * tri-state buffers for the two output signals MOSI and SCK.
 
-I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini, <!-- Pro Micro, and Micro --> with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board. It all works flawlessly. The only problem I encountered is that Arduino Nanos with a CH340 serial chip appear not to be able to use a communication speed faster than 115200 to the host. 
+I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini,  with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board. It all works flawlessly. The only problem I encountered is that Arduino Nanos with a CH340 serial chip appear not to be able to use a communication speed faster than 115200 to the host. 
 
 ![dw-probe 1.0](pics/dwprobe1.0-in-action.jpg)
 
@@ -621,26 +652,27 @@ TISP | Output | Control line: If low, then ISP programming is enabled
 TMISO | Input | SPI signal "Master In, Slave Out"
 TMOSI | Output | SPI signal "Master Out, Slave In"
 TSCK | Output | SPI signal "Master clock"
-SNSGND | Input | If low, signals that the debugger board sits on the adapter board
+SNSGND | Input | If high, signals that the debugger board should use VSUP as a supply, if low, signals that the debugger should take full control of voltage and supply. 
 V33 | Output | Control line to the MOSFET to switch on 3.3 volt supply for target
 V5  | Output | Control line to switch on the 5 volt line
 Vcc | Supply | Voltage supply from the board (5 V) that can be used to power the target
 VHIGH | Input from switch | If low, then choose 5 V supply for target, otherwise 3.3 V 
 VON | Input from switch | If low, then supply target (and use power-cycling)
-VSUP | Output | Used as a target supply line driven directly by an ATmega pin, which is only active if the debugger board does not sit on the adapter board, i.e., if SNSGND=open
+VSUP | Output | Used as a target supply line driven directly by an ATmega pin, which is only active if the debugger board does not take full control of the voltage, i.e., if SNSGND=open 
 
+<a name="section733"></a>
 
 #### 7.3.3 Pin mapping
 
-If you plug in your Arduino into the adapter board or use the shield, you do not have to bother about pin assignments. The only important thing is to set the DIP switches and plug in the USB and ISP cable. If you want to use the Arduino without such a board, you need, of course, to know which pins of the debugger to connect to the target.
+If you plug in your Arduino into the adapter board or use the shield, you do not have to bother about pin assignments. The only important thing is to set the DIP switches and plug in the USB and ISP cable. If you want to use the Arduino without such a board, you leave the compiler constant **`ADAPTER`** undefined  and use the pin mapping with a ISP cable.
 
 When you use an Arduino Nano, you should be aware that  there are apparently two different versions around, namely version 2 and version 3. The former one has the A0 pin close to the 5V pin, while version 3 boards have the A0 pin close to the REF pin. If you use a Nano on the adapter board, you need to set the compile time constant `NANOVERSION`, either by changing the value in the source or by defining the value when compiling. The default value is 3.
 
-In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. For a standalone setting, only the pins marked in the last column are required. The **DWLINE** pin is the debugWIRE line, which needs to be connected to the target. TMOSI, TMISO, and TSCK are the usual signals for ISP programming by SPI.
+In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. For a setting without voltage control, only the pins marked in the last column are required. The **DWLINE** pin is the debugWIRE line, which needs to be connected to the target. TMOSI, TMISO, and TSCK are the usual signals for ISP programming by SPI.
 
-In the standalone mode, the **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a standalone setting, there is no level-shifting done, so you should debug only 5 V systems.
+In the no-voltage-control mode, the **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a no-voltage-control setting, there is no level-shifting done, so you should debug only 5 V systems.
 
-Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega | Stand alone 
+Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega | no voltage control 
 --- | --- | --- | --- | --- | --- | --- 
 DEB-TX |A3= D17|A4= D18| D5 |D3|D3|
 DW-LINE | D8 | D8 |D8| D8 |D49| **+** 
@@ -707,11 +739,11 @@ In addition, there is the debugger command `monitor flashcount`, which returns t
 
 ### 8.2 Slow responses when loading or single-stepping
 
-Sometimes, in particular when using a clock speed below 1 MHz, responses from the MCU can be quite sluggish. This shows, e.g., when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 8, which is roughly 14000 bps in case of a 128 kHz MCU clock. Indeed, the [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
+Sometimes, in particular when using a clock speed below 1 MHz, responses from the MCU can be quite sluggish. This shows, e.g., when loading code or single-stepping. The reason is that a lot of communication over the RESET line is going on in these cases and the communication speed is set to the MCU clock frequency divided by 8, which is roughly 16000 bps in case of a 128 kHz MCU clock. If the CKDIV8 fuse is programmed, i.e., the MCU clock uses a prescaler of 8, then we are down to 16 kHz MCU clock and 2000 bps. The [Atmel AVR JTAGICE mkII manual ](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html) states under [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F):
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen (see [monitor commands](#monitor-commands)). Be careful about setting it to XTAL or external clock! You MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing the commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen (see [monitor commands](#monitor-commands)). Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing the commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
 
 Another reason for slow loading times can be that the communication speed to the host is low. Check the speed by typing the command `monitor serial`. You can set the speed to 230400 by supplying the speed when using the `set serial baud` command. This has to done *before* connecting to the hardware debugger using the `target remote` command. 
 
@@ -903,3 +935,13 @@ Error #  | Meaning
 118 | Input buffer overflow
 119 | Wrong fuse 
 120 | Breakpoint update while flash programming is active 
+
+## Revision history
+
+#### V1.1 
+
+Initial version
+
+#### V 1.2
+
+- Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, the compiler constant ADAPTER needs to be set to 1 (either in the source code or when calling the compiler). Then the mapping described in [Section 7.3.3](#section733) will be active.
