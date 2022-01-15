@@ -34,28 +34,28 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
 
-#define VERSION "1.2.0"
+#define VERSION "1.2.1"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
 #endif
 
 #ifndef INITIALBPS 
-#define INITIALBPS 230400UL // initial expected communication speed with the host (115200, 57600, 38400, ... are alternatives)
+#define INITIALBPS 230400UL // initial expected communication speed with the host
+                            // 115200, 57600, 38400, 19200, 9600 are alternatives
 #endif
 
-// #define CONSTHOSTSPEED 1
-// #define CONSTDWSPEED 1
-// #define STUCKAT1PC 1
-// #define OFFEX2WORD 1
-// #define TXODEBUG 1
-// #define SCOPEDEBUG 1
-// #define FREERAM  1
-// #define UNITALL 1
-// #define UNITDW 1
-// #define UNITTG 1
-// #define UNITGDB 1
-// #define ADAPTER 1
+// #define CONSTHOSTSPEED 1   // constant communication speed with host 
+// #define CONSTDWSPEED 1     // constant eommunication speed with target
+// #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
+// #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
+// #define TXODEBUG 1         // allow debug output over TXOnly line
+// #define SCOPEDEBUG 1       // activate scope debugging on PORTC
+// #define FREERAM  1         // measure free ram
+// #define UNITALL 1          // enable all unit tests
+// #define UNITDW 1           // enable debugWIRE unit tests
+// #define UNITTG 1           // enable target unit tests
+// #define UNITGDB 1          // enable gdb function unit tests
 
 #if UNITALL == 1
 #undef  UNITDW
@@ -68,100 +68,6 @@
 
 #if F_CPU < 16000000UL
 #error "dw-link needs at least 16 MHz clock frequency"
-#endif
-
-// Pins for different boards
-// Note that Nano (V2 and V3) and Pro Mini use the same adapter board
-// Similarly, UNO and Mega use the same shield
-//-----------------------------------------------------------
-#if ADAPTER == 0   // Binding for a modified ISP plug
-const int VHIGH = -1;    // switch, low signals that one should use the 5V supply
-const int VON = -1;      // switch, low signals that dw-probe should deliver the supply charge
-const int V5 = -1;       // a low level switches the MOSFET for 5 volt on 
-const int V33 = -1;      // a low level switches the MOSFET for 3.3 volt on 
-const int SNSGND = -1;   // If low, then we use a shield
-const int TSCK = 13;     // SCK  -- directly connected to ISP socket
-const int TMOSI = 11;    // MOSI -- directly connected to ISP socket
-const int TMISO = 12;    // MISO -- directly connected to ISP socket
-const int DWLINE = 8;    // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-const int VSUP = 9;      // needs to be an extra pin so that we can power-cycle
-const int DEBTX = 3;     // TX line for TXOnlySerial
-const int TISP = -1;     // activation of ISP not necessary if no adapter
-const int SYSLED = 7;    // could be anything (also -1 if not needed) but LED_BUILTIN
-const int LEDGND = 6;    // In order to make life easier for the system LED
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_UNO)
-const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
-const int VON = 5;          // switch, low signals that dw-probe should deliver the supply charge
-const int V5 = 9;           // a low level switches the MOSFET for 5 volt on 
-const int V33 = 7;          // a low level switches the MOSFET for 3.3 volt on 
-const int VSUP = 9;         // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 14;      // If low, then we use a shield
-const int DWLINE = 8;       // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-const int TSCK = 12;        // SCK
-const int TMOSI = 10;       // MOSI
-const int TMISO = 11;       // MISO
-const int DEBTX = 3;        // TX line for TXOnlySerial
-const int TISP = 6;         // if low, signals that one wants to use the ISP programming feature
-const int SYSLED = LED_BUILTIN;
-const int LEDGND = -1;
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_MEGA2560)
-const int VHIGH = 2;        // switch, low signals that one should use the 5V supply
-const int VON = 5;          // switch, low signals that dw-probe should deliver the supply charge
-const int V5 = 9;           // a low level switches the MOSFET for 5 volt on 
-const int V33 = 7;          // a low level switches the MOSFET for 3.3 volt on 
-const int VSUP = 9;         // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 54;      // If low, then we use a shield
-const int DWLINE = 49;      // RESET line 
-const int TSCK = 12;        // SCK
-const int TMOSI = 10;       // MOSI
-const int TMISO = 11;       // MISO
-const int DEBTX = 3;        // TX line for TXOnlySerial
-const int TISP = 6;         // if low, signals that one wants to use the ISP programming feature
-const int SYSLED = LED_BUILTIN;   
-const int LEDGND = -1;
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_NANO)  // on Nano board -- is aligned with Pro Mini 
-const int VHIGH = 7;        // switch, low signals that one should use the 5V supply
-const int VON = 15;         // switch, low signals that dw-probe should deliver the supply charge
-const int V33 = 5;          // a low level switches the MOSFET for 3.3 volt on 
-const int V5 = 6;           // a low level switches the MOSFET for 5 volt on 
-const int VSUP = 6;         // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 11;      // If low, then we are on the adapter board
-const int DWLINE = 8;       // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-const int TSCK = 3;         // SCK
-const int TISP = 2;         // if low, signals that one wants to use the ISP programming feature
-const int SYSLED = LED_BUILTIN;
-const int LEDGND = -1;
-#if NANOVERSION == 3
-const int TMOSI = 16;       // MOSI
-const int TMISO = 19;       // MISO
-const int DEBTX = 18;       // TX line for TXOnlySerial
-#else
-const int TMOSI = 19;       // MOSI
-const int TMISO = 16;       // MISO
-const int DEBTX = 17;       // TX line for TXOnlySerial
-#endif
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_PRO)  // on a Pro Mini board
-const int VHIGH = 16;        // switch, low signals that one should use the 5V supply
-const int VON = 2;           // switch, low signals tha dw-probe should deliver the supply charge
-const int V33 = 14;          // a low level switches the MOSFET for 3.3 volt on 
-const int V5 = 15;           // a low level switches the MOSFET for 5 volt on 
-const int VSUP = 15;         // Vcc - direct supply charge (limit it to 20-30 mA!)
-const int SNSGND = 10;       // If low, then we are on the adapter board
-const int DWLINE = 8;        // RESET (needs to be 8 so that we can use it as an input for TIMER1)
-const int TSCK = 12;         // SCK
-const int TMOSI = 3;         // MOSI
-const int TMISO = 6;         // MISO
-const int DEBTX = 5;         // TX line for TXOnlySerial
-const int TISP = 11;         // if low, signals that one wants to use the ISP programming feature
-const int SYSLED = LED_BUILTIN;
-const int LEDGND = -1;
-//-----------------------------------------------------------
-#else
-#error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini" 
 #endif
 
 #include <stddef.h>
@@ -185,7 +91,7 @@ const int LEDGND = -1;
 #if RAMEND > 3000
 #define MAXBREAK 65 // with the 126, or 256, we have enough RAM for that!
 #else
-#define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries!)
+#define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
 #endif
 
 // communication bit rates 
@@ -265,7 +171,6 @@ struct context {
   statetype state:3; // system state
   boolean von:1; // deliver power to the target
   boolean vhigh:1; // deliver 5 volt instead of 3.3 volt
-  boolean snsgnd:1; // true if SNSGDB pin is low
   unsigned long bps; // debugWIRE communication speed
   unsigned long hostbps; // host communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
@@ -282,6 +187,45 @@ const unsigned int ontimes[6] =  {0,  100, 150, 1, 1000, 700};
 const unsigned int offtimes[6] = {1, 1000, 150, 0, 100, 700};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
+
+// pin mapping for different situations and boards
+const byte pundef = 255;
+struct pinmap {
+  byte VHIGH;
+  byte VON;
+  byte V5;
+  byte V33;
+  byte TSCK;
+  byte TMOSI;
+  byte TMISO;
+  byte DWLINE;
+  byte VSUP;
+  byte DEBTX;
+  byte TISP;
+  byte SYSLED;
+  byte LEDGND;
+} pm[2] = { { pundef, pundef, pundef, pundef, 13, 11, 12, 8, 9, 3, pundef, 7, 6 },
+#if defined(ARDUINO_AVR_UNO)
+	    { 2, 5, 9, 7, 12, 10, 11, 8, 15, 3, 6, 13, pundef } };
+const byte SNSGND = 14;
+#elif defined(ARDUINO_AVR_MEGA2560)
+	    { 2, 5, 9, 7, 12, 10, 11, 49, 55, 3, 6, 13, pundef } };
+const byte SNSGND = 54;
+#elif defined(ARDUINO_AVR_NANO)
+  #if NANOVERSIO == 3
+	    { 7, 15, 5, 6, 3, 16, 19, 8, 4, 18, 2, 13, pundef } };
+const byte SNSGND = 11;
+  #else
+	    { 7, 15, 5, 6, 3, 19, 16, 8, 4, 17, 2, 13, pundef } };
+const byte SNSGND = 11;
+  #endif
+#elif defined(ARDUINO_AVR_PRO)
+	    { 16, 2, 14, 15, 12, 3, 6, 8, pundef, 5, 11, 13, pundef } };
+const SNSGND = 15;
+#else
+	    #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini"
+#endif
+boolean adapter = false;
 
 // MCU names
 const char attiny13[] PROGMEM = "ATtiny13";
@@ -452,7 +396,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
   {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0x20, 0x3F, 0x23, 1, at90pwm161}, // untested
 
   {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0x20, 0x3F, 0x00, 1, at90pwm216316},  // untested
-  {0,      0,  0,  0, 0,  0,     0,  0, 0,      0,    0,    0,    0,    0,    0, 0},
+  {0,      0,  0,  0, 0,  0,     0,  0, 0,      0,    0,    0,    0,    0,    0,   0, 0},
 };
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
@@ -493,7 +437,6 @@ DEBDECLARE();
 
 /****************** Interrupt routines *********************/
 
-#if SYSLED >= 0 // is only used if there is a SYSLED defined
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 {
   // the ISR can be interrupted at any point by itself, the only problem
@@ -507,28 +450,28 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (busy) return; // if this IRQ routine is already active, leave immediately
   busy++; 
   cnt--;
-  if (digitalRead(SYSLED)) {
+  if (digitalRead(pm[adapter].SYSLED)) {
     if (cnt < 0) {
       cnt = offtime;
-      digitalWrite(SYSLED, LOW);
+      digitalWrite(pm[adapter].SYSLED, LOW);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      digitalWrite(SYSLED, HIGH);
+      digitalWrite(pm[adapter].SYSLED, HIGH);
     }
   }
   busy--;
 }
-#endif
 
 
 /******************* setup & loop ******************************/
 void setup(void) {
   Serial.begin(INITIALBPS);
-  while (!Serial);
-  DEBINIT(); 
-  DEBLN(F("dw-link V" VERSION));
+  pinMode(SNSGND, INPUT_PULLUP);
+  adapter = !digitalRead(SNSGND);
+  DEBINIT(pm[adapter].DEBTX); 
+  DEBLN(F("\ndw-link V" VERSION));
 #if SDEBUG
   Serial1.begin(115200);
   Serial.println(F("dw-link V" VERSION));
@@ -537,20 +480,10 @@ void setup(void) {
   ctx.hostbps = INITIALBPS;
   ctx.von = false;
   ctx.vhigh = false;
-  ctx.snsgnd = false;  
-#if VON >= 0
-  pinMode(VON, INPUT_PULLUP); // configure Von as input from switch
-#endif
-#if VHIGH >= 0
-  pinMode(VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
-#endif
-#if SNSGND >= 0
-  pinMode(SNSGND, INPUT_PULLUP);
-#endif
-#if LEDGND >= 0
-  pinMode(LEDGND, OUTPUT);
-  digitalWrite(LEDGND, LOW);
-#endif
+  pinMode(pm[adapter].VON, INPUT_PULLUP); // configure Von as input from switch
+  pinMode(pm[adapter].VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
+  pinMode(pm[adapter].LEDGND, OUTPUT);
+  digitalWrite(pm[adapter].LEDGND, LOW);
 #if SCOPEDEBUG
   DDRC = 0x7F; //
 #endif
@@ -558,13 +491,13 @@ void setup(void) {
   //  DEBLN(F("Now configuereSupply"));
   configureSupply(); // configure suppy already here
   //  DEBLN(F("configuereSupply done"));
-  pinMode(TISP, OUTPUT);
-  digitalWrite(TISP, HIGH); // disable outgoing ISP lines
-  pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
-#if ADAPTSPEED
+  pinMode(pm[adapter].TISP, OUTPUT);
+  digitalWrite(pm[adapter].TISP, HIGH); // disable outgoing ISP lines
+  pinMode(pm[adapter].DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
+#if CONSTHOSTSPEED == 0
   detectRSPCommSpeed(); // check for coummication speed and select the right one
 #endif
-  //  DEBLN(F("Setup done"));
+  DEBLN(F("Setup done"));
 }
 
 void loop(void) {
@@ -677,31 +610,26 @@ boolean rightSpeed(void)
 // configure supply lines according to switch setting
 void configureSupply(void)
 {
-#if SNSGND >= 0
-  ctx.snsgnd = !digitalRead(SNSGND);
-#endif
-  if (!ctx.snsgnd) {
-    pinMode(VSUP, OUTPUT);
-    digitalWrite(VSUP, HIGH);
+  if (!adapter) {
+    pinMode(pm[adapter].VSUP, OUTPUT);
+    digitalWrite(pm[adapter].VSUP, HIGH);
     ctx.von = false;
     return; 
   } else {
-#if defined(VHIGH) && defined(VON) && defined(V33) && defined (V5)
-    if (ctx.vhigh != !digitalRead(VHIGH) || ctx.von != !digitalRead(VON)) { // something changed
+    if (ctx.vhigh != !digitalRead(pm[adapter].VHIGH) || ctx.von != !digitalRead(pm[adapter].VON)) { // something changed
       _delay_ms(30); // debounce
       //DEBLN(F("Some change"));
-      //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(VHIGH));
-      //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(VON));
-      ctx.vhigh = !digitalRead(VHIGH);
-      ctx.von = !digitalRead(VON);
-      pinMode(V33, INPUT); // switch off both supply lines
-      pinMode(V5, INPUT);
+      //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[adapter].VHIGH));
+      //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[adapter].VON));
+      ctx.vhigh = !digitalRead(pm[adapter].VHIGH);
+      ctx.von = !digitalRead(pm[adapter].VON);
+      pinMode(pm[adapter].V33, INPUT); // switch off both supply lines
+      pinMode(pm[adapter].V5, INPUT);
       if (ctx.von) { // if on, switch on the right MOSFET
-	if (ctx.vhigh) pinMode(V5, OUTPUT); // switch on 5V MOSFET
-	else pinMode(V33, OUTPUT); // switch on 3.3 V MOSFET
+	if (ctx.vhigh) pinMode(pm[adapter].V5, OUTPUT); // switch on 5V MOSFET
+	else pinMode(pm[adapter].V33, OUTPUT); // switch on 3.3 V MOSFET
       }
     }
-#endif
   }
 }
 
@@ -726,7 +654,7 @@ void initSession(void)
 // error will be displayed when trying to execute
 // if checkio is set to true, we will check whether
 // the connection to the target is still there
-// if not, the rror is not recorded, but the connection is
+// if not, the error is not recorded, but the connection is
 // marked as not connected
 void reportFatalError(byte errnum, boolean checkio)
 {
@@ -753,15 +681,13 @@ void setSysState(statetype newstate)
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-#if SYSLED >= 0
-  pinMode(SYSLED, OUTPUT);
-  if (ontimes[newstate] == 0) digitalWrite(SYSLED, LOW);
-  else if (offtimes[newstate] == 0) digitalWrite(SYSLED, HIGH);
+  pinMode(pm[adapter].SYSLED, OUTPUT);
+  if (ontimes[newstate] == 0) digitalWrite(pm[adapter].SYSLED, LOW);
+  else if (offtimes[newstate] == 0) digitalWrite(pm[adapter].SYSLED, HIGH);
   else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
   }
-#endif
   //DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
   //DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
@@ -1207,27 +1133,16 @@ void power(boolean on)
 {
   //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
-    if (!ctx.snsgnd) {
-      //DEBLN(F("VSUP up"));
-      digitalWrite(VSUP, HIGH);
-    } else {
-      if (ctx.von) {
-#if defined(V5) && defined(V33)
-	//DEBLN(F("VXX up"));
-	if (ctx.vhigh) pinMode(V5, OUTPUT);
-	else pinMode(V33, OUTPUT);
-#endif
-      }
+    digitalWrite(pm[adapter].VSUP, HIGH);
+    if (ctx.von) {
+      //DEBLN(F("VXX up"));
+      if (ctx.vhigh) pinMode(pm[adapter].V5, OUTPUT);
+      else pinMode(pm[adapter].V33, OUTPUT);
     }
   } else { // on=false
-    if (!ctx.snsgnd) {
-      digitalWrite(VSUP, LOW);
-    } else {
-#if defined(V5) && defined(V33)
-      pinMode(V5, INPUT);
-      pinMode(V33, INPUT);
-#endif
-    }
+    digitalWrite(pm[adapter].VSUP, LOW);
+    pinMode(pm[adapter].V5, INPUT);
+    pinMode(pm[adapter].V33, INPUT);
   }
 }
 
@@ -1629,7 +1544,8 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
   if (i >= 0) { // existing bp
     bp[i].active = true;
     bpcnt++;
-    DEBPR(F("New recycled BP: ")); DEBPRF(waddr*2,HEX); if (bp[i].inflash) DEBPR(F(" (flash) "));
+    DEBPR(F("New recycled BP: ")); DEBPRF(waddr*2,HEX);
+    if (bp[i].inflash) { DEBPR(F(" (flash) ")); }
     DEBPR(F(" / now active: ")); DEBLN(bpcnt);
     return true;
   }
@@ -2620,7 +2536,7 @@ boolean targetReset(void)
   sendCommand((const byte[]) {0x07}, 1);
   // dw.begin(ctx.bps*2); // could be that communication speed is higher after reset!
   _delay_us(10);
-  while (digitalRead(DWLINE) && timeout) timeout--;
+  while (digitalRead(pm[adapter].DWLINE) && timeout) timeout--;
   _delay_us(1);
   
   ctx.bps = 0; // set to zero in order to force new speed after reset
@@ -2701,7 +2617,7 @@ boolean doBreak () {
   measureRam();
 
   DEBLN(F("doBreak"));
-  pinMode(DWLINE, INPUT);
+  pinMode(pm[adapter].DWLINE, INPUT);
   _delay_ms(10);
   ctx.bps = 0; // forget about previous connection
   dw.sendBreak(); // send a break
@@ -3299,24 +3215,23 @@ void DWflushInput(void)
 
 void enableSpiPins () {
   DEBLN(F("Eenable SPI ..."));
-  pinMode(DWLINE, OUTPUT);
-  digitalWrite(DWLINE, LOW);
+  pinMode(pm[adapter].DWLINE, OUTPUT);
+  digitalWrite(pm[adapter].DWLINE, LOW);
   DEBLN(F("RESET low"));
   _delay_us(1);
-  DEBLN(F("waited"));
-  pinMode(TSCK, OUTPUT);
-  digitalWrite(TSCK, LOW);
-  pinMode(TMOSI, OUTPUT);
-  digitalWrite(TMOSI, HIGH);
-  pinMode(TMISO, INPUT);
-  digitalWrite(TISP, LOW);
+  pinMode(pm[adapter].TSCK, OUTPUT);
+  digitalWrite(pm[adapter].TSCK, LOW);
+  pinMode(pm[adapter].TMOSI, OUTPUT);
+  digitalWrite(pm[adapter].TMOSI, HIGH);
+  pinMode(pm[adapter].TMISO, INPUT);
+  digitalWrite(pm[adapter].TISP, LOW);
 }
 
 void disableSpiPins () {
-  digitalWrite(TISP, HIGH);
-  pinMode(TSCK, INPUT); 
-  pinMode(TMOSI, INPUT);
-  pinMode(TMISO, INPUT);
+  digitalWrite(pm[adapter].TISP, HIGH);
+  pinMode(pm[adapter].TSCK, INPUT); 
+  pinMode(pm[adapter].TMOSI, INPUT);
+  pinMode(pm[adapter].TMISO, INPUT);
 }
 
 byte ispTransfer (byte val) {
@@ -3325,11 +3240,11 @@ byte ispTransfer (byte val) {
   // that should be slow enough even for
   // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
-    digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
-    digitalWrite(TSCK, HIGH);
+    digitalWrite(pm[adapter].TMOSI, (val & 0x80) ? HIGH : LOW);
+    digitalWrite(pm[adapter].TSCK, HIGH);
     _delay_us(200); 
-    val = (val << 1) + digitalRead(TMISO);
-    digitalWrite(TSCK, LOW);
+    val = (val << 1) + digitalRead(pm[adapter].TMISO);
+    digitalWrite(pm[adapter].TSCK, LOW);
     _delay_us(200);
   }
   return val;
@@ -3358,9 +3273,9 @@ boolean enterProgramMode ()
     //DEBLN(F("Do ..."));
     enableSpiPins();
     //DEBLN(F("Pins enabled ..."));
-    digitalWrite(DWLINE, HIGH); 
+    pinMode(pm[adapter].DWLINE, INPUT); 
     _delay_us(30);             // short positive RESET pulse of at least 2 clock cycles
-    digitalWrite(DWLINE, LOW);  
+    pinMode(pm[adapter].DWLINE, OUTPUT);  
     _delay_ms(30);            // wait at least 20 ms before sending enable sequence
     if (ispSend(0xAC, 0x53, 0x00, 0x00, false) == 0x53) break;
   } while (--timeout);
@@ -3380,7 +3295,7 @@ void leaveProgramMode()
   //DEBLN(F("Leaving progmode"));
   disableSpiPins();
   _delay_ms(10);
-  pinMode(DWLINE, INPUT); // allow MCU to run or to communicate via debugWIRE
+  pinMode(pm[adapter].DWLINE, INPUT); // allow MCU to run or to communicate via debugWIRE
   dw.enable(true);
 }
   
@@ -3437,9 +3352,9 @@ boolean ispEraseFlash(void)
 {
   ispSend(0xAC, 0x80, 0x00, 0x00, true);
   _delay_ms(20);
-  pinMode(DWLINE, INPUT); // short positive pulse
+  pinMode(pm[adapter].DWLINE, INPUT); // short positive pulse
   _delay_ms(1);
-  pinMode(DWLINE, OUTPUT); 
+  pinMode(pm[adapter].DWLINE, OUTPUT); 
   return true;
 }
 

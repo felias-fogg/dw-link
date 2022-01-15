@@ -563,7 +563,7 @@ As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/202
 
 
 
-The relevant pins are therefore as defined in the following table. 
+The relevant pins are therefore as defined in the following table. <a name="simplemap"></a>
 
 | Arduino pin          | ISP pin | Function    |
 | -------------------- | ------- | ----------- |
@@ -576,11 +576,13 @@ The relevant pins are therefore as defined in the following table.
 | D7                   |         | System LED+ |
 | D6                   |         | System LED- |
 
-
+<a name="section71"></a>
 
 ### 7.1 A simple shield
 
-Taking it one one step further, one might think about a shield for an Uno or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch.
+Taking it one one step further, one might think about a shield for an Uno or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
+
+Note that here we use a somewhat different pin mapping then the one above in order to use the pin 13 builtin LED. In order to signal that to the sketch, pin D14 (=A0) on a Uno board needs to be connected to GND (see also the pin mapping for shields and adapter boards in Section [7.3.2](#section732) & [7.3.3](#section733).)
 
 
 ![dw-probe-fritzing V 0.1](pics/dw-probe0.1.png)
@@ -593,7 +595,7 @@ In reality, it probably will more look like as in the next picture.
 
 This works very well on an Arduino Uno. On an Arduino Mega, you have to use Arduino pin 49 for the debugWIRE line, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-link.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
 
-Note that here we use a somewhat different pin mapping then the one above. In order to have consistent pin mappings for all supported boards, there is a big conditional compilation section in the firmware that gets activated when the compile time constant **`ADAPTER`** is set to 1 (either in the source code or when the compilation is performed). 
+
 
 ### 7.2 A shield with level shifters
 
@@ -652,42 +654,42 @@ TISP | Output | Control line: If low, then ISP programming is enabled
 TMISO | Input | SPI signal "Master In, Slave Out"
 TMOSI | Output | SPI signal "Master Out, Slave In"
 TSCK | Output | SPI signal "Master clock"
-SNSGND | Input | If high, signals that the debugger board should use VSUP as a supply, if low, signals that the debugger should take full control of voltage and supply. 
+SNSGND | Input | If open, signals that the debugger should use the [pin mapping tuned for an ISP cable](#simplemap), if low, use the pin mapping for the particular board as specified in the [table below](#complexmap) 
 V33 | Output | Control line to the MOSFET to switch on 3.3 volt supply for target
 V5  | Output | Control line to switch on the 5 volt line
 Vcc | Supply | Voltage supply from the board (5 V) that can be used to power the target
 VHIGH | Input from switch | If low, then choose 5 V supply for target, otherwise 3.3 V 
 VON | Input from switch | If low, then supply target (and use power-cycling)
-VSUP | Output | Used as a target supply line driven directly by an ATmega pin, which is only active if the debugger board does not take full control of the voltage, i.e., if SNSGND=open 
+VSUP | Output | Used as a target supply line driven directly by an ATmega pin, i.e., this should not source more than 20 mA (this is the cheap alternative to using MOSFETs to drive the supply for the target board, e.g., when using a prototype board as sketched in [Section 7.1](#section71)) 
 
 <a name="section733"></a>
 
 #### 7.3.3 Pin mapping
 
-If you plug in your Arduino into the adapter board or use the shield, you do not have to bother about pin assignments. The only important thing is to set the DIP switches and plug in the USB and ISP cable. If you want to use the Arduino without such a board, you leave the compiler constant **`ADAPTER`** undefined  and use the pin mapping with a ISP cable.
+If you plug in your Arduino into the adapter board or use the shield, you do not have to bother about pin assignments. The only important thing is to set the DIP switches (if you have those) and plug in the USB and ISP cable. 
 
 When you use an Arduino Nano, you should be aware that  there are apparently two different versions around, namely version 2 and version 3. The former one has the A0 pin close to the 5V pin, while version 3 boards have the A0 pin close to the REF pin. If you use a Nano on the adapter board, you need to set the compile time constant `NANOVERSION`, either by changing the value in the source or by defining the value when compiling. The default value is 3.
 
-In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. For a setting without voltage control, only the pins marked in the last column are required. The **DWLINE** pin is the debugWIRE line, which needs to be connected to the target. TMOSI, TMISO, and TSCK are the usual signals for ISP programming by SPI.
+In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. 
 
-In the no-voltage-control mode, the **VSUP** pin should only be used if the current requirement by the target in not more than 20 mA. Otherwise you need to power the system by an external power source or use the Vcc pin. Note that in a no-voltage-control setting, there is no level-shifting done, so you should debug only 5 V systems.
+<a name="complexmap"></a>
 
-Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega | no voltage control 
---- | --- | --- | --- | --- | --- | --- 
-DEB-TX |A3= D17|A4= D18| D5 |D3|D3|
-DW-LINE | D8 | D8 |D8| D8 |D49| **+** 
-GND | GND | GND | GND | GND | GND | **+** 
-TISP | D2 | D2 | D11 |D6|D6|
-TMISO | A2= D16 | A5= D19 | D6 |D11|D11| **+** 
-TMOSI | A5= D19 | A2= D16 | D3 |D10|D10| **+** 
-TSCK | D3 | D3 | D12 |D12|D12| **+** 
-SNS-GND | D11 | D11 | D10 |A0= D14|A0= D54|
-V33 | D5 | D5 | A0= D14 |D7|D7|
-V5 | D6 | D6  | A1= D15 |D9|D9|
-Vcc | 5V | 5V | Vcc |5V|5V| (+) 
-VHIGH | D7 | D7  | A2= D16 |D2|D2|
-VON | A1= D15 | A1= D15  | D2 |D5|D5|
-VSUP | D6 | D6 | A1= D15 |D9|D9 | **+** 
+Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega 
+--- | --- | --- | --- | --- | --- 
+DEB-TX |A3=D17|A4=D18| D5 |D3|D3
+DW-LINE | D8 | D8 |D8| D8 |D49
+GND | GND | GND | GND | GND | GND 
+TISP | D2 | D2 | D11 |D6|D6
+TMISO | A2= D16 | A5= D19 | D6 |D11|D11
+TMOSI | A5= D19 | A2= D16 | D3 |D10|D10
+TSCK | D3 | D3 | D12 |D12|D12
+SNS-GND | D11 | D11 | D10 |A0=D14|A0=D54
+V33 | D5 | D5 | A0= D14 |D7|D7
+V5 | D6 | D6  | A1= D15 |D9|D9
+Vcc | 5V | 5V | Vcc |5V|5V
+VHIGH | D7 | D7  | A2= D16 |D2|D2
+VON | A1= D15 | A1= D15  | D2 |D5|D5
+VSUP | D4 | D4 |  |A1=D15|A1=D55 
 
 
 

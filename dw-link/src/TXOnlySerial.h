@@ -48,9 +48,6 @@ private:
   uint16_t _inverse_logic:1;
 
 
-  // private methods
-  void setTX(uint8_t transmitPin);
-
   // Return num - sub, or 1 if the result would be < 1
   static uint16_t subtract_cap(uint16_t num, uint16_t sub);
 
@@ -64,6 +61,7 @@ public:
   void begin(long speed);
   void end();
 
+  void setTX(uint8_t transmitPin);
   int peek();
   virtual int read();
   virtual int available();
