@@ -555,6 +555,22 @@ Version 0.9.9 (14-Nov-21)
 - changed handling of system LED from port manipulation to using Arduino's digitalWrite in order to have it more portable; the additional time in the interrupt routine can be tolerated since the ISR is non-blocking
 - modified example: can now be used with an UNO or an ATtiny85
 
-## Version 1.2.0
+## Version 1.2.0 (15-Jan-22)
 
-- Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, the compiler constant ADAPTER needs to be set to 1 (either in the source code or when calling the compiler). 
+- changed pin mapping; the default is now to use ISP pins on the
+  debugger so that a simple ISP cable with broken out RESET line is
+  sufficient; system LED is pin D7, GND for the system LED is provided
+  at pin D6; In order to use the pin mapping for shields/adapters, the
+  compiler constant ADAPTER needs to be set to 1 (either in the source
+  code or when calling the compiler)
+
+## Version 1.2.1 (15-Jan-22)
+
+- pin mapping is now dependend on SNSGND, using the pm array (and
+  conditional compilation)
+
+## Versoin 1.2.2 (15-Jan-22)
+
+- changed addressing the different pin maps; the right one is
+  determined at startup and copied to pm[0]; makes code smaller so
+  that all the unit tests fit into memory together the sketch

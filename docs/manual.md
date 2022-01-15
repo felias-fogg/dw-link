@@ -116,7 +116,7 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on MCUs marked bold. The untested PB types appear to be very very difficult to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them. 
+I have tested the debugger on MCUs marked bold. The untested PB types appear to be very very difficult to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them and dw-link rejects these MCUs.
 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
@@ -417,7 +417,7 @@ Of course, you could have done that before leaving the debug session in the prev
 
 ### 5.7 GDB commands
 
-In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most interesting commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/).
+In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most interesting commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
 
 command | action
 --- | ---
@@ -476,7 +476,7 @@ command | action
 set se[rial] b[aud] *number* | set baud rate of serial port to the hardware debugger (same as using the `-b` option when starting `avr-gdb`); only effective when called before establishing a connection with the `target` command 
 tar[get] rem[ote] *serialport* | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE (use only after baud rate has been specified!) 
 tar[get] ext[ended-remote] *serialport* | establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command
-det[ach] | release target 
+det[ach] | detach from target and let it run 
 fil[e] *name*.elf | load the symbol table from the specified ELF file (should be done before establishing the connection to the target)
 lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
 q[uit] | exit from GDB 
@@ -506,7 +506,7 @@ mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen dur
 mo[nitor] un[safestep] | single stepping is interruptible and time advances during single-stepping 
 mo[nitor] ve[rsion] | print version number of firmware
 
-Note that all monitor commands that change fuses also implicitly reset the MCU. In other words, all commands except that the last eight will do that.
+Note that all monitor commands that change fuses also implicitly reset the MCU. In other words, all commands except the last eight will do that.
 
 <a name="section6"></a>
 
@@ -626,7 +626,7 @@ I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini,  wi
 
 ![dw-probe 1.0](pics/dwprobe1.0-in-action.jpg)
 
-The Eagle design files of the Version 1.1 board are in the [pcb](../pcb/) directory. This design is currently untested but should work based on the (faulty) V1.0 design. There is also a design for an Uno-sized shield in the directory, untested as well. 
+The Eagle design files of the Version 1.1 board are in the [pcb](../pcb/) directory. This design is currently untested but should work based on the (faulty) V1.0 design. There is also a design for an Uno-sized shield in the directory, untested as well. But the boards should arrive soon. 
 
 
 #### 7.3.1 DIP switch configuration
@@ -946,4 +946,4 @@ Initial version
 
 #### V 1.2
 
-- Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, the compiler constant ADAPTER needs to be set to 1 (either in the source code or when calling the compiler). Then the mapping described in [Section 7.3.3](#section733) will be active.
+- Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, one has to tie SNSGND to ground, whereby the pin number of SNSGND depends on the Arduino board dw-link is compiled for (see mapping described in [Section 7.3.3](#section733)).

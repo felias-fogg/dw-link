@@ -34,7 +34,7 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
 
-#define VERSION "1.2.1"
+#define VERSION "1.2.2"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -96,7 +96,7 @@
 
 // communication bit rates 
 #define SPEEDHIGH     275000UL // maximum communication speed limit for DW
-#define SPEEDLOW   137000UL // normal speed limit
+#define SPEEDLOW      137000UL // normal speed limit
 
 // signals
 #define SIGHUP  1     // connection to target lost
@@ -198,34 +198,37 @@ struct pinmap {
   byte TSCK;
   byte TMOSI;
   byte TMISO;
-  byte DWLINE;
   byte VSUP;
   byte DEBTX;
   byte TISP;
   byte SYSLED;
   byte LEDGND;
-} pm[2] = { { pundef, pundef, pundef, pundef, 13, 11, 12, 8, 9, 3, pundef, 7, 6 },
+} pm[2] = { { pundef, pundef, pundef, pundef, 13, 11, 12, 9, 3, pundef, 7, 6 },
 #if defined(ARDUINO_AVR_UNO)
-	    { 2, 5, 9, 7, 12, 10, 11, 8, 15, 3, 6, 13, pundef } };
+	    { 2, 5, 9, 7, 12, 10, 11, 15, 3, 6, 13, pundef } };
 const byte SNSGND = 14;
+const byte DWLINE = 8;
 #elif defined(ARDUINO_AVR_MEGA2560)
-	    { 2, 5, 9, 7, 12, 10, 11, 49, 55, 3, 6, 13, pundef } };
+	    { 2, 5, 9, 7, 12, 10, 11, 55, 3, 6, 13, pundef } };
 const byte SNSGND = 54;
+const byte DWLINE = 49;
 #elif defined(ARDUINO_AVR_NANO)
   #if NANOVERSIO == 3
-	    { 7, 15, 5, 6, 3, 16, 19, 8, 4, 18, 2, 13, pundef } };
+	    { 7, 15, 5, 6, 3, 16, 19, 4, 18, 2, 13, pundef } };
 const byte SNSGND = 11;
+const byte DWLINE = 8;
   #else
-	    { 7, 15, 5, 6, 3, 19, 16, 8, 4, 17, 2, 13, pundef } };
+	    { 7, 15, 5, 6, 3, 19, 16, 4, 17, 2, 13, pundef } };
 const byte SNSGND = 11;
+const byte DWLINE = 8;
   #endif
 #elif defined(ARDUINO_AVR_PRO)
-	    { 16, 2, 14, 15, 12, 3, 6, 8, pundef, 5, 11, 13, pundef } };
-const SNSGND = 15;
+	    { 16, 2, 14, 15, 12, 3, 6, pundef, 5, 11, 13, pundef } };
+const byte SNSGND = 15;
+const byte DWLINE = 8;
 #else
 	    #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini"
 #endif
-boolean adapter = false;
 
 // MCU names
 const char attiny13[] PROGMEM = "ATtiny13";
@@ -450,15 +453,15 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (busy) return; // if this IRQ routine is already active, leave immediately
   busy++; 
   cnt--;
-  if (digitalRead(pm[adapter].SYSLED)) {
+  if (digitalRead(pm[0].SYSLED)) {
     if (cnt < 0) {
       cnt = offtime;
-      digitalWrite(pm[adapter].SYSLED, LOW);
+      digitalWrite(pm[0].SYSLED, LOW);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      digitalWrite(pm[adapter].SYSLED, HIGH);
+      digitalWrite(pm[0].SYSLED, HIGH);
     }
   }
   busy--;
@@ -469,8 +472,9 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 void setup(void) {
   Serial.begin(INITIALBPS);
   pinMode(SNSGND, INPUT_PULLUP);
-  adapter = !digitalRead(SNSGND);
-  DEBINIT(pm[adapter].DEBTX); 
+  if (digitalRead(SNSGND) == 0) // adapter board!
+    memcpy(&pm[0], &pm[1], sizeof(pinmap));
+  DEBINIT(pm[0].DEBTX); 
   DEBLN(F("\ndw-link V" VERSION));
 #if SDEBUG
   Serial1.begin(115200);
@@ -480,10 +484,10 @@ void setup(void) {
   ctx.hostbps = INITIALBPS;
   ctx.von = false;
   ctx.vhigh = false;
-  pinMode(pm[adapter].VON, INPUT_PULLUP); // configure Von as input from switch
-  pinMode(pm[adapter].VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
-  pinMode(pm[adapter].LEDGND, OUTPUT);
-  digitalWrite(pm[adapter].LEDGND, LOW);
+  pinMode(pm[0].VON, INPUT_PULLUP); // configure Von as input from switch
+  pinMode(pm[0].VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
+  pinMode(pm[0].LEDGND, OUTPUT);
+  digitalWrite(pm[0].LEDGND, LOW);
 #if SCOPEDEBUG
   DDRC = 0x7F; //
 #endif
@@ -491,9 +495,9 @@ void setup(void) {
   //  DEBLN(F("Now configuereSupply"));
   configureSupply(); // configure suppy already here
   //  DEBLN(F("configuereSupply done"));
-  pinMode(pm[adapter].TISP, OUTPUT);
-  digitalWrite(pm[adapter].TISP, HIGH); // disable outgoing ISP lines
-  pinMode(pm[adapter].DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
+  pinMode(pm[0].TISP, OUTPUT);
+  digitalWrite(pm[0].TISP, HIGH); // disable outgoing ISP lines
+  pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
 #if CONSTHOSTSPEED == 0
   detectRSPCommSpeed(); // check for coummication speed and select the right one
 #endif
@@ -610,25 +614,19 @@ boolean rightSpeed(void)
 // configure supply lines according to switch setting
 void configureSupply(void)
 {
-  if (!adapter) {
-    pinMode(pm[adapter].VSUP, OUTPUT);
-    digitalWrite(pm[adapter].VSUP, HIGH);
-    ctx.von = false;
-    return; 
-  } else {
-    if (ctx.vhigh != !digitalRead(pm[adapter].VHIGH) || ctx.von != !digitalRead(pm[adapter].VON)) { // something changed
-      _delay_ms(30); // debounce
-      //DEBLN(F("Some change"));
-      //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[adapter].VHIGH));
-      //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[adapter].VON));
-      ctx.vhigh = !digitalRead(pm[adapter].VHIGH);
-      ctx.von = !digitalRead(pm[adapter].VON);
-      pinMode(pm[adapter].V33, INPUT); // switch off both supply lines
-      pinMode(pm[adapter].V5, INPUT);
-      if (ctx.von) { // if on, switch on the right MOSFET
-	if (ctx.vhigh) pinMode(pm[adapter].V5, OUTPUT); // switch on 5V MOSFET
-	else pinMode(pm[adapter].V33, OUTPUT); // switch on 3.3 V MOSFET
-      }
+  if (digitalRead(SNSGND)) return; 
+  if (ctx.vhigh != !digitalRead(pm[0].VHIGH) || ctx.von != !digitalRead(pm[0].VON)) { // something changed
+    _delay_ms(30); // debounce
+    //DEBLN(F("Some change"));
+    //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[0].VHIGH));
+    //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[0].VON));
+    ctx.vhigh = !digitalRead(pm[0].VHIGH);
+    ctx.von = !digitalRead(pm[0].VON);
+    pinMode(pm[0].V33, INPUT); // switch off both supply lines
+    pinMode(pm[0].V5, INPUT);
+    if (ctx.von) { // if on, switch on the right MOSFET
+      if (ctx.vhigh) pinMode(pm[0].V5, OUTPUT); // switch on 5V MOSFET
+      else pinMode(pm[0].V33, OUTPUT); // switch on 3.3 V MOSFET
     }
   }
 }
@@ -681,9 +679,9 @@ void setSysState(statetype newstate)
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-  pinMode(pm[adapter].SYSLED, OUTPUT);
-  if (ontimes[newstate] == 0) digitalWrite(pm[adapter].SYSLED, LOW);
-  else if (offtimes[newstate] == 0) digitalWrite(pm[adapter].SYSLED, HIGH);
+  pinMode(pm[0].SYSLED, OUTPUT);
+  if (ontimes[newstate] == 0) digitalWrite(pm[0].SYSLED, LOW);
+  else if (offtimes[newstate] == 0) digitalWrite(pm[0].SYSLED, HIGH);
   else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
@@ -925,8 +923,10 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetSteppingMode(true);                                               /* safestep */
   else if (memcmp_P(buf, (void *)PSTR("756e736166657374657000"), max(4,min(12,clen))) == 0)
     gdbSetSteppingMode(false);                                              /* unsafestep */
+#if 0
   else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
     gdbVersion();                                                           /* version */
+#endif
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
@@ -938,9 +938,9 @@ inline void gdbSetSteppingMode(boolean safe)
 {
   ctx.safestep = safe;
   if (safe)
-    gdbReplyMessagePSTR(PSTR("Single-stepping is now interrupt-free"), -1);
+    gdbReplyMessagePSTR(PSTR("Single-stepping now interrupt-free"), -1);
   else
-    gdbReplyMessagePSTR(PSTR("Single-stepping can now be interrupted"), -1);
+    gdbReplyMessagePSTR(PSTR("Single-stepping now interruptible"), -1);
 }
 
 // show version
@@ -949,7 +949,7 @@ inline void gdbVersion(void)
   gdbReplyMessagePSTR(PSTR("dw-link V" VERSION), -1);
 }
   
-// show connectio speed to host
+// show connection speed to host
 inline void gdbReportRSPbps(void)
 {
   gdbReplyMessagePSTR(PSTR("Current bitrate of serial connection to host: "), ctx.hostbps);
@@ -1072,7 +1072,7 @@ boolean gdbConnect(boolean verbose)
     setSysState(CONN_STATE);
     if (verbose) {
       gdbDebugMessagePSTR(Connected,-2);
-      gdbDebugMessagePSTR(PSTR("debugWIRE is now enabled, bps: "),ctx.bps);
+      gdbDebugMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
     }
     gdbCleanupBreakpointTable();
     return true;
@@ -1080,9 +1080,9 @@ boolean gdbConnect(boolean verbose)
   if (verbose) {
     switch (conncode) {
     case -1: gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1); break;
-    case -2: gdbDebugMessagePSTR(PSTR("Cannot connect: Unsupported MCU type"),-1); break;
-    case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits are set"),-1); break;
-    case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: MCU has PC with stuck-at-one bits"),-1); break;
+    case -2: gdbDebugMessagePSTR(PSTR("Cannot connect: Unsupported MCU"),-1); break;
+    case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits set"),-1); break;
+    case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: PC with stuck-at-one bits"),-1); break;
     default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
     }
   }
@@ -1114,7 +1114,7 @@ boolean powerCycle(boolean verbose)
     if ((retry++)%3 == 0 && retry >= 3) {
       do {
 	if (verbose) {
-	  gdbDebugMessagePSTR(PSTR("Please power-cycle the target system"),-1);
+	  gdbDebugMessagePSTR(PSTR("Please power-cycle target"),-1);
 	  b = gdbReadByte();
 	} else b ='+';
       } while (b == '-');
@@ -1133,16 +1133,16 @@ void power(boolean on)
 {
   //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
-    digitalWrite(pm[adapter].VSUP, HIGH);
+    digitalWrite(pm[0].VSUP, HIGH);
     if (ctx.von) {
       //DEBLN(F("VXX up"));
-      if (ctx.vhigh) pinMode(pm[adapter].V5, OUTPUT);
-      else pinMode(pm[adapter].V33, OUTPUT);
+      if (ctx.vhigh) pinMode(pm[0].V5, OUTPUT);
+      else pinMode(pm[0].V33, OUTPUT);
     }
   } else { // on=false
-    digitalWrite(pm[adapter].VSUP, LOW);
-    pinMode(pm[adapter].V5, INPUT);
-    pinMode(pm[adapter].V33, INPUT);
+    digitalWrite(pm[0].VSUP, LOW);
+    pinMode(pm[0].V5, INPUT);
+    pinMode(pm[0].V33, INPUT);
   }
 }
 
@@ -1152,7 +1152,7 @@ void gdbStop(void)
 {
   if (targetStop()) {
     gdbDebugMessagePSTR(Connected,-2);
-    gdbReplyMessagePSTR(PSTR("debugWIRE is now disabled"),-1);
+    gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
     setSysState(NOTCONN_STATE);
   } else {
     gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
@@ -1183,10 +1183,10 @@ void gdbSetFuses(Fuses fuse)
   res = targetSetFuses(fuse);
   if (res < 0) {
     if (res == -1) gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1);
-    else if (res == -2) gdbDebugMessagePSTR(PSTR("Unsupported MCU type"),-1);
+    else if (res == -2) gdbDebugMessagePSTR(PSTR("Unsupported MCU"),-1);
     else if (res == -3) gdbDebugMessagePSTR(PSTR("Fuse programming failed"),-1);
-    else if (res == -4) gdbDebugMessagePSTR(PSTR("XTAL is not a possible clock source"),-1);
-    else if (res == -5) gdbDebugMessagePSTR(PSTR("Internal 128 kHz osc. is not a possible clock source"),-1);
+    else if (res == -4) gdbDebugMessagePSTR(PSTR("XTAL not possible"),-1);
+    else if (res == -5) gdbDebugMessagePSTR(PSTR("128 kHz osc. not possible"),-1);
     flushInput();
     gdbSendReply("E05");
     return;
@@ -1194,10 +1194,10 @@ void gdbSetFuses(Fuses fuse)
   switch (fuse) {
   case CkDiv8: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now programmed"),-1); break;
   case CkDiv1: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now unprogrammed"),-1); break;
-  case CkRc: gdbDebugMessagePSTR(PSTR("Clock source is now the RC oscillator"),-1); break;
-  case CkExt: gdbDebugMessagePSTR(PSTR("Clock source is now the EXTernal oscillator"),-1); break;
-  case CkXtal: gdbDebugMessagePSTR(PSTR("Clock source is now the XTAL oscillator"),-1); break;
-  case CkSlow: gdbDebugMessagePSTR(PSTR("Clock source is now 128 kHz oscillator"),-1); break;
+  case CkRc: gdbDebugMessagePSTR(PSTR("Using RC oscillator"),-1); break;
+  case CkExt: gdbDebugMessagePSTR(PSTR("Using EXTernal oscillator"),-1); break;
+  case CkXtal: gdbDebugMessagePSTR(PSTR("Using XTAL oscillator"),-1); break;
+  case CkSlow: gdbDebugMessagePSTR(PSTR("Using 128 kHz oscillator"),-1); break;
   case Erase: gdbDebugMessagePSTR(PSTR("Flash memory erased"),-1); break;
   default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
   }
@@ -2536,7 +2536,7 @@ boolean targetReset(void)
   sendCommand((const byte[]) {0x07}, 1);
   // dw.begin(ctx.bps*2); // could be that communication speed is higher after reset!
   _delay_us(10);
-  while (digitalRead(pm[adapter].DWLINE) && timeout) timeout--;
+  while (digitalRead(DWLINE) && timeout) timeout--;
   _delay_us(1);
   
   ctx.bps = 0; // set to zero in order to force new speed after reset
@@ -2617,7 +2617,7 @@ boolean doBreak () {
   measureRam();
 
   DEBLN(F("doBreak"));
-  pinMode(pm[adapter].DWLINE, INPUT);
+  pinMode(DWLINE, INPUT);
   _delay_ms(10);
   ctx.bps = 0; // forget about previous connection
   dw.sendBreak(); // send a break
@@ -3215,23 +3215,23 @@ void DWflushInput(void)
 
 void enableSpiPins () {
   DEBLN(F("Eenable SPI ..."));
-  pinMode(pm[adapter].DWLINE, OUTPUT);
-  digitalWrite(pm[adapter].DWLINE, LOW);
+  pinMode(DWLINE, OUTPUT);
+  digitalWrite(DWLINE, LOW);
   DEBLN(F("RESET low"));
   _delay_us(1);
-  pinMode(pm[adapter].TSCK, OUTPUT);
-  digitalWrite(pm[adapter].TSCK, LOW);
-  pinMode(pm[adapter].TMOSI, OUTPUT);
-  digitalWrite(pm[adapter].TMOSI, HIGH);
-  pinMode(pm[adapter].TMISO, INPUT);
-  digitalWrite(pm[adapter].TISP, LOW);
+  pinMode(pm[0].TSCK, OUTPUT);
+  digitalWrite(pm[0].TSCK, LOW);
+  pinMode(pm[0].TMOSI, OUTPUT);
+  digitalWrite(pm[0].TMOSI, HIGH);
+  pinMode(pm[0].TMISO, INPUT);
+  digitalWrite(pm[0].TISP, LOW);
 }
 
 void disableSpiPins () {
-  digitalWrite(pm[adapter].TISP, HIGH);
-  pinMode(pm[adapter].TSCK, INPUT); 
-  pinMode(pm[adapter].TMOSI, INPUT);
-  pinMode(pm[adapter].TMISO, INPUT);
+  digitalWrite(pm[0].TISP, HIGH);
+  pinMode(pm[0].TSCK, INPUT); 
+  pinMode(pm[0].TMOSI, INPUT);
+  pinMode(pm[0].TMISO, INPUT);
 }
 
 byte ispTransfer (byte val) {
@@ -3240,11 +3240,11 @@ byte ispTransfer (byte val) {
   // that should be slow enough even for
   // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
-    digitalWrite(pm[adapter].TMOSI, (val & 0x80) ? HIGH : LOW);
-    digitalWrite(pm[adapter].TSCK, HIGH);
+    digitalWrite(pm[0].TMOSI, (val & 0x80) ? HIGH : LOW);
+    digitalWrite(pm[0].TSCK, HIGH);
     _delay_us(200); 
-    val = (val << 1) + digitalRead(pm[adapter].TMISO);
-    digitalWrite(pm[adapter].TSCK, LOW);
+    val = (val << 1) + digitalRead(pm[0].TMISO);
+    digitalWrite(pm[0].TSCK, LOW);
     _delay_us(200);
   }
   return val;
@@ -3273,9 +3273,9 @@ boolean enterProgramMode ()
     //DEBLN(F("Do ..."));
     enableSpiPins();
     //DEBLN(F("Pins enabled ..."));
-    pinMode(pm[adapter].DWLINE, INPUT); 
+    pinMode(DWLINE, INPUT); 
     _delay_us(30);             // short positive RESET pulse of at least 2 clock cycles
-    pinMode(pm[adapter].DWLINE, OUTPUT);  
+    pinMode(DWLINE, OUTPUT);  
     _delay_ms(30);            // wait at least 20 ms before sending enable sequence
     if (ispSend(0xAC, 0x53, 0x00, 0x00, false) == 0x53) break;
   } while (--timeout);
@@ -3295,7 +3295,7 @@ void leaveProgramMode()
   //DEBLN(F("Leaving progmode"));
   disableSpiPins();
   _delay_ms(10);
-  pinMode(pm[adapter].DWLINE, INPUT); // allow MCU to run or to communicate via debugWIRE
+  pinMode(DWLINE, INPUT); // allow MCU to run or to communicate via debugWIRE
   dw.enable(true);
 }
   
@@ -3352,9 +3352,9 @@ boolean ispEraseFlash(void)
 {
   ispSend(0xAC, 0x80, 0x00, 0x00, true);
   _delay_ms(20);
-  pinMode(pm[adapter].DWLINE, INPUT); // short positive pulse
+  pinMode(DWLINE, INPUT); // short positive pulse
   _delay_ms(1);
-  pinMode(pm[adapter].DWLINE, OUTPUT); 
+  pinMode(DWLINE, OUTPUT); 
   return true;
 }
 
