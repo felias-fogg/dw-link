@@ -1,4 +1,4 @@
-# dw-link
+#   dw-link
 
 # An Arduino-based debugWIRE debugger
 
@@ -160,11 +160,11 @@ There are only a few steps necessary for installing the program on an ATmega328 
 
 ### 4.1 Software installation
 
-Since the firmware of the hardware debugger comes in form of an Arduino sketch, you need to download first of all the [Arduino IDE](https://www.arduino.cc/en/software), if you have not done that already. Note that for some of the later software components (e.g., the ATTinyCore) a reasonably recent version is required. It is probably best when you upgrade your installation now. 
+Since the firmware of the hardware debugger comes in form of an Arduino sketch, you need to download first of all the [Arduino IDE](https://www.arduino.cc/en/software), if you have not done that already. Note that for some of the later software components (e.g., the ATTinyCore) a reasonably recent version is required. It is probably best when you upgrade your installation now. As an alternative, you can also use [PlatformIO](https://platformio.org/). 
 
-Second, you need to download this repository somewhere, where the IDE is able to find the Arduino sketch. 
+Second, you need to download this repository somewhere, where the IDE is able to find the Arduino sketch. If you use PlatformIO, the note that the repository is already prepared to be opened as a PlatformIO project, i.e., it contains a `platformio.ini` file.
 
-Third, you have to connect your ATmega328 (or similar) board to your computer, select the right board in the Arduino IDE and upload the *dw-link.ino* sketch to the board. 
+Third, you have to connect your ATmega328 (or similar) board to your computer, select the right board in the Arduino IDE and upload the *dw-link.ino* sketch to the board. Similarly, in PlatformIO, you have to choose the right board and choose the `Upload` menu entry.
 
 <a name="section42"></a>
 
@@ -233,8 +233,7 @@ __UNITALL__ | 0 | If 1, all unit tests are activated; they can be executed by us
 __UNITDW__ | 0 | If 1, the unit tests for the debugWIRE layer are activated; execute them by using `monitor testdw`.
 __UNITTG__ | 0 | If 1, the unit tests for the target layer are activated; use `monitor testtg` to execute them.
 __UNITGDB__ | 0 | If 1, the unit tests for the GDB layer are activated, use `monitor testgdb` to execute them. 
-__ADAPTER__ | 0 | if 0, pin binding for the case when you want to use a modified ISP cable,, where only the RESET line is broken out (a cable you can also use when you use the Arduino as an ISP-programmer). 
-__ARDUINO\_AVR\___*XXX* | undef | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping (see [Section 7.3.2 & 7.3.3](#section732)). 
+__ARDUINO\_AVR\___*XXX* | undef | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping if an adapter board or shield is used (see [Section 7.3.2 & 7.3.3](#section732)). 
 
 
 <a name="section5"></a>
@@ -269,16 +268,18 @@ These three lines make sure that you receive an [*ELF*](https://en.wikipedia.org
 
 ### 5.3 Changing the optimization level: arduino-cli option or board.txt modification
 
-Because of the compiler optimization level that is used by the Arduino IDE, the machine code produced by the compiler does not follow straightforwardly your source code. For this reason, it is advisable to use the optimization flag **-Og** (compile in a debugging friendly way) instead of the default optimization flag **-Os** (optimize to minimize space). If you are using the console line interface `arduino-cli`, then this is easily achieved by adding the following option to the `arduino-cli compile` command:
+Because of the compiler optimization level that is used by the Arduino IDE, the machine code produced by the compiler does not follow straightforwardly your source code. For this reason, it is advisable to use the optimization flag **-Og** (compile in a debugging friendly way) instead of the default optimization flag **-Os** (optimize to minimize space). 
+
+I recently noticed that single-stepping does not appear to be supported properly when **-Og** is used. Also, assignments to local variables do often not work. So, if you want to do proper source code level debugging, you probably should use the **-O0** optimization level, where almost all optimizations are switched off, resulting in significantly more code. If you are using the console line interface `arduino-cli`, then this is easily achieved by adding the following option to the `arduino-cli compile` command:
 
 ```
---build-property build.extra_flags="-Og" 
+--build-property build.extra_flags="-O0" 
 ```
 
 I noticed recently, that another optimization setting can significantly impact your "debugging experience." Usually, [link-time optimization](https://en.wikipedia.org/wiki/Interprocedural_optimization#WPO_and_LTO) is enabled in the Arduino IDE, which has the effect that [most information about class inheritance and object attributes vanishes](https://hinterm-ziel.de/index.php/2021/12/15/link-time-optimization-and-debugging-of-object-oriented-programs-on-avr-mcus/). So, if you want to debug object-oriented code, then it makes sense to disable this kind optimization and add the flag **-fno-lto**:
 
 ```
---build-property build.extra_flags="-Og -fno-lto" 
+--build-property build.extra_flags="-O0 -fno-lto" 
 ```
 
 What can you do, if you do not want to use the CLI interface, but the IDE? You can modify the ```boards.txt``` file (residing in the same directory as the `platform.txt`file) and introduce for each type of MCU a new menu entry ```debug``` that when enabled adds the build option ```-Og```. For the ATTinyCore platform, you could simply add another menu entry in `boards.txt` under the first couple of lines as follows:
@@ -299,10 +300,10 @@ and add `{build.debug}` to the end of this line. Before the line, you have to in
 attinyx5.menu.debug.disabled=Disabled
 attinyx5.menu.debug.disabled.build.debug=
 attinyx5.menu.debug.enabled=Enabled
-attinyx5.menu.debug.enabled.build.debug=-Og
+attinyx5.menu.debug.enabled.build.debug=-O0 -fno-lto
 ```
 
-Now you have to restart the Arduino IDE. If you select `ATtiny25/45/85 (No bootloader)` from the menu of possible MCUs, then you will notice that there is a new menu option `Debug`. By the way, the LTO option can be disabled separately. 
+Now you have to restart the Arduino IDE. If you select `ATtiny25/45/85 (No bootloader)` from the menu of possible MCUs, then you will notice that there is a new menu option `Debug`. By the way, the LTO option can also be disabled separately. 
 
 What can be done for the ATtiny `board.txt` configuration file can be be applied to other such files as well, of course. It is a bit of work and, as mentioned earlier, you may want to save a copy because the changes you made will vanish when a new version of the ATTinyCore is installed.
 
@@ -318,78 +319,80 @@ Unfortunately, the debugger is not any longer part of the toolchain integrated i
 
 ### 5.5 Example session with avr-gdb
 
-Now we are ready to start a debug session. So compile the example `tiny85blink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `tiny85blink.ino.elf` in the sketch directory. Then connect your Uno to your computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment. **\<serial port\>** is the serial port you use to communicate with the Uno.
+Now we are ready to start a debug session. So compile the example `varblink.ino` with debugging enabled, require the binary files to be exported, which gives you the file `varblink.ino.elf` in the sketch directory. Then connect your Uno to your computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment. **\<serial port\>** is the serial port you use to communicate with the Uno.
 
 ```
-> avr-gdb
-GNU gdb (GDB) 10.2
-Copyright (C) 2021 Free Software Foundation, Inc.
+> avr-gdb -b 115200 varblink.ino.elf 
+GNU gdb (GDB) 10.1
+Copyright (C) 2020 Free Software Foundation, Inc.
 ...
-
-(gdb) file tiny85blink.ino.elf          # load symbol table from executable file
-Reading symbols from tiny85blink.ino.elf...
-(gdb) set serial baud 230400            # set baud rate for connection to host
-(gdb) target remote <serial port>       # connect to the serial port of debugger    
-Remote debugging using <serial port>    # and make connection to target
-0x00000000 in __vectors ()              # we always start at location 0x0000
-(gdb) monitor dwconnect                 # show the debugWIRE connection
+Reading symbols from varblink.ino.elf...
+(gdb) target remote <serial port>              # connect to the serial port of debugger  
+Remote debugging using <serial port>           # connection made
+0x00000000 in __vectors ()                     # we always start at location 0x0000
+(gdb) monitor dwconnect                        # show propertied of the debugWIRE connection
 Connected to ATtiny85
-debugWIRE is now enabled, bps: 243560   # bit rate for connection to target    
-(gdb) load                              # load binary file
-Loading section .text, size 0x1e2 lma 0x0
-Start address 0x00000000, load size 482
-Transfer rate: 821 bytes/sec, 160 bytes/write.
-(gdb) break loop                        # set breakpoint at start of loop
-Breakpoint 1 at 0x1ae: file /.../tiny85blink/tiny85blink.ino, line 14.
-(gdb) list loop                         # list part of loop and shift focus
-9	}
-10	
-11	
-12	void loop() {
-13	  int i=10;
-14	  digitalWrite(LED, HIGH);   
-15	  i++;
-16	  delay(1000);                       
-17	  i++;
-18	  digitalWrite(LED, LOW);    
-(gdb) br 18                             # set breakpoint at line 18
-Breakpoint 2 at 0x1bc: file /.../tiny85blink/tiny85blink.ino, line 18.
-(gdb) continue                          # start execution (at PC=0)
+debugWIRE is now enabled, bps: 125736
+(gdb) load                                     # load binary file
+Loading section .text, size 0x714 lma 0x0
+Loading section .data, size 0x4 lma 0x714
+Start address 0x00000000, load size 1816
+Transfer rate: 618 bytes/sec, 113 bytes/write.
+(gdb) list loop                                # list part of loop and shift focus
+6       byte thisByte = 0;
+7       void setup() {
+8         pinMode(LED, OUTPUT);
+9       }
+10      
+11      void loop() {
+12        int i=random(100);
+13        digitalWrite(LED, HIGH);  
+14        delay(1000);              
+15        digitalWrite(LED, LOW);              
+(gdb) break loop                               # set breakpoint at start of loop function
+Breakpoint 1 at 0x494: file ..., line 12.
+(gdb) br 15                                    # set breakpoint at line 15
+Breakpoint 2 at 0x4bc: file ..., line 15.
+(gdb) c                                        # start execution at PC=0
 Continuing.
 
-Breakpoint 1, loop ()
-    at /.../tiny85blink/tiny85blink.ino:14
-39	  digitalWrite(LED, HIGH);   
-(gdb) set var thisByte=20               # set variable thisByte
-(gdb)  print i                          # print value of variable i
-$1 = 10
-(gdb) next                              # make one step (not stepping into functions)
-16	  delay(1000);                       
-(gdb) step                              # make one step (stepping into function delay)
-delay (ms=1000)
-    at /.../tiny/wiring.c:518
-518	    uint16_t start = (uint16_t)micros();
-(gdb) finish                            # finish current function and return
+Breakpoint 1, loop () at /.../varblink.ino:12
+12        int i=random(100);
+(gdb) next                                     # single-step over function                                         
+13        digitalWrite(LED, HIGH);  
+(gdb) n                                        # again
+14        delay(1000);              
+(gdb) print i                                  # print value of 'i'
+$1 = 7
+(gdb)  print thisByte                          # print value of 'thisByte'
+$2 = 0 '\000'
+(gdb) set var thisByte = 20                    # set variable thisByte
+(gdb) p thisByte                               # print value of 'thisByte' again
+$3 = 20 '\024'
+(gdb) step                                     # single-step into function
+delay (ms=1000) at /.../wiring.c:108
+108             uint32_t start = micros();
+(gdb) finish                                    # execute until function returns
 Run till exit from #0  delay (ms=1000)
-    at /.../tiny/wiring.c:518
+    at /.../wiring.c:108
 
-Breakpoint 2, loop ()                   # reached second breakpoint when returning
-    at /.../tiny85blink/tiny85blink.ino:43
-18	  digitalWrite(LED, LOW);    
-(gdb) info breakpoints                  # show all breakpoints
+Breakpoint 2, loop () at /.../varblink.ino:15
+15        digitalWrite(LED, LOW);              
+(gdb) info br                                   # give inormation about breakpoints
 Num     Type           Disp Enb Address    What
-1       breakpoint     keep y   0x000001ae in loop() 
-                                           at /.../tiny85blink/tiny85blink.ino:14
-	breakpoint already hit 1 time
-2       breakpoint     keep y   0x000001c0 in loop() 
-                                           at /.../tiny85blink/tiny85blink.ino:18
-	breakpoint already hit 1 time
-(gdb) delete 1                          # remove breakpoint 1
-(gdb) detach                            # detach from remote target
-Detaching from program: /.../tiny85blink/tiny85blink.ino.elf, ... 
+1       breakpoint     keep y   0x00000494 in loop() 
+                                           at /.../varblink.ino:12
+        breakpoint already hit 1 time
+2       breakpoint     keep y   0x000004bc in loop() 
+                                           at /.../varblink.ino:15
+        breakpoint already hit 1 time
+(gdb) delete 1                                  # delete breakpoint 1
+(gdb) detach                                    # detach from remote target
+Detaching from program: /.../varblink.ino.elf, Remote target
+Ending remote debugging.
 [Inferior 1 (Remote target) detached]
-(gdb) quit                              # exit from avr-gdb                
-
+(gdb) quit                                      # quit debugger
+>
 ```
 
 
@@ -399,11 +402,10 @@ Note that the ATtiny MCU is still in debugWIRE mode and the RESET pin cannot be 
 
 ```
 > avr-gdb
-GNU gdb (GDB) 10.2
-Copyright (C) 2021 Free Software Foundation, Inc.
+GNU gdb (GDB) 10.1
 ...
 
-(gdb) set serial baud 230400            # set baud rate 
+(gdb) set serial baud 115200            # set baud rate 
 (gdb) target remote <serial port>       # connect to serial port of debugger    
 Remote debugging using <serial port>
 0x00000000 in __vectors ()
@@ -520,7 +522,7 @@ Installing PlatformIO is straight forward. Download and install Visual Studio Co
 
 ### 6.2 Import an Arduino project into PlatformIO
 
-Now let us prepare a debugging session with the same project we had before. Startup Visual Studio Code and click on the home symbol in the lower navigation bar. Now PlatformIO offers you to create a new project, import an Arduino project, open a project, or take some project examples. Choose **Import Arduino Project** and PlatformIO will ask you which platform you want to use. Type in **attiny85** and choose **ATtiny85 generic**. After that, you can navigate to the directory containing the Arduino project and PlatformIO will import it. 
+Now let us prepare a debugging session with the same project we had before. Startup Visual Studio Code and click on the home symbol in the lower navigation bar. Now PlatformIO offers you to create a new project, import an Arduino project, open a project, or take some project examples. Choose **Import Arduino Project** and PlatformIO will ask you which platform you want to use. Type in **attiny85** and choose **ATtiny85 generic**. If you have a different board, you can, of course, select a different board. After that, you can navigate to the directory containing the Arduino project and PlatformIO will import it. 
 
 
 ### 6.3 Debugging with PlatformIO
@@ -808,6 +810,14 @@ The reason is that when the host establishes a connection to the debugger, the d
 
 ## 9 Trouble shooting
 
+#### Problem: After changing optimization options, the binary is still too large/very small
+
+You switched optimization option from **-O0 -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. You can force a recompile of the core by touching a file in the 'core' file folder, e.g., in order to recompile the core files for the standard Arduino cores: 
+
+```
+touch ~/Library/Arduino15/packages/arduino/hardware/avr/1.8.4/platform.local.txt
+```
+
 #### Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*
 
 Something in the `platformio.ini` file is not quite right. Perhaps a missing declaration of the `debug_port`. Sometimes an additional line of information is given that identifies the problem.
@@ -857,6 +867,12 @@ This is a feature, not a bug.  It allows you to single-step through the code wit
 
 This should only happen when you have used the command `monitor unsafestep` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. If you want to avoid this behavior in the future, issue the debugger command `monitor safestep`. 
 
+#### Problem: The debugger does step into a function even though you used the `next` command, or it ends up somewhere else
+
+ This happens even if you have chosen the optimization **-Og** (debugging friendly). It is not yet clear to my why this happens, but the reason appears to be in `avr-gdb` and I plan to further investigate this.
+
+In any case, recompile with **-O0** and preferably also with **-fno-lt**. Then single-stepping works as expected.
+
 #### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
 
 The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for gdb. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
@@ -871,19 +887,17 @@ If you simply want to continue, you can set the PC to another value, e.g., one t
 
 #### Problem: The debugger does not stop at the line a breakpoint was set
 
-Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, `-Og` is recommended, which does a number of optimizations but tries to give a good debugging experience at the same time. This is also the default for PlatformIO and the Arduino IDE (if one has applied the changes described in [Section 5.2](#section52)). You can change that to `-O0` which does no optimization at all, but will need more flash memory. 
-
-#### Problem: The debugger does step into a function even though you used the `next` command, which is supposed to step over function calls
-
-This happens when the compiler inlines code (i.e. copies the code of the function to the place where it is called). This happens even if you have chosen the optimization **-Og** (debugging friendly). You can ignore it or recompile with **-O0** and then debug again.
+Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, `-O0` is recommended, which removes all optimization. This is also the default for PlatformIO and the Arduino IDE (if one has applied the changes described in [Section 5.2](#section52)). You can change that to `-Og` if too much flash memory is used. But then, the debugger can do strange things when single-stepping, for example.
 
 #### Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command
 
 This appears to happen even when the optimization level is set to **-Og**, but not when you use **-O0**. So, if it is important for you to change the value of local variables, you should use the latter optimization level.
 
-#### Problem: The debugger seems to do things that appear to be strange
+#### Problem: The debugger does things that appear to be strange
 
-I encountered such behavior more than once and it very often turned out that I had forgotten to load the binary into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
+I encountered such behavior more than once and it very often turned out that I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
+
+Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen **-O0** and **-fno-lto**, then single-stepping may not work as expected, you may not be able to assign values to local variables, and the objects may not be printed the right way. 
 
 #### Problem: In PlatformIO, the global variables are not displayed
 
@@ -947,3 +961,4 @@ Initial version
 #### V 1.2
 
 - Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, one has to tie SNSGND to ground, whereby the pin number of SNSGND depends on the Arduino board dw-link is compiled for (see mapping described in [Section 7.3.3](#section733)).
+- Added wording to recommend optimization level -O0 instead of -Og, because otherwise single-stepping and assignments to local variables will not work. I will look into that in the future.

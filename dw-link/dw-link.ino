@@ -34,7 +34,7 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
 
-#define VERSION "1.2.2"
+#define VERSION "1.2.3"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -189,7 +189,7 @@ volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 
 // pin mapping for different situations and boards
-const byte pundef = 255;
+const byte pundef = 255; // undefined pin
 struct pinmap {
   byte VHIGH;
   byte VON;
@@ -203,27 +203,27 @@ struct pinmap {
   byte TISP;
   byte SYSLED;
   byte LEDGND;
-} pm[2] = { { pundef, pundef, pundef, pundef, 13, 11, 12, 9, 3, pundef, 7, 6 },
+} pm = { pundef, pundef, pundef, pundef, 13, 11, 12, 9, 3, pundef, 7, 6 };
 #if defined(ARDUINO_AVR_UNO)
-	    { 2, 5, 9, 7, 12, 10, 11, 15, 3, 6, 13, pundef } };
+const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 15, 3, 6, 13, pundef } ;
 const byte SNSGND = 14;
 const byte DWLINE = 8;
 #elif defined(ARDUINO_AVR_MEGA2560)
-	    { 2, 5, 9, 7, 12, 10, 11, 55, 3, 6, 13, pundef } };
+const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 55, 3, 6, 13, pundef };
 const byte SNSGND = 54;
 const byte DWLINE = 49;
 #elif defined(ARDUINO_AVR_NANO)
   #if NANOVERSIO == 3
-	    { 7, 15, 5, 6, 3, 16, 19, 4, 18, 2, 13, pundef } };
+const PROGMEM pinmap  boardpm  = { 7, 15, 5, 6, 3, 16, 19, 4, 18, 2, 13, pundef };
 const byte SNSGND = 11;
 const byte DWLINE = 8;
   #else
-	    { 7, 15, 5, 6, 3, 19, 16, 4, 17, 2, 13, pundef } };
+const PROGMEM pinmap  boardpm  = { 7, 15, 5, 6, 3, 19, 16, 4, 17, 2, 13, pundef };
 const byte SNSGND = 11;
 const byte DWLINE = 8;
   #endif
 #elif defined(ARDUINO_AVR_PRO)
-	    { 16, 2, 14, 15, 12, 3, 6, pundef, 5, 11, 13, pundef } };
+const PROGMEM pinmap  boardpm  = { 16, 2, 14, 15, 12, 3, 6, pundef, 5, 11, 13, pundef };
 const byte SNSGND = 15;
 const byte DWLINE = 8;
 #else
@@ -453,15 +453,15 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (busy) return; // if this IRQ routine is already active, leave immediately
   busy++; 
   cnt--;
-  if (digitalRead(pm[0].SYSLED)) {
+  if (digitalRead(pm.SYSLED)) {
     if (cnt < 0) {
       cnt = offtime;
-      digitalWrite(pm[0].SYSLED, LOW);
+      digitalWrite(pm.SYSLED, LOW);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      digitalWrite(pm[0].SYSLED, HIGH);
+      digitalWrite(pm.SYSLED, HIGH);
     }
   }
   busy--;
@@ -473,8 +473,8 @@ void setup(void) {
   Serial.begin(INITIALBPS);
   pinMode(SNSGND, INPUT_PULLUP);
   if (digitalRead(SNSGND) == 0) // adapter board!
-    memcpy(&pm[0], &pm[1], sizeof(pinmap));
-  DEBINIT(pm[0].DEBTX); 
+    memcpy_P(&pm, &boardpm, sizeof(pinmap));
+  DEBINIT(pm.DEBTX); 
   DEBLN(F("\ndw-link V" VERSION));
 #if SDEBUG
   Serial1.begin(115200);
@@ -484,10 +484,12 @@ void setup(void) {
   ctx.hostbps = INITIALBPS;
   ctx.von = false;
   ctx.vhigh = false;
-  pinMode(pm[0].VON, INPUT_PULLUP); // configure Von as input from switch
-  pinMode(pm[0].VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
-  pinMode(pm[0].LEDGND, OUTPUT);
-  digitalWrite(pm[0].LEDGND, LOW);
+  pinMode(pm.VON, INPUT_PULLUP); // configure Von as input from switch
+  pinMode(pm.VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
+  pinMode(pm.LEDGND, OUTPUT);
+  digitalWrite(pm.LEDGND, LOW);
+  pinMode(pm.VSUP, OUTPUT);
+  digitalWrite(pm.VSUP, HIGH);
 #if SCOPEDEBUG
   DDRC = 0x7F; //
 #endif
@@ -495,8 +497,8 @@ void setup(void) {
   //  DEBLN(F("Now configuereSupply"));
   configureSupply(); // configure suppy already here
   //  DEBLN(F("configuereSupply done"));
-  pinMode(pm[0].TISP, OUTPUT);
-  digitalWrite(pm[0].TISP, HIGH); // disable outgoing ISP lines
+  pinMode(pm.TISP, OUTPUT);
+  digitalWrite(pm.TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
 #if CONSTHOSTSPEED == 0
   detectRSPCommSpeed(); // check for coummication speed and select the right one
@@ -615,18 +617,18 @@ boolean rightSpeed(void)
 void configureSupply(void)
 {
   if (digitalRead(SNSGND)) return; 
-  if (ctx.vhigh != !digitalRead(pm[0].VHIGH) || ctx.von != !digitalRead(pm[0].VON)) { // something changed
+  if (ctx.vhigh != !digitalRead(pm.VHIGH) || ctx.von != !digitalRead(pm.VON)) { // something changed
     _delay_ms(30); // debounce
     //DEBLN(F("Some change"));
-    //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[0].VHIGH));
-    //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm[0].VON));
-    ctx.vhigh = !digitalRead(pm[0].VHIGH);
-    ctx.von = !digitalRead(pm[0].VON);
-    pinMode(pm[0].V33, INPUT); // switch off both supply lines
-    pinMode(pm[0].V5, INPUT);
+    //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VHIGH));
+    //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VON));
+    ctx.vhigh = !digitalRead(pm.VHIGH);
+    ctx.von = !digitalRead(pm.VON);
+    pinMode(pm.V33, INPUT); // switch off both supply lines
+    pinMode(pm.V5, INPUT);
     if (ctx.von) { // if on, switch on the right MOSFET
-      if (ctx.vhigh) pinMode(pm[0].V5, OUTPUT); // switch on 5V MOSFET
-      else pinMode(pm[0].V33, OUTPUT); // switch on 3.3 V MOSFET
+      if (ctx.vhigh) pinMode(pm.V5, OUTPUT); // switch on 5V MOSFET
+      else pinMode(pm.V33, OUTPUT); // switch on 3.3 V MOSFET
     }
   }
 }
@@ -679,9 +681,9 @@ void setSysState(statetype newstate)
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-  pinMode(pm[0].SYSLED, OUTPUT);
-  if (ontimes[newstate] == 0) digitalWrite(pm[0].SYSLED, LOW);
-  else if (offtimes[newstate] == 0) digitalWrite(pm[0].SYSLED, HIGH);
+  pinMode(pm.SYSLED, OUTPUT);
+  if (ontimes[newstate] == 0) digitalWrite(pm.SYSLED, LOW);
+  else if (offtimes[newstate] == 0) digitalWrite(pm.SYSLED, HIGH);
   else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
@@ -1133,16 +1135,16 @@ void power(boolean on)
 {
   //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
-    digitalWrite(pm[0].VSUP, HIGH);
+    digitalWrite(pm.VSUP, HIGH);
     if (ctx.von) {
       //DEBLN(F("VXX up"));
-      if (ctx.vhigh) pinMode(pm[0].V5, OUTPUT);
-      else pinMode(pm[0].V33, OUTPUT);
+      if (ctx.vhigh) pinMode(pm.V5, OUTPUT);
+      else pinMode(pm.V33, OUTPUT);
     }
   } else { // on=false
-    digitalWrite(pm[0].VSUP, LOW);
-    pinMode(pm[0].V5, INPUT);
-    pinMode(pm[0].V33, INPUT);
+    digitalWrite(pm.VSUP, LOW);
+    pinMode(pm.V5, INPUT);
+    pinMode(pm.V33, INPUT);
   }
 }
 
@@ -3219,19 +3221,19 @@ void enableSpiPins () {
   digitalWrite(DWLINE, LOW);
   DEBLN(F("RESET low"));
   _delay_us(1);
-  pinMode(pm[0].TSCK, OUTPUT);
-  digitalWrite(pm[0].TSCK, LOW);
-  pinMode(pm[0].TMOSI, OUTPUT);
-  digitalWrite(pm[0].TMOSI, HIGH);
-  pinMode(pm[0].TMISO, INPUT);
-  digitalWrite(pm[0].TISP, LOW);
+  pinMode(pm.TSCK, OUTPUT);
+  digitalWrite(pm.TSCK, LOW);
+  pinMode(pm.TMOSI, OUTPUT);
+  digitalWrite(pm.TMOSI, HIGH);
+  pinMode(pm.TMISO, INPUT);
+  digitalWrite(pm.TISP, LOW);
 }
 
 void disableSpiPins () {
-  digitalWrite(pm[0].TISP, HIGH);
-  pinMode(pm[0].TSCK, INPUT); 
-  pinMode(pm[0].TMOSI, INPUT);
-  pinMode(pm[0].TMISO, INPUT);
+  digitalWrite(pm.TISP, HIGH);
+  pinMode(pm.TSCK, INPUT); 
+  pinMode(pm.TMOSI, INPUT);
+  pinMode(pm.TMISO, INPUT);
 }
 
 byte ispTransfer (byte val) {
@@ -3240,11 +3242,11 @@ byte ispTransfer (byte val) {
   // that should be slow enough even for
   // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
-    digitalWrite(pm[0].TMOSI, (val & 0x80) ? HIGH : LOW);
-    digitalWrite(pm[0].TSCK, HIGH);
+    digitalWrite(pm.TMOSI, (val & 0x80) ? HIGH : LOW);
+    digitalWrite(pm.TSCK, HIGH);
     _delay_us(200); 
-    val = (val << 1) + digitalRead(pm[0].TMISO);
-    digitalWrite(pm[0].TSCK, LOW);
+    val = (val << 1) + digitalRead(pm.TMISO);
+    digitalWrite(pm.TSCK, LOW);
     _delay_us(200);
   }
   return val;

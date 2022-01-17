@@ -569,8 +569,14 @@ Version 0.9.9 (14-Nov-21)
 - pin mapping is now dependend on SNSGND, using the pm array (and
   conditional compilation)
 
-## Versoin 1.2.2 (15-Jan-22)
+## Version 1.2.2 (15-Jan-22)
 
 - changed addressing the different pin maps; the right one is
   determined at startup and copied to pm[0]; makes code smaller so
-  that all the unit tests fit into memory together the sketch
+  that all the unit tests fit into memory together with the sketch
+
+## Version 1.2.3 (17-Jan-22)
+
+- fixed missing VSUP initialization
+- added a few paragraphs on optimization levels in manual
+- changed pm array to two variables, the second being a PROGMEM record
