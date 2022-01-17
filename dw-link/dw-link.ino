@@ -34,7 +34,7 @@
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
 
-#define VERSION "1.2.3"
+#define VERSION "1.2.4"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -213,12 +213,12 @@ const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 55, 3, 6, 13, pundef 
 const byte SNSGND = 54;
 const byte DWLINE = 49;
 #elif defined(ARDUINO_AVR_NANO)
-  #if NANOVERSIO == 3
-const PROGMEM pinmap  boardpm  = { 7, 15, 5, 6, 3, 16, 19, 4, 18, 2, 13, pundef };
+  #if NANOVERSION == 3
+const PROGMEM pinmap  boardpm  = { 7, 15, 6, 5, 3, 16, 19, pundef, 18, 2, 13, pundef };
 const byte SNSGND = 11;
 const byte DWLINE = 8;
   #else
-const PROGMEM pinmap  boardpm  = { 7, 15, 5, 6, 3, 19, 16, 4, 17, 2, 13, pundef };
+const PROGMEM pinmap  boardpm  = { 7, 15, 6, 5, 3, 19, 16, pundef, 17, 2, 13, pundef };
 const byte SNSGND = 11;
 const byte DWLINE = 8;
   #endif
@@ -476,6 +476,20 @@ void setup(void) {
     memcpy_P(&pm, &boardpm, sizeof(pinmap));
   DEBINIT(pm.DEBTX); 
   DEBLN(F("\ndw-link V" VERSION));
+  DEBLN(SNSGND);
+  DEBLN(DWLINE);
+  DEBLN(pm.VHIGH);
+  DEBLN(pm.VON);
+  DEBLN(pm.V5);
+  DEBLN(pm.V33);
+  DEBLN(pm.TSCK);
+  DEBLN(pm.TMOSI);
+  DEBLN(pm.TMISO);
+  DEBLN(pm.VSUP);
+  DEBLN(pm.DEBTX);
+  DEBLN(pm.TISP);
+  DEBLN(pm.SYSLED);
+  DEBLN(pm.LEDGND);
 #if SDEBUG
   Serial1.begin(115200);
   Serial.println(F("dw-link V" VERSION));
@@ -1762,12 +1776,12 @@ void gdbHideBREAKs(unsigned int startaddr, byte membuf[], int size)
   for (addr = startaddr; addr < startaddr+size; addr++) {
     if ((addr & 1) && membuf[addr-startaddr] == 0x95) { // uneven address and match with MSB of BREAK
       bpix = gdbFindBreakpoint((addr-1)/2);
-      if (bpix >= 0 && bp[bpix].inflash && !bp[bpix].active) 
+      if (bpix >= 0 && bp[bpix].inflash) // now hide always:  && !bp[bpix].active) 
 	membuf[addr-startaddr] = bp[bpix].opcode>>8; // replace with MSB of opcode
     }
     if (((addr&1) == 0) && membuf[addr-startaddr] == 0x98) { // even address and match with LSB of BREAK
       bpix = gdbFindBreakpoint(addr/2);
-      if (bpix >= 0 && bp[bpix].inflash  && !bp[bpix].active)
+      if (bpix >= 0 && bp[bpix].inflash) // now hide always:  && !bp[bpix].active)
 	membuf[addr-startaddr] = bp[bpix].opcode&0xFF;
     }
   }

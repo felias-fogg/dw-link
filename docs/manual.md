@@ -1,4 +1,4 @@
-#   dw-link
+# dw-link
 
 # An Arduino-based debugWIRE debugger
 
@@ -268,18 +268,16 @@ These three lines make sure that you receive an [*ELF*](https://en.wikipedia.org
 
 ### 5.3 Changing the optimization level: arduino-cli option or board.txt modification
 
-Because of the compiler optimization level that is used by the Arduino IDE, the machine code produced by the compiler does not follow straightforwardly your source code. For this reason, it is advisable to use the optimization flag **-Og** (compile in a debugging friendly way) instead of the default optimization flag **-Os** (optimize to minimize space). 
-
-I recently noticed that single-stepping does not appear to be supported properly when **-Og** is used. Also, assignments to local variables do often not work. So, if you want to do proper source code level debugging, you probably should use the **-O0** optimization level, where almost all optimizations are switched off, resulting in significantly more code. If you are using the console line interface `arduino-cli`, then this is easily achieved by adding the following option to the `arduino-cli compile` command:
+Because of the compiler optimization level that is used by the Arduino IDE, the machine code produced by the compiler does not follow straightforwardly your source code. For this reason, it is advisable to use the optimization flag **-Og** (compile in a debugging friendly way) instead of the default optimization flag **-Os** (optimize to minimize space). If you are using the console line interface `arduino-cli`, then this is easily achieved by adding the following option to the `arduino-cli compile` command:
 
 ```
---build-property build.extra_flags="-O0" 
+--build-property build.extra_flags="-Og" 
 ```
 
 I noticed recently, that another optimization setting can significantly impact your "debugging experience." Usually, [link-time optimization](https://en.wikipedia.org/wiki/Interprocedural_optimization#WPO_and_LTO) is enabled in the Arduino IDE, which has the effect that [most information about class inheritance and object attributes vanishes](https://hinterm-ziel.de/index.php/2021/12/15/link-time-optimization-and-debugging-of-object-oriented-programs-on-avr-mcus/). So, if you want to debug object-oriented code, then it makes sense to disable this kind optimization and add the flag **-fno-lto**:
 
 ```
---build-property build.extra_flags="-O0 -fno-lto" 
+--build-property build.extra_flags="-Og -fno-lto" 
 ```
 
 What can you do, if you do not want to use the CLI interface, but the IDE? You can modify the ```boards.txt``` file (residing in the same directory as the `platform.txt`file) and introduce for each type of MCU a new menu entry ```debug``` that when enabled adds the build option ```-Og```. For the ATTinyCore platform, you could simply add another menu entry in `boards.txt` under the first couple of lines as follows:
@@ -300,7 +298,7 @@ and add `{build.debug}` to the end of this line. Before the line, you have to in
 attinyx5.menu.debug.disabled=Disabled
 attinyx5.menu.debug.disabled.build.debug=
 attinyx5.menu.debug.enabled=Enabled
-attinyx5.menu.debug.enabled.build.debug=-O0 -fno-lto
+attinyx5.menu.debug.enabled.build.debug=-Og -fno-lto
 ```
 
 Now you have to restart the Arduino IDE. If you select `ATtiny25/45/85 (No bootloader)` from the menu of possible MCUs, then you will notice that there is a new menu option `Debug`. By the way, the LTO option can also be disabled separately. 
@@ -691,7 +689,7 @@ V5 | D6 | D6  | A1= D15 |D9|D9
 Vcc | 5V | 5V | Vcc |5V|5V
 VHIGH | D7 | D7  | A2= D16 |D2|D2
 VON | A1= D15 | A1= D15  | D2 |D5|D5
-VSUP | D4 | D4 |  |A1=D15|A1=D55 
+VSUP |  |  |  |A1=D15|A1=D55 
 
 
 
@@ -812,7 +810,7 @@ The reason is that when the host establishes a connection to the debugger, the d
 
 #### Problem: After changing optimization options, the binary is still too large/very small
 
-You switched optimization option from **-O0 -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. You can force a recompile of the core by touching a file in the 'core' file folder, e.g., in order to recompile the core files for the standard Arduino cores: 
+You switched optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. You can force a recompile of the core by touching a file in the 'core' file folder, e.g., in order to recompile the core files for the standard Arduino cores: 
 
 ```
 touch ~/Library/Arduino15/packages/arduino/hardware/avr/1.8.4/platform.local.txt
@@ -867,12 +865,6 @@ This is a feature, not a bug.  It allows you to single-step through the code wit
 
 This should only happen when you have used the command `monitor unsafestep` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. If you want to avoid this behavior in the future, issue the debugger command `monitor safestep`. 
 
-#### Problem: The debugger does step into a function even though you used the `next` command, or it ends up somewhere else
-
- This happens even if you have chosen the optimization **-Og** (debugging friendly). It is not yet clear to my why this happens, but the reason appears to be in `avr-gdb` and I plan to further investigate this.
-
-In any case, recompile with **-O0** and preferably also with **-fno-lt**. Then single-stepping works as expected.
-
 #### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
 
 The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for gdb. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
@@ -887,7 +879,7 @@ If you simply want to continue, you can set the PC to another value, e.g., one t
 
 #### Problem: The debugger does not stop at the line a breakpoint was set
 
-Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, `-O0` is recommended, which removes all optimization. This is also the default for PlatformIO and the Arduino IDE (if one has applied the changes described in [Section 5.2](#section52)). You can change that to `-Og` if too much flash memory is used. But then, the debugger can do strange things when single-stepping, for example.
+Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, `-Og` is recommended, which applies optimizations in a debug-friendly way. This is also the default for PlatformIO and the Arduino IDE (if one has applied the changes described in [Section 5.2](#section52)). You can change that to `-O0` in order to disable all possible optimizations.
 
 #### Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command
 
@@ -897,7 +889,7 @@ This appears to happen even when the optimization level is set to **-Og**, but n
 
 I encountered such behavior more than once and it very often turned out that I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
 
-Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen **-O0** and **-fno-lto**, then single-stepping may not work as expected, you may not be able to assign values to local variables, and the objects may not be printed the right way. 
+Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen **-Og** (or **-O0**) and **-fno-lto**, then single-stepping may not work as expected, you may not be able to assign values to local variables, and the objects may not be printed the right way. 
 
 #### Problem: In PlatformIO, the global variables are not displayed
 
@@ -961,4 +953,4 @@ Initial version
 #### V 1.2
 
 - Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, one has to tie SNSGND to ground, whereby the pin number of SNSGND depends on the Arduino board dw-link is compiled for (see mapping described in [Section 7.3.3](#section733)).
-- Added wording to recommend optimization level -O0 instead of -Og, because otherwise single-stepping and assignments to local variables will not work. I will look into that in the future.
+- Added wording to recommend optimization level -O0 instead of -Og, because otherwise assignments to local variables will not work. Single-stepping works now with -Og after dw-link now hides all inserted BREAK instructions. 
