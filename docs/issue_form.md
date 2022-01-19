@@ -6,11 +6,13 @@
 
 **Target system:** (e.g., ATtiny24, 8 MHz, 5V or Pro Mini, 328, 3.3V)
 
-**Debugger board:** (e.g., Uno or Mega)
+**Debugger board:** (e.g., Uno or Nano)
 
 **Adapter board**: (e.g., none or V1.0)
 
 **Arduino IDE version:** (e.g., IDE 1.8.13)
+
+**Compiler optimization level:** (e.g. -O0 -fno-lto)
 
 **Development OS:** (e.g. macOS 11.6)
 

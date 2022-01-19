@@ -4,4 +4,5 @@
   verify/noverify". Could be on or off by default.
 * implement simple ISP programmer (again)
 * recovery for RAM and flash read and flash programming errors
+* using unused serial interface on Arduino Mega and Leonardo boards
 

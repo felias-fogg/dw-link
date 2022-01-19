@@ -24,17 +24,22 @@
 // Jeremy Bennett's description of an implementation of an RSP server:
 //    https://www.embecosm.com/appnotes/ean4/embecosm-howto-rsp-server-ean4-issue-2.html
 // 
-// You can run it on an Uno, a Mega, a Nano V2, a Nano V3, or a Pro Mini.
+// You can run it on an Uno, a Nano V2, a Nano V3, or a Pro Mini.
 // For the three latter ones, there exists an
-// adapter board, which fits all sof them, using, of course,
+// adapter board, which fits all of them, using, of course,
 // different pin assignments.  For the Nano board, there are
 // apparently two different versions around, version 2 and version 3.
 // The former one has the A0 pin close to 5V pin, version 3 boards
 // have the A0 pin close to the REF pin.  If you use the adapter
 // board with a Nano, you need to set the compile time constant
 // NANOVERSION, which by default is 3.
+//
+// I thought that the sketch should also work with the Leonardo-like boards
+// and with the Mega board. For the former, I got stuck with the flashtest program.
+// For the latter, I experienced non-deterministic failures of the GDB unit tests.
+// So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.2.4"
+#define VERSION "1.2.5"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -208,7 +213,12 @@ struct pinmap {
 const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 15, 3, 6, 13, pundef } ;
 const byte SNSGND = 14;
 const byte DWLINE = 8;
-#elif defined(ARDUINO_AVR_MEGA2560)
+#elif defined(ARDUINO_AVR_MEGA2560_does_not_work)
+// On my Arduino Mega boards, I got non-deterministic failures for the unit tests.
+// I suspect that the reason migt be the longer execution times in SingleWireSerial because
+// of the I/O register placement, but I do not know. This does not happen with the
+// 328 based boards. So the Mega is off at this point. It would be interesting to use one
+// of the unused serial ports; this could also work for the 32U4-based boards.
 const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 55, 3, 6, 13, pundef };
 const byte SNSGND = 54;
 const byte DWLINE = 49;
@@ -227,7 +237,8 @@ const PROGMEM pinmap  boardpm  = { 16, 2, 14, 15, 12, 3, 6, pundef, 5, 11, 13, p
 const byte SNSGND = 15;
 const byte DWLINE = 8;
 #else
-	    #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini"
+//	    #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini"
+            #error "Board is not supported yet. dw-link works only on Uno, Nano, and Pro Mini"
 #endif
 
 // MCU names

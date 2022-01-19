@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 1.2 - January 2022**
+**Version 1.3 - January 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -83,12 +83,11 @@ There are a few constraints on what kind of board you can use as the base for th
 
 ### 3.1 The debugger
 
-As mentioned above, as a base for the debugger, in principle one can use any ATmega328, ATmega1284, or ATmega2560 based board. The clock speed  must be 16MHz. Currently, the sketch has been tested on the following boards:
+As mentioned above, as a base for the debugger, in principle one can use any ATmega328 based board. The clock speed  must be 16MHz. Currently, the sketch has been tested on the following boards:
 
 * [Arduino Uno](https://store.arduino.cc/products/arduino-uno-rev3),
 * [Arduino Nano](https://store.arduino.cc/products/arduino-nano),
-* [Arduino Pro Mini](https://docs.arduino.cc/retired/boards/arduino-pro-mini),
-* [Arduino Mega](https://store.arduino.cc/products/arduino-mega-2560-rev3).
+* [Arduino Pro Mini](https://docs.arduino.cc/retired/boards/arduino-pro-mini).
 
 If you intend to use a different board, this is possible without too much hassle. You simply need to set up your own pin mapping (see [Sections 7.3.2 & 7.3.3](#section732)) in the source code (a big conditional compilation part in the beginning of the sketch). 
 
@@ -565,22 +564,22 @@ As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/202
 
 The relevant pins are therefore as defined in the following table. <a name="simplemap"></a>
 
-| Arduino pin          | ISP pin | Function    |
-| -------------------- | ------- | ----------- |
-| D13                  | 3       | SCK         |
-| D12                  | 1       | MISO        |
-| D11                  | 4       | MOSI        |
-| D9 (or Vcc)          | 2       | VTG         |
-| D8 (or D49 for Mega) | 5       | RESET       |
-| GND                  | 6       | GND         |
-| D7                   |         | System LED+ |
-| D6                   |         | System LED- |
+| Arduino pin | ISP pin | Function    |
+| ----------- | ------- | ----------- |
+| D13         | 3       | SCK         |
+| D12         | 1       | MISO        |
+| D11         | 4       | MOSI        |
+| D9 (or Vcc) | 2       | VTG         |
+| D8          | 5       | RESET       |
+| GND         | 6       | GND         |
+| D7          |         | System LED+ |
+| D6          |         | System LED- |
 
 <a name="section71"></a>
 
 ### 7.1 A simple shield
 
-Taking it one one step further, one might think about a shield for an Uno or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno or Mega, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
+Taking it one one step further, one might think about a shield for an Uno or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
 
 Note that here we use a somewhat different pin mapping then the one above in order to use the pin 13 builtin LED. In order to signal that to the sketch, pin D14 (=A0) on a Uno board needs to be connected to GND (see also the pin mapping for shields and adapter boards in Section [7.3.2](#section732) & [7.3.3](#section733).)
 
@@ -593,7 +592,7 @@ In reality, it probably will more look like as in the next picture.
 
 ![dw-probe-proto V 0.1](pics/proto.jpg)
 
-This works very well on an Arduino Uno. On an Arduino Mega, you have to use Arduino pin 49 for the debugWIRE line, i.e., you have to make a flying wire connection. By the way, this is all taken care of already in the `dw-link.ino` sketch. You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
+You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
 
 
 
@@ -674,22 +673,22 @@ In the table below, the mapping between functional pins of the debugger and the 
 
 <a name="complexmap"></a>
 
-Pin | Nano V2 | Nano V3 |  Pro Mini | Uno | Mega 
---- | --- | --- | --- | --- | --- 
-DEB-TX |A3=D17|A4=D18| D5 |D3|D3
-DW-LINE | D8 | D8 |D8| D8 |D49
-GND | GND | GND | GND | GND | GND 
-TISP | D2 | D2 | D11 |D6|D6
-TMISO | A2= D16 | A5= D19 | D6 |D11|D11
-TMOSI | A5= D19 | A2= D16 | D3 |D10|D10
-TSCK | D3 | D3 | D12 |D12|D12
-SNS-GND | D11 | D11 | D10 |A0=D14|A0=D54
-V33 | D5 | D5 | A0= D14 |D7|D7
-V5 | D6 | D6  | A1= D15 |D9|D9
-Vcc | 5V | 5V | Vcc |5V|5V
-VHIGH | D7 | D7  | A2= D16 |D2|D2
-VON | A1= D15 | A1= D15  | D2 |D5|D5
-VSUP |  |  |  |A1=D15|A1=D55 
+Pin | Nano V2 | Nano V3 |  Pro Mini | Uno 
+--- | --- | --- | --- | --- 
+DEB-TX |A3=D17|A4=D18| D5 |D3
+DW-LINE | D8 | D8 |D8| D8 
+GND | GND | GND | GND | GND 
+TISP | D2 | D2 | D11 |D6
+TMISO | A2= D16 | A5= D19 | D6 |D11
+TMOSI | A5= D19 | A2= D16 | D3 |D10
+TSCK | D3 | D3 | D12 |D12
+SNS-GND | D11 | D11 | D10 |A0=D14
+V33 | D5 | D5 | A0= D14 |D7
+V5 | D6 | D6  | A1= D15 |D9
+Vcc | 5V | 5V | Vcc |5V
+VHIGH | D7 | D7  | A2= D16 |D2
+VON | A1= D15 | A1= D15  | D2 |D5
+VSUP |  |  |  |A1=D15
 
 
 
@@ -881,15 +880,21 @@ If you simply want to continue, you can set the PC to another value, e.g., one t
 
 Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, `-Og` is recommended, which applies optimizations in a debug-friendly way. This is also the default for PlatformIO and the Arduino IDE (if one has applied the changes described in [Section 5.2](#section52)). You can change that to `-O0` in order to disable all possible optimizations.
 
+#### Problem: The debugger does things that appear to be strange
+
+The debugger starts execution, but it never stops at a breakpoint it should stop, single-stepping does not lead to the expected results, etc. I have seen three possible reasons for that (apart from a programming error that you are hunting).
+
+Often, I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
+
+Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen **-Og** (or **-O0**) and **-fno-lto**, then single-stepping may not work as expected, you may not be able to assign values to local variables, and the objects may not be printed the right way. 
+
+Third, you may have specified a board/MCU different from your actual target. This happens quite easily with PlatformIO when you work with different targets. In this case, some things appear to work, but others do not work at all. 
+
+So, before blaming the debugger, check for the three possible errors.
+
 #### Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command
 
 This appears to happen even when the optimization level is set to **-Og**, but not when you use **-O0**. So, if it is important for you to change the value of local variables, you should use the latter optimization level.
-
-#### Problem: The debugger does things that appear to be strange
-
-I encountered such behavior more than once and it very often turned out that I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
-
-Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen **-Og** (or **-O0**) and **-fno-lto**, then single-stepping may not work as expected, you may not be able to assign values to local variables, and the objects may not be printed the right way. 
 
 #### Problem: In PlatformIO, the global variables are not displayed
 
@@ -946,7 +951,7 @@ Error #  | Meaning
 
 ## Revision history
 
-#### V1.1 
+#### V 1.1 
 
 Initial version
 
@@ -954,3 +959,7 @@ Initial version
 
 - Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, one has to tie SNSGND to ground, whereby the pin number of SNSGND depends on the Arduino board dw-link is compiled for (see mapping described in [Section 7.3.3](#section733)).
 - Added wording to recommend optimization level -O0 instead of -Og, because otherwise assignments to local variables will not work. Single-stepping works now with -Og after dw-link now hides all inserted BREAK instructions. 
+
+#### V 1.3
+
+- Removing Arduino Mega boards from the set of boards that can be used as hardware debuggers

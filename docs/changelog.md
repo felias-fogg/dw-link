@@ -585,3 +585,9 @@ Version 0.9.9 (14-Nov-21)
 
 - changed handling of BREAK instructions inserted by the debugger: now all of them are hidden when memory contents is queried by avr-gdb, even active ones; for reasons I do not understand avr-gdb does now handle single-stepping correctly, even when -Og is used (I tried that because when debugging with simavr it worked and that seemed to be the only difference between dw-link and simavr
 - fixed 2 pin assignment bugs for Nano boards
+
+## Version 1.2.5 (18-Jan-22)
+
+- removed Mega board from one of the possible hardware debugger boards,
+  because it produces non-determninistic errors when running the unit
+  tests 
