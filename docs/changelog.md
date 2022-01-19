@@ -591,3 +591,9 @@ Version 0.9.9 (14-Nov-21)
 - removed Mega board from one of the possible hardware debugger boards,
   because it produces non-determninistic errors when running the unit
   tests 
+
+## Version 1.3.0 (19-Jan-22)
+
+- streamlined code and docs concerning which boards to use as the
+  hardware debugger
+- streamlined example files

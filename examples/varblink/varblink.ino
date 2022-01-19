@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #ifndef LED_BUILTIN
  #define LED 4
 #else
@@ -9,7 +11,7 @@ void setup() {
 }
 
 void loop() {
-  int i=random(100);
+  int i=random(3);
   digitalWrite(LED, HIGH);  
   delay(1000);              
   digitalWrite(LED, LOW);              

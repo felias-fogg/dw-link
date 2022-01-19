@@ -36,10 +36,10 @@
 //
 // I thought that the sketch should also work with the Leonardo-like boards
 // and with the Mega board. For the former, I got stuck with the flashtest program.
-// For the latter, I experienced non-deterministic failures of the GDB unit tests.
+// For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.2.5"
+#define VERSION "1.3.0"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -83,7 +83,7 @@
 #include <util/delay.h>
 #include "src/dwSerial.h"
 #include "src/SingleWireSerial_config.h"
-#ifdef TXODEBUG
+#if TXODEBUG
 #include "src/TXOnlySerial.h" // only needed for (meta-)debuging
 #endif
 #include "src/debug.h" // some (meta-)debug macros
@@ -93,11 +93,7 @@
 #define MAXBUF 150 // input buffer for GDB communication
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
-#if RAMEND > 3000
-#define MAXBREAK 65 // with the 126, or 256, we have enough RAM for that!
-#else
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
-#endif
 
 // communication bit rates 
 #define SPEEDHIGH     275000UL // maximum communication speed limit for DW
@@ -849,7 +845,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          /* Run command */
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {
-      setSysState(CONN_STATE);                       /* "reconnect" after kill cpmmand */
+      setSysState(CONN_STATE);                       /* "reconnect" after kill command */
       gdbReset();                                    /* reset MCU and initialize registers */
       gdbSendState(SIGTRAP);                         /* stop at start address (= 0x000) */
                                                      /* GDB will auto restart! */
@@ -858,7 +854,7 @@ void gdbParsePacket(const byte *buff)
     }
     break;
   case 'q':                                          /* query requests */
-    if (memcmp_P(buf, (void *)PSTR("qRcmd,"), 6) == 0)   /* monitor command */
+    if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0)/* monitor command */
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
@@ -950,10 +946,8 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetSteppingMode(true);                                               /* safestep */
   else if (memcmp_P(buf, (void *)PSTR("756e736166657374657000"), max(4,min(12,clen))) == 0)
     gdbSetSteppingMode(false);                                              /* unsafestep */
-#if 0
   else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
     gdbVersion();                                                           /* version */
-#endif
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
@@ -2343,7 +2337,7 @@ void targetWriteFlashPage(unsigned int addr)
   }
   // DEBLN(F("changed"));
 
-#ifdef TXODEBUG
+#if TXODEBUG
   DEBLN(F("Changes in flash page:"));
   for (unsigned int i=0; i<mcu.targetpgsz; i++) {
     if (page[i] != newpage[i]) {
@@ -2961,26 +2955,7 @@ boolean DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   return rsp == len;
 }
 
-//   EEPROM Notes: This section contains code to read and write from EEPROM.  This is accomplished by setting parameters
-//    into registers 28 - r31 and then using the 0xD2 command to send and execute a series of instruction opcodes on the
-//    target device. 
-// 
-//   EEPROM Register Locations for ATTiny25/45/85, ATTiny24/44/84, ATTiny13, Tiny2313, Tiny441/841
-//     EECR    0x1C EEPROM Control Register
-//     EEDR    0x1D EEPROM Data Register
-//     EEARL   0x1E EEPROM Address Register (low byte)
-//     EEARH   0x1F EEPROM Address Register (high byte)
-// 
-//   EEPROM Register Locations for ATMega328, ATMega32U2/16U2/32U2, etc.
-//     EECR    0x1F EEPROM Control Register
-//     EEDR    0x20 EEPROM Data Register
-//     EEARL   0x21 EEPROM Address Register (low byte)
-//     EEARH   0x22 EEPROM Address Register (high byte)
-
-// 
 //   Read one byte from EEPROM
-//   
-
 byte DWreadEepromByte (unsigned int addr) {
   byte retval;
   byte setRegs[] = {0x66,                                                        // Set up for read/write 
@@ -3006,10 +2981,7 @@ byte DWreadEepromByte (unsigned int addr) {
   return retval;
 }
 
-//   
 //   Write one byte to EEPROM
-//   
-
 void DWwriteEepromByte (unsigned int addr, byte val) {
   byte setRegs[] = {0x66,                                                         // Set up for read/write 
                     0xD0, mcu.stuckat1byte, 0x1C,                                 // Set Start Reg number (r30)
@@ -3032,9 +3004,8 @@ void DWwriteEepromByte (unsigned int addr, byte val) {
   _delay_ms(5);                                                                   // allow EEPROM write to complete
 }
 
-//
-//  Read len bytes from flash memory area at <addr> into data[] buffer
-//
+
+//  Read len bytes from flash memory area at <addr> into mem buffer
 boolean DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   // Read len bytes form flash page at <addr>
   unsigned int rsp;

@@ -193,9 +193,9 @@ ATtiny pin# | Arduino Uno pin | component
 6 (D1, MISO) | D12 |
 7 (D2, SCK) | D13 |
 8 (Vcc) | D9 | 10k resistor, decoupling cap 100 nF 
- RESET | blocking cap of 10 µF (+) |
- D7 | system LED (+) |
- D6 | 200 Ω to system LED (-) |
+  | RESET |blocking cap of 10 µF (+)
+  | D7 |system LED (+)
+  | D6 |200 Ω to system LED (-)
 
 We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED (the Arduino builtin LED on Arduino pin D13).
 
@@ -963,3 +963,4 @@ Initial version
 #### V 1.3
 
 - Removing Arduino Mega boards from the set of boards that can be used as hardware debuggers
+
