@@ -188,6 +188,9 @@ const unsigned int ontimes[6] =  {0,  100, 150, 1, 1000, 700};
 const unsigned int offtimes[6] = {1, 1000, 150, 0, 100, 700};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
+byte ledmask;
+byte *ledout;
+
 
 // pin mapping for different situations and boards
 const byte pundef = 255; // undefined pin
@@ -460,15 +463,15 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (busy) return; // if this IRQ routine is already active, leave immediately
   busy++; 
   cnt--;
-  if (digitalRead(pm.SYSLED)) {
+  if (*ledout & ledmask) {
     if (cnt < 0) {
       cnt = offtime;
-      digitalWrite(pm.SYSLED, LOW);
+      *ledout &= ~ledmask;
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      digitalWrite(pm.SYSLED, HIGH);
+      *ledout |= ledmask;
     }
   }
   busy--;
@@ -481,22 +484,12 @@ void setup(void) {
   pinMode(SNSGND, INPUT_PULLUP);
   if (digitalRead(SNSGND) == 0) // adapter board!
     memcpy_P(&pm, &boardpm, sizeof(pinmap));
-  DEBINIT(pm.DEBTX); 
+  ledmask = digitalPinToBitMask(pm.SYSLED);
+  ledout = portOutputRegister(digitalPinToPort(pm.SYSLED));
   DEBLN(F("\ndw-link V" VERSION));
   DEBLN(SNSGND);
   DEBLN(DWLINE);
-  DEBLN(pm.VHIGH);
-  DEBLN(pm.VON);
-  DEBLN(pm.V5);
-  DEBLN(pm.V33);
-  DEBLN(pm.TSCK);
-  DEBLN(pm.TMOSI);
-  DEBLN(pm.TMISO);
-  DEBLN(pm.VSUP);
-  DEBLN(pm.DEBTX);
-  DEBLN(pm.TISP);
-  DEBLN(pm.SYSLED);
-  DEBLN(pm.LEDGND);
+  
 #if SDEBUG
   Serial1.begin(115200);
   Serial.println(F("dw-link V" VERSION));

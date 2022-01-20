@@ -597,3 +597,16 @@ Version 0.9.9 (14-Nov-21)
 - streamlined code and docs concerning which boards to use as the
   hardware debugger
 - streamlined example files
+
+## Version 1.3.1 (20-Jan-22)
+
+- fixed bug when in conditional breakpoints the debugger stopped after
+  a while with a PC that were widly out of bound; it was caused by a
+  timeout in reading the PC on the DW line; it seems that the blinking
+  ISR was responsible, in which digitalRead and digitalWrite  was
+  used; when switching the ISR off and after only using bit
+  manipulations, no such timeouts were observed; one should handle
+  such timeouts by re-issuing the DW command instead of silently
+  ignoring them; also keep a timeout counter and issue fatal error if
+  not recoverable after 10 times
+  
