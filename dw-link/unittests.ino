@@ -139,7 +139,7 @@ int gdbTests(int &num) {
   */
 
   // insert 4 BPs (one of it is a duplicate) 
-  gdbDebugMessagePSTR(PSTR("Test gdbInsertBreakpoint: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbInsertBreakpoint: "), testnum++);
   gdbInsertBreakpoint(0xe4);
   gdbInsertBreakpoint(0xd5);
   gdbInsertBreakpoint(0xda);
@@ -148,7 +148,7 @@ int gdbTests(int &num) {
 		       && bp[1].waddr == 0xd5 && bp[2].waddr == 0xda && bp[2].hw);
 
   // will insert two software breakpoints and the most recent one is a hardware breakpoint
-  gdbDebugMessagePSTR(PSTR("Test gdbUpdateBreakpoints: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbUpdateBreakpoints: "), testnum++);
   gdbUpdateBreakpoints(false);
   failed += testResult(bp[0].inflash && bp[0].used && bp[0].active  && bp[1].inflash
 		       && bp[1].opcode == 0 && !bp[2].inflash && bp[0].opcode == 0xe911
@@ -157,7 +157,7 @@ int gdbTests(int &num) {
 		       && targetReadFlashWord(0xda*2) == 0x9320);
 
   // remove all breakpoints (the software breakpoints will still be in flash memory)
-  gdbDebugMessagePSTR(PSTR("Test gdbRemoveBreakpoints: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbRemoveBreakpoints: "), testnum++);
   gdbRemoveBreakpoint(0xd5);
   gdbRemoveBreakpoint(0xe4);
   gdbRemoveBreakpoint(0xda);
@@ -181,7 +181,7 @@ int gdbTests(int &num) {
   // Then call gdbUpdateBreakpoints: the former hardware breakpoint now is a software breakpoint and therefore
   // a BREAK instruction is inserted at this point
   // All in all: 3 active BPs
-  gdbDebugMessagePSTR(PSTR("Test gdbUpdateBreakpoint (after reinserting 2 of 3 inactive BPs): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbUpdateBreakpoint (after reinserting 2 of 3 inactive BPs): "), testnum++);
   gdbInsertBreakpoint(0xe4);
   gdbInsertBreakpoint(0xda);
   gdbUpdateBreakpoints(false);
@@ -195,7 +195,7 @@ int gdbTests(int &num) {
 		       && !bp[4].inflash && bp[4].used && bp[4].active && bp[4].hw && bp[4].waddr == 0xd6 && hwbp == 0xd6);
 
   // execute starting at 0xd5 (word address) with a NOP and run to the hardware breakpoint (next instruction)
-  gdbDebugMessagePSTR(PSTR("Test gdbContinue (with HWBP): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbContinue (with HWBP): "), testnum++);
   targetInitRegisters();
   ctx.sp = mcu.ramsz+mcu.rambase-1;
   ctx.wpc = 0xd5;
@@ -211,7 +211,7 @@ int gdbTests(int &num) {
   failed += testResult(succ && ctx.wpc == 0xd6);
 
   // execute starting at 0xdc (an RCALL instruction) and stop at the software breakpoint at 0xe4
-  gdbDebugMessagePSTR(PSTR("Test gdbContinue (with software breakpoint): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbContinue (with sw BP): "), testnum++);
   ctx.wpc = 0xdc;
   oldsp = ctx.sp;
   gdbContinue();
@@ -233,7 +233,7 @@ int gdbTests(int &num) {
   
   // remove the first 3 breakpoints from being active (they are still marked as used and the BREAK
   // instruction is still in flash)
-  gdbDebugMessagePSTR(PSTR("Test gdbRemoveBreakpoint (3): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbRemoveBreakpoint (3): "), testnum++);
   gdbRemoveBreakpoint(0xe4);
   gdbRemoveBreakpoint(0xda);
   gdbRemoveBreakpoint(0xd6);
@@ -244,7 +244,7 @@ int gdbTests(int &num) {
   // perform  a single step at location 0xda at which a BREAK instruction has been inserted,
   // replacing the first word of a STS __,r18 instruction; execution happens using
   // simulation.
-  gdbDebugMessagePSTR(PSTR("Test gdbStep on 4-byte instruction (STS) hidden by BREAK: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbStep on 4-byte instr. hidden by BREAK: "), testnum++);
   //DEBLN(F("Test simulated write:"));
   unsigned int sramaddr = (mcu.rambase == 0x60 ? 0x60 : 0x100);
   ctx.regs[18] = 0x42;
@@ -263,7 +263,7 @@ int gdbTests(int &num) {
   // perform a single stop at location 0xe5 at which a BREAK instruction has been inserted,
   // replacing a "ldi r17, 0x91" instruction
   // execution is done by simulation
-  gdbDebugMessagePSTR(PSTR("Test gdbStep on 2-byte instr LDI r17,0x91 hidden by BREAK: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbStep on 2-byte instr. hidden by BREAK: "), testnum++);
   ctx.regs[17] = 0xFF;
   ctx.wpc = 0xe4;
   gdbStep();
@@ -272,14 +272,14 @@ int gdbTests(int &num) {
   failed += testResult(ctx.wpc == 0xe5 && ctx.regs[17] == 0x91);
 
   // perform a single step at location 0xe5 on instruction RET
-  gdbDebugMessagePSTR(PSTR("Test gdbStep on normal instruction RET (2-byte): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbStep on normal instr. (2-byte): "), testnum++);
   ctx.wpc = 0xe5;
   oldsp = ctx.sp;
   gdbStep();
   failed += testResult(ctx.sp == oldsp + 2 && ctx.wpc == 0xdf);
 
   // perform single step at location 0xdc on the instruction LDS r16, 0x100
-  gdbDebugMessagePSTR(PSTR("Test gdbStep on normal instruction (4-byte): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbStep on normal instr. (4-byte): "), testnum++);
   ctx.regs[16] = 0;
   ctx.wpc = 0xdc;
   gdbStep();
@@ -287,7 +287,7 @@ int gdbTests(int &num) {
 
   // check the "BREAK hiding" feature by loading part of the flash memory and
   // replacing BREAKs with the original instructions in the buffer to be sent to gdb
-  gdbDebugMessagePSTR(PSTR("Test gdbHideBREAKs: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbHideBREAKs: "), testnum++);
   targetReadFlash(0x1ad, newpage, 0x1C); // from 0x1ad (uneven) to 0x1e4 (even)
   succ = (newpage[0x1ad-0x1ad] == 0x00 && newpage[0x1b4-0x1ad] == 0x98
 	  && newpage[0x1b4-0x1ad+1] == 0x95 && newpage[0x1c8-0x1ad] == 0x98);
@@ -306,13 +306,13 @@ int gdbTests(int &num) {
 		       && newpage[0x1b4-0x1ad+1] == 0x93 && newpage[0x1c8-0x1ad] == 0x11);
 
   // cleanup
-  gdbDebugMessagePSTR(PSTR("Test delete BPs and BP update: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("Delete BPs & BP update: "), testnum++);
   gdbRemoveBreakpoint(0xe0);
   gdbUpdateBreakpoints(false);
   failed += testResult(bpcnt == 0 && bpused == 0 && hwbp == 0xFFFF);
 
   // test the illegal opcode detector for single step
-  gdbDebugMessagePSTR(PSTR("Test gdbStep on illegal instruction 0x0001: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbStep on illegal instruction: "), testnum++);
   ctx.wpc = 0xe6;
   byte sig = gdbStep();
   //DEBLNF(ctx.wpc,HEX);
@@ -320,7 +320,7 @@ int gdbTests(int &num) {
   failed += testResult(sig == SIGILL && ctx.wpc == 0xe6);
   
   // test the illegal opcode detector for continue
-  gdbDebugMessagePSTR(PSTR("Test gdbContinue on illegal instruction 0x0001: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("gdbContinue on illegal instruction: "), testnum++);
   targetInitRegisters();
   ctx.sp = mcu.ramsz+mcu.rambase-1;
   ctx.wpc = 0xe6;
@@ -362,7 +362,7 @@ int targetTests(int &num) {
   else testnum = 1;
 
   // write a (target-size) flash page (only check that no fatal error)
-  gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetWriteFlashPage: "), testnum++);
   const int flashaddr = 0x80;
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
   DWeraseFlashPage(flashaddr);
@@ -375,33 +375,33 @@ int targetTests(int &num) {
   failed += testResult(fatalerror == NO_FATAL);
 
   // write same page again (since cache is valid, should not happen)
-  gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage (no 2nd write when vaildpg): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetWriteFlashPage (check vaildpg): "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
   targetWriteFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
   
   // write same page again (cache valid flag cleared), but since contents is tha same, do not write
-  gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage (no 2nd write when same contents): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetWriteFlashPage (check contents): "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
   validpg = false;
   targetWriteFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
 
   // try to write a cache page at an address that is not at a page boundary -> fatal error
-  gdbDebugMessagePSTR(PSTR("Test targetWriteFlashPage (addr error): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetWriteFlashPage (addr error): "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
   targetWriteFlashPage(flashaddr+2);
   failed += testResult(fatalerror != NO_FATAL && lastflashcnt == flashcnt);
 
   // read page (should be done from cache)
-  gdbDebugMessagePSTR(PSTR("Test targetReadFlashPage (from cache): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetReadFlashPage (from cache): "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
   page[0] = 0x11; // mark first cell in order to see whether things get reloaded
   targetReadFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && page[0] == 0x11);
 
   // read page (force cache to be invalid and read from flash)
-  gdbDebugMessagePSTR(PSTR("Test targetReadFlashPage (from flash memory): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetReadFlashPage: "), testnum++);
   fatalerror = NO_FATAL; setSysState(CONN_STATE);
   for (i=0; i < mcu.targetpgsz; i++) page[i] = 0;
   validpg = false;
@@ -413,7 +413,7 @@ int targetTests(int &num) {
   failed += testResult(fatalerror == NO_FATAL && succ);
 
   // restore registers (send to target) and save them (read from target)
-  gdbDebugMessagePSTR(PSTR("Test targetRestoreRegisters/targetSaveRegisters: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetRestoreRegisters/targetSaveRegisters: "), testnum++);
   unsigned int spinit = mcu.rambase+mcu.ramsz-1;
   succ = true;
   for (i = 0; i < 32; i++) ctx.regs[i] = i+1;
@@ -439,11 +439,11 @@ int targetTests(int &num) {
   failed += testResult(succ);
 
   // test ergister init procedure
-  gdbDebugMessagePSTR(PSTR("Test targetInitRegisters: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetInitRegisters: "), testnum++);
   targetInitRegisters();
   failed += testResult(ctx.wpc == 0 && ctx.saved == true); // this is the only requirement!
 
-  gdbDebugMessagePSTR(PSTR("Test targetWriteEeprom/targetReadEeprom: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetWriteEeprom/targetReadEeprom: "), testnum++);
   DEBLN(F("targetEEPROM"));
   succ = true;
   const int eeaddr = 0x15;
@@ -473,7 +473,7 @@ int targetTests(int &num) {
   DEBLNF(membuf[5],HEX);
   failed += testResult(succ);
 
-  gdbDebugMessagePSTR(PSTR("Test targetWriteSram/targetReadSram: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetWriteSram/targetReadSram: "), testnum++);
   succ = true;
   const int ramaddr = mcu.rambase;
   membuf[0] = 0x31;
@@ -511,7 +511,7 @@ int targetTests(int &num) {
   */
 
 
-  gdbDebugMessagePSTR(PSTR("Test targetStep (ldi r18,0x49): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetStep (ldi r18,0x49): "), testnum++);
   succ = true;
   targetInitRegisters();
   ctx.wpc = 0xd9; // ldi instruction
@@ -522,15 +522,13 @@ int targetTests(int &num) {
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xda && ctx.regs[18] == 0x49);
 
-  gdbDebugMessagePSTR(PSTR("Test targetStep (rcall): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetStep (rcall): "), testnum++);
   succ = true;
   ctx.wpc = 0xde; // rcall instruction
   targetRestoreRegisters();
   targetStep(); // one step leads to Break+0x55
-  if (!expectBreakAndU()) succ = false;
-  targetSaveRegisters();
+  if (!expectBreakAndU()) succ = false;  targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xe4);
-
   gdbDebugMessagePSTR(PSTR("Test targetContinue/targetBreak: "), testnum++);
   succ = true;
   hwbp = 0xFFFF;
@@ -541,7 +539,7 @@ int targetTests(int &num) {
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xd8 && ctx.regs[17] == 0x91);
 
-  gdbDebugMessagePSTR(PSTR("Test targetReset: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetReset: "), testnum++);
   ctx.sreg= 0xFF; // SREG
   DEBPR(F("SREG before: ")); DEBLNF(ctx.sreg,HEX);
   DEBPR(F("WPC before:  ")); DEBLNF(ctx.wpc,HEX);
@@ -552,10 +550,10 @@ int targetTests(int &num) {
   DEBPR(F("WPC after:  ")); DEBLNF(ctx.wpc,HEX);
   failed += testResult((ctx.wpc & 0x7F) == 0 && ctx.sreg == 0); // PC can be set to boot area!
 
-  gdbDebugMessagePSTR(PSTR("Test targetIllegalOpcode (mul r16, r16): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetIllegalOpcode (mul r16, r16): "), testnum++);
   failed += testResult(targetIllegalOpcode(0x9F00) == !mcu.avreplus);
 
-  gdbDebugMessagePSTR(PSTR("Test targetIllegalOpcode (jmp ...): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("targetIllegalOpcode (jmp ...): "), testnum++);
   failed += testResult(targetIllegalOpcode(0x940C) == (mcu.flashsz <= 8192));
   
   
@@ -588,14 +586,14 @@ int DWtests(int &num)
   else testnum = 1;
 
   // write and read 3 registers
-  gdbDebugMessagePSTR(PSTR("Test DWwriteRegister/DWreadRegister: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWwriteRegister/DWreadRegister: "), testnum++);
   DWwriteRegister(0, 0x55);
   DWwriteRegister(15, 0x9F);
   DWwriteRegister(31, 0xFF);
   failed += testResult(DWreadRegister(0) == 0x55 && DWreadRegister(15) == 0x9F && DWreadRegister(31) == 0xFF);
 
   // write registers in one go and read them in one go (much faster than writing/reading individually) 
-  gdbDebugMessagePSTR(PSTR("Test DWwriteRegisters/DWreadRegisters: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWwriteRegisters/DWreadRegisters: "), testnum++);
   for (byte i=0; i < 32; i++) membuf[i] = i*2+1;
   DWwriteRegisters(membuf);
   for (byte i=0; i < 32; i++) membuf[i] = 0;
@@ -610,23 +608,23 @@ int DWtests(int &num)
   failed += testResult(succ);
 
   // write to and read from an IO reg (0x3F = SREG)
-  gdbDebugMessagePSTR(PSTR("Test DWwriteIOreg/DWreadIOreg: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWwriteIOreg/DWreadIOreg: "), testnum++);
   DWwriteIOreg(0x3F, 0x55);
   failed += testResult(DWreadIOreg(0x3F) == 0x55);
 
   // write into (lower) sram and read it back from corresponding IO reag 
-  gdbDebugMessagePSTR(PSTR("Test DWwriteSramByte/DWreadIOreg: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWwriteSramByte/DWreadIOreg: "), testnum++);
   DWwriteSramByte(0x3F+0x20, 0x1F);
   temp = DWreadIOreg(0x3F);
   failed += testResult(temp == 0x1F);
 
   // write into IO reg and read it from the ocrresponding sram addr
-  gdbDebugMessagePSTR(PSTR("Test DWwriteIOreg/DWreadSramByte: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWwriteIOreg/DWreadSramByte: "), testnum++);
   DWwriteIOreg(0x3F, 0xF2);
   failed += testResult(DWreadSramByte(0x3F+0x20) == 0xF2);
 
   // write a number of bytes to sram and read them again byte by byte
-  gdbDebugMessagePSTR(PSTR("Test DWwriteSramByte/DWreadSramByte: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWwriteSramByte/DWreadSramByte: "), testnum++);
   for (byte i=0; i < 32; i++) DWwriteSramByte(mcu.rambase+i, i+1);
   succ = true;
   for (byte i=0; i < 32; i++) {
@@ -638,7 +636,7 @@ int DWtests(int &num)
   failed += testResult(succ);
 
   // sram bulk reading
-  gdbDebugMessagePSTR(PSTR("Test DWreadSram (bulk reading): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWreadSram (bulk): "), testnum++);
   for (byte i=0; i < 32; i++) membuf[i] = 0;
   DWreadSramBytes(mcu.rambase, membuf, 32);
   succ = true;
@@ -651,7 +649,7 @@ int DWtests(int &num)
   failed += testResult(succ);
 
   // write to EEPROM (addr 0x15) and read from it
-  gdbDebugMessagePSTR(PSTR("Test DWwriteEepromByte/DWreadEepromByte: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWwriteEepromByte/DWreadEepromByte: "), testnum++);
   const int eeaddr = 0x15;
   succ = true;
   DWwriteEepromByte(eeaddr, 0x38);
@@ -661,12 +659,13 @@ int DWtests(int &num)
   failed += testResult(succ);
   
   // erase flash page (check only for errors)
-  gdbDebugMessagePSTR(PSTR("Test DWeraseFlashPage: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWeraseFlashPage: "), testnum++);
   const int flashaddr = 0x100;
-  failed += testResult(DWeraseFlashPage(flashaddr));
+  DWeraseFlashPage(flashaddr);
+  failed += testResult(fatalerror == NO_FATAL);
 
   // read the freshly cleared flash page
-  gdbDebugMessagePSTR(PSTR("Test DWreadFlash (empty page): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWreadFlash (empty page): "), testnum++);
   for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
   succ = true;
   DWreenableRWW();
@@ -677,13 +676,13 @@ int DWtests(int &num)
   failed += testResult(succ);
     
   // program one flash page (only check for error code returns)
-  gdbDebugMessagePSTR(PSTR("Test DWloadFlashPage/DWprogramFlashPage: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWloadFlashPage/DWprogramFlashPage: "), testnum++);
   for (i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
   DWloadFlashPageBuffer(flashaddr, newpage);
   failed += testResult(DWprogramFlashPage(flashaddr));
 
   // now try to read the freshly flashed page
-  gdbDebugMessagePSTR(PSTR("Test DWreenableRWW/DWreadFlash: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWreenableRWW/DWreadFlash: "), testnum++);
   for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
   DEBLN(F("newpage cleared"));
   succ = true;
@@ -702,12 +701,14 @@ int DWtests(int &num)
   // if a device with boot sector, try everything immediately after each other in the boot area 
   if (mcu.bootaddr != 0) {
     for (i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
-    gdbDebugMessagePSTR(PSTR("Test DWFlash programming in boot section: "), testnum++);
-    succ = DWeraseFlashPage(mcu.bootaddr);
+    gdbDebugMessagePSTR(PSTR("DWFlash prog. in boot section: "), testnum++);
+    DWeraseFlashPage(mcu.bootaddr);
+    succ = (fatalerror == NO_FATAL);
     if (succ) {
       //DEBLN(F("erase successful"));
       DWreenableRWW();
-      succ = DWloadFlashPageBuffer(mcu.bootaddr, newpage);
+      DWloadFlashPageBuffer(mcu.bootaddr, newpage);
+      succ = (fatalerror == NO_FATAL);
       //for (i=0; i < mcu.pagesz; i++) DEBLN(newpage[i]);
     }
     if (succ) {
@@ -732,7 +733,7 @@ int DWtests(int &num)
 
 
   // get chip id
-  gdbDebugMessagePSTR(PSTR("Test DWgetChipId: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWgetChipId: "), testnum++);
   failed += testResult(mcu.sig != 0 && (DWgetChipId() == mcu.sig ||
 					(mcu.sig == 0x9514 && DWgetChipId() == 0x950F) || // imposter 328P!
 					(mcu.sig == 0x9406 && DWgetChipId() == 0x940B) || // imposter 168PA!
@@ -740,7 +741,7 @@ int DWtests(int &num)
 					(mcu.sig == 0x9205 && DWgetChipId() == 0x920A))); // imposter 48PA!
   
   // Set/get PC (word address)
-  gdbDebugMessagePSTR(PSTR("Test DWsetWPc/DWgetWPc: "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWsetWPc/DWgetWPc: "), testnum++);
   unsigned int pc = 0x3F; 
   DWsetWPc(pc);
   unsigned int newpc = DWgetWPc(true);
@@ -755,7 +756,7 @@ int DWtests(int &num)
   */
   
   // execute one instruction offline
-  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (eor r1,r1 at WPC=0x013F): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWexecOffline (eor r1,r1 at WPC=0x013F): "), testnum++);
   DWwriteIOreg(0x3F, 0); // write SREG
   DWwriteRegister(1, 0x55);
   pc = 0x13F;
@@ -769,7 +770,7 @@ int DWtests(int &num)
   failed += testResult(succ);
 
   // execute MUL offline
-  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (mul r16, r16 at WPC=0x013F): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWexecOffline (mul r16, r16 at WPC=0x013F): "), testnum++);
   DWwriteRegister(16, 5);
   DWwriteRegister(1, 0x55);
   DWwriteRegister(0, 0x55);
@@ -787,7 +788,7 @@ int DWtests(int &num)
   failed += testResult(succ);
 
   // execute a rjmp instruction offline 
-  gdbDebugMessagePSTR(PSTR("Test DWexecOffline (rjmp 0x002E at WPC=0x0001 (word addresses)): "), testnum++);
+  gdbDebugMessagePSTR(PSTR("DWexecOffline (rjmp 0x002E at WPC=0x0001): "), testnum++);
   DWsetWPc(0x01);
   DWexecOffline(0xc02C);
   failed += testResult(DWgetWPc(true) == 0x2E); // = byte addr 0x005C

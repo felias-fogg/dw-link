@@ -601,7 +601,7 @@ Version 0.9.9 (14-Nov-21)
 ## Version 1.3.1 (20-Jan-22)
 
 - fixed bug when in conditional breakpoints the debugger stopped after
-  a while with a PC that were widly out of bound; it was caused by a
+  a while with a PC that was widely out of bound; it was caused by a
   timeout in reading the PC on the DW line; it seems that the blinking
   ISR was responsible, in which digitalRead and digitalWrite  was
   used; when switching the ISR off and after only using bit
@@ -609,11 +609,21 @@ Version 0.9.9 (14-Nov-21)
   such timeouts by re-issuing the DW command instead of silently
   ignoring them; also keep a timeout counter and issue fatal error if
   not recoverable after 10 times
-  
 ## Version 1.3.2 (20-Jan-22)
 
-- Last fix did not work out, only if the ISR is completely inactivated,
+- last fix did not work out, only if the ISR is completely inactivated,
   the bug does not happen; so, now blinking happens only when we wait
   for power-cycling or when an error has occured; with that tenthousand
   bp crossings are possible without an error (the above mentioned
   recovery on timeouts should be implemented nevertheless)
+
+## Version 1.3.3 (20-Jan-22)
+
+	- all DW read functions now test for timeout and try to recover 20 times; works pretty neat, but sometimes there are 15 timeouts in a row when reading the PC (but see below)
+	- if a timeout happens more than 20 times in a row, a fatal error is reported 
+	- added a 1µs delay to DWflushInput in order to decouple input from output, which seems to help
+	- new monitor function: monitor timeouts returns number of timeouts
+	- SingleWireSerial: moved reenabling DW input IRQ to the begin of the stop bit in the write method, which indeed reduces timeouts
+	- Without blinking, we have now no timeouts, even for 250 kbps; with blinking it is 1 timeout per 100 bp crossings, from which we always easily recover, or no timeouts at 125 kbps; perhaps we could try the Arduino Mega again?
+	- Shortened messages of the unit tests so that the sketch together with the unit tests still fit into the 32K space
+

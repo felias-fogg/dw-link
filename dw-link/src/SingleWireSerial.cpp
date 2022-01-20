@@ -537,9 +537,9 @@ size_t SingleWireSerial::write(uint8_t data)
   TIFR |= _BV(OCFA); // clear overflow flag
 
   SREG = oldSREG; // enable interrupts again
+  setRxIntMsk(true); //enable input capture input interrupts again
 
   while (!(TIFR & _BV(OCFA))); // wait for stop bit to finish
-  setRxIntMsk(true); //enable input capture input interrupts again
   DebugPulse(0x01);
   return 1;
 }

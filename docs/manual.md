@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 1.3 - January 2022**
+**Version 1.4 - January 21, 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -196,7 +196,7 @@ ATtiny pin# | Arduino Uno pin | component
   | D7 |system LED (+)
   | D6 |200 Ω to system LED (-)
 
-We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED (the Arduino builtin LED on Arduino pin D13).
+We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED.
 
 ### 4.3 States of the hardware debugger
 
@@ -521,8 +521,17 @@ Now let us prepare a debugging session with the same project we had before. Star
 
 ### 6.3 Debugging with PlatformIO
 
+If you now click on the debug symbol in the left navigation bar (fourth from the top), PlatformIO enables debugging using **simavr**, the default debugger for this chip. 
 
-If you now click on the debug symbol in the left navigation bar (fourth from the top), PlatformIO enables debugging using **simavr**, the default debugger for this chip. You can now start a debug session by clicking the green triangle at the top navigation bar labeled **PIO Debug**. On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. Try to play around with it!
+![PIO](pics/pio1s.png)
+
+You can now start a debug session by clicking the green triangle at the top navigation bar labeled **PIO Debug**. 
+
+![PIOdebug](pics/pio2s.png)
+
+On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. Try to play around with it!
+
+![PIOdebugactive](pics/pio3s.png)
 
 But, of course, this is not the real thing. No LED is blinking. So close the window and copy the following two files from `examples/pio-config` to the project directory of your new PlatformIO project:
 
@@ -533,11 +542,15 @@ In the file `platformio.ini`, you need to put in the serial port your Arduino de
 
 After having copied the two files into the project directory and reopened the project window, you should be able to debug your project as described above. Only now you are debugging the program on the target system, i.e., the LED really blinks!
 
-A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI.
+A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
 ### 6.4 Disabling debugWIRE mode
 
-There are two ways of switching off the debugWIRE mode. If you click on the ant symbol (last symbol in the left navigation bar), there should be the option *debug* environment. When you then click on *Custom*, you should see you the option *DebugWIRE Disable*. Clicking on it will set the MCU back to its normal state, where the RESET line can be used for resets and ISP programming is possible.  Alternatively, you should be able to bring back you MCU to the normal state by typing `monitor dwoff` in the debugging terminal window of the PlatformIO IDE.
+There are two ways of switching off the debugWIRE mode. If you click on the ant symbol (last symbol in the left navigation bar), there should be the option *debug* environment. When you then click on *Custom*, you should see you the option *DebugWIRE Disable*. Clicking on it will set the MCU back to its normal state, where the RESET line can be used for resets and ISP programming is possible.  
+
+![PIOdisable](pics/pio5s.png)
+
+Alternatively, you should be able to bring back you MCU to the normal state by typing `monitor dwoff` in the debugging terminal window of the PlatformIO IDE.
 
 <a name="section7"></a>
 
@@ -576,9 +589,9 @@ The relevant pins are therefore as defined in the following table. <a name="simp
 
 ### 7.1 A simple shield
 
-Taking it one one step further, one might think about a shield for an Uno or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
+Taking it one one step further, one might think about a shield for an Uno or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an Uno, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage and perhaps connect it to the 5 V pin of the board. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
 
-Note that here we use a somewhat different pin mapping then the one above in order to use the pin 13 builtin LED. In order to signal that to the sketch, pin D14 (=A0) on a Uno board needs to be connected to GND (see also the pin mapping for shields and adapter boards in Section [7.3.2](#section732) & [7.3.3](#section733).)
+Note that here we use a somewhat different pin mapping then the one in the introductory example and in the ISP cable above in order to use the pin 13 builtin LED. In order to signal that to the sketch, pin D14 (=A0) on a Uno board needs to be connected to GND (see also the pin mapping for shields and adapter boards in Section [7.3.2](#section732) & [7.3.3](#section733).)
 
 
 ![dw-probe-fritzing V 0.1](pics/dw-probe0.1.png)
@@ -595,7 +608,7 @@ You can also do the same thing with the Nano sized Arduinos. You should just be 
 
 ### 7.2 A shield with level shifters
 
-If you work also with 3.3 volt systems, you probably would like to have a version with level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. Note that the target can now be powered with 3.3 V or 5 V and the level-shifter will take care of it; that is, even if no level-shifting is needed, it will work.
+If you work also with 3.3 volt systems, you have two options. You could buy an Uno variant that can switch to 3.3 volt (e.g. a https://www.seeedstudio.com/Seeeduino-V4-2-p-2517.html or a [Keyestudio PLUS Board](https://wiki.keyestudio.com/KS0486_Keyestudio_PLUS_Development_Board_(Black_And_Eco-friendly))), you use level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. Note that the target can now be powered with 3.3 V or 5 V and the level-shifter will take care of it; that is, even if no level-shifting is needed, it will work.
 
 ![dw-probe-fritzing V 0.2](pics/dw-probe0.2.png)
 
@@ -945,6 +958,11 @@ Error #  | Meaning
 118 | Input buffer overflow
 119 | Wrong fuse 
 120 | Breakpoint update while flash programming is active 
+121 | Timeout while reading from debugWIRE line 
+122 | Timeout while reading general register 
+123 | Timeout while reading IO register 
+124 | Could not reenable RWW 
+125 | Failure while reading from EEPROM 
 
 ## Revision history
 
@@ -955,9 +973,14 @@ Initial version
 #### V 1.2
 
 - Changed pin mapping. The default is now to use ISP pins on the debugger so that a simple ISP cable with broken out RESET line is sufficient. System LED is pin D7, GND for the system LED is provided at pin D6. In order to use the pin mapping for shields/adapters, one has to tie SNSGND to ground, whereby the pin number of SNSGND depends on the Arduino board dw-link is compiled for (see mapping described in [Section 7.3.3](#section733)).
-- Added wording to recommend optimization level -O0 instead of -Og, because otherwise assignments to local variables will not work. Single-stepping works now with -Og after dw-link now hides all inserted BREAK instructions. 
+- Added wording to recommend optimization level -O0 instead of -Og, because otherwise assignments to local variables will not work. Single-stepping works now with -Og after dw-link hides all inserted BREAK instructions. 
 
 #### V 1.3
 
-- Removing Arduino Mega boards from the set of boards that can be used as hardware debuggers
+- Removed Arduino Mega boards from the set of boards that can be used as hardware debuggers
 
+#### V 1.4
+
+- New error messages
+- System LED with fewer modes
+- Some screen shots added to PlatformIO description
