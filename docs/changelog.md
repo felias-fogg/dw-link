@@ -610,3 +610,10 @@ Version 0.9.9 (14-Nov-21)
   ignoring them; also keep a timeout counter and issue fatal error if
   not recoverable after 10 times
   
+## Version 1.3.2 (20-Jan-22)
+
+- Last fix did not work out, only if the ISR is completely inactivated,
+  the bug does not happen; so, now blinking happens only when we wait
+  for power-cycling or when an error has occured; with that tenthousand
+  bp crossings are possible without an error (the above mentioned
+  recovery on timeouts should be implemented nevertheless)

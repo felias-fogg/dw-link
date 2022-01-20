@@ -39,7 +39,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.0"
+#define VERSION "1.3.2"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -184,8 +184,10 @@ struct context {
 // LED constantly on = connected to target and target is halted
 // LED on, but every second off for 1/10 sec = loading code
 // Led blinks every 1/3 second = target is running
-const unsigned int ontimes[6] =  {0,  100, 150, 1, 1000, 700};
-const unsigned int offtimes[6] = {1, 1000, 150, 0, 100, 700};
+//const unsigned int ontimes[6] =  {0,  100, 150, 1, 1000, 700}; <<--- get still timeouts!
+//const unsigned int offtimes[6] = {1, 1000, 150, 0, 100, 700};
+const unsigned int ontimes[6] =  {0,  100, 150, 1, 1, 1};
+const unsigned int offtimes[6] = {1, 1000, 150, 0, 0, 0};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 byte ledmask;

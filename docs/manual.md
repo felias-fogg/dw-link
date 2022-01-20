@@ -51,23 +51,22 @@ The basic idea of ***debugWIRE*** is that one uses the RESET line as a communica
 
 Do not get nervous when your MCU does not react any longer as you expect it, but try to understand in which state the MCU is. With respect to the debugWIRE protocol there are basically three states your MCU could be in:
 
-1. The **normal** **state** in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitionary** **state**.
-2. The **transitionary** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** **state**.
-3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to a transition to the **transitionary** **state**, from which one can reach the **normal state** using ordinary ISP programming. 
-   
+1. The **normal** **state** in which the DWEN (debugWIRE enable) [fuse](https://microchipdeveloper.com/8avr:avrfuses) is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the **transitional** **state**.
+2. The **transitional** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** **state**.
+3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to a transition to the **transitional  state**, from which one can reach the **normal state** using ordinary ISP programming. 
 
 The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state can be achieved by the GDB command ```monitor dwoff```. If things seemed to have not worked out, you can simply reconnect the target to the hardware debugger and try out the two commands again.
-
-<!-- 
+<!--
 mermaid
     stateDiagram
-    normal --\> transitionary: set DWEN 
-    transitionary --\> normal: clear DWEN
+    normal --\> transitional: set DWEN 
+    transitional --\> normal: clear DWEN
     normal --\> debugWIRE: monitor dwconnect
-    transitionary --\> debugWIRE: power cycle
-    debugWIRE --\> transitionary: disable debugWIRE
+    transitional --\> debugWIRE: power cycle
+    debugWIRE --\> transitional: disable debugWIRE
     debugWIRE --\> normal: monitor dwoff
 -->
+
 
 ![state diagram](pics/state-diagram.png)
 
@@ -201,13 +200,11 @@ We are now good to go and 'only' need to install the additional debugging softwa
 
 ### 4.3 States of the hardware debugger
 
-There are six states, the debugger can be in and each is signaled by a different blink pattern of the system LED:
+There are four states, the debugger can be in and each is signaled by a different blink pattern of the system LED:
 
 * not connected (LED is off)
 * waiting for power-cycling the target (LED flashes every second for 0.1 sec)
-* target is connected (LED is on)
-* target loads an executable (LED is on, but will be off for 0.1 sec each second)
-* target is running (LED blinks 0.7 sec on / 0.7 sec off)
+* target is connected (LED is on) 
 * error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec)
 
 If the hardware debugger is in the error state, one should try to find out the reason by typing the command `x/1db 0xffffffff`, study the [error message table](#fatalerror) at the end of the document, finish the GDB session, reset the debugger, and restart everything. If the problem persists, please check the section on [trouble shooting](#trouble).
