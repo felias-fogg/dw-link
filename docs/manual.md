@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 1.4 - January 21, 2022**
+**Version 1.5 - January 25, 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -495,7 +495,7 @@ mo[nitor] xt[alosc] | set clock source to crystal oscillator
 mo[nitor] sl[owosc] | set clock source to internal low frequency oscillator (125 kHz)
 mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
 mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
-mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **l** is the default; without an argument, the current communication speed is printed 
+mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **h** is the default; without an argument, the current communication speed is printed 
 mo[onitor] ser[ial] | print current communication speed of the connection to the host computer
 mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
 mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen during single-stepping, which is the default 
@@ -963,6 +963,7 @@ Error #  | Meaning
 123 | Timeout while reading IO register 
 124 | Could not reenable RWW 
 125 | Failure while reading from EEPROM 
+126 | Bad interrupt 
 
 ## Revision history
 
@@ -984,3 +985,9 @@ Initial version
 - New error messages
 - System LED with fewer modes
 - Some screen shots added to PlatformIO description
+
+#### V 1.5
+
+- New error message (126)
+- default DW speed is now 250 kbps
+

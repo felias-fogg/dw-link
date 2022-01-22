@@ -364,7 +364,8 @@ int targetTests(int &num) {
   // write a (target-size) flash page (only check that no fatal error)
   gdbDebugMessagePSTR(PSTR("targetWriteFlashPage: "), testnum++);
   const int flashaddr = 0x80;
-  fatalerror = NO_FATAL; setSysState(CONN_STATE);
+  fatalerror = NO_FATAL;
+  setSysState(CONN_STATE);
   DWeraseFlashPage(flashaddr);
   DWreenableRWW();
   validpg = false;
@@ -411,6 +412,7 @@ int targetTests(int &num) {
     if (page[i] != i) succ = false;
   }
   failed += testResult(fatalerror == NO_FATAL && succ);
+  fatalerror = NO_FATAL;	
 
   // restore registers (send to target) and save them (read from target)
   gdbDebugMessagePSTR(PSTR("targetRestoreRegisters/targetSaveRegisters: "), testnum++);
@@ -663,6 +665,7 @@ int DWtests(int &num)
   const int flashaddr = 0x100;
   DWeraseFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL);
+  fatalerror = NO_FATAL;
 
   // read the freshly cleared flash page
   gdbDebugMessagePSTR(PSTR("DWreadFlash (empty page): "), testnum++);
@@ -679,7 +682,9 @@ int DWtests(int &num)
   gdbDebugMessagePSTR(PSTR("DWloadFlashPage/DWprogramFlashPage: "), testnum++);
   for (i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
   DWloadFlashPageBuffer(flashaddr, newpage);
-  failed += testResult(DWprogramFlashPage(flashaddr));
+  DWprogramFlashPage(flashaddr);
+  failed += testResult(fatalerror == NO_FATAL);
+  fatalerror = NO_FATAL;
 
   // now try to read the freshly flashed page
   gdbDebugMessagePSTR(PSTR("DWreenableRWW/DWreadFlash: "), testnum++);
@@ -713,7 +718,8 @@ int DWtests(int &num)
     }
     if (succ) {
       //DEBLN(F("load temp successful"));
-      succ = DWprogramFlashPage(mcu.bootaddr);
+      DWprogramFlashPage(mcu.bootaddr);
+      succ = (fatalerror == NO_FATAL);
     }
     if (succ) {
       DWreenableRWW();
@@ -730,6 +736,7 @@ int DWtests(int &num)
     }
     failed += testResult(succ);
   }
+  fatalerror = NO_FATAL;
 
 
   // get chip id

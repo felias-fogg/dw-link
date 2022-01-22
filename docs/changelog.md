@@ -619,11 +619,17 @@ Version 0.9.9 (14-Nov-21)
 
 ## Version 1.3.3 (20-Jan-22)
 
-	- all DW read functions now test for timeout and try to recover 20 times; works pretty neat, but sometimes there are 15 timeouts in a row when reading the PC (but see below)
-	- if a timeout happens more than 20 times in a row, a fatal error is reported 
-	- added a 1µs delay to DWflushInput in order to decouple input from output, which seems to help
-	- new monitor function: monitor timeouts returns number of timeouts
-	- SingleWireSerial: moved reenabling DW input IRQ to the begin of the stop bit in the write method, which indeed reduces timeouts
-	- Without blinking, we have now no timeouts, even for 250 kbps; with blinking it is 1 timeout per 100 bp crossings, from which we always easily recover, or no timeouts at 125 kbps; perhaps we could try the Arduino Mega again?
-	- Shortened messages of the unit tests so that the sketch together with the unit tests still fit into the 32K space
+- all DW read functions now test for timeout and try to recover 20 times; works pretty neat, but sometimes there are 15 timeouts in a row when reading the PC (but see below)
+- if a timeout happens more than 20 times in a row, a fatal error is reported 
+- added a 1µs delay to DWflushInput in order to decouple input from output, which seems to help
+- new monitor function: monitor timeouts returns number of timeouts
+- SingleWireSerial: moved reenabling DW input IRQ to the begin of the stop bit in the write method, which indeed reduces timeouts
+- Without blinking, we have now no timeouts, even for 250 kbps; with blinking it is 1 timeout per 100 bp crossings, from which we always easily recover, or no timeouts at 125 kbps; perhaps we could try the Arduino Mega again?
+- Shortened messages of the unit tests so that the sketch together with the unit tests still fit into the 32K space
 
+## Version 1.3.4 (22-Jan-22)
+
+- since DW read timeouts are a symptom for an underlying problem, they are now all flagged as a fatal error; note that recovering silently implies that there will be unnoticed read errors
+- all sequences of sending a byte followed by a response are now wrapped with a block/unblock IRQ for other interrupt sources; in principle, one could also now allow for millis interrupts, provided communication speed on the DW line is not higher than 125 kbps; however, with 250 kbps, one may miss a break/U when the target stops (this has also been demonstrated)
+- default upper bound for DW speed is now 250 kbps (i.e. high)
+- included an ISR for "bad interrupts", which will lead to a fatal error (extremely unlikely that such a thing will happen)

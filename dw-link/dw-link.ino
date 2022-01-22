@@ -39,7 +39,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.3"
+#define VERSION "1.3.4"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -141,7 +141,7 @@
 #define DW_READIOREG_FATAL 123 // timeout during register read operation
 #define REENABLERWW_FATAL 124 // timeout during reeanble RWW operation
 #define EEPROM_READ_FATAL 125 // timeout during EEPROM read
-
+#define BAD_INTERRUPT_FATAL 126 // bad interrupt
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -427,7 +427,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
 const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
-unsigned long speedlimit = SPEEDLOW;
+unsigned long speedlimit = SPEEDHIGH;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, CkSlow, Erase, DWEN };
 
@@ -464,6 +464,12 @@ DEBDECLARE();
 
 /****************** Interrupt routines *********************/
 
+// catch undefined/unwantd irqs: should not happen at all
+ISR(BADISR_vect)
+{
+  reportFatalError(BAD_INTERRUPT_FATAL, false);
+}
+
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 {
   // the ISR can be interrupted at any point by itself, the only problem
@@ -491,6 +497,26 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   busy--;
 }
 
+byte saveTIMSK0;
+byte saveUCSR0B;
+// block all irqs but the timer1 interrupt necessary
+// for receiving bytes over the dw line
+void blockIRQ(void)
+{
+  saveTIMSK0 = TIMSK0;
+  TIMSK0 = 0;
+  saveUCSR0B = UCSR0B;
+  UCSR0B &= ~(RXCIE0|TXCIE0|UDRIE0);
+}
+
+void unblockIRQ(void)
+{
+  TIMSK0 = saveTIMSK0;
+  UCSR0B = saveUCSR0B;
+}
+
+  
+  
 
 /******************* setup & loop ******************************/
 void setup(void) {
@@ -509,7 +535,7 @@ void setup(void) {
   Serial1.begin(115200);
   Serial.println(F("dw-link V" VERSION));
 #endif
-  TIMSK0 = 0; // no millis interrupts
+  //TIMSK0 = 0; // no millis interrupts
   ctx.hostbps = INITIALBPS;
   ctx.von = false;
   ctx.vhigh = false;
@@ -543,7 +569,16 @@ void loop(void) {
   } else if (ctx.state == RUN_STATE) {
     if (dw.available()) {
       byte cc = dw.read();
+#if SCOPEDEBUG
+      PORTC |= 0x02;
+      PORTC &= ~0x02;
+#endif
       if (cc == 0x0) { // break sent by target
+#if SCOPEDEBUG
+	PORTC |= 0x02;
+	PORTC |= 0x02;
+	PORTC &= ~0x02;
+#endif
 	if (expectUCalibrate()) {
 	  DEBLN(F("Execution stopped"));
 	  _delay_us(5); // avoid conflicts on the line
@@ -565,10 +600,11 @@ void monitorSystemLoadState(void) {
   if (Serial.available()) noinput = 0;
   noinput++;
   if (noinput == 2777) { // roughly 50 msec, based on the fact that one loop is 18 usec
-    if (ctx.state == LOAD_STATE && ctx.bps >= 30000) { // if too slow, wait for next command
-                                                       // instead of asnychronous load
+    if (ctx.state == LOAD_STATE) {
+      if (ctx.bps >= 30000)  // if too slow, wait for next command
+                              // instead of asnychronous load
+	targetFlushFlashProg();
       setSysState(CONN_STATE);
-      targetFlushFlashProg();
     }
   }
 }
@@ -2323,7 +2359,6 @@ void targetReadEeprom(unsigned int addr, byte *mem, unsigned int len)
 void targetWriteFlashPage(unsigned int addr)
 {
   byte subpage;
-  boolean succ = true;
 
   measureRam();
 
@@ -2648,14 +2683,17 @@ boolean expectUCalibrate(void) {
   unsigned long newbps;
 
   measureRam();
+  blockIRQ();
   newbps = dw.calibrate(); // expect 0x55 and calibrate
   DEBPR(F("Rsync (1): ")); DEBLN(newbps);
   if (newbps < 10) {
     ctx.bps = 0;
+    unblockIRQ();
     return false; // too slow
   }
   if ((100*(abs((long)ctx.bps-(long)newbps)))/newbps <= 1)  { // less than 2% deviation -> ignore change
     DEBLN(F("No change: return"));
+    unblockIRQ();
     return true;
   }
   dw.begin(newbps);
@@ -2666,6 +2704,7 @@ boolean expectUCalibrate(void) {
 #if CONSTDWSPEED == 0
   DWsetSpeed(speed);
   ctx.bps = dw.calibrate(); // calibrate again
+  unblockIRQ();
   DEBPR(F("Rsync (2): ")); DEBLN(ctx.bps);
   if (ctx.bps < 100) {
     DEBLN(F("Second calibration too slow!"));
@@ -2742,19 +2781,17 @@ unsigned int getResponse (byte *data, unsigned int expected) {
 
 // send command and wait for response that should be word, MSB first
 unsigned int getWordResponse (byte cmd) {
+  unsigned int response;
   byte tmp[2];
-  byte timeout = 0;
   byte cmdstr[] =  { cmd };
   measureRam();
 
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(cmdstr, 1);
-    if (getResponse(&tmp[0], 2) == 2) break;
-    timeoutcnt++;
-    timeout++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(DW_TIMEOUT_FATAL,true);
+  DWflushInput();
+  blockIRQ();
+  sendCommand(cmdstr, 1);
+  response = getResponse(&tmp[0], 2);
+  unblockIRQ();
+  if (response != 2) reportFatalError(DW_TIMEOUT_FATAL,true);
   return ((unsigned int) tmp[0] << 8) + tmp[1];
 }
 
@@ -2831,39 +2868,35 @@ void DWwriteRegister (byte reg, byte val) {
 // Read all registers
 void DWreadRegisters (byte *regs)
 {
-  byte timeout = 0;
+  int response;
   byte rdRegs[] = {0x66,
 		   0xD0, mcu.stuckat1byte, 0x00, // start reg
 		   0xD1, mcu.stuckat1byte, 0x20, // end reg
 		   0xC2, 0x01};                  // read registers
   measureRam();
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(rdRegs,  sizeof(rdRegs));
-    sendCommand((const byte[]) {0x20}, 1);         // Go
-    if (getResponse(regs, 32) == 32) break;        // Get value sent as response
-    timeoutcnt++;
-    timeout++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(DW_READREG_FATAL,true);
+  DWflushInput();
+  sendCommand(rdRegs,  sizeof(rdRegs));
+  blockIRQ();
+  sendCommand((const byte[]) {0x20}, 1);         // Go
+  response = getResponse(regs, 32);
+  unblockIRQ();
+  if (response != 32) reportFatalError(DW_READREG_FATAL,true);
 }
 
 // Read register <reg> by building and executing an "out DWDR,<reg>" instruction via the CMD_SET_INSTR register
 byte DWreadRegister (byte reg) {
+  int response;
   byte res = 0;
-  byte timeout = 0;
   byte rdReg[] = {0x64,                                                 // Set up for single step using loaded instruction
                   0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg)}; // Build "out DWDR, reg" instruction
   measureRam();
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(rdReg,  sizeof(rdReg));
-    sendCommand((const byte[]) {0x23}, 1);                                // Go
-    if (getResponse(&res,1) == 1) break;
-    timeoutcnt++;
-    timeout++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(DW_READREG_FATAL,true);
+  DWflushInput();
+  sendCommand(rdReg,  sizeof(rdReg));
+  blockIRQ();
+  sendCommand((const byte[]) {0x23}, 1);                                // Go
+  response = getResponse(&res,1);
+  unblockIRQ();
+  if (response != 1) reportFatalError(DW_READREG_FATAL,true);
   return res;
 }
 
@@ -2881,6 +2914,7 @@ void DWwriteSramByte (unsigned int addr, byte val) {
                    0x20,                                              // Go
                    val};
   measureRam();
+  DWflushInput();
   sendCommand(wrSram, sizeof(wrSram));
 }
 
@@ -2900,7 +2934,7 @@ void DWwriteIOreg (byte ioreg, byte val)
 // Read one byte from SRAM address space using an SRAM-based value for <addr>, not an I/O address
 byte DWreadSramByte (unsigned int addr) {
   byte res = 0;
-  byte timeout = 0;
+  unsigned int response;
   byte rdSram[] = {0x66,                                              // Set up for read/write 
                    0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
                    0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
@@ -2911,37 +2945,33 @@ byte DWreadSramByte (unsigned int addr) {
                    0xD1, mcu.stuckat1byte, 0x02,                                  // 
                    0xC2, 0x00};                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
   measureRam();
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(rdSram, sizeof(rdSram));
-    sendCommand((const byte[]) {0x20}, 1);                              // Go
-    if (getResponse(&res,1) == 1) break;
-    timeoutcnt++;
-    timeout++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(SRAM_READ_FATAL,true);
+  DWflushInput();
+  sendCommand(rdSram, sizeof(rdSram));
+  blockIRQ();
+  sendCommand((const byte[]) {0x20}, 1);                              // Go
+  response = getResponse(&res,1);
+  unblockIRQ();
+  if (response != 1) reportFatalError(SRAM_READ_FATAL,true);
   return res;
 }
 
 // Read one byte from IO register (via R0)
 byte DWreadIOreg (byte ioreg)
 {
+  unsigned int response; 
   byte res = 0;
-  byte timeout = 0;
   byte rdIOreg[] = {0x64,                                              // Set up for single step using loaded instruction
 		    0xD2, inHigh(ioreg, 0), inLow(ioreg, 0),           // Build "out DWDR, reg" instruction
 		    0x23,
 		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0)};  // Build "out DWDR, 0" instruction
   measureRam();
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(rdIOreg, sizeof(rdIOreg));
-    sendCommand((const byte[]) {0x23}, 1);                            // Go
-    if (getResponse(&res,1) == 1) break;
-    timeoutcnt++;
-    timeout++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(DW_READIOREG_FATAL,true);
+  DWflushInput();
+  sendCommand(rdIOreg, sizeof(rdIOreg));
+  blockIRQ();
+  sendCommand((const byte[]) {0x23}, 1);                            // Go
+  response = getResponse(&res,1);
+  unblockIRQ();
+  if (response != 1) reportFatalError(DW_READIOREG_FATAL,true);
   return res;
 }
 
@@ -2949,8 +2979,7 @@ byte DWreadIOreg (byte ioreg)
 // Note: can't read addresses that correspond to  r28-31 (Y & Z Regs) because Z is used for transfer (not sure why Y is clobbered) 
 void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   unsigned int len2 = len * 2;
-  byte rsp;
-  byte timeout = 0;
+  unsigned int rsp;
   byte rdSram[] = {0x66,                                            // Set up for read/write using 
 		   0xD0, mcu.stuckat1byte, 0x1E,                    // Set Start Reg number (r30)
 		   0xD1, mcu.stuckat1byte, 0x20,                    // Set End Reg number (r31) + 1
@@ -2962,23 +2991,18 @@ void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
 		   0xC2, 0x00};                                     // Set simulated "ld r?,Z+; out DWDR,r?" instructions
   measureRam();
   
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(rdSram, sizeof(rdSram));
-    sendCommand((const byte[]) {0x20}, 1);                            // Go
-    rsp = getResponse(mem, len);
-    if (rsp == len) break;
-    // Wait and retry read
-    _delay_ms(1);
-    timeoutcnt++;
-    timeout++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(SRAM_READ_FATAL,true);
+  DWflushInput();
+  sendCommand(rdSram, sizeof(rdSram));
+  blockIRQ();
+  sendCommand((const byte[]) {0x20}, 1);                            // Go
+  rsp = getResponse(mem, len);
+  unblockIRQ();
+  if (rsp != len) reportFatalError(SRAM_READ_FATAL,true);
 }
 
 //   Read one byte from EEPROM
 byte DWreadEepromByte (unsigned int addr) {
-  byte timeout = 0;
+  unsigned int response;
   byte retval;
   byte setRegs[] = {0x66,                                                        // Set up for read/write 
                     0xD0, mcu.stuckat1byte, 0x1C,                                // Set Start Reg number (r28)
@@ -2993,20 +3017,17 @@ byte DWreadEepromByte (unsigned int addr) {
                     0xD2, outHigh(mcu.dwdr, 29), outLow(mcu.dwdr, 29)};          // out DWDR,r29   Send data back via DWDR reg
   measureRam();
   
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(setRegs, sizeof(setRegs));
-    sendCommand((const byte[]){0x64},1);                                  // Set up for single step using loaded instruction
-    if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
-      sendCommand(doReadH, sizeof(doReadH));
-    sendCommand(doRead, sizeof(doRead));                                  // set rest of control regs and query
-    sendCommand((const byte[]) {0x23}, 1);                                // Go
-    if (getResponse(&retval,1) == 1) break;
-    _delay_ms(1);
-    timeout++;
-    timeoutcnt++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(EEPROM_READ_FATAL,true);
+  DWflushInput();
+  sendCommand(setRegs, sizeof(setRegs));
+  blockIRQ();
+  sendCommand((const byte[]){0x64},1);                                  // Set up for single step using loaded instruction
+  if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
+    sendCommand(doReadH, sizeof(doReadH));
+  sendCommand(doRead, sizeof(doRead));                                  // set rest of control regs and query
+  sendCommand((const byte[]) {0x23}, 1);                                // Go
+  response = getResponse(&retval,1);
+  unblockIRQ();
+  if (response != 1) reportFatalError(EEPROM_READ_FATAL,true);
   return retval;
 }
 
@@ -3037,7 +3058,6 @@ void DWwriteEepromByte (unsigned int addr, byte val) {
 //  Read len bytes from flash memory area at <addr> into mem buffer
 void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int rsp;
-  byte timeout = 0;
   unsigned int lenx2 = len * 2;
   byte rdFlash[] = {0x66,                                               // Set up for read/write
 		    0xD0, mcu.stuckat1byte, 0x1E,                       // Set Start Reg number (r30)
@@ -3049,22 +3069,18 @@ void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
 		    0xD1, (byte)((lenx2 >> 8)+mcu.stuckat1byte),(byte)(lenx2),// Set end = repeat count = sizeof(flashBuf) * 2
 		    0xC2, 0x02};                                        // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
   measureRam();
-  while (timeout < TIMEOUTMAX) {
-    DWflushInput();
-    sendCommand(rdFlash, sizeof(rdFlash));
-    sendCommand((const byte[]) {0x20}, 1);                                // Go
-    rsp = getResponse(mem, len);                                          // Read len bytes
-    if (rsp ==len) break;
-    _delay_ms(1);
-    timeout++;
-    timeoutcnt++;
-  }
-  if (timeout >= TIMEOUTMAX) reportFatalError(FLASH_READ_FATAL,true);
+  DWflushInput();
+  sendCommand(rdFlash, sizeof(rdFlash));
+  blockIRQ();
+  sendCommand((const byte[]) {0x20}, 1);                                // Go
+  rsp = getResponse(mem, len);                                          // Read len bytes
+  unblockIRQ();
+  if (rsp != len) reportFatalError(FLASH_READ_FATAL,true);
 }
 
 // erase entire flash page
 void DWeraseFlashPage(unsigned int addr) {
-  byte timeout;
+  byte timeout = 0;
   byte eflash[] = { 0x64, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
@@ -3083,7 +3099,7 @@ void DWeraseFlashPage(unsigned int addr) {
     sendCommand(eflash, sizeof(eflash));
     sendCommand((const byte[]) {0x33}, 1);
     if (expectBreakAndU()) break;
-    _delay_ms(1);
+    _delay_us(1600);
     timeout++;
     timeoutcnt++;
   }
@@ -3091,7 +3107,7 @@ void DWeraseFlashPage(unsigned int addr) {
 }
 		    
 // now move the page from temp memory to flash
-boolean DWprogramFlashPage(unsigned int addr)
+void DWprogramFlashPage(unsigned int addr)
 {
   boolean succ;
   byte timeout = 0;
@@ -3252,7 +3268,7 @@ byte DWflushInput(void)
     c = dw.read();
     // DEBLN(c);
   }
-  _delay_us(1);
+  //  _delay_us(1);
   return c;
 }
 
