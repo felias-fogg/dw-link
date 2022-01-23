@@ -633,3 +633,9 @@ Version 0.9.9 (14-Nov-21)
 - all sequences of sending a byte followed by a response are now wrapped with a block/unblock IRQ for other interrupt sources; in principle, one could also now allow for millis interrupts, provided communication speed on the DW line is not higher than 125 kbps; however, with 250 kbps, one may miss a break/U when the target stops (this has also been demonstrated)
 - default upper bound for DW speed is now 250 kbps (i.e. high)
 - included an ISR for "bad interrupts", which will lead to a fatal error (extremely unlikely that such a thing will happen)
+
+## Version 1.3.5 (23-Jan-22)
+
+- Put unittest.ino back into main file (at the end)
+- Created dw-link.h with all function declarations and included this into dw-link.ino
+- Removed loop+setup and included main instead; now one has a perfectly valid C++ source code file
