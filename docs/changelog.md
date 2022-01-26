@@ -636,6 +636,12 @@ Version 0.9.9 (14-Nov-21)
 
 ## Version 1.3.5 (23-Jan-22)
 
-- Put unittest.ino back into main file (at the end)
-- Created dw-link.h with all function declarations and included this into dw-link.ino
-- Removed loop+setup and included main instead; now one has a perfectly valid C++ source code file
+- put unittest.ino back into main file (at the end)
+- created dw-link.h with all function declarations and included this into dw-link.ino
+- removed loop+setup and included main instead; now one has a perfectly valid C++ source code file
+
+## Version 1.3.6 (26-Jan-22)
+
+- added init() to main: now dw-link starts up again and works
+- minimized code of DWreadSramByte by calling DWreadSramBytes with length=1
+- disabled millis-IRQ again (was still on by accident)

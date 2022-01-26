@@ -39,7 +39,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.5"
+#define VERSION "1.3.6"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -524,6 +524,12 @@ void unblockIRQ(void)
 
 /******************* main ******************************/
 int main(void) {
+  // Arduino init
+   init();
+#if defined(USBCON)
+  USBDevice.attach();
+#endif
+  
   // setup
   Serial.begin(INITIALBPS);
   pinMode(SNSGND, INPUT_PULLUP);
@@ -539,7 +545,7 @@ int main(void) {
   Serial1.begin(115200);
   Serial.println(F("dw-link V" VERSION));
 #endif
-  //TIMSK0 = 0; // no millis interrupts
+  TIMSK0 = 0; // no millis interrupts
   ctx.hostbps = INITIALBPS;
   ctx.von = false;
   ctx.vhigh = false;
@@ -564,7 +570,7 @@ int main(void) {
 #endif
   DEBLN(F("Setup done"));
 
-  // main loop
+  // loop
   while (1) {
     monitorSystemLoadState();
     configureSupply();
@@ -592,6 +598,7 @@ int main(void) {
       }
     }
   }
+  return 0;
 }
 
 /****************** system state routines ***********************/
@@ -2939,6 +2946,10 @@ void DWwriteIOreg (byte ioreg, byte val)
 // Read one byte from SRAM address space using an SRAM-based value for <addr>, not an I/O address
 byte DWreadSramByte (unsigned int addr) {
   byte res = 0;
+
+#if 1
+  DWreadSramBytes(addr, &res, 1);
+#else
   unsigned int response;
   byte rdSram[] = {0x66,                                              // Set up for read/write 
                    0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
@@ -2957,6 +2968,7 @@ byte DWreadSramByte (unsigned int addr) {
   response = getResponse(&res,1);
   unblockIRQ();
   if (response != 1) reportFatalError(SRAM_READ_FATAL,true);
+#endif
   return res;
 }
 
