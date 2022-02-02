@@ -280,7 +280,7 @@ I noticed recently, that another optimization setting can significantly impact y
 
 So, what can you do, if you do not want to use the CLI interface, but the IDE? You can modify the ```boards.txt``` file (residing in the same directory as the `platform.txt`file) and introduce for each type of MCU a new menu entry ```debug``` that when enabled adds the build option ```-Og```. 
 
-In order to simplify live for you, I have provided a Python script (in the folder `examples/configuration-files`) called `debugadd.py`. Copy this script into the same folder as where you copied `platform.local.txt`, change into this folder, and execute the script by calling `python3 debugadd.py`. This will add a menu entry for each listed MCU/board in the `boards.txt` file. Again, for ATtinyCore starting with version 2.0.0, this is not necessary because you already can choose the optimization options.
+In order to simplify life for you, I have provided a Python script (in the folder `examples/configuration-files`) called `debugadd.py`. Copy this script into the same folder as where you copied `platform.local.txt`, change into this folder, and execute the script by calling `python3 debugadd.py`. This will add a menu entry for each listed MCU/board in the `boards.txt` file. Again, for ATtinyCore starting with version 2.0.0, this is not necessary because you already can choose the optimization options.
 
 ### 5.4 Installing avr-gdb
 
@@ -983,7 +983,7 @@ Initial version
 
 - New example: Debugging Uno board as target
 
-#### V1.7
+#### V 1.7
 
 - Changes in 8.7 
 - Section 9, Problem 'vMustReplyEmpty': timeout - explanation of what problems I encountered

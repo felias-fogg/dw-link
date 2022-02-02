@@ -19,11 +19,11 @@ def massage(lines):
         for b in allboards:
             newlines.append("\n");
             newlines.append(b + ".menu.debug.nodebug=No Debug\n")
-            newlines.append(b + ".menu.debug.nodebug.build=\n")
+            newlines.append(b + ".menu.debug.nodebug.build.debug=\n")
             newlines.append(b + ".menu.debug.debug=Debug\n")
-            newlines.append(b + ".menu.debug.debug.build=-Og\n")
+            newlines.append(b + ".menu.debug.debug.build.debug=-Og\n")
             newlines.append(b + ".menu.debug.noltodebug=Debug (no LTO)\n")
-            newlines.append(b + ".menu.debug.noltodebug.build=-Og -fno-lto\n")
+            newlines.append(b + ".menu.debug.noltodebug.build.debug=-Og -fno-lto\n")
             newlines.append(b + ".build.extra_flags={build.debug} " + extraflags.get(b,"\n"))
     return newlines
 
