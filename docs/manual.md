@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 1.5 - January 22, 2022**
+**Version 1.6 - January 29, 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -198,6 +198,10 @@ ATtiny pin# | Arduino Uno pin | component
 
 We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED.
 
+If instead of an ATtiny85, you want to debug an Uno board, everything said above applies here as well. A Fritzing sketch showing you the connections is below. Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))!
+
+![Uno as DUT](pics/Debug-Uno.png)
+
 ### 4.3 States of the hardware debugger
 
 There are four states, the debugger can be in and each is signaled by a different blink pattern of the system LED:
@@ -236,35 +240,33 @@ __ARDUINO\_AVR\___*XXX* | undef | These constants are set when using the compile
 
 ## 5. Arduino IDE and avr-gdb
 
-Assuming that you are working with the Arduino IDE and/or Arduino CLI, the simplest way of starting to debug your code is to use the GNU debugger. You only have to download the debugger and make a few changes to some of the configuration files. Please take notes on what you change because these changes will vanish when you upgrade to a new version of the Arduino package.
+Assuming that you are working with the Arduino IDE and/or Arduino CLI, the simplest way of starting to debug your code is to use the GNU debugger. You only have to download the debugger and make a few changes to some of the configuration files of the Arduino IDE.
 
-### 5.1 Installing ATTinyCore
+### 5.1 Installing alternative cores
 
-Since ATtinys are not supported by default, one needs to download and install [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md), an Arduino core for the classic ATtinys using the boards manager. After you have done that, you need to create a ```platform.local.txt``` file in the right directory and might want to add some lines to the ```boards.txt``` file. 
+If you want to debug ATTinys or ATmegaX8s, then you need to download and install alternative cores. For the classic ATtiny family, this is [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md), for the special case ATtiny13, it is [MicroCore](https://github.com/MCUdude/MicroCore), and for the ATmegaX8 family, it is [MiniCore](https://github.com/MCUdude/MiniCore). You can either install them manually in the folder `hardware` in your Arduino sketch folder, or you download and install them using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools/Board`. If you want to do that, you first have to add URLs under the Additional Board Manager URLs in the `Preference` menu:
+
+- ATTinyCore: http://drazzy.com/package_drazzy.com_index.json
+- MicroCore: https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+- MiniCore: https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 
 <a name="section52"></a>
 
-### 5.2 Modifications of platform.local.txt
+### 5.2 Adding platform.local.txt
 
-When you have chosen the **Boards Manager Installation**, then you will find the ATTinyCore configuration files under the following directories:
+When you have chosen the **Boards Manager Installation** (or you look for the Arduino AVR core), then you will find the core configuration files under the following directories (*NAME* being the name of the core, *VERSION* being the version of the core):
 
-* macOS: ~/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2
-* Linux: ~/.arduino15/packages/ATTinyCore/hardware/avr/1.5.2
-* Windows: C:\Users\\*USERNAME*\AppData\Local\Arduino15\packages\ATTinyCore\hardware\avr\1.5.2
+* macOS: ~/Library/Arduino15/packages/*NAME*/hardware/avr/*VERSION*
+* Linux: ~/.arduino15/packages/*NAME*/hardware/avr*/VERSION*
+* Windows: C:\Users\\*USERNAME*\AppData\Local\Arduino15\packages\\*NAME*\hardware\avr\\*VERSION*
 
-If you have chosen **Manual Installation**, then you know where to look. In the directory with the ```platform.txt``` file create ```platform.local.txt``` (see `example/platform-local`) with the following contents:
+If you have chosen **Manual Installation**, then you know where to look. 
 
-```
-recipe.hooks.savehex.postsavehex.1.pattern.macosx=cp "{build.path}/{build.project_name}.elf" "{sketch_path}"
-recipe.hooks.savehex.postsavehex.1.pattern.linux=cp "{build.path}/{build.project_name}.elf" "{sketch_path}"
-recipe.hooks.savehex.postsavehex.1.pattern.windows=cmd /C copy "{build.path}\{build.project_name}.elf" "{sketch_path}"
-```
-
-These three lines make sure that you receive an [*ELF*](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using `avr-gdb`. 
+We now have to add a configuration file  ```platform.local.txt```,  which will make sure that you receive an [*ELF*](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using `avr-gdb`. You can simply copy `platform.local.txt` from the folder `examples/configuration-files` residing in the *dw-link* repository into the core configuration folder. Note that for ATtinyCore starting with version 2.0.0, you do not need to do this since this core already exports the ELF files.
 
 ### 5.3 Changing the optimization level: arduino-cli option or board.txt modification
 
-Because of the compiler optimization level that is used by the Arduino IDE, the machine code produced by the compiler does not follow straightforwardly your source code. For this reason, it is advisable to use the optimization flag **-Og** (compile in a debugging friendly way) instead of the default optimization flag **-Os** (optimize to minimize space). If you are using the console line interface `arduino-cli`, then this is easily achieved by adding the following option to the `arduino-cli compile` command:
+Because of the *compiler optimization level* that is used by the Arduino IDE, the machine code produced by the compiler does not follow straightforwardly your source code. For this reason, it is advisable to use the optimization flag **-Og** (compile in a debugging friendly way) instead of the default optimization flag **-Os** (optimize to minimize space). If you are using the console line interface `arduino-cli`, then this is easily achieved by adding the following option to the `arduino-cli compile` command:
 
 ```
 --build-property build.extra_flags="-Og" 
@@ -276,30 +278,9 @@ I noticed recently, that another optimization setting can significantly impact y
 --build-property build.extra_flags="-Og -fno-lto" 
 ```
 
-What can you do, if you do not want to use the CLI interface, but the IDE? You can modify the ```boards.txt``` file (residing in the same directory as the `platform.txt`file) and introduce for each type of MCU a new menu entry ```debug``` that when enabled adds the build option ```-Og```. For the ATTinyCore platform, you could simply add another menu entry in `boards.txt` under the first couple of lines as follows:
+So, what can you do, if you do not want to use the CLI interface, but the IDE? You can modify the ```boards.txt``` file (residing in the same directory as the `platform.txt`file) and introduce for each type of MCU a new menu entry ```debug``` that when enabled adds the build option ```-Og```. 
 
-`
-menu.debug=Debug Compile Flag
-`
-
-If you now want to be able to modify the debug flag for the ATtinyX5, scroll down to the line 
-
-`
-attinyx5.build.extra_flags={build.millis} -DNEOPIXELPORT=PORTB {build.pllsettings}
-`
-
-and add `{build.debug}` to the end of this line. Before the line, you have to insert the following four lines:
-
-```
-attinyx5.menu.debug.disabled=Disabled
-attinyx5.menu.debug.disabled.build.debug=
-attinyx5.menu.debug.enabled=Enabled
-attinyx5.menu.debug.enabled.build.debug=-Og -fno-lto
-```
-
-Now you have to restart the Arduino IDE. If you select `ATtiny25/45/85 (No bootloader)` from the menu of possible MCUs, then you will notice that there is a new menu option `Debug`. By the way, the LTO option can also be disabled separately. 
-
-What can be done for the ATtiny `board.txt` configuration file can be be applied to other such files as well, of course. It is a bit of work and, as mentioned earlier, you may want to save a copy because the changes you made will vanish when a new version of the ATTinyCore is installed.
+In order to simplify live for you, I have provided a Python script (in the folder `examples/configuration-files`) called `debugadd.py`. Copy this script into the same folder as where you copied `platform.local.txt`, change into this folder, and execute the script by calling `python3 debugadd.py`. This will add a menu entry for each listed MCU/board in the `boards.txt` file. Again, for ATtinyCore starting with version 2.0.0, this is not necessary because you already can choose the optimization options.
 
 ### 5.4 Installing avr-gdb
 
@@ -309,7 +290,7 @@ Unfortunately, the debugger is not any longer part of the toolchain integrated i
 
 * Linux: Just install avr-gdb with your favorite packet manager.
 
-* Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or from [Zak's Electronic Blog\~\*](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb.
+* Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or from [Zak's Electronic Blog\~\*](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb. You have to put it somewhere and set the `PATH` variable so that one call avr-gdb in a command line window.
 
 ### 5.5 Example session with avr-gdb
 
@@ -754,11 +735,11 @@ Sometimes, in particular when using a clock speed below 1 MHz, responses from th
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen (see [monitor commands](#monitor-commands)). Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing the commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen (see [monitor commands](#monitor-commands)). Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing these commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
 
 Another reason for slow loading times can be that the communication speed to the host is low. Check the speed by typing the command `monitor serial`. You can set the speed to 230400 by supplying the speed when using the `set serial baud` command. This has to done *before* connecting to the hardware debugger using the `target remote` command. 
 
-With an optimal setting, i.e., 125 kbps for the debugWIRE line and 230400 kbps for the host communication line, loading is done with 500-700 bytes/second. It is should be 3-5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed).
+With an optimal setting, i.e., 250 kbps for the debugWIRE line and 230400 kbps for the host communication line, loading is done with 500-800 bytes/second. It is should be 3-5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed).
 
 ### 8.3 Program execution is very slow when conditional breakpoints are present
 
@@ -784,16 +765,21 @@ When you activate *sleep mode*, the power consumed by the MCU is supposed to go 
 
 There are a few situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) mentions the following:
 
-* BOD and WDT resets lead to loss of connection 
-* The voltage should not be changed during a debug session
-* The OSCCAL and CLKPR registers should not be changed during a debug session
 * The PRSPI bit in the power-saving register should not be set
-* The CKDIV8 fuse should not be in the programmed state when running off a 128 kHz clock source
 * Breakpoints should not be set at the last address of flash memory
 * Do not single step over a SLEEP instruction
-* Do not insert breakpoints immediately after an LPM instruction
+* Do not insert breakpoints immediately after an LPM instruction and do not single-step LPM code
 
-If you do one of these things, either you might lose the connection to the target or, in the last three cases, the instruction might do something wrong. If you lose connection to the target, then it is very likely that there are still BREAK instructions in flash memory. So, after reconnecting, you need to issue the `load` command in order to get a clean copy of your binary into flash memory.
+Since the debugWIRE communication hardware uses the SPI machinery, it is obvious that one should not disable it by setting the power-saving bits. Otherwise the communication will not work any longer. The latter three situations may lead to problems stopping at the breakpoint or executing the instructions, respectively.
+
+The list of known issues mentions also the following four potential problems:
+
+* BOD and WDT resets lead to loss of connection 
+* The OSCCAL and CLKPR registers should not be changed during a debug session
+* The voltage should not be changed during a debug session
+* The CKDIV8 fuse should not be in the programmed state when running off a 128 kHz clock source
+
+However, I had no problems reconnecting to the target when the target had been stopped asynchronously or by a breakpoint. The only problem was that the target will not stop at the hardware breakpoint after a reset, since this hardware breakpoint will be cleared by the reset. So, if you want to be sure to stop after a reset, place two different breakpoints in the startup routine. Changing the clock frequency is also not a problem since at each stop the debugger re-synchronizes with the target. Further, changing the supply voltage can be done, if you have level-shifting hardware in place. Finally, debugging at very low clock frequencies (128 kHz/8 = 16 kHz) is not impossible, but communication is extremely slow.
 
 ### 8.8 BREAK instructions in your program
 
@@ -833,7 +819,9 @@ One common problem is that the debug environment is not the first environment or
 
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
-Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 230400, 115200, 57600, 38400, 19200, and 9600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. I also noticed that some Arduino Nanos that use the CH340 USB-to-serial converter should not be used with high bitrates. The highest sustainable bitrate appears to be 115200  bps for those boards. A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
+Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 115200, 9600, 19200, 38400, 57600, and 230400 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. I also noticed that some Arduino Nanos could not be used with 230400 bps. My Uno boards support 230400 bps. 
+
+A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
 
 #### Problem: It is not possible to connect to an ATmega48 or ATmega88 using the *target remote* command
 
@@ -991,3 +979,12 @@ Initial version
 - New error message (126)
 - default DW speed is now 250 kbps
 
+#### V 1.6
+
+- New example: Debugging Uno board as target
+
+#### V1.7
+
+- Changes in 8.7 
+- Section 9, Problem 'vMustReplyEmpty': timeout - explanation of what problems I encountered
+- Section 5.1-5.3 have been reworked, in particular concerning ATTinyCore 2.0.0 and the new Python script for extending the boards.txt files.

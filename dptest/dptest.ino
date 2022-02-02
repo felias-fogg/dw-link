@@ -24,25 +24,6 @@
 #define LEDPORT PORTB    // port register of system LED
 #define LEDPIN  PB5      // pin (=D13)
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_LEONARDO)
-#define ID      "LEONARDO"
-#define VHIGH   2        // switch, low signals that one should use the 5V supply
-#define VON     5        // switch, low signals that dw-probe should deliver the supply charge
-#define V5      9        // a low level switches the MOSFET for 5 volt on 
-#define V33     7        // a low level switches the MOSFET for 3.3 volt on 
-#define VSUP    9        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 18        // If low, then we use a shield
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define DSCK    12        // SCK
-#define DMOSI   10        // MOSI
-#define DMISO   11        // MISO
-#define DEBTX   3        // TX line for TXOnlySerial
-#define ISPROG  6        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 13
-#define LEDDDR  DDRC     // DDR of system LED
-#define LEDPORT PORTC    // port register of system LED
-#define LEDPIN  PC7      // pin (=D13)
-//-----------------------------------------------------------
 #elif defined(ARDUINO_AVR_MEGA2560)
 #define ID      "MEGA"
 #define VHIGH   2        // switch, low signals that one should use the 5V supply
@@ -107,45 +88,7 @@
 //#define LEDPORT PORTC    // port register of system LED
 //#define LEDPIN  PC7      // not connected to the outside world!
 //-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_PROMICRO)  // Pro Micro, i.e., that is a Mega 32U4
-#define ID      "PRO MICRO"
-#define VHIGH  20        // switch, low signals that one should use the 5V supply
-#define VON     2        // switch, low signals tha dw-probe should deliver the supply charge
-#define V33    18        // a low level switches the MOSFET for 3.3 volt on 
-#define V5     19        // a low level switches the MOSFET for 5 volt on 
-#define VSUP   19        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 10        // If low, then we are on the adapter board
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define DSCK    14        // SCK
-#define DMOSI    3        // MOSI
-#define DMISO    6        // MISO
-#define DEBTX   5        // TX line for TXOnlySerial
-#define ISPROG   16        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB0      // Arduino pin 17
-//-----------------------------------------------------------
-#elif defined(ARDUINO_AVR_MICRO)  // Micro, i.e., that is a Mega 32U4
-#define ID      "MICRO"
-#define VHIGH   7        // switch, low signals that one should use the 5V supply
-#define VON    19        // switch, low signals tha dw-probe should deliver the supply charge
-#define V33     5        // a low level switches the MOSFET for 3.3 volt on 
-#define V5      6        // a low level switches the MOSFET for 5 volt on 
-#define VSUP    6        // Vcc - direct supply charge (limit it to 20-30 mA!)
-#define SNSGND 11        // If low, then we are on the adapter board
-#define DWLINE  4        // RESET (needs to be 4 (for Mega32U4) so that we can use it as an input for TIMER1)
-#define DSCK     3        // SCK
-#define DMOSI   20        // MOSI
-#define DMISO   23        // MISO
-#define DEBTX  22        // TX line for TXOnlySerial
-#define ISPROG    2        // if low, signals that one wants to use the ISP programming feature
-// System LED = Arduino pin 17 (RXLED) (connected to RXI, which is not connected to anything else)
-#define LEDDDR  DDRB     // DDR of system LED
-#define LEDPORT PORTB    // port register of system LED
-#define LEDPIN  PB0      // Arduino pin 17
-//-----------------------------------------------------------#else
-#error "Board is not supported yet. dw-probe works only on Uno, Leonardo, Mega, Nano, Pro Mini, Micro, and Pro Micro (yet)" 
+#error "Board is not supported yet. dw-probe works only on Uno, Leonardo, Mega, Nano, Pro Mini" 
 #endif
 
 void setup() {

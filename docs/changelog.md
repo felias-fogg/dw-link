@@ -645,3 +645,12 @@ Version 0.9.9 (14-Nov-21)
 - added init() to main: now dw-link starts up again and works
 - minimized code of DWreadSramByte by calling DWreadSramBytes with length=1
 - disabled millis-IRQ again (was still on by accident)
+
+## Version 1.3.7 (02-Feb-22)
+
+- added Serial.end() in detectRSPCommSpeed in order to get the
+procedure to work with Nanos that use a FTDI chip
+- changed directory `platform-local` to `configuration-files`
+- added `debugadd.py` in  `configuration-files`, which can be used to
+  modify the `boards.txt` files in the different cores in order to
+  enable debugging

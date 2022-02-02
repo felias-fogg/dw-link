@@ -39,15 +39,15 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.6"
+#define VERSION "1.3.7"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
 #endif
 
 #ifndef INITIALBPS 
-#define INITIALBPS 230400UL // initial expected communication speed with the host
-                            // 115200, 57600, 38400, 19200, 9600 are alternatives
+#define INITIALBPS 115200UL // initial expected communication speed with the host
+                            // 230400, 57600, 38400, 19200, 9600 are alternatives
 #endif
 
 // #define CONSTHOSTSPEED 1   // constant communication speed with host 
@@ -644,6 +644,8 @@ void detectRSPCommSpeed(void) {
       ix--;
       //if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
       //DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
+      Serial.end();
+      _delay_ms(10);
       Serial.begin(rsp_bps[ix]);
       Serial.print("-");  // ask for retransmission
       timeout = 2000;
