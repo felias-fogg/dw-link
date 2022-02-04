@@ -39,7 +39,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.7"
+#define VERSION "1.3.8"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -434,6 +434,13 @@ enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, CkSlow, Erase, DWEN };
 
 const int maxbpsix = 5;
 const unsigned long rsp_bps[] = { 230400, 115200, 57600, 38400, 19200, 9600 };
+// Note that the Uno can communicate at (nominally) 230400, but the Nano cannot.
+// The deeper reason for that is that an ATmega328 at 16MHz is in fact 3.6% slower
+// when trying to communicate at 230400
+// (see https://hinterm-ziel.de/index.php/2021/10/26/communicating-asynchronously/).
+// On an Uno, the ATmega16U2 works some magic and lowers the communication speed to
+// 220000, while on a Nano the FTDI or CH340 chip sends the things at face value,
+// which is too fast for the ATmega.
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -645,9 +652,9 @@ void detectRSPCommSpeed(void) {
       //if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
       //DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
       Serial.end();
-      _delay_ms(10);
       Serial.begin(rsp_bps[ix]);
       Serial.print("-");  // ask for retransmission
+      _delay_ms(20);      // necessary for Arduino Nano!!
       timeout = 2000;
       while (!Serial.available() && timeout--);
       if (timeout == 0) continue; // try different speed

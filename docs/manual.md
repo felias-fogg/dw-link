@@ -244,7 +244,7 @@ Assuming that you are working with the Arduino IDE and/or Arduino CLI, the simpl
 
 ### 5.1 Installing alternative cores
 
-If you want to debug ATTinys or ATmegaX8s, then you need to download and install alternative cores. For the classic ATtiny family, this is [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md), for the special case ATtiny13, it is [MicroCore](https://github.com/MCUdude/MicroCore), and for the ATmegaX8 family, it is [MiniCore](https://github.com/MCUdude/MiniCore). You can either install them manually in the folder `hardware` in your Arduino sketch folder, or you download and install them using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools/Board`. If you want to do that, you first have to add URLs under the Additional Board Manager URLs in the `Preference` menu:
+If you want to debug ATTinys or ATmegaX8s, then you need to download and install alternative cores. For the classic ATtiny family, this is [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md), for the special case ATtiny13, it is [MicroCore](https://github.com/MCUdude/MicroCore), and for the ATmegaX8 family, it is [MiniCore](https://github.com/MCUdude/MiniCore). You can either install them manually in the folder `hardware` in your Arduino sketch folder, or you download and install them using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools/Board`. If you want to do that, you first have to add URLs under the `Additional Board Manager URLs` in the `Preference` menu:
 
 - ATTinyCore: http://drazzy.com/package_drazzy.com_index.json
 - MicroCore: https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
@@ -252,9 +252,9 @@ If you want to debug ATTinys or ATmegaX8s, then you need to download and install
 
 <a name="section52"></a>
 
-### 5.2 Adding platform.local.txt
+### 5.2 Adding `platform.local.txt` to enable ELF file export
 
-When you have chosen the **Boards Manager Installation** (or you look for the Arduino AVR core), then you will find the core configuration files under the following directories (*NAME* being the name of the core, *VERSION* being the version of the core):
+We now need to perform some modifications to the configuration files of the cores you want to work with. When you have chosen the **Boards Manager Installation** (or you look for the Arduino AVR core), then you will find the core configuration files under the following directories (*NAME* being the name of the core, *VERSION* being the version of the core):
 
 * macOS: ~/Library/Arduino15/packages/*NAME*/hardware/avr/*VERSION*
 * Linux: ~/.arduino15/packages/*NAME*/hardware/avr*/VERSION*
@@ -262,7 +262,7 @@ When you have chosen the **Boards Manager Installation** (or you look for the Ar
 
 If you have chosen **Manual Installation**, then you know where to look. 
 
-We now have to add a configuration file  ```platform.local.txt```,  which will make sure that you receive an [*ELF*](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using `avr-gdb`. You can simply copy `platform.local.txt` from the folder `examples/configuration-files` residing in the *dw-link* repository into the core configuration folder. Note that for ATtinyCore starting with version 2.0.0, you do not need to do this since this core already exports the ELF files.
+We have to add the configuration file  ```platform.local.txt```,  which will make sure that you receive an [*ELF*](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) file in your sketch directory when you select ```Export compiled Binary``` under the menu ```Sketch```. This is a machine code file that contains machine-readable symbols and line number information. It is needed when you want to debug a program using `avr-gdb`. You can simply copy `platform.local.txt` from the folder `examples/configuration-files` residing in the *dw-link* repository into the core configuration folder. Note that for ATtinyCore starting with version 2.0.0, you do not need to do this since this core already exports the ELF files.
 
 ### 5.3 Changing the optimization level: arduino-cli option or board.txt modification
 
@@ -722,8 +722,7 @@ Fifth, when reprogramming of a flash page is requested, *dw-link* first checks w
 
 With all of that in mind, you do not have to worry too much about flash memory wear when debugging. As a general rule, you should not make massive changes of the breakpoints each time the MCU stops executing. Finally, Microchip recommends that chips that have been used for debugging using debugWIRE should not been shipped to customers. Well, I never ship chips to customers anyway.
 
-<a name="paranoid"></a>
-For the really paranoid,  there is the option that permits only one breakpoint, i.e., the hardware breakpoint: `monitor hwbp`. In this case, one either can set one breakpoint or on can single-step, but not both. So, if you want to continue after a break by single-stepping, you first have to delete the breakpoint. By the way, with `monitor swbp`, one switches back to normal mode, in which 32 (+1 temporary) breakpoints are allowed.
+<a name="paranoid"></a>For the really paranoid,  there is the option that permits only one breakpoint, i.e., the hardware breakpoint: `monitor hwbp`. In this case, one either can set one breakpoint or on can single-step, but not both. So, if you want to continue after a break by single-stepping, you first have to delete the breakpoint. By the way, with `monitor swbp`, one switches back to normal mode, in which 32 (+1 temporary) breakpoints are allowed.
 
 In addition, there is the debugger command `monitor flashcount`, which returns the number of how many flash page reprogramming commands have been executed since the debugger had been started. This includes also the flash reprogramming commands needed when loading code.
 
@@ -819,7 +818,7 @@ One common problem is that the debug environment is not the first environment or
 
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
-Probably, the serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 115200, 9600, 19200, 38400, 57600, and 230400 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. I also noticed that some Arduino Nanos could not be used with 230400 bps. My Uno boards support 230400 bps. 
+The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 115200, 230400, 9600, 19200, 38400, and 57600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. 230400 bps works only with the Uno boards. The Arduino Nano cannot  communicate at that speed. 
 
 A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
 

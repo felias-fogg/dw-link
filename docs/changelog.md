@@ -652,5 +652,12 @@ Version 0.9.9 (14-Nov-21)
 procedure to work with Nanos that use a FTDI chip
 - changed directory `platform-local` to `configuration-files`
 - added `debugadd.py` in  `configuration-files`, which can be used to
-  modify the `boards.txt` files in the different cores in order to
-  enable debugging
+modify the `boards.txt` files in the different cores in order to
+enable debugging
+
+## Version 1.3.8 (04-Feb-22)
+
+- added a short pause after sending '-' before starting to read;
+this is needed by the original Arduino Nano
+- added some explanations in the manual concerning communication speed
+- added the no optimization debug option in debugadd.py

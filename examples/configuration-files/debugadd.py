@@ -24,6 +24,8 @@ def massage(lines):
             newlines.append(b + ".menu.debug.debug.build.debug=-Og\n")
             newlines.append(b + ".menu.debug.noltodebug=Debug (no LTO)\n")
             newlines.append(b + ".menu.debug.noltodebug.build.debug=-Og -fno-lto\n")
+            newlines.append(b + ".menu.debug.nooptidebug=Debug (no optimizations)\n")
+            newlines.append(b + ".menu.debug.nooptidebug.build.debug=-O0 -fno-lto\n")
             newlines.append(b + ".build.extra_flags={build.debug} " + extraflags.get(b,"\n"))
     return newlines
 
