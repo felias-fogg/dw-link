@@ -661,3 +661,8 @@ enable debugging
 this is needed by the original Arduino Nano
 - added some explanations in the manual concerning communication speed
 - added the no optimization debug option in debugadd.py
+
+## Version 1.3.9 (17-Feb-22)
+
+- New `monitor help` command
+- Added some additional trouble shooting hints concerning debugging when lock-bits are set.

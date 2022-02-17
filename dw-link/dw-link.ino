@@ -39,7 +39,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.8"
+#define VERSION "1.3.9"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -61,6 +61,7 @@
 // #define UNITDW 1           // enable debugWIRE unit tests
 // #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
+// #define NOMONINTORHELP 1   // disable monitor help function 
 
 #if UNITALL == 1
 #undef  UNITDW
@@ -958,13 +959,18 @@ void gdbParseMonitorPacket(const byte *buf)
   //DEBPR(F("clen=")); DEBLN(clen);
   //DEBLN((const char *)buf);
   
+  
   if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
     gdbStop();                                                              /* dwo[ff] */
   else if (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)
     if (gdbConnect(true)) gdbSendReply("OK");                               /* dwc[onnnect] */
     else gdbSendReply("E03");
+#if NOMONITORHELP == 0
+  else if (memcmp_P(buf, (void *)PSTR("68656c7000"), max(4,min(10,clen))) == 0)                  
+    gdbHelp();                                                              /* he[lp] */
+#endif
   else if (memcmp_P(buf, (void *)PSTR("73657269616c00"), max(6,min(14,clen))) == 0)
-    gdbReportRSPbps();
+    gdbReportRSPbps();                                                       /* serial */
   else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)
     gdbReportFlashCount();                                                  /* fla[shcount] */
   else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)
@@ -981,8 +987,8 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetFuses(CkXtal);                                                     /* xt[alosc] */
   else if (memcmp_P(buf, (void *)PSTR("736c6f776f736300"), max(4,min(16,clen))) == 0)
     gdbSetFuses(CkSlow);                                                     /* sl[owosc] */
-  else if (memcmp_P(buf, (void *)PSTR("6572617365666c61736800"), max(4,min(22,clen))) == 0)
-    gdbSetFuses(Erase);                                                     /*er[aseflash]*/
+  else if (memcmp_P(buf, (void *)PSTR("657261736500"), max(4,min(12,clen))) == 0)
+    gdbSetFuses(Erase);                                                     /*er[ase]*/
   else if (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)
     gdbSetMaxBPs(1);                                                        /* hw[bp] */
   else if (memcmp_P(buf, (void *)PSTR("7377627000"), max(4,min(10,clen))) == 0)
@@ -1019,6 +1025,32 @@ void gdbParseMonitorPacket(const byte *buf)
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
     else gdbSendReply("E09");
   } else gdbSendReply("");
+}
+
+// help function (w/o unit tests)
+inline void gdbHelp(void) {
+  gdbDebugMessagePSTR(PSTR("monitor help         - help function"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor dwconnect    - connect to target and show parameters (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor dwoff        - disconnect from target and disable DWEN (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor eraseflash   - erase flash memory (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor reset        - reset target (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor ck1prescaler - unprogram CK8DIV (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor ck8prescaler - program CK8DIV (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor extosc       - use external clock source (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor xtalosc      - use XTAL as clock source (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor rcosc        - use internal RC oscillator as clock source (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor slosc        - use internal 128kHz oscillator as clock source (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor swbp         - allow 32 software breakpoints (default)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor hwbp         - allow only 1 breakpoint, i.e., the hardware bp"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor safestep     - prohibit interrupts while single-stepping(default)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor unsafestep   - allow interrupts while single-stepping"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (=250kbps) (def.) or l (=125kbps)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor serial       - report host communication speed"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor flashcount   - report number of flash pages written since start"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor timeouts     - report timeouts"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor version      - report version number"), -1);
+  gdbDebugMessagePSTR(PSTR("All commands with (*) lead to a reset of the target"), -1);
+  gdbSendReply("OK");
 }
 
 // return timeout counter
@@ -1176,7 +1208,7 @@ boolean gdbConnect(boolean verbose)
     switch (conncode) {
     case -1: gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1); break;
     case -2: gdbDebugMessagePSTR(PSTR("Cannot connect: Unsupported MCU"),-1); break;
-    case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits set"),-1); break;
+    case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits are set"),-1); break;
     case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: PC with stuck-at-one bits"),-1); break;
     default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
     }
@@ -1293,7 +1325,7 @@ void gdbSetFuses(Fuses fuse)
   case CkExt: gdbDebugMessagePSTR(PSTR("Using EXTernal oscillator"),-1); break;
   case CkXtal: gdbDebugMessagePSTR(PSTR("Using XTAL oscillator"),-1); break;
   case CkSlow: gdbDebugMessagePSTR(PSTR("Using 128 kHz oscillator"),-1); break;
-  case Erase: gdbDebugMessagePSTR(PSTR("Flash memory erased"),-1); break;
+  case Erase: gdbDebugMessagePSTR(PSTR("Chip erased"),-1); break;
   default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
   }
   if (!offline) gdbDebugMessagePSTR(PSTR("Reconnecting ..."),-1);

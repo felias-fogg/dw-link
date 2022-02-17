@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 1.6 - January 29, 2022**
+**Version 1.9 - February, 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -445,8 +445,7 @@ d[elete] d[display] | delete all auto-display commands(s)
 
 *address* in the above commands can be any numerical value or also the register names prefixed with a \$-sign, e.g., `$pc`. `display/i $pc`, for example, displays after each stop the machine instruction at the location where the program has stopped.
 
-<a name="controlcommands"></a>
-In addition to the commands above, you have to know a few more commands that control the execution of `avr-gdb`.
+<a name="controlcommands"></a>In addition to the commands above, you have to know a few more commands that control the execution of `avr-gdb`.
 
 command | action
 --- | ---
@@ -458,16 +457,15 @@ fil[e] *name*.elf | load the symbol table from the specified ELF file (should be
 lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
 q[uit] | exit from GDB 
 
-<a name="monitor-commands"></a>
-
-Finally, there are commands that control the settings of the debugger and the MCU, which are particular to dw-link. They all start with the keyword `monitor`.
+<a name="monitor-commands"></a>Finally, there are commands that control the settings of the debugger and the MCU, which are particular to dw-link. They all start with the keyword `monitor`.
 
 command | action
 --- | ---
+mo[nitor] he[lp] | give a help message on monitor commands 
 mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected)
 mo[nitor] dwo[ff] | disable debugWIRE mode in the target
 mo[nitor] re[set] | resets the MCU
-mo[onitor] er[ase] | erases the flash memory 
+mo[onitor] er[ase] | erases chip (i.e., flash memory, EEPROM, and lock bits) 
 mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator)
 mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
 mo[nitor] rc[osc] | set clock source to internal RC oscillator
@@ -816,15 +814,33 @@ Something in the `platformio.ini` file is not quite right. Perhaps a missing dec
 
 One common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the `platformio.ini` file accordingly.
 
+Another common problem is that the connection to the target cannot be established. If you want to get some diagnostics, you can start `avr-gdb` stand-alone (under Windows search for the program name and then select it for execution). Then type the the following sequence of commands (*serialport* being the serial port to the debugger):
+
+```
+set serial baud 115200
+target remote serialport
+monitor dwconnect
+```
+
+This should show you the connection problem. If the error message is *Connection error: Lock bits are set*, then you can erase the chip by issuing the command `monitor erase`.
+
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
 The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 115200, 230400, 9600, 19200, 38400, and 57600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. 230400 bps works only with the Uno boards. The Arduino Nano cannot  communicate at that speed. 
 
 A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
 
-#### Problem: It is not possible to connect to an ATmega48 or ATmega88 using the *target remote* command
+#### Problem: In response to the `monitor dwconnect` command, you get the error message *Cannot connect: ...*
 
-This is most probably an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
+Depending on the concrete error message, the problem fix varies.
+
+- *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)).
+- *Cannot connect: Unsupported MCU*: This MCU is not supported by dw-link. It most probably has no debugWIRE connectivity. 
+- *Cannot connect: Lock bits are set*: In this case you need to erase the entire chip before you can debug it. You can do that by issuing `monitor erase`. 
+- *Cannot connect: PC with stuck-at-one bits*: This is most probably an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
+- *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!
+
+
 
 #### Problem: You receive the message *Protocol error with Rcmd* 
 
@@ -987,3 +1003,12 @@ Initial version
 - Changes in 8.7 
 - Section 9, Problem 'vMustReplyEmpty': timeout - explanation of what problems I encountered
 - Section 5.1-5.3 have been reworked, in particular concerning ATTinyCore 2.0.0 and the new Python script for extending the boards.txt files.
+
+#### V 1.8
+
+- New help command for monitor commands in 5.7
+
+#### V 1.9
+
+- Additional trouble shooting help when lockouts are set
+

@@ -462,6 +462,6 @@ def run_all_tests(port):
 
 #print(run_script(tictactoe_script, "/dev/cu.usbmodem1442101", "rc", "ck1"))
 
-print(test_mcu("/dev/cu.usbmodem1442101", attiny48))
+#print(test_mcu("/dev/cu.usbmodem1442101", attiny48))
 
-#run_all_tests("/dev/cu.usbmodem1442101")
+run_all_tests("/dev/cu.usbmodem1442101")
