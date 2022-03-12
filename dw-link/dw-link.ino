@@ -547,11 +547,11 @@ int main(void) {
   ledout = portOutputRegister(digitalPinToPort(pm.SYSLED));
   DEBINIT(pm.DEBTX);
   DEBLN(F("\ndw-link V" VERSION));
-  DEBLN(SNSGND);
-  DEBLN(DWLINE);
+  DEBPR(F("SNSGND: "));DEBLN(SNSGND);
+  DEBPR(F("DWLINE: "));DEBLN(DWLINE);
 #if SDEBUG
   Serial1.begin(115200);
-  Serial.println(F("dw-link V" VERSION));
+  Serial1.println(F("dw-link V" VERSION));
 #endif
   TIMSK0 = 0; // no millis interrupts
   ctx.hostbps = INITIALBPS;
