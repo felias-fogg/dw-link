@@ -39,7 +39,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.9"
+#define VERSION "1.3.10"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -533,7 +533,7 @@ void unblockIRQ(void)
 /******************* main ******************************/
 int main(void) {
   // Arduino init
-   init();
+  init();
 #if defined(USBCON)
   USBDevice.attach();
 #endif
@@ -564,7 +564,8 @@ int main(void) {
   pinMode(pm.VSUP, OUTPUT);
   digitalWrite(pm.VSUP, HIGH);
 #if SCOPEDEBUG
-  DDRC = 0x7F; //
+  pinMode(pm.DEBTX, OUTPUT); //
+  digitalWrite(pm.DEBTX, LOW); // PD3 on UNO
 #endif
   initSession(); // initialize all critical global variables
   //  DEBLN(F("Now configuereSupply"));
@@ -574,10 +575,11 @@ int main(void) {
   digitalWrite(pm.TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
 #if CONSTHOSTSPEED == 0
-  detectRSPCommSpeed(); // check for coummication speed and select the right one
+  detectRSPCommSpeed(); // check for communication speed and select the right one
+  Serial.end();
+  Serial.begin(ctx.hostbps);
 #endif
   DEBLN(F("Setup done"));
-
   // loop
   while (1) {
     monitorSystemLoadState();
@@ -587,16 +589,7 @@ int main(void) {
     } else if (ctx.state == RUN_STATE) {
       if (dw.available()) {
 	byte cc = dw.read();
-#if SCOPEDEBUG
-	PORTC |= 0x02;
-	PORTC &= ~0x02;
-#endif
 	if (cc == 0x0) { // break sent by target
-#if SCOPEDEBUG
-	  PORTC |= 0x02;
-	  PORTC |= 0x02;
-	  PORTC &= ~0x02;
-#endif
 	  if (expectUCalibrate()) {
 	    DEBLN(F("Execution stopped"));
 	    _delay_us(5); // avoid conflicts on the line
@@ -665,6 +658,7 @@ void detectRSPCommSpeed(void) {
 	return;
       }
     }
+    Serial.end();
     Serial.begin(INITIALBPS); // set to initial guess and wait again
   }
 }
@@ -674,11 +668,12 @@ void detectRSPCommSpeed(void) {
 boolean rightSpeed(void)
 {
   char keyseq[] = "qSupported:";
+  const int maxix = strlen(keyseq);
   int ix = 0;
-  const int maxix = sizeof(keyseq) - 1;
   int timeout;
   char c;
 
+  DEBLN(F("rightSpeed"));
   measureRam();
   timeout = 2000;
   while (timeout-- && ix < maxix) 
@@ -690,6 +685,7 @@ boolean rightSpeed(void)
 	if (c == keyseq[0]) ix = 1;
 	else ix = 0;
     }
+  DEBPR(F("Rec loop finished. ix = ")); DEBLN(ix);
   // now read the remaining chars
   timeout = 2000;
   while (timeout--)
@@ -697,6 +693,7 @@ boolean rightSpeed(void)
       timeout = 2000;
       Serial.read();
     }
+  DEBPR(F("rightSpeed returns: ")); DEBLN(ix == maxix);
   return (ix == maxix); // entire sequence found
 }
 
@@ -705,7 +702,11 @@ void configureSupply(void)
 {
   if (digitalRead(SNSGND)) return; 
   if (ctx.vhigh != !digitalRead(pm.VHIGH) || ctx.von != !digitalRead(pm.VON)) { // something changed
-    _delay_ms(30); // debounce
+#if SCOPEDEBUG
+  PORTD |= _BV(PD3);
+  PORTD &= ~_BV(PD3);
+#endif
+    _delay_ms(5); // debounce
     //DEBLN(F("Some change"));
     //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VHIGH));
     //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VON));
@@ -788,7 +789,7 @@ void gdbHandleCmd(void)
 {
   byte checksum, pkt_checksum;
   byte b;
-  
+
   measureRam();
   b = gdbReadByte();
     

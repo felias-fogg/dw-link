@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 1.9 - February, 2022**
+**Version 1.10 - March, 2022**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -196,11 +196,13 @@ ATtiny pin# | Arduino Uno pin | component
   | D7 |system LED (+)
   | D6 |200 Ω to system LED (-)
 
-We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED.
 
-If instead of an ATtiny85, you want to debug an Uno board, everything said above applies here as well. A Fritzing sketch showing you the connections is below. Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))!
+
+If instead of an ATtiny85, you want to debug an Uno board, everything said above applies here as well. A Fritzing sketch showing you the connections is below. Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))! Further, the first time, you debug a Uno target, you probably cannot establish a connection, i.e., after using the `target remote` command, a fatal error is signaled by the system LED. The reason is that on the ATmega chip [*lock bits*](https://microchipsupport.force.com/s/article/Use-of-Lock-Bits-in-AVR-devices) have been set. These can be cleared by erasing the chip memory using the debugger command `monitor erase` (see [command table](#monitor-commands)).
 
 ![Uno as DUT](pics/Debug-Uno.png)
+
+We are now good to go and 'only' need to install the additional debugging software. Before we do that, let us have a look, in which states the debugger can be and how it signals that using the system LED.
 
 ### 4.3 States of the hardware debugger
 
@@ -234,7 +236,6 @@ __UNITDW__ | 0 | If 1, the unit tests for the debugWIRE layer are activated; exe
 __UNITTG__ | 0 | If 1, the unit tests for the target layer are activated; use `monitor testtg` to execute them.
 __UNITGDB__ | 0 | If 1, the unit tests for the GDB layer are activated, use `monitor testgdb` to execute them. 
 __ARDUINO\_AVR\___*XXX* | undef | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping if an adapter board or shield is used (see [Section 7.3.2 & 7.3.3](#section732)). 
-
 
 <a name="section5"></a>
 
@@ -814,15 +815,9 @@ Something in the `platformio.ini` file is not quite right. Perhaps a missing dec
 
 One common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the `platformio.ini` file accordingly.
 
-Another common problem is that the connection to the target cannot be established. If you want to get some diagnostics, you can start `avr-gdb` stand-alone (under Windows search for the program name and then select it for execution). Then type the the following sequence of commands (*serialport* being the serial port to the debugger):
+Another common problem is that the connection to the target cannot be established. In this case, you should see the appropriate error message. 
 
-```
-set serial baud 115200
-target remote serialport
-monitor dwconnect
-```
-
-This should show you the connection problem. If the error message is *Connection error: Lock bits are set*, then you can erase the chip by issuing the command `monitor erase`.
+If the error message is *Connection error: Lock bits are set*, then you need to erase the chip before you can use the debugger. Go to the PlatformIO `Custom` tasks and choose `Erase Chip`.
 
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
@@ -836,7 +831,7 @@ Depending on the concrete error message, the problem fix varies.
 
 - *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)).
 - *Cannot connect: Unsupported MCU*: This MCU is not supported by dw-link. It most probably has no debugWIRE connectivity. 
-- *Cannot connect: Lock bits are set*: In this case you need to erase the entire chip before you can debug it. You can do that by issuing `monitor erase`. 
+- *Cannot connect: Lock bits are set*: In this case you need to erase the entire chip before you can debug it. You can do that by issuing `monitor erase`. After that, you should restart the debugger.
 - *Cannot connect: PC with stuck-at-one bits*: This is most probably an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
 - *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!
 
@@ -864,6 +859,8 @@ One reason for that could be that the target is run with a clock less than 1 MHz
 Another reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed. 
 
 You can choose 230400, 115200, 57600, 38400, 19200, or 9600 when starting `avr-gdb` by giving the bit rate as an argument to the `-b` option or by specifying the bit rate as an argument to the command `set serial baud ...` before establishing a connection with the `target` command.
+
+Note that you need to reset the hardware debugger if you want to communicate using a different bit rate. 
 
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted* 
 
@@ -1011,4 +1008,9 @@ Initial version
 #### V 1.9
 
 - Additional trouble shooting help when lockouts are set
+
+#### V 1.10
+
+- Pointed out in Section 4.2 that when debugging an Uno the first time you try to debug it, you need to erase the chip in order to clear the lock bits.
+- Added similar wording under trouble shooting
 

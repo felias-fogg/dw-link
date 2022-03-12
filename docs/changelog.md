@@ -666,3 +666,10 @@ this is needed by the original Arduino Nano
 
 - New `monitor help` command
 - Added some additional trouble shooting hints concerning debugging when lock-bits are set.
+
+## Version 1.3.10 (12-Mar-22)
+
+- added monitor dwconnect to the startup sequence of the debugger in platformio.ini so that one gets a meaningful error message when the connection cannot be established
+- added new task Erase Chip to PIOs Custom tasks which can be used to clear lock bits
+- reduced debouncing in configureSupply to 5ms so that we do not lose input from the debugger when establishing the connection (and at SNSGND we read a 0)
+- 
