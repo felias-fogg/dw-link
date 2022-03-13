@@ -10,3 +10,8 @@ Thumbs.db
 .gdb*
 gdb.txt
 rem.txt
+docs/mculist.pptx
+.gitignore
+ispprog/ispprog.ino
+tests/oop/Makefile
+tests/tictactoe/Makefile
