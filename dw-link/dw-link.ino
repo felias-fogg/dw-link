@@ -3351,6 +3351,7 @@ void enableSpiPins () {
 void disableSpiPins () {
   digitalWrite(pm.TISP, HIGH);
   pinMode(pm.TSCK, INPUT); 
+  digitalWrite(pm.TMOSI, LOW); // disable pull up
   pinMode(pm.TMOSI, INPUT);
   pinMode(pm.TMISO, INPUT);
 }
