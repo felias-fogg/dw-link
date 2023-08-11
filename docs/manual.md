@@ -223,7 +223,7 @@ Usually, it should not be necessary to change a compile-time constant in dw-link
  --- | --- | ---
 __VERSION__ | current version number | Current version number of dw-link; should not be changed. 
 __NANOVERSION__ | 3 | The version of the Nano board used as a hardware debugger; this value is relevant only if a Nano board is used. 
-__INITIALBPS__ | 230400 | The initial communication speed for communicating with the host; if communcation using this value cannot be established, 115200, 57600, 38400, 19200, 9600 bps are tried if __ADAPTSPEED__ is set to 1. 
+__INITIALBPS__ | 115200 | The initial communication speed for communicating with the host; if communcation using this value cannot be established, 230400, 57600, 38400, 19200, 9600 bps are tried if __CONSTHOSTSPEED__ is 0. 
 __CONSTHOSTSPEED__ | 0 | If 0, then dw-link will try out different communication speeds to the host, otherwise it will stick to INITIALBPS 
 __CONSTDWSPEED__ | 0 | If 0, the communication speed to the target will be changed so that it is as fast as possible, given the restriction that speed should not exceed 125000 bps. If 1, the initial speed of clk/128 is used. 
 __STUCKAT1PC__ | 0 | If this value is set to 1, then dw-link will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. 
@@ -1014,3 +1014,6 @@ Initial version
 - Pointed out in Section 4.2 that when debugging an Uno the first time you try to debug it, you need to erase the chip in order to clear the lock bits.
 - Added similar wording under trouble shooting
 
+#### V 1.11
+
+* fixed some small inconsistencies
