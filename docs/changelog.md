@@ -698,3 +698,4 @@ this is needed by the original Arduino Nano
 * `monitor serial` removed since host bps is now constant
 * MCU is erased if lock bits are set
 * removed `monitor eraseflash` 
+* removed any reference to the lock bit error from the manual 

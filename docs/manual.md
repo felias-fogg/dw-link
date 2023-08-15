@@ -797,7 +797,7 @@ The reason is that when the host establishes a connection to the debugger, the d
 
 ### 8.11 Code optimization reorganizes code and makes it impossible to stop at a particular source line or to inspect or change values of local variables
 
-The standard setting of the Arduino IDE and CLI is to optimize for space, which is accomplished by using the compiler option **-Os**. In this case, it may difficult to stop at some source lines and single-stepping may give strange results. When you choose `Debug` as the value for the option `Debug Compile Flags`, then the compiler optimizes the code in a debugger-friendly way (using the compiler option **-Og**). And this is actually what the GDB people recommend. 
+The standard setting of the Arduino IDE and CLI is to optimize for space, which is accomplished by using the compiler option **-Os**. In this case, it may be difficult to stop at some source lines and single-stepping may give strange results. When you choose `Debug` as the value for the option `Debug Compile Flags`, then the compiler optimizes the code in a debugger-friendly way (using the compiler option **-Og**). And this is actually what the GDB people recommend. 
 
 I have encountered situations [when it was impossible to get the right information about C++ objects](https://arduino-craft-corner.de/index.php/2021/12/15/link-time-optimization-and-debugging-of-object-oriented-programs-on-avr-mcus/). This can be avoided by disabling *link-time optimization* (LTO). Choose `Debug (no LTO)` in this case. Finally, if there are still discrepancies between what you expect and what the debugger delivers, you can try `Debug (no LTO, no comp. optim.)`, which effectively switches off any optimization (corresponding to **-O0 -fno-lto**).
 
@@ -823,8 +823,6 @@ One common problem is that the debug environment is not the first environment or
 
 Another common problem is that the connection to the target cannot be established. In this case, you should see the appropriate error message. 
 
-If the error message is *Connection error: Lock bits are set*, then you need to erase the chip before you can use the debugger. Go to the PlatformIO `Custom` tasks and choose `Erase Chip`.
-
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
 The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 115200, 230400, 9600, 19200, 38400, and 57600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. 230400 bps works only with the UNO boards. The Arduino Nano cannot  communicate at that speed. 
@@ -837,7 +835,6 @@ Depending on the concrete error message, the problem fix varies.
 
 - *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)).
 - *Cannot connect: Unsupported MCU*: This MCU is not supported by *dw-link*. It most probably has no debugWIRE connectivity. 
-- *Cannot connect: Lock bits are set*: In this case you need to erase the entire chip before you can debug it. You can do that by issuing `monitor erase`. After that, you should restart the debugger.
 - *Cannot connect: PC with stuck-at-one bits*: This is most probably an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
 - *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!
 
@@ -941,7 +938,7 @@ Error #  | Meaning
 --:|---
 1 | Connection error: No response to ISP and debugWIRE communication; check wiring
 2 | Connection error: MCU type is not supported
-3 | Connection error: Lock bits are set 
+3 | Connection error: Lock bits are set (should not happen) 
 4 | Connection error: MCU has PC with stuck-at-one bits 
 5 | Unknown connection error
 101 | No free slot in breakpoint table
