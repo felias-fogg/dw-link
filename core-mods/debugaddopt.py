@@ -4,8 +4,9 @@
 # If it is called with an argument, then it is expected to be the boards.txt file,
 # the file is renamed to *.backup and the original file is modified
 # The modification adds a menu entry for each MCU/board called "Debug Compile Flags" with
-# three possible values "No Debug", "Debug", and "Debug (no LTO)", which will add
+# four possible values "No Debug", "Debug", "Debug (no LTO)", and "Debug (no LTO, no optimizations)", which will add
 # flags to .build.extra_flags
+
 
 import os, sys
 
@@ -18,14 +19,16 @@ def massage(lines):
         lines.append("menu.debug=Debug Compile Flags\n")
         for b in allboards:
             newlines.append("\n");
-            newlines.append(b + ".menu.debug.nodebug=No Debug\n")
-            newlines.append(b + ".menu.debug.nodebug.build.debug=\n")
-            newlines.append(b + ".menu.debug.debug=Debug\n")
-            newlines.append(b + ".menu.debug.debug.build.debug=-Og\n")
-            newlines.append(b + ".menu.debug.noltodebug=Debug (no LTO)\n")
-            newlines.append(b + ".menu.debug.noltodebug.build.debug=-Og -fno-lto\n")
-            newlines.append(b + ".menu.debug.nooptidebug=Debug (no optimizations)\n")
-            newlines.append(b + ".menu.debug.nooptidebug.build.debug=-O0 -fno-lto\n")
+            newlines.append(b + ".menu.debug.os=No Debug\n")
+            newlines.append(b + ".menu.debug.os.build.debug=\n")
+            newlines.append(b + ".menu.debug.og=Debug\n")
+            newlines.append(b + ".menu.debug.og.build.debug=-Og\n")
+            newlines.append(b + ".menu.debug.o0=Debug (no comp. optim.)\n")
+            newlines.append(b + ".menu.debug.o0.build.debug=-O0\n")
+            newlines.append(b + ".menu.debug.no-lto=Debug (no LTO)\n")
+            newlines.append(b + ".menu.debug.no-lto.build.debug=-Og -fno-lto\n")
+            newlines.append(b + ".menu.debug.no-ltoo0=Debug (no LTO, no comp. optim.)\n")
+            newlines.append(b + ".menu.debug.no-ltoo0.build.debug=-O0 -fno-lto\n")
             newlines.append(b + ".build.extra_flags={build.debug} " + extraflags.get(b,"\n"))
     return newlines
 
@@ -57,9 +60,7 @@ else:
 if not os.path.isfile(filnam):
     print(filnam, "does not exist")
     exit()
-
 os.rename(filnam, filnam + ".backup")
-
 file = open(filnam + ".backup")
 alllines = file.readlines()
 file.close()
@@ -73,4 +74,3 @@ if len(newlines) == 0:
     print("No boards found, no lines added")
 else:
     print("Boards file successfully modified")
-

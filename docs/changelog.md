@@ -672,4 +672,19 @@ this is needed by the original Arduino Nano
 - added monitor dwconnect to the startup sequence of the debugger in platformio.ini so that one gets a meaningful error message when the connection cannot be established
 - added new task Erase Chip to PIOs Custom tasks which can be used to clear lock bits
 - reduced debouncing in configureSupply to 5ms so that we do not lose input from the debugger when establishing the connection (and at SNSGND we read a 0)
-- 
+
+## Version 2
+
+* The general idea for dw-link 2.0 is to simplify the setup process dramatically and make everything more robust.
+  * For the Arduino variant: No fiddling with existing configuration files. Just download board manager files!
+  * There will be only one probe/shield with jumpers. And we remove all the different versions based on different boards and pin assignments. 
+  * No fancy speed discovery. However, we will allow for port discovery by responding with an ASCII sequence triggered by a control character. This means, we do not have to specify the debug/upload port in the platform.ini file!
+  * In case, lock bits are set, we simply erase the chip!
+  * No initial connection (which goes astray when no target is already connected)
+
+## Version 2.1.0
+
+* Board manager files have been generated an uploaded
+* Simplification in the manual
+* `core-mods` contains all the files that I modified in order to generate new board manager files
+*  README.md updated
