@@ -39,7 +39,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "2.1.1"
+#define VERSION "2.1.2"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
@@ -887,8 +887,6 @@ void gdbParseMonitorPacket(const byte *buf)
   else if (memcmp_P(buf, (void *)PSTR("68656c7000"), max(4,min(10,clen))) == 0)                  
     gdbHelp();                                                              /* he[lp] */
 #endif
-  else if (memcmp_P(buf, (void *)PSTR("73657269616c00"), max(6,min(14,clen))) == 0)
-    gdbReportRSPbps();                                                       /* serial */
   else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)
     gdbReportFlashCount();                                                  /* fla[shcount] */
   else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)
@@ -905,8 +903,8 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetFuses(CkXtal);                                                     /* xt[alosc] */
   else if (memcmp_P(buf, (void *)PSTR("736c6f776f736300"), max(4,min(16,clen))) == 0)
     gdbSetFuses(CkSlow);                                                     /* sl[owosc] */
-  else if (memcmp_P(buf, (void *)PSTR("657261736500"), max(4,min(12,clen))) == 0)
-    gdbSetFuses(Erase);                                                     /*er[ase]*/
+  //  else if (memcmp_P(buf, (void *)PSTR("657261736500"), max(4,min(12,clen))) == 0)
+  //  gdbSetFuses(Erase);                                                     /*er[ase]*/
   else if (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)
     gdbSetMaxBPs(1);                                                        /* hw[bp] */
   else if (memcmp_P(buf, (void *)PSTR("7377627000"), max(4,min(10,clen))) == 0)
@@ -950,7 +948,7 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor help         - help function"), -1);
   gdbDebugMessagePSTR(PSTR("monitor dwconnect    - connect to target and show parameters (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor dwoff        - disconnect from target and disable DWEN (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor eraseflash   - erase flash memory (*)"), -1);
+  // gdbDebugMessagePSTR(PSTR("monitor eraseflash   - erase flash memory (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor reset        - reset target (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor ck1prescaler - unprogram CK8DIV (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor ck8prescaler - program CK8DIV (*)"), -1);
@@ -963,7 +961,6 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor safestep     - prohibit interrupts while single-stepping(default)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor unsafestep   - allow interrupts while single-stepping"), -1);
   gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (=250kbps) (def.) or l (=125kbps)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor serial       - report host communication speed"), -1);
   gdbDebugMessagePSTR(PSTR("monitor flashcount   - report number of flash pages written since start"), -1);
   gdbDebugMessagePSTR(PSTR("monitor timeouts     - report timeouts"), -1);
   gdbDebugMessagePSTR(PSTR("monitor version      - report version number"), -1);
@@ -994,12 +991,6 @@ inline void gdbVersion(void)
   gdbReplyMessagePSTR(PSTR("dw-link V" VERSION), -1);
 }
   
-// show connection speed to host
-inline void gdbReportRSPbps(void)
-{
-  gdbReplyMessagePSTR(PSTR("Current bitrate of serial connection to host: "), ctx.hostbps);
-}
-
 // get DW speed
 inline void gdbGetSpeed(void)
 {
@@ -2191,7 +2182,7 @@ boolean targetDWConnect(void)
 int targetISPConnect(void)
 {
   unsigned int sig;
-  int result;
+  int result = 0;
   
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2200,8 +2191,13 @@ int targetISPConnect(void)
   } else if (!setMcuAttr(sig)) {
     result = -2;
   } else if (ispLocked()) {
-    result = -3;
-  } else if (ispProgramFuse(true, mcu.dwenfuse, 0)) {
+    ispEraseFlash(); // erase flash mem and lock bits
+    leaveProgramMode();
+    _delay_ms(1000);
+    enterProgramMode();
+    result = 0;
+  }  
+  if (result == 0 && ispProgramFuse(true, mcu.dwenfuse, 0)) {
     result = 0;
   } else {
     result = -1;
