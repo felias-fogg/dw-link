@@ -673,7 +673,7 @@ this is needed by the original Arduino Nano
 - added new task Erase Chip to PIOs Custom tasks which can be used to clear lock bits
 - reduced debouncing in configureSupply to 5ms so that we do not lose input from the debugger when establishing the connection (and at SNSGND we read a 0)
 
-## Version 2
+## Version 2.0.0 (11-Aug-23)
 
 * The general idea for dw-link 2.0 is to simplify the setup process dramatically and make everything more robust.
   * For the Arduino variant: No fiddling with existing configuration files. Just download board manager files!
@@ -682,9 +682,17 @@ this is needed by the original Arduino Nano
   * In case, lock bits are set, we simply erase the chip!
   * No initial connection (which goes astray when no target is already connected)
 
-## Version 2.1.0
+## Version 2.1.0 (15-Aug-23)
 
 * Board manager files have been generated an uploaded
 * Simplification in the manual
 * `core-mods` contains all the files that I modified in order to generate new board manager files
 *  README.md updated
+
+## Version 2.1.1 (15-Aug-23)
+
+* Constant host speed, default: 230400
+
+Version 2.2.1
+
+* 

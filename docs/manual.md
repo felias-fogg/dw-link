@@ -169,23 +169,22 @@ Third, you have to connect your future hardware debugger, i.e., the ATmega328 bo
 
 Usually, it should not be necessary to change a compile-time constant in *dw-link*. I will nevertheless document all these constants here. If you want to change one of them, you can do that when using `arduino-cli` by using the `--build-property` option or by changing the value in the source code.
 
-| Name                              | Default                | Meaning                                                      |
-| --------------------------------- | ---------------------- | ------------------------------------------------------------ |
-| __VERSION__                       | current version number | Current version number of *dw-link*; should not be changed.  |
-| <s>__NANOVERSION__</s>            | 3                      | The version of the Nano board used as a hardware debugger; this value is relevant only if a Nano board is used. |
-| <s>__INITIALBPS__</s> **HOSTBPS** | 115200                 | The initial communication speed for communicating with the host; if communcation using this value cannot be established, 230400, 57600, 38400, 19200, 9600 bps are tried if __CONSTHOSTSPEED__ is 0. |
-| <s>__CONSTHOSTSPEED__</s>         | 0                      | If 0, then *dw-link* will try out different communication speeds to the host, otherwise it will stick to INITIALBPS |
-| <s>__CONSTDWSPEED__</s>           | 0                      | If 0, the communication speed to the target will be changed so that it is as fast as possible, given the restriction that speed should not exceed 125000 bps. If 1, the initial speed of clk/128 is used. |
-| __STUCKAT1PC__                    | 0                      | If this value is set to 1, then *dw-link* will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. |
-| <s>__OFFEX2WORD__</s>             | 0                      | If 0, then 2-word instructions at breakpoints and when single-stepping will be simulated inside the hardware debugger; if 1, then they will be  executed off-line in the debugWIRE instruction register. While the latter alternative appears to work, one has no guarantee that it will always work. In any case, there should be no visible difference in behavior between the two alternatives. |
-| __TXODEBUG__                      | 0                      | If 1, debug output over the debug serial line is enabled.    |
-| __SCOPEDEBUG__                    | 0                      | If 1, `DDRC` is used for signaling the internal state by producing pulses on `PORTC`. |
-| __FREERAM__                       | 0                      | If 1, then the amount of free RAM is measured, which can be queried using the command `monitor ramusage`. |
-| __UNITALL__                       | 0                      | If 1, all unit tests are activated; they can be executed by using the command `monitor testall`. |
-| __UNITDW__                        | 0                      | If 1, the unit tests for the debugWIRE layer are activated; execute them by using `monitor testdw`. |
-| __UNITTG__                        | 0                      | If 1, the unit tests for the target layer are activated; use `monitor testtg` to execute them. |
-| __UNITGDB__                       | 0                      | If 1, the unit tests for the GDB layer are activated, use `monitor testgdb` to execute them. |
-| <s>__ARDUINO\_AVR\___*XXX*</s>    | undef                  | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping if an adapter board or shield is used (see [Section 7.3.2 & 7.3.3](#section732)). |
+| Name                           | Default                | Meaning                                                      |
+| ------------------------------ | ---------------------- | ------------------------------------------------------------ |
+| __VERSION__                    | current version number | Current version number of *dw-link*; should not be changed.  |
+| <s>__NANOVERSION__</s>         | 3                      | The version of the Nano board used as a hardware debugger; this value is relevant only if a Nano board is used. |
+| **HOSTBPS**                    | 230400                 | Communication speed for host interface                       |
+| <s>__CONSTDWSPEED__</s>        | 0                      | If 0, the communication speed to the target will be changed so that it is as fast as possible, given the restriction that speed should not exceed 125000 bps. If 1, the initial speed of clk/128 is used. |
+| __STUCKAT1PC__                 | 0                      | If this value is set to 1, then *dw-link* will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. |
+| <s>__OFFEX2WORD__</s>          | 0                      | If 0, then 2-word instructions at breakpoints and when single-stepping will be simulated inside the hardware debugger; if 1, then they will be  executed off-line in the debugWIRE instruction register. While the latter alternative appears to work, one has no guarantee that it will always work. In any case, there should be no visible difference in behavior between the two alternatives. |
+| __TXODEBUG__                   | 0                      | If 1, debug output over the debug serial line is enabled.    |
+| __SCOPEDEBUG__                 | 0                      | If 1, `DDRC` is used for signaling the internal state by producing pulses on `PORTC`. |
+| __FREERAM__                    | 0                      | If 1, then the amount of free RAM is measured, which can be queried using the command `monitor ramusage`. |
+| __UNITALL__                    | 0                      | If 1, all unit tests are activated; they can be executed by using the command `monitor testall`. |
+| __UNITDW__                     | 0                      | If 1, the unit tests for the debugWIRE layer are activated; execute them by using `monitor testdw`. |
+| __UNITTG__                     | 0                      | If 1, the unit tests for the target layer are activated; use `monitor testtg` to execute them. |
+| __UNITGDB__                    | 0                      | If 1, the unit tests for the GDB layer are activated, use `monitor testgdb` to execute them. |
+| <s>__ARDUINO\_AVR\___*XXX*</s> | undef                  | These constants are set when using the compile command of the Arduino IDE or CLI. They determine the pin mapping if an adapter board or shield is used (see [Section 7.3.2 & 7.3.3](#section732)). |
 
 <a name="section42"></a>
 

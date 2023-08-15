@@ -39,19 +39,19 @@
 // For the latter, I experienced non-deterministic failures of unit tests.
 // So, it might be worthwhile to investigate both, but not now.
 
-#define VERSION "1.3.10"
+#define VERSION "2.1.1"
 
 #ifndef NANOVERSION
 #define NANOVERSION 3
 #endif
 
-#ifndef INITIALBPS 
-#define INITIALBPS 115200UL // initial expected communication speed with the host
-                            // 230400, 57600, 38400, 19200, 9600 are alternatives
+#ifndef HOSTBPS 
+#define HOSTBPS 230400UL // initial expected communication speed with the host
+//#define HOSTBPS 115200UL // should be used with boards that do not use an ATmega32U2 as the USB interface
+                         // 115200, 57600, 38400, 19200, 9600 are alternatives
 #endif
 
-// #define CONSTHOSTSPEED 1   // constant communication speed with host 
-// #define CONSTDWSPEED 1     // constant eommunication speed with target
+// #define CONSTDWSPEED 1     // constant communication speed with target
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
 // #define TXODEBUG 1         // allow debug output over TXOnly line
@@ -534,12 +534,9 @@ void unblockIRQ(void)
 int main(void) {
   // Arduino init
   init();
-#if defined(USBCON)
-  USBDevice.attach();
-#endif
   
   // setup
-  Serial.begin(INITIALBPS);
+  Serial.begin(HOSTBPS);
   pinMode(SNSGND, INPUT_PULLUP);
   if (digitalRead(SNSGND) == 0) // adapter board!
     memcpy_P(&pm, &boardpm, sizeof(pinmap));
@@ -554,7 +551,7 @@ int main(void) {
   Serial1.println(F("dw-link V" VERSION));
 #endif
   TIMSK0 = 0; // no millis interrupts
-  ctx.hostbps = INITIALBPS;
+  ctx.hostbps = HOSTBPS;
   ctx.von = false;
   ctx.vhigh = false;
   pinMode(pm.VON, INPUT_PULLUP); // configure Von as input from switch
@@ -574,11 +571,6 @@ int main(void) {
   pinMode(pm.TISP, OUTPUT);
   digitalWrite(pm.TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
-#if CONSTHOSTSPEED == 0
-  detectRSPCommSpeed(); // check for communication speed and select the right one
-  Serial.end();
-  Serial.begin(ctx.hostbps);
-#endif
   DEBLN(F("Setup done"));
   // loop
   while (1) {
@@ -620,81 +612,6 @@ void monitorSystemLoadState(void) {
       setSysState(CONN_STATE);
     }
   }
-}
-
-// find out communication speed of host
-// try to identify a qSupported packet
-//   if found, we are done: send '-' so that it is retransmitted
-//   if not: vary the speed and send '-' to provoke resending
-//           if one gets a response, send it again through the filter
-void detectRSPCommSpeed(void) {
-  int ix;
-  int timeout;
-
-  while (1) {
-    if (!Serial.available()) continue;
-    ix = maxbpsix + 1;
-    if (rightSpeed()) { // already found right speed
-      Serial.print("-"); // ask for retransmission
-      //DEBLN(F("Initial guess right"));
-      return; 
-    }
-    // Now send "-" in all possible speeds and wait for response
-    ix = maxbpsix + 1;
-    while (ix > 0) {
-      ix--;
-      //if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
-      //DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
-      Serial.end();
-      Serial.begin(rsp_bps[ix]);
-      Serial.print("-");  // ask for retransmission
-      _delay_ms(20);      // necessary for Arduino Nano!!
-      timeout = 2000;
-      while (!Serial.available() && timeout--);
-      if (timeout == 0) continue; // try different speed
-      if (rightSpeed()) { // should be right one - check!
-	ctx.hostbps = rsp_bps[ix];
-	Serial.print("-");  // ask for retransmission
-	return;
-      }
-    }
-    Serial.end();
-    Serial.begin(INITIALBPS); // set to initial guess and wait again
-  }
-}
-  
-// try to find "qSupported" in a stream
-// in any case, wait until no more characters are sent
-boolean rightSpeed(void)
-{
-  char keyseq[] = "qSupported:";
-  const int maxix = strlen(keyseq);
-  int ix = 0;
-  int timeout;
-  char c;
-
-  DEBLN(F("rightSpeed"));
-  measureRam();
-  timeout = 2000;
-  while (timeout-- && ix < maxix) 
-    if (Serial.available()) {
-      timeout = 2000;
-      c = Serial.read();
-      if (c == keyseq[ix]) ix++;
-      else
-	if (c == keyseq[0]) ix = 1;
-	else ix = 0;
-    }
-  DEBPR(F("Rec loop finished. ix = ")); DEBLN(ix);
-  // now read the remaining chars
-  timeout = 2000;
-  while (timeout--)
-    if (Serial.available()) {
-      timeout = 2000;
-      Serial.read();
-    }
-  DEBPR(F("rightSpeed returns: ")); DEBLN(ix == maxix);
-  return (ix == maxix); // entire sequence found
 }
 
 // configure supply lines according to switch setting
