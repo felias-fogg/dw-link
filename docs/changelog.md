@@ -693,9 +693,14 @@ this is needed by the original Arduino Nano
 
 * Constant host speed, default: 230400
 
-## Version 2.1.2 (15-Aug-23)
+## Version 2.1.2 (16-Aug-23)
 
 * `monitor serial` removed since host bps is now constant
 * MCU is erased if lock bits are set
 * removed `monitor eraseflash` 
 * removed any reference to the lock bit error from the manual 
+
+## Version 2.1.3
+
+* remove the complicated pin mappings and just go for one mapping, which uses jumpers instead of switches
+* ≤

@@ -24,35 +24,29 @@
 // Jeremy Bennett's description of an implementation of an RSP server:
 //    https://www.embecosm.com/appnotes/ean4/embecosm-howto-rsp-server-ean4-issue-2.html
 // 
-// You can run it on an Uno, a Nano V2, a Nano V3, or a Pro Mini.
-// For the three latter ones, there exists an
-// adapter board, which fits all of them, using, of course,
-// different pin assignments.  For the Nano board, there are
-// apparently two different versions around, version 2 and version 3.
-// The former one has the A0 pin close to 5V pin, version 3 boards
-// have the A0 pin close to the REF pin.  If you use the adapter
-// board with a Nano, you need to set the compile time constant
-// NANOVERSION, which by default is 3.
+// You can run it on an UNO, a Nano, or a Pro Mini.
+// For the UNO, I designed a shield with different voltage levels and
+// level shifters, which I plan to sell on Tindie.
 //
 // I thought that the sketch should also work with the Leonardo-like boards
 // and with the Mega board. For the former, I got stuck with the flashtest program.
-// For the latter, I experienced non-deterministic failures of unit tests.
-// So, it might be worthwhile to investigate both, but not now.
+// USB and tight interrupt timing do not seem to go together.
+// For the latter, I experienced non-deterministic failures of unit tests, probably
+// because relevant input ports are not in the I/O range and therefore the tight timing
+// constraints are not satisfied.
 
-#define VERSION "2.1.2"
-
-#ifndef NANOVERSION
-#define NANOVERSION 3
-#endif
+#define VERSION "2.1.3"
 
 #ifndef HOSTBPS 
 #define HOSTBPS 230400UL // initial expected communication speed with the host
 //#define HOSTBPS 115200UL // should be used with boards that do not use an ATmega32U2 as the USB interface
                          // 115200, 57600, 38400, 19200, 9600 are alternatives
 #endif
+// #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
+
+
 
 // #define CONSTDWSPEED 1     // constant communication speed with target
-// #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
 // #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
@@ -152,7 +146,7 @@
 #define EEPROM_OFFSET  0x00810000 // EEPROM address from GBD is (real addresss + 0x00810000)
 
 // instruction codes
-#define BREAKCODE 0x9598
+const unsigned int BREAKCODE = 0x9598;
 
 // some GDB variables
 struct breakpoint
@@ -180,10 +174,7 @@ struct context {
   byte regs[32]; // general purpose regs
   boolean saved:1; // all of the regs have been saved
   statetype state:3; // system state
-  boolean von:1; // deliver power to the target
-  boolean vhigh:1; // deliver 5 volt instead of 3.3 volt
   unsigned long bps; // debugWIRE communication speed
-  unsigned long hostbps; // host communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
 } ctx;
 
@@ -191,69 +182,25 @@ struct context {
 // LED off = not connected to target system
 // LED flashing every second = power-cycle target in order to enable debugWIRE
 // LED blinking every 1/10 second = could not connect to target board
-// LED constantly on = connected to target and target is halted
-// LED on, but every second off for 1/10 sec = loading code
-// Led blinks every 1/3 second = target is running
-#if SYSBLINK
-const unsigned int ontimes[6] =  {0,  100, 150, 1, 1000, 700}; // <<--- get still timeouts!
-const unsigned int offtimes[6] = {1, 1000, 150, 0, 100, 700};
-#else
+// LED constantly on = connected to target 
 const unsigned int ontimes[6] =  {0,  100, 150, 1, 1, 1};
 const unsigned int offtimes[6] = {1, 1000, 150, 0, 0, 0};
-#endif
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 byte ledmask;
 volatile byte *ledout;
 
-
-// pin mapping for different situations and boards
-const byte pundef = 255; // undefined pin
-struct pinmap {
-  byte VHIGH;
-  byte VON;
-  byte V5;
-  byte V33;
-  byte TSCK;
-  byte TMOSI;
-  byte TMISO;
-  byte VSUP;
-  byte DEBTX;
-  byte TISP;
-  byte SYSLED;
-  byte LEDGND;
-} pm = { pundef, pundef, pundef, pundef, 13, 11, 12, 9, 3, pundef, 7, 6 };
-#if defined(ARDUINO_AVR_UNO)
-const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 15, 3, 6, 13, pundef } ;
-const byte SNSGND = 14;
+// pins
+const byte TISP = 4;
+const byte TSCK = 13;
+const byte TMOSI = 11;
+const byte TMISO = 12;
+const byte VSUP = 9;
+const byte IVSUP = 2;
+const byte DEBTX = 3;
+const byte SYSLED = 7;
+const byte LEDGND = 6;
 const byte DWLINE = 8;
-#elif defined(ARDUINO_AVR_MEGA2560_does_not_work)
-// On my Arduino Mega boards, I got non-deterministic failures for the unit tests.
-// I suspect that the reason migt be the longer execution times in SingleWireSerial because
-// of the I/O register placement, but I do not know. This does not happen with the
-// 328 based boards. So the Mega is off at this point. It would be interesting to use one
-// of the unused serial ports; this could also work for the 32U4-based boards.
-const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 55, 3, 6, 13, pundef };
-const byte SNSGND = 54;
-const byte DWLINE = 49;
-#elif defined(ARDUINO_AVR_NANO)
-  #if NANOVERSION == 3
-const PROGMEM pinmap  boardpm  = { 7, 15, 6, 5, 3, 16, 19, pundef, 18, 2, 13, pundef };
-const byte SNSGND = 11;
-const byte DWLINE = 8;
-  #else
-const PROGMEM pinmap  boardpm  = { 7, 15, 6, 5, 3, 19, 16, pundef, 17, 2, 13, pundef };
-const byte SNSGND = 11;
-const byte DWLINE = 8;
-  #endif
-#elif defined(ARDUINO_AVR_PRO)
-const PROGMEM pinmap  boardpm  = { 16, 2, 14, 15, 12, 3, 6, pundef, 5, 11, 13, pundef };
-const byte SNSGND = 15;
-const byte DWLINE = 8;
-#else
-//	    #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini"
-            #error "Board is not supported yet. dw-link works only on Uno, Nano, and Pro Mini"
-#endif
 
 // MCU names
 const char attiny13[] PROGMEM = "ATtiny13";
@@ -357,7 +304,7 @@ struct mcu_info_type {
 };
 
 // mcu infos (for all AVR mcus supporting debugWIRE)
-// untested ones are marked by a star
+// untested ones are marked 
 const mcu_info_type mcu_info[] PROGMEM = {
   // sig sram low eep flsh dwdr  pg er4 boot    eecr eearh rcosc extosc xtosc slosc plus name
   {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0x0B, 0, attiny13},
@@ -432,16 +379,6 @@ const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
 unsigned long speedlimit = SPEEDHIGH;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, CkSlow, Erase, DWEN };
-
-const int maxbpsix = 5;
-const unsigned long rsp_bps[] = { 230400, 115200, 57600, 38400, 19200, 9600 };
-// Note that the Uno can communicate at (nominally) 230400, but the Nano cannot.
-// The deeper reason for that is that an ATmega328 at 16MHz is in fact 3.6% slower
-// when trying to communicate at 230400
-// (see https://hinterm-ziel.de/index.php/2021/10/26/communicating-asynchronously/).
-// On an Uno, the ATmega16U2 works some magic and lowers the communication speed to
-// 220000, while on a Nano the FTDI or CH340 chip sends the things at face value,
-// which is too fast for the ATmega.
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -537,45 +474,30 @@ int main(void) {
   
   // setup
   Serial.begin(HOSTBPS);
-  pinMode(SNSGND, INPUT_PULLUP);
-  if (digitalRead(SNSGND) == 0) // adapter board!
-    memcpy_P(&pm, &boardpm, sizeof(pinmap));
-  ledmask = digitalPinToBitMask(pm.SYSLED);
-  ledout = portOutputRegister(digitalPinToPort(pm.SYSLED));
-  DEBINIT(pm.DEBTX);
+  ledmask = digitalPinToBitMask(SYSLED);
+  ledout = portOutputRegister(digitalPinToPort(SYSLED));
+  DEBINIT(DEBTX);
   DEBLN(F("\ndw-link V" VERSION));
-  DEBPR(F("SNSGND: "));DEBLN(SNSGND);
-  DEBPR(F("DWLINE: "));DEBLN(DWLINE);
-#if SDEBUG
-  Serial1.begin(115200);
-  Serial1.println(F("dw-link V" VERSION));
-#endif
   TIMSK0 = 0; // no millis interrupts
-  ctx.hostbps = HOSTBPS;
-  ctx.von = false;
-  ctx.vhigh = false;
-  pinMode(pm.VON, INPUT_PULLUP); // configure Von as input from switch
-  pinMode(pm.VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
-  pinMode(pm.LEDGND, OUTPUT);
-  digitalWrite(pm.LEDGND, LOW);
-  pinMode(pm.VSUP, OUTPUT);
-  digitalWrite(pm.VSUP, HIGH);
+  pinMode(LEDGND, OUTPUT);
+  digitalWrite(LEDGND, LOW);
+  pinMode(VSUP, OUTPUT);
+  pinMode(IVSUP, OUTPUT);
+  power(true); // switch target on
 #if SCOPEDEBUG
-  pinMode(pm.DEBTX, OUTPUT); //
-  digitalWrite(pm.DEBTX, LOW); // PD3 on UNO
+  pinMode(DEBTX, OUTPUT); //
+  digitalWrite(DEBTX, LOW); // PD3 on UNO
 #endif
   initSession(); // initialize all critical global variables
   //  DEBLN(F("Now configuereSupply"));
-  configureSupply(); // configure suppy already here
-  //  DEBLN(F("configuereSupply done"));
-  pinMode(pm.TISP, OUTPUT);
-  digitalWrite(pm.TISP, HIGH); // disable outgoing ISP lines
+  pinMode(TISP, OUTPUT);
+  digitalWrite(TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
   DEBLN(F("Setup done"));
+  
   // loop
   while (1) {
     monitorSystemLoadState();
-    configureSupply();
     if (Serial.available()) {
       gdbHandleCmd();
     } else if (ctx.state == RUN_STATE) {
@@ -610,30 +532,6 @@ void monitorSystemLoadState(void) {
                               // instead of asnychronous load
 	targetFlushFlashProg();
       setSysState(CONN_STATE);
-    }
-  }
-}
-
-// configure supply lines according to switch setting
-void configureSupply(void)
-{
-  if (digitalRead(SNSGND)) return; 
-  if (ctx.vhigh != !digitalRead(pm.VHIGH) || ctx.von != !digitalRead(pm.VON)) { // something changed
-#if SCOPEDEBUG
-  PORTD |= _BV(PD3);
-  PORTD &= ~_BV(PD3);
-#endif
-    _delay_ms(5); // debounce
-    //DEBLN(F("Some change"));
-    //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VHIGH));
-    //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VON));
-    ctx.vhigh = !digitalRead(pm.VHIGH);
-    ctx.von = !digitalRead(pm.VON);
-    pinMode(pm.V33, INPUT); // switch off both supply lines
-    pinMode(pm.V5, INPUT);
-    if (ctx.von) { // if on, switch on the right MOSFET
-      if (ctx.vhigh) pinMode(pm.V5, OUTPUT); // switch on 5V MOSFET
-      else pinMode(pm.V33, OUTPUT); // switch on 3.3 V MOSFET
     }
   }
 }
@@ -677,7 +575,7 @@ void reportFatalError(byte errnum, boolean checkio)
 }
 
 // change system state
-// switch on blink IRQ when run, error, or power-cycle state
+// switch on blink IRQ when error, or power-cycle state
 void setSysState(statetype newstate)
 {
   //DEBPR(F("setSysState: ")); DEBLN(newstate);
@@ -686,9 +584,9 @@ void setSysState(statetype newstate)
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-  pinMode(pm.SYSLED, OUTPUT);
-  if (ontimes[newstate] == 0) digitalWrite(pm.SYSLED, LOW);
-  else if (offtimes[newstate] == 0) digitalWrite(pm.SYSLED, HIGH);
+  pinMode(SYSLED, OUTPUT);
+  if (ontimes[newstate] == 0) digitalWrite(SYSLED, LOW);
+  else if (offtimes[newstate] == 0) digitalWrite(SYSLED, HIGH);
   else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
@@ -1169,16 +1067,11 @@ void power(boolean on)
 {
   //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
-    digitalWrite(pm.VSUP, HIGH);
-    if (ctx.von) {
-      //DEBLN(F("VXX up"));
-      if (ctx.vhigh) pinMode(pm.V5, OUTPUT);
-      else pinMode(pm.V33, OUTPUT);
-    }
+    digitalWrite(VSUP, HIGH);
+    digitalWrite(IVSUP, LOW);
   } else { // on=false
-    digitalWrite(pm.VSUP, LOW);
-    pinMode(pm.V5, INPUT);
-    pinMode(pm.V33, INPUT);
+    digitalWrite(VSUP, LOW);
+    digitalWrite(IVSUP, HIGH);
   }
 }
 
@@ -3253,19 +3146,19 @@ void enableSpiPins () {
   digitalWrite(DWLINE, LOW);
   DEBLN(F("RESET low"));
   _delay_us(1);
-  pinMode(pm.TSCK, OUTPUT);
-  digitalWrite(pm.TSCK, LOW);
-  pinMode(pm.TMOSI, OUTPUT);
-  digitalWrite(pm.TMOSI, HIGH);
-  pinMode(pm.TMISO, INPUT);
-  digitalWrite(pm.TISP, LOW);
+  pinMode(TSCK, OUTPUT);
+  digitalWrite(TSCK, LOW);
+  pinMode(TMOSI, OUTPUT);
+  digitalWrite(TMOSI, HIGH);
+  pinMode(TMISO, INPUT);
+  digitalWrite(TISP, LOW);
 }
 
 void disableSpiPins () {
-  digitalWrite(pm.TISP, HIGH);
-  pinMode(pm.TSCK, INPUT); 
-  pinMode(pm.TMOSI, INPUT);
-  pinMode(pm.TMISO, INPUT);
+  digitalWrite(TISP, HIGH);
+  pinMode(TSCK, INPUT); 
+  pinMode(TMOSI, INPUT);
+  pinMode(TMISO, INPUT);
 }
 
 byte ispTransfer (byte val) {
@@ -3274,11 +3167,11 @@ byte ispTransfer (byte val) {
   // that should be slow enough even for
   // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
-    digitalWrite(pm.TMOSI, (val & 0x80) ? HIGH : LOW);
-    digitalWrite(pm.TSCK, HIGH);
+    digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
+    digitalWrite(TSCK, HIGH);
     _delay_us(200); 
-    val = (val << 1) + digitalRead(pm.TMISO);
-    digitalWrite(pm.TSCK, LOW);
+    val = (val << 1) + digitalRead(TMISO);
+    digitalWrite(TSCK, LOW);
     _delay_us(200);
   }
   return val;
