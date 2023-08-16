@@ -172,7 +172,7 @@ Usually, it should not be necessary to change a compile-time constant in *dw-lin
 | Name           | Default                | Meaning                                                      |
 | -------------- | ---------------------- | ------------------------------------------------------------ |
 | __VERSION__    | current version number | Current version number of *dw-link*; should not be changed.  |
-| **HOSTBPS**    | 230400                 | Communication speed for host interface                       |
+| **HOSTBPS**    | 115200                 | Communication speed for host interface                       |
 | __STUCKAT1PC__ | 0                      | If this value is set to 1, then *dw-link* will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. |
 
 <a name="section42"></a>
@@ -184,6 +184,8 @@ Before you can start debugging, you have to setup the hardware. I'll use an ATti
 #### 4.2.1 Debugging an ATtiny85
 
 In order to debug an ATtiny85, we will assume it is completely "naked" and plugged into a breadboard as shown below. First of all, notice the capacitor of 10 µF or more between RESET and GND on the UNO board. This will disable auto-reset of the UNO board. Second, note the LED and resistor plugged in to pin 7 and 6. This is the system LED which is used to visualise the internal state of the debugger (see below). This is optional, but very helpful. 
+
+If you do not have a solder iron at hand in order to solder a series resistor to the system LED, you can instead put an ordinary LED without resistor into pin D6 (-) and D5 (+). It will not be very bright since the internal pull-up resistor is used, which is around 20 kΩ, but it should be enough.
 
 <a name="Fritzing"></a>
 ![ATtiny85 on a breadboard](pics/debug-attiny85new_Steckplatine.jpg)
@@ -205,9 +207,10 @@ ATtiny pin# | Arduino UNO pin | component
 6 (D1, MISO) | D12 |
 7 (D2, SCK) | D13 |
 8 (Vcc) | D9 | 10k resistor, decoupling cap 100 nF 
-  |RESET|blocking cap of 10 µF (+)
-  |D7|system LED (+)
-  |D6|200 Ω to system LED (-)
+&nbsp;|RESET|blocking cap of 10 µF (+)
+&nbsp;|D7|system LED (+)
+&nbsp;|D6|200 Ω to system LED (-) (or possibly dark LED(-) without resistor)
+&nbsp;|D5|(possibly dark system LED (+))
 
 
 
@@ -438,26 +441,26 @@ q[uit] | exit from GDB
 command | action
 --- | ---
 mo[nitor] he[lp] | give a help message on monitor commands 
-mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected)
-mo[nitor] dwo[ff] | disable debugWIRE mode in the target
-mo[nitor] re[set] | resets the MCU
-mo[nitor] er[ase] | erases chip (i.e., flash memory, EEPROM, and lock bits) 
-mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator)
-mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator)
-mo[nitor] rc[osc] | set clock source to internal RC oscillator
-mo[nitor] ex[tosc] | set clock source to external clock
-mo[nitor] xt[alosc] | set clock source to crystal oscillator
-mo[nitor] sl[owosc] | set clock source to internal low frequency oscillator (125 kHz)
+mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected) (*) 
+mo[nitor] dwo[ff] | disable debugWIRE mode in the target (*) 
+mo[nitor] re[set] | resets the MCU (*) 
+mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator) (*) 
+mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator) (*) 
+mo[nitor] rc[osc] | set clock source to internal RC oscillator (*) 
+mo[nitor] ex[tosc] | set clock source to external clock (*) 
+mo[nitor] xt[alosc] | set clock source to crystal oscillator (*) 
+mo[nitor] sl[owosc] | set clock source to internal low frequency oscillator (125 kHz) (*) 
 mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
 mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
 mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **h** is the default; without an argument, the current communication speed is printed 
-mo[nitor] ser[ial] | print current communication speed of the connection to the host computer
+mo[nitor] la[sterror] | print error number of last fatal error 
 mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
+mo[nitor] ti[meouts] | report number of timeouts (should be 0!) 
 mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen during single-stepping, which is the default 
 mo[nitor] un[safestep] | single stepping is interruptible and time advances during single-stepping 
 mo[nitor] ve[rsion] | print version number of firmware
 
-Note that all monitor commands that change fuses also implicitly reset the MCU. In other words, all commands except the last eight will do that.
+Note that all monitor commands that change fuses also implicitly reset the MCU. They are marked by (*).
 
 <a name="section6"></a>
 
@@ -469,9 +472,9 @@ The main differences to the Arduino IDE are:
 
 1. You do not select the MCU and its parameters using a dropdown menu, but you have write/modify an INI-style file `platform.ini`.
 2. Libraries are not global, but they are local to each project. That means that a new library version will not break your project, but  you have to update library versions for each project separately.
-3. There is no preprocessor that generates function declarations automagically. You have to add the include statement for the arduino header file and all function declarations by yourself.
+3. There is no preprocessor that generates function declarations automagically. You have to add the include statement for the arduino header file and all function declarations by yourself. In addition, you need to import `Arduino.h` explicitly.
 4. There is already a powerful editor integrated into the IDE.
-5. Most importantly, the IDE contains ways to 
+5. Most importantly, the IDE contains ways to configure the debugging interface, which makes it possible to integrate dw-link easily. 
 
 ### 6.1 Installing PlatformIO
 
@@ -521,69 +524,48 @@ Alternatively, you should be able to bring back you MCU to the normal state by t
 
 ## 7. A "real" hardware debugger
 
-The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 jumper wires to connect *dw-link* to your target as described in [Section 4.2](#section42). However, if you want to use this tool more than once, then there should be at least something like a ISP cable connection. As a first approximation, I built something along  this line using a 6-wire Dupont jumper cable and heat shrink tubing.
+The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 jumper wires to connect *dw-link* to your target as described in [Section 4.2](#section42). However, if you want to use this tool more than once, then there should be at least something like a ISP cable connection. Otherwise you might scratch your head which cable goes where.
 
-![ISP cable](pics/ispcable.jpg)
+### 7.1 The basic solution
 
-While it is better then just 6 jumpers wires, you still have to remember which wire has to be connected to which Arduino pin. 
-
-For most of the wires, we use the same pins on the debugger and the target. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). And in contrast to such a programmer cable, it makes sense to also break out the Vcc wire.
+For most of the wires, we use the same pins on the debugger and the target. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). And in contrast to such a programmer cable, it makes sense to also break out the Vcc wire. And you definitely do not want to integrate the capacitor between RESET and GND in such a cable!
 
 ![isp-cable](pics/isp-cable.jpg)
 
-As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such a wire we have sort of constructed a hardware debugger for less than 10 €, which can be considered as semi-durable.
+As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such a wire we have sort of constructed a hardware debugger for less than 10 €, which can be considered as semi-durable. Just add the optional system LED and a capacitor between RESET and GND.
 
 ![el cheapo debugger](pics/debugger-built.jpg)
 
 
 
-The relevant pins are therefore as defined in the following table. <a name="simplemap"></a>
+The relevant pins are therefore as defined in the following table. The pins in italics are not used in this basic version, but have its use for a more complete adapter board.
 
-| Arduino pin | ISP pin | Function    |
-| ----------- | ------- | ----------- |
-| D13         | 3       | SCK         |
-| D12         | 1       | MISO        |
-| D11         | 4       | MOSI        |
-| D9 (or Vcc) | 2       | VTG         |
-| D8          | 5       | RESET       |
-| GND         | 6       | GND         |
-| D7          |         | System LED+ |
-| D6          |         | System LED- |
+<a name="simplemap"></a>
+
+| Arduino pin | ISP pin | Function                            |
+| ----------- | ------- | ----------------------------------- |
+| D13         | 3       | SCK                                 |
+| D12         | 1       | MISO                                |
+| D11         | 4       | MOSI                                |
+| D9 (or Vcc) | 2       | VTG                                 |
+| D8          | 5       | RESET                               |
+| GND         | 6       | GND                                 |
+| D7          |         | System LED+                         |
+| D6          |         | System LED-                         |
+| D5          |         | System LED+ without series resistor |
+| *D4*        |         | ISP enable (active low)             |
+| *D3*        |         | Debug TX                            |
+| *D2*        |         | Power enable (active low)           |
 
 <a name="section71"></a>
 
-### 7.1 A simple shield
+### 7.2 A simple shield
 
-Taking it one one step further, one might think about a shield for an UNO or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage and perhaps connect it to the 5 V pin of the board. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
+Taking it one one step further, one might think about a prototype shield for an UNO or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
 
-Note that here we use a somewhat different pin mapping then the one in the introductory example and in the ISP cable above in order to use the pin 13 builtin LED. In order to signal that to the sketch, pin D14 (=A0) on a UNO board needs to be connected to GND (see also the pin mapping for shields and adapter boards in Section [7.3.2](#section732) & [7.3.3](#section733).)
+![dw-probe-fritzing](pics/dw-probe-2.0.png)
 
-
-![dw-probe-fritzing V 0.1](pics/dw-probe0.1.png)
-
-
-In reality, it probably will more look like as in the next picture.
-
-
-![dw-probe-proto V 0.1](pics/proto.jpg)
-
-You can also do the same thing with the Nano sized Arduinos. You should just be aware of the pin mapping as described in [Section 7.3.2 & 7.3.3](#section732). 
-
-
-
-### 7.2 A shield with level shifters
-
-If you work also with 3.3 volt systems, you have two options. You could buy an UNO variant that can switch to 3.3 volt (e.g. a https://www.seeedstudio.com/Seeeduino-V4-2-p-2517.html or a [Keyestudio PLUS Board](https://wiki.keyestudio.com/KS0486_Keyestudio_PLUS_Development_Board_(Black_And_Eco-friendly))), you use level-shifters. Again, this is easily achievable using, e.g., the Sparkfun [level-shifter breakout board with four BSS138 N-channel MOSFETs](https://www.sparkfun.com/products/12009). Of course, similar breakout boards work as well. Note that the target can now be powered with 3.3 V or 5 V and the level-shifter will take care of it; that is, even if no level-shifting is needed, it will work.
-
-![dw-probe-fritzing V 0.2](pics/dw-probe0.2.png)
-
-
-Now the reality check! How could a prototype look like? Instead of soldering it, I used a breadboard prototype shield with the level shifter breakout hidden under jumper wires on the left side of the breadboard.
-
-![dw-probe-proto V 0.2](pics/proto0.2.jpg)
-
-
-Maybe it does not look completely convincing, but it does what it is supposed to do. In particular, the level-shifting works flawlessly. However, it is definitely not made for eternity. And even when I would give it a more sustainable form, this prototype has a few shortcomings. First, it has pull-up resistors on the SPI lines, i.e., it changes the electrical properties of these lines considerably. Second, when powering it with 3.3 volt from the Arduino board, one should source not more than 50 mA. Third, the board cannot power-cycle the target board when interfacing to a 3.3V board.
+You can also do a similar thing with the Arduino Nano. Note, however, that the maximum communication speed of a Nano is 115200.  
 
 ### 7.3 Adapter board/shield with level-shifter and switchable power supply
 
@@ -596,86 +578,34 @@ So, it would be great to have a board with the following features:
 * unidirectional level-shifters on the ISP lines, and
 * tri-state buffers for the two output signals MOSI and SCK.
 
-I have designed a base board for the Arduino Nano V2, Nano V3, and Pro Mini,  with these features. You only have to set three DIP switches, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 1.0 dw-probe board in action hosting a Nano board. It all works flawlessly. The only problem I encountered is that Arduino Nanos with a CH340 serial chip appear not to be able to use a communication speed faster than 115200 to the host. 
+I have designed an UNO shield with these features. You only have to set jumpers, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 2.0 dw-probe board in action. It all works flawlessly. 
 
-![dw-probe 1.0](pics/dwprobe1.0-in-action.jpg)
+The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory. This design is currently untested but should work.
 
-The Eagle design files of the Version 1.1 board are in the [pcb](../pcb/) directory. This design is currently untested but should work based on the (faulty) V1.0 design. There is also a design for an UNO-sized shield in the directory, untested as well. But the boards should arrive soon. 
+You have to set three different jumpers.
 
-
-#### 7.3.1 DIP switch configuration
-
-There are three different DIP switches labelled **Von**, **5V**, and **10k**. 
-
-Label | On | Off
---- | --- | ---
-**Von** | The debugger supplies power to the target (should be less than 200 mA) and the line is power-cycled when debugWIRE mode needs to be enabled | The debugger does not supply power to the target, which means that power has to be supplied externally and power-cycling needs to be done manually
-**5V** | The debugger provides 5 V to the target board (if Von is on) | The debugger provides 3.3 V to the target board (if Von is on)
-**10k** | A 10kΩ pull-up resistor is connected to the RESET line of the target | 
-
-<a name="section732"></a>
-
-#### 7.3.2 Functional pins of the adapter board 
-
-In order to be able to accommodate different boards on the adapters, the pin mapping of the adapter boards is somewhat complex. First of all, let me list the functional pins.
-
-Functional pin | Direction | Explanation
---- | --- | ---
-DEBTX | Output | Serial line for debugging output (when debugging the debugger) 
-DWLINE | Input/Output | debugWIRE communication line to be connected to RESET on the target board
-GND | Supply | Ground
-TISP | Output | Control line: If low, then ISP programming is enabled 
-TMISO | Input | SPI signal "Master In, Slave Out"
-TMOSI | Output | SPI signal "Master Out, Slave In"
-TSCK | Output | SPI signal "Master clock"
-SNSGND | Input | If open, signals that the debugger should use the [pin mapping tuned for an ISP cable](#simplemap), if low, use the pin mapping for the particular board as specified in the [table below](#complexmap) 
-V33 | Output | Control line to the MOSFET to switch on 3.3 volt supply for target
-V5  | Output | Control line to switch on the 5 volt line
-Vcc | Supply | Voltage supply from the board (5 V) that can be used to power the target
-VHIGH | Input from switch | If low, then choose 5 V supply for target, otherwise 3.3 V 
-VON | Input from switch | If low, then supply target (and use power-cycling)
-VSUP | Output | Used as a target supply line driven directly by an ATmega pin, i.e., this should not source more than 20 mA (this is the cheap alternative to using MOSFETs to drive the supply for the target board, e.g., when using a prototype board as sketched in [Section 7.1](#section71)) 
-
-<a name="section733"></a>
-
-#### 7.3.3 Pin mapping
-
-If you plug in your Arduino into the adapter board or use the shield, you do not have to bother about pin assignments. The only important thing is to set the DIP switches (if you have those) and plug in the USB and ISP cable. 
-
-When you use an Arduino Nano, you should be aware that  there are apparently two different versions around, namely version 2 and version 3. The former one has the A0 pin close to the 5V pin, while version 3 boards have the A0 pin close to the REF pin. If you use a Nano on the adapter board, you need to set the compile time constant `NANOVERSION`, either by changing the value in the source or by defining the value when compiling. The default value is 3.
-
-In the table below, the mapping between functional pins of the debugger and the Arduino pins is given. 
-
-<a name="complexmap"></a>
-
-Pin | Nano V2 | Nano V3 |  Pro Mini | Uno 
---- | --- | --- | --- | --- 
-DEB-TX |A3=D17|A4=D18| D5 |D3
-DW-LINE | D8 | D8 |D8| D8 
-GND | GND | GND | GND | GND 
-TISP | D2 | D2 | D11 |D6
-TMISO | A2= D16 | A5= D19 | D6 |D11
-TMOSI | A5= D19 | A2= D16 | D3 |D10
-TSCK | D3 | D3 | D12 |D12
-SNS-GND | D11 | D11 | D10 |A0=D14
-V33 | D5 | D5 | A0= D14 |D7
-V5 | D6 | D6  | A1= D15 |D9
-Vcc | 5V | 5V | Vcc |5V
-VHIGH | D7 | D7  | A2= D16 |D2
-VON | A1= D15 | A1= D15  | D2 |D5
-VSUP |  |  |  |A1=D15
-
-
+Label | Left | Middle | Right 
+--- | --- | --- | --- 
+**Supply** | **3.3V** are supplied to the target | **no**: target needs to its own supply and power cycling has to be done manually | **5V** are supplied to the target 
+**Pullup** | A **10kΩ** pull-up resistor is connected to the RESET line of the target | &nbsp; | There is **no** pull-up resistor connected 
+**Cap** | A **10µF** cap disables the auto-reset feature of the debugger |&nbsp;|There is no cap connected to the RESET line of the debugger
 
 <a name="section8"></a>
 
 ## 8. Problems and shortcomings
 
-*dw-link* is still in ***alpha*** state. The most obvious errors have been fixed, but there are most probably others. If something does not go according to plan, please try to isolate the reason for the erroneous behaviour, i.e., identify a sequence of operations to replicate the error. One perfect way to document a debugger error is to switch on logging and command tracing in the debugger:
+*dw-link* is still in ***beta*** state. The most obvious errors have been fixed, but there are most probably others. If something does not go according to plan, please try to isolate the reason for the erroneous behaviour, i.e., identify a sequence of operations to replicate the error. The most serious errors are *fatal errors*, which stop the debugger from working. With the command `monitor lasterror` you can get an information what the cause is (check the error table at the end).
+
+
+
+One perfect way to document a debugger error is to switch on logging and command tracing in the debugger:
 
 ```
 set trace-commands on
+set remote debug 1
 set logging on
+...
+set logging off
 ```
 
 I have prepared an *[issue form](issue_form.md)* for you, where I ask for all the information necessary to replicate the error. 
@@ -720,9 +650,7 @@ Sometimes, in particular when using a clock speed below 1 MHz, responses from th
 
 "Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen (see [monitor commands](#monitor-commands)). Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing these commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
 
-Another reason for slow loading times can be that the communication speed to the host is low. Check the speed by typing the command `monitor serial`. You can set the speed to 230400 by supplying the speed when using the `set serial baud` command. This has to done *before* connecting to the hardware debugger using the `target remote` command. 
-
-With an optimal setting, i.e., 250 kbps for the debugWIRE line and 230400 kbps for the host communication line, loading is done with 500-800 bytes/second. It is should be 3-5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed).
+With an optimal setting, i.e., 250 kbps for the debugWIRE line and 230400 bps for the host communication line, loading is done with 500-800 bytes/second. It should be 3-5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed).
 
 ### 8.3 Program execution is very slow when conditional breakpoints are present
 
@@ -780,7 +708,7 @@ Some debugWIRE MCUs appear to have program counters in which some unused bits ar
 
 ### 8.10 The start of the debugger takes a couple of seconds
 
-The reason is that when the host establishes a connection to the debugger, the debugger is reset and the bootloader waits a couple of seconds. You can avoid that by either disabling the auto-reset by putting a capacitor of 10 µF or more between RESET and GND or by cutting the RESET EN solder bridge on an Arduino UNO. Alternatively, you can flash the debugger firmware with an ISP programmer so that the boot loader is not active any longer, speeding up the reset process.
+The reason is that when the host establishes a connection to the debugger, the debugger is reset and the bootloader waits a couple of seconds. You can avoid that by disabling the auto-reset putting a capacitor of 10 µF or more between RESET and GND.
 
 <a name="section811"></a>
 
@@ -798,11 +726,7 @@ I have encountered situations [when it was impossible to get the right informati
 
 #### Problem: After changing optimization options, the binary is still too large/very small
 
-You switched optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. You can force a recompile of the core by touching a file in the 'core' file folder, e.g., in order to recompile the core files for the standard Arduino cores on the Mac:
-
-```
-touch ~/Library/Arduino15/packages/arduino/hardware/avr/1.8.4/platform.local.txt
-```
+You switched optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this is not longer an option. You need to look at where the files are compiled and stored and delete them manually.
 
 #### Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*
 
@@ -814,9 +738,11 @@ Another common problem is that the connection to the target cannot be establishe
 
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
-The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino tries out 115200, 230400, 9600, 19200, 38400, and 57600 bps when connecting. If you specified something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. 230400 bps works only with the UNO boards. The Arduino Nano cannot  communicate at that speed. 
+The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino uses by default 115200 baud, but you can recompile dw-link with a changed value of `HOSTBPS`, e.g., using 230400. If GDB is told something differently, either as the argument to the `-b` option when starting `avr-gdb` or as an argument to the GDB command `set serial baud ...`, you should change that. If you did not specify the bitrate at all, GDB uses its default speed of 9600, which will not work!
 
-A further (unlikely) reason might be that a different communication format was chosen (parity, two stop bits, ...). 
+My experience is that 230400 bps works only with the UNO boards that use the ATmega32U2 chip as the USB interface. The Arduino Nano as well a Chinese clones using the CH320 chips cannot  communicate at that speed. You have to fall back to 115200 bps. 
+
+A further (unlikely) reason for a failure in connecting to the host might be that a different communication format was chosen (parity, two stop bits, ...). 
 
 #### Problem: In response to the `monitor dwconnect` command, you get the error message *Cannot connect: ...*
 
@@ -824,10 +750,8 @@ Depending on the concrete error message, the problem fix varies.
 
 - *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)).
 - *Cannot connect: Unsupported MCU*: This MCU is not supported by *dw-link*. It most probably has no debugWIRE connectivity. 
-- *Cannot connect: PC with stuck-at-one bits*: This is most probably an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
+- *Cannot connect: PC with stuck-at-one bits*: dw-link tried to connect to an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
 - *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!
-
-
 
 #### Problem: You receive the message *Protocol error with Rcmd* 
 
@@ -848,15 +772,13 @@ The reason is most probably that the communication connection to the target syst
 
 One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)). 
 
-<s>Another reason may be that the communication speed between hardware debugger and host is low. If you do not specify anything, it will be only 9600 bps. Check the speed by typing the command `monitor serial`. It will print the current connection speed.</s> 
-
-<s>You can choose 230400, 115200, 57600, 38400, 19200, or 9600 when starting `avr-gdb` by giving the bit rate as an argument to the `-b` option or by specifying the bit rate as an argument to the command `set serial baud ...` before establishing a connection with the `target` command.</s>
-
-<s>Note that you need to reset the hardware debugger if you want to communicate using a different bit rate.</s>
-
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted* 
 
 You use more than the allowed number of breakpoints, i.e., usually 32 (+1 for a temporary breakpoint for single-stepping). If you have executed the `monitor hwbp` command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.
+
+#### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
+
+The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for gdb. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
 
 #### Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised
 
@@ -865,10 +787,6 @@ This is a feature, not a bug.  It allows you to single-step through the code wit
 #### Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030
 
 This should only happen when you have used the command `monitor unsafestep` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. If you want to avoid this behavior in the future, issue the debugger command `monitor safestep`. 
-
-#### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
-
-The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for gdb. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
 
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution*, you get the message *illegal instruction*, and the program receives a `SIGILL` signal
 
@@ -880,7 +798,7 @@ If you simply want to continue, you can set the PC to another value, e.g., one t
 
 #### Problem: The debugger does not stop at the line a breakpoint was set
 
-Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, `-Og` is the recommended optimization option, which applies optimizations in a debug-friendly way. This is also the default for PlatformIO. In the Arduino IDE, you have to select the `Debug` option. You can also disable all possible optimizations (choose `Debug (no optimzaizons)` in the Arduino IDE).
+Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, **-Og** is the recommended optimization option, which applies optimizations in a debug-friendly way. This is also the default for PlatformIO. In the Arduino IDE, you have to select the `Debug` option. You can also disable all possible optimizations (choose `Debug (no comp. optim.)` in the Arduino IDE).
 
 #### Problem: The debugger does things that appear to be strange
 
@@ -912,13 +830,13 @@ Older versions of avr-gdb had a problem with disassembly: [https://sourceware.or
 
 In this case some serious internal error had happened. You have to stop the current debug session and restart. 
 
-The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. If it is a connection error that happened when you tried to establish a connection, you may get the error message by typing `monitor dwconnect`. You can also find out what kind of error happened by examining the memory at address `0xFFFFFFFF`. Type the following command:
+The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. If it is a connection error that happened when you tried to establish a connection, you may get the error message by typing `monitor dwconnect`. You can find out what kind of error happened by typing the following command:
 
 ```
-x/db 0xFFFFFFFF
+monitor lasterror
 ```
 
-The (virtual) memory cell at this address contains the relevant error number. If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors (see below).
+If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors (see below).
 
 If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). By the way: `monitor dwoff` can still be executed, provided there is still a functioning connection to the target. So you should still be able to disable debugWIRE on the target MCU even if a fatal error has happened. 
 
@@ -1017,3 +935,7 @@ Initial version
 - More explanation how to start a debugging session using the Arduino IDE
 - Reorganized and simplified as much as possible
 - Corrected wrong placement in the table about the connections between UNO and ATtiny85
+- new monitor command: lasterror
+- deleted monitor commands: eraseflash, serial
+- added comment about dark system LED
+- changed Section 7 in order to describe the V2.0 design

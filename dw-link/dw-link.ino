@@ -35,12 +35,11 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "2.1.3"
+#define VERSION "2.1.4"
 
 #ifndef HOSTBPS 
-#define HOSTBPS 230400UL // initial expected communication speed with the host
-//#define HOSTBPS 115200UL // should be used with boards that do not use an ATmega32U2 as the USB interface
-                         // 115200, 57600, 38400, 19200, 9600 are alternatives
+#define HOSTBPS 115200UL // safe default speed for the host connection
+//#define HOSTBPS 230400UL // works with UNOs that use an ATmega32U2 as the USB interface         
 #endif
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
 
@@ -199,6 +198,7 @@ const byte VSUP = 9;
 const byte IVSUP = 2;
 const byte DEBTX = 3;
 const byte SYSLED = 7;
+const byte DARKSYSLED = 5;
 const byte LEDGND = 6;
 const byte DWLINE = 8;
 
@@ -435,12 +435,15 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (*ledout & ledmask) {
     if (cnt < 0) {
       cnt = offtime;
-      *ledout &= ~ledmask;
+      digitalWrite(SYSLED, LOW);
+      digitalWrite(DARKSYSLED, LOW);
+      pinMode(DARKSYSLED, OUTPUT);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      *ledout |= ledmask;
+      digitalWrite(SYSLED, HIGH);
+      pinMode(DARKSYSLED, INPUT_PULLUP);
     }
   }
   busy--;
@@ -569,7 +572,7 @@ void reportFatalError(byte errnum, boolean checkio)
       return;
     }
   }
-  // DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
+  DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
   if (fatalerror == NO_FATAL) fatalerror = errnum;
   setSysState(ERROR_STATE);
 }
@@ -578,21 +581,26 @@ void reportFatalError(byte errnum, boolean checkio)
 // switch on blink IRQ when error, or power-cycle state
 void setSysState(statetype newstate)
 {
-  //DEBPR(F("setSysState: ")); DEBLN(newstate);
+  DEBPR(F("setSysState: ")); DEBLN(newstate);
   if (ctx.state == ERROR_STATE && fatalerror) return;
   TIMSK0 &= ~_BV(OCIE0A); // switch off!
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
   pinMode(SYSLED, OUTPUT);
-  if (ontimes[newstate] == 0) digitalWrite(SYSLED, LOW);
-  else if (offtimes[newstate] == 0) digitalWrite(SYSLED, HIGH);
-  else {
+  if (ontimes[newstate] == 0) {
+    digitalWrite(SYSLED, LOW);
+    digitalWrite(DARKSYSLED, LOW);
+    pinMode(DARKSYSLED, OUTPUT);
+  } else if (offtimes[newstate] == 0) {
+    digitalWrite(SYSLED, HIGH);
+    pinMode(DARKSYSLED, INPUT_PULLUP);
+  } else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
   }
-  //DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
-  //DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
+  DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
+  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
 
@@ -607,7 +615,7 @@ void gdbHandleCmd(void)
 
   measureRam();
   b = gdbReadByte();
-    
+
   switch(b) {
   case '$':
     buffill = 0;
@@ -666,7 +674,7 @@ void gdbParsePacket(const byte *buff)
 {
   byte s;
 
-  //DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
+  DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
   if (!flashidle) {
     if (*buff != 'X' && *buff != 'M')
       targetFlushFlashProg();                        /* finalize flash programming before doing something else */
@@ -785,6 +793,8 @@ void gdbParseMonitorPacket(const byte *buf)
   else if (memcmp_P(buf, (void *)PSTR("68656c7000"), max(4,min(10,clen))) == 0)                  
     gdbHelp();                                                              /* he[lp] */
 #endif
+  else if (memcmp_P(buf, (void *)PSTR("6c6173746572726f7200"), max(4,min(20,clen))) == 0)
+    gdbReportLastError();                                                  /* la[sterror] */
   else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)
     gdbReportFlashCount();                                                  /* fla[shcount] */
   else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)
@@ -833,7 +843,7 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetSteppingMode(false);                                              /* unsafestep */
   else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
     gdbVersion();                                                           /* version */
-  else if (memcmp_P(buf, (void *)PSTR("74696d656f75747300"), max(8,min(18,clen))) == 0)
+  else if (memcmp_P(buf, (void *)PSTR("74696d656f75747300"), max(4,min(18,clen))) == 0)
     gdbTimeoutCounter();                                                    /* timeouts */
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
@@ -859,11 +869,18 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor safestep     - prohibit interrupts while single-stepping(default)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor unsafestep   - allow interrupts while single-stepping"), -1);
   gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (=250kbps) (def.) or l (=125kbps)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor flashcount   - report number of flash pages written since start"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor timeouts     - report timeouts"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor version      - report version number"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor flashcount   - number of flash pages written since start"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor timeouts     - number of timeouts"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor lasterror    - last fatal error"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor version      - version number"), -1);
   gdbDebugMessagePSTR(PSTR("All commands with (*) lead to a reset of the target"), -1);
   gdbSendReply("OK");
+}
+
+// report last error number
+inline void gdbReportLastError(void)
+{
+  gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
 }
 
 // return timeout counter
@@ -993,6 +1010,8 @@ boolean gdbConnect(boolean verbose)
 	conncode = -1;
     }
   }
+  DEBPR(F("conncode: "));
+  DEBLN(conncode);
   if (conncode == 1) {
 #if STUCKAT1PC
     mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
@@ -1020,8 +1039,11 @@ boolean gdbConnect(boolean verbose)
     default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
     }
   }
+  DEBPR(F("conncode: "));
+  DEBLN(conncode);
   if (fatalerror == NO_FATAL) fatalerror = -conncode;
   setSysState(ERROR_STATE);
+  if (conncode == -1) dw.enable(false); // otherwise if DWLINE has no pullup, the program goes astray!
   flushInput();
   return false;
 }
@@ -1646,13 +1668,6 @@ void gdbReadMemory(const byte *buff)
     return;
   }
 
-  if (addr == 0xFFFFFFFF) {
-    buf[0] = nib2hex(fatalerror >> 4);
-    buf[1] = nib2hex(fatalerror & 0x0f);
-    gdbSendBuff(buf, 2);
-    return;
-  }
-
   if (targetOffline()) {
     gdbSendReply("E01");
     return;
@@ -2090,10 +2105,12 @@ int targetISPConnect(void)
     enterProgramMode();
     result = 0;
   }  
-  if (result == 0 && ispProgramFuse(true, mcu.dwenfuse, 0)) {
-    result = 0;
-  } else {
-    result = -1;
+  if (result == 0) {
+    if (ispProgramFuse(true, mcu.dwenfuse, 0)) {
+      result = 0;
+    } else {
+      result = -1;
+    }
   }
   leaveProgramMode();
   DEBPR(F("Programming result: ")); DEBLN(result);

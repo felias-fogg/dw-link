@@ -700,7 +700,18 @@ this is needed by the original Arduino Nano
 * removed `monitor eraseflash` 
 * removed any reference to the lock bit error from the manual 
 
-## Version 2.1.3
+## Version 2.1.3 (16-Aug-23)
 
 * remove the complicated pin mappings and just go for one mapping, which uses jumpers instead of switches
-* ≤
+* removed `monitor serial`
+* All in all, the current version is 1520 bytes smaller and uses 52 bytes less RAM
+
+## Version 2.1.4 (16-Aug-23)
+
+* added on Pin 5 the possibility to put in an LED without a series resistor (using the internal pull-up resistor)
+* corrected error code when MCU without debugWIRE interface is connected
+* added `monitor lasterror` command
+* removed special case for memory access at 0xFFFFFFFF in order to access the error code
+* fixed an unserious bug: If DWLINE was open (no pullup), dw-link just froze. Fixed that by disabling the interrupts using dw.enable(false) in gdbConnect, when a connection problem had been discovered.
+* changed Section 7 to describe the simplified design
+* changed back to default speed of 115200 for the host connection in order to make life easier for everybody
