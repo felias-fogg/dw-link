@@ -715,3 +715,13 @@ this is needed by the original Arduino Nano
 * fixed an unserious bug: If DWLINE was open (no pullup), dw-link just froze. Fixed that by disabling the interrupts using dw.enable(false) in gdbConnect, when a connection problem had been discovered.
 * changed Section 7 to describe the simplified design
 * changed back to default speed of 115200 for the host connection in order to make life easier for everybody
+
+## Version 2.1.5 (17-Aug-23)
+
+* removed ATtiny13 from the supported MCUs since it behaves strangely. After enabling dw, it seems to be stuck in the initialisation routine. Sometimes, after toggling between connect/disconnect, it seems to execute the program normally. Very strange! And I do not have the energy and motivation to find out what is behind that.
+* now, when `detach`ing or `kill`ing, debugWIRE is disabled; so one only needs the command `monitor dwoff`, when something went wrong
+* fixed `vRun` which now needs to enable debugWIRE, because the GDB command `run` sends a `vKill` first
+* removed `extra_scripts.py` because we do not need that anymore
+* introduced a new compile-time constant `NOAUTODWOFF`, which when 1 disables the feature of disabling debugWIRE when leaving the debugger
+* Also added HIGHSPEEDDW, which is off by default, i.i., 125 kbps is the the highest we permit
+

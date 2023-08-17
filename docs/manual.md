@@ -60,7 +60,7 @@ Do not get nervous when your MCU does not react any longer as you expect it, but
 2. The **transitional** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** **state**.
 3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to a transition to the **transitional  state**, from which one can reach the **normal state** using ordinary ISP programming. 
 
-The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state can be achieved by the GDB command ```monitor dwoff```. If things seemed to have not worked out, you can simply reconnect the target to the hardware debugger and try out the two commands again.
+The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state will take place when you terminate GDB. It can also be achieved by the GDB command ```monitor dwoff```. If things seemed to have not worked out, you can simply reconnect the target to the hardware debugger and issue `monitor dwoff` again.
 <!--
 mermaid
     stateDiagram
@@ -91,17 +91,16 @@ As mentioned above, as a base for the debugger, in principle one can use any ATm
 * [Arduino Nano](https://store.arduino.cc/products/arduino-nano),
 * [Arduino Pro Mini](https://docs.arduino.cc/retired/boards/arduino-pro-mini).
 
-If you intend to use a different board. You simply need to set up your own pin mapping (see [Sections 7.3.2 & 7.3.3](#section732)) in the source code (a big conditional compilation part in the beginning of the sketch). 
+If you intend to use *dw-link* on a board with an MCU different from ATmega328P, you should be aware that *dw-link* makes heavy use of the particular hardware features of the ATmega328P and operates close to the limit. I tried out to run it on the Leonardo and on the Mega256, but was not successful. 
 
-The most basic setup is to use the UNO board and connect the cables as it is shown in the [Fritzing sketch](#Fritzing) further down. If you want to use the debugger more than once, it may payoff to use a prototype shield and put an ISP socket on it. The more luxurious solution is a shield for the UNO sized Arduino boards as described further down in [Section 7](#section7).
+The most basic setup is to use the UNO board and connect the cables as it is shown in the [Fritzing sketch](#Fritzing) further down. If you want to use the debugger more than once, it may pay off to use a prototype shield and put an ISP socket on it. The more luxurious solution is a shield for the UNO as described further down in [Section 7](#section7).
 
 <a name="section32"></a>
 
 ### 3.2 MCUs with debugWIRE interface
 
-In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs that are supported by the Arduino standard core, by [MicroCore](https://github.com/MCUdude/MicroCore), by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), and/or by [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
+In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debugWIRE interface. Specifically, the following MCUs that are supported by the Arduino standard core,  by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), and/or by [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
 
-* __ATtiny13(A)__
 * __ATtiny43U__
 * __ATtiny2313(A)__, __ATtiny4313__
 * __ATtiny24(A)__, __ATtiny44(A)__, __ATtiny84(A)__
@@ -117,7 +116,7 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on MCUs marked bold. The untested PB types appear to be very very difficult to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them and *dw-link* rejects these MCUs.
+I have tested the debugger on MCUs marked bold. The untested PB types appear to be very very difficult to get. The two MCUs that are stroke out have program counters with some bits stuck at one (see [Section 8.9](#section89)). For this reason, GDB has problems debugging them and *dw-link* rejects these MCUs. I have not included ATtiny13 since it behaved strangely. 
 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
@@ -161,7 +160,7 @@ There are only a few steps necessary for installing the *dw-link* firmware on th
 
 ### 4.1 Firmware installation
 
-Since the firmware of the hardware debugger comes in form of an Arduino sketch, you need to download first of all the [Arduino IDE](https://www.arduino.cc/en/software), if you have not done that already. Note that for some of the later software components (e.g., the ATTinyCore), a reasonably recent version of the IDE is required, i.e. 1.8.13+. It is probably best when you upgrade your installation now. As an alternative, you can also use [PlatformIO](https://platformio.org/). 
+Since the firmware of the hardware debugger comes in form of an Arduino sketch, you need to download first of all the [Arduino IDE](https://www.arduino.cc/en/software), if you have not done that already. Note that for some of the later software components (e.g., ATTinyCore), a reasonably recent version of the IDE is required, i.e. 1.8.13+. It is probably best when you upgrade your installation now. As an alternative, you can also use [PlatformIO](https://platformio.org/). 
 
 Second, you need to download this repository somewhere, where the IDE is able to find the Arduino sketch. If you use PlatformIO, note that the repository is already prepared to be opened as a PlatformIO project, i.e., it contains a `platformio.ini` file.
 
@@ -169,11 +168,13 @@ Third, you have to connect your future hardware debugger, i.e., the ATmega328 bo
 
 Usually, it should not be necessary to change a compile-time constant in *dw-link*. I will nevertheless document all these constants here. If you want to change one of them, you can do that when using `arduino-cli` by using the `--build-property` option or by changing the value in the source code.
 
-| Name           | Default                | Meaning                                                      |
-| -------------- | ---------------------- | ------------------------------------------------------------ |
-| __VERSION__    | current version number | Current version number of *dw-link*; should not be changed.  |
-| **HOSTBPS**    | 115200                 | Communication speed for host interface                       |
-| __STUCKAT1PC__ | 0                      | If this value is set to 1, then *dw-link* will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. |
+| Name            | Default                | Meaning                                                      |
+| --------------- | ---------------------- | ------------------------------------------------------------ |
+| __VERSION__     | current version number | Current version number of *dw-link*; should not be changed, except when one generates a new version |
+| **HOSTBPS**     | 115200                 | Communication speed for host interface                       |
+| **HIGHSPEEDDW** | 0                      | If 1, the speed limit of debugWIRE communication is 300 kbps, otherwise it is 150kbps |
+| **NOAUTODWOFF** | 0                      | If 1, disables the feature that debugWIRE mode is automatically disabled when leaving the debugger (makes startup of consecutive sessions a bit faster) |
+| __STUCKAT1PC__  | 0                      | If this value is set to 1, then *dw-link* will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. |
 
 <a name="section42"></a>
 
@@ -222,7 +223,7 @@ If instead of an ATtiny85, you want to debug an UNO board, everything said above
 
 When after a debugging session you want to restore the target so that it behaves again like an ordinary UNO, you have to execute the following steps:
 
-1. Exit the debugWIRE state as described in [Section 2](#section2).
+1. Exit the debugWIRE state as described in [Section 2](#section2). This should be happened automatically when exiting GDB.
 2. Reestablish the `RESET EN` connection by putting a solder blob on the connection.
 3. Burn the bootloader into the UNO again, [as described on the Arduino website](https://support.arduino.cc/hc/en-us/articles/4841602539164-Burn-the-bootloader-on-UNO-Mega-and-classic-Nano-using-another-Arduino).
 
@@ -257,10 +258,9 @@ Unfortunately, the debugger is not any longer part of the toolchain integrated i
 
 ### 5.2 Installing board manager files
 
-In order to be able to debug the MCUs mentioned in  the indroduction, you need to install 3rd party cores. For the classic ATtiny family, this is [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md), for the special case ATtiny13, it is [MicroCore](https://github.com/MCUdude/MicroCore), and for the ATmegaX8 family (including the Arduino UNO), it is [MiniCore](https://github.com/MCUdude/MiniCore). In fact, in order to be able to generate object files that are debug friendly, you need to install my fork of the board manager files. You first have to add URLs under the `Additional Board Manager URLs` in the `Preference` menu:
+In order to be able to debug the MCUs mentioned in  the indroduction, you need to install 3rd party cores. For the classic ATtiny family, this is [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md) and for the ATmegaX8 family (including the Arduino UNO), it is [MiniCore](https://github.com/MCUdude/MiniCore). In fact, in order to be able to generate object files that are debug friendly, you need to install my fork of the board manager files. You first have to add URLs under the `Additional Board Manager URLs` in the `Preference` menu:
 
 - ATTinyCore: `https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json` (for all the classic ATtinys)
-- MicroCore: `https://felias-fogg.github.io/MicroCore/package_MCUdude_MicroCore_index.json` (for the ATtiny13)
 - MiniCore: `https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json` (for all the ATmegaX8 MCUs)
 
 After that, you can download and install the board using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools/Board`. Currently, choose the versions that have a `+debug` suffix in its version number! I hope the capability of generating debug-friendly binaries will be incorporated in future versions of these board manager files, in which case you can rely on the regular board manager files by MCUdude and SpenceKonde.
@@ -345,14 +345,14 @@ Num     Type           Disp Enb Address    What
 Detaching from program: /.../varblink.ino.elf, Remote target
 Ending remote debugging.
 [Inferior 1 (Remote target) detached]
-(gdb) quit                                      # quit debugger
+(gdb) quit                                      # quit debugger, which will autoimatically disable debugWIRE
 >
 ```
 
 
-### 5.4 Disabling debugWIRE mode 
+### 5.4 Disabling debugWIRE mode explicitly
 
-Note that the ATtiny MCU is still in debugWIRE mode and the RESET pin cannot be used to reset the chip. If you want to bring the MCU back to the normal state, you need to call `avr-gdb` again.
+If the ATtiny MCU is still in debugWIRE mode and the RESET pin cannot be used to reset the chip and/or you cannot use ISP programming, then you can explicitly disable debugWIRE, as shown below. 
 
 ```
 > avr-gdb
@@ -369,8 +369,6 @@ debugWIRE is now disabled
 (gdb) quit
 >
 ```
-Of course, you could have done that before leaving the debug session in the previous section.
-
 ### 5.5 GDB commands
 
 In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most relevant commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
@@ -431,7 +429,8 @@ command | action
 set se[rial] b[aud] *number* | set baud rate of serial port to the hardware debugger (same as using the `-b` option when starting `avr-gdb`); only effective when called before establishing a connection with the `target` command 
 tar[get] rem[ote] *serialport* | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE (use only after baud rate has been specified!) 
 tar[get] ext[ended-remote] *serialport* | establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command
-det[ach] | detach from target and let it run 
+r[un] | reset MCU and restart program 
+det[ach] | detach from target and disable debugWIRE mode 
 fil[e] *name*.elf | load the symbol table from the specified ELF file (should be done before establishing the connection to the target)
 lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
 q[uit] | exit from GDB 
@@ -442,7 +441,7 @@ command | action
 --- | ---
 mo[nitor] he[lp] | give a help message on monitor commands 
 mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected) (*) 
-mo[nitor] dwo[ff] | disable debugWIRE mode in the target (*) 
+mo[nitor] dwo[ff] | disable debugWIRE mode in the target (which is executed when leaving GDB, or when executing the `kill` or `detach` command) (*) 
 mo[nitor] re[set] | resets the MCU (*) 
 mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator) (*) 
 mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator) (*) 
@@ -452,7 +451,7 @@ mo[nitor] xt[alosc] | set clock source to crystal oscillator (*)
 mo[nitor] sl[owosc] | set clock source to internal low frequency oscillator (125 kHz) (*) 
 mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
 mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
-mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=125kbps) or to **h**igh (=250kbps); **h** is the default; without an argument, the current communication speed is printed 
+mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed 
 mo[nitor] la[sterror] | print error number of last fatal error 
 mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
 mo[nitor] ti[meouts] | report number of timeouts (should be 0!) 
@@ -460,7 +459,7 @@ mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen dur
 mo[nitor] un[safestep] | single stepping is interruptible and time advances during single-stepping 
 mo[nitor] ve[rsion] | print version number of firmware
 
-Note that all monitor commands that change fuses also implicitly reset the MCU. They are marked by (*).
+Note that all monitor commands that change fuses also implicitly reset the MCU. These commands are marked by (*).
 
 <a name="section6"></a>
 
@@ -470,7 +469,7 @@ Note that all monitor commands that change fuses also implicitly reset the MCU. 
 
 The main differences to the Arduino IDE are:
 
-1. You do not select the MCU and its parameters using a dropdown menu, but you have write/modify an INI-style file `platform.ini`.
+1. You do not select the MCU and its parameters using a dropdown menu, but you have to write/modify the INI-style file `platform.ini`.
 2. Libraries are not global, but they are local to each project. That means that a new library version will not break your project, but  you have to update library versions for each project separately.
 3. There is no preprocessor that generates function declarations automagically. You have to add the include statement for the arduino header file and all function declarations by yourself. In addition, you need to import `Arduino.h` explicitly.
 4. There is already a powerful editor integrated into the IDE.
@@ -499,26 +498,23 @@ On the right, the debug control bar shows up, with symbols for starting executio
 
 ![PIOdebugactive](pics/pio3s.png)
 
+On a Mac, unfortunately it does not work out of the box, because the gcc-toolchain PlatformIO uses is quite dated and avr-gdb is not any longer compatible with recent macOS versions. Simply install avr-gdb with homebrew and copy the file (`/usr/local/bin/avr-gdb`) linto the toolchain directory (`~/.platformio/packages/toolchain-atmelavr/bin/`).
+
 ### 6.4 *Dw-link* setup
 
-But, of course, this is not the real thing. No LED is blinking. So close the window and copy the following two files from `examples/pio-config` to the project directory of your new PlatformIO project:
+But, of course, this is not the real thing. No LED is blinking. So close the window and copy the following file from `examples/pio-config` to the project directory of your new PlatformIO project:
 
 * `platformio.ini`
-* `extra_script.py`
 
 In the file `platformio.ini`, you need to put in the serial port your Arduino debugger uses. In general, you can use the `platformio.ini` configuration as a blueprint for other projects, where you want to use the hardware debugger. Note one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
 
-After having copied the two files into the project directory and reopened the project window, you should be able to debug your project as described above. Only now you are debugging the program on the target system, i.e., the LED really blinks!
+After having copied the file into the project directory and reopened the project window, you should be able to debug your project as described above. Only now you are debugging the program on the target system, i.e., the LED really blinks!
 
 A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
 ### 6.5 Disabling debugWIRE mode
 
-There are two ways of switching off the debugWIRE mode. If you click on the ant symbol (last symbol in the left navigation bar), there should be the option *debug* environment. When you then click on *Custom*, you should see you the option *DebugWIRE Disable*. Clicking on it will set the MCU back to its normal state, where the RESET line can be used for resets and ISP programming is possible.  
-
-![PIOdisable](pics/pio5s.png)
-
-Alternatively, you should be able to bring back you MCU to the normal state by typing `monitor dwoff` in the debugging terminal window of the PlatformIO IDE.
+There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwoff` in the debugging terminal window of the PlatformIO IDE. 
 
 <a name="section7"></a>
 
@@ -596,8 +592,6 @@ Label | Left | Middle | Right
 
 *dw-link* is still in ***beta*** state. The most obvious errors have been fixed, but there are most probably others. If something does not go according to plan, please try to isolate the reason for the erroneous behaviour, i.e., identify a sequence of operations to replicate the error. The most serious errors are *fatal errors*, which stop the debugger from working. With the command `monitor lasterror` you can get an information what the cause is (check the error table at the end).
 
-
-
 One perfect way to document a debugger error is to switch on logging and command tracing in the debugger:
 
 ```
@@ -630,7 +624,7 @@ The Dragon reflash the page to remove the SW BP, SS and then reflash again with 
 
 I noticed that this is still the case, i.e., MPLAB-X in connection with ATMEL-ICE still reprograms the  page twice for hitting a breakpoint at a two-word instruction. The more sensible solution is to simulate the execution of these instructions, which is at least as fast and saves two reprogramming operations. And this is what *dw-link* does.
 
-Fourth, each MCU contains one *hardware breakpoint register*, which stops the MCU when the value in the register equals the program counter. *dw-link* uses this for the breakpoint introduced most recently. With this heuristic, temporary breakpoints (as the ones GDB generates for single-stepping) will always get priority and more permanent breakpoints set by the user will end up in flash. 
+Fourth, each MCU contains one *hardware breakpoint register*, which stops the MCU when the value in the register equals the program counter. *Dw-link* uses this for the breakpoint introduced most recently. With this heuristic, temporary breakpoints (as the ones GDB generates for single-stepping) will always get priority and more permanent breakpoints set by the user will end up in flash. 
 
 Fifth, when reprogramming of a flash page is requested, *dw-link* first checks whether the identical contents should be loaded, in which case it does nothing. Further, it checks whether it is possible to achieve the result by just turning some 1's into 0's. Only if these two things are not possible, the flash page is erased and reprogrammed. This helps in particular when reloading a file with the GDB `load` command after only a few things in the program have been changed.  
 
@@ -708,7 +702,7 @@ Some debugWIRE MCUs appear to have program counters in which some unused bits ar
 
 ### 8.10 The start of the debugger takes a couple of seconds
 
-The reason is that when the host establishes a connection to the debugger, the debugger is reset and the bootloader waits a couple of seconds. You can avoid that by disabling the auto-reset putting a capacitor of 10 µF or more between RESET and GND.
+The reason is that when the host establishes a connection to the debugger, the debugger is reset and the bootloader waits a couple of seconds. You can avoid that by disabling the auto-reset feature putting a capacitor of 10 µF or more between RESET and GND.
 
 <a name="section811"></a>
 
@@ -845,7 +839,7 @@ Error #  | Meaning
 --:|---
 1 | Connection error: No response to ISP and debugWIRE communication; check wiring
 2 | Connection error: MCU type is not supported
-3 | Connection error: Lock bits are set (should not happen) 
+3 | Connection error: Lock bits are set 
 4 | Connection error: MCU has PC with stuck-at-one bits 
 5 | Unknown connection error
 101 | No free slot in breakpoint table
@@ -896,7 +890,7 @@ Initial version
 - System LED with fewer modes
 - Some screen shots added to PlatformIO description
 
-#### V 1.5
+#### V 1.5
 
 - New error message (126)
 - default DW speed is now 250 kbps
@@ -939,3 +933,5 @@ Initial version
 - deleted monitor commands: eraseflash, serial
 - added comment about dark system LED
 - changed Section 7 in order to describe the V2.0 design
+- have thrown out ATtiny13 since it behaves strangely
+- added that disabling debugWIRE is now done automatically 

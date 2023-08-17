@@ -6,8 +6,7 @@
 * write hook to set UPLOAD\_PORT and DEBUG\_PORT in extra\_script
 * rewrite part in Manual about PlatformIO
 * design new adapter board
-* delete the fancy control stuff in dw-link
-* rewrite part in manual about adapter boards
+* test prototype of such  a board
 * design case for debugger and print it
 
 
@@ -24,6 +23,8 @@ List of tasks done:
 * Explaining how to recover UNO (SOldering + Bootloader burning) in Manual
 * remove part about lock bits in Manual
 * remove automatic speed recognition
+* delete the fancy control stuff in dw-link
+* rewrite part in manual about adapter boards
 
 
 

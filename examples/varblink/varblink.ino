@@ -1,10 +1,10 @@
 #include <Arduino.h>
 
-#ifndef LED_BUILTIN
+//#ifndef LED_BUILTIN
  #define LED 4
-#else
- #define LED LED_BUILTIN
-#endif
+//#else
+// #define LED LED_BUILTIN
+// #endif
 byte thisByte = 0;
 void setup() {
   pinMode(LED, OUTPUT);

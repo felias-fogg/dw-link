@@ -35,16 +35,18 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "2.1.4"
+#define VERSION "2.1.5"
 
+// some constants, you may want to change
 #ifndef HOSTBPS 
 #define HOSTBPS 115200UL // safe default speed for the host connection
 //#define HOSTBPS 230400UL // works with UNOs that use an ATmega32U2 as the USB interface         
 #endif
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
+// #define NOAUTODWOFF 1      // do not automatically leave debugWIRE mode
+// #define HIGHSPEEDDW 1      // allow for DW speed up to 250 kbps
 
-
-
+// these should stay undefined for the ordinary user
 // #define CONSTDWSPEED 1     // constant communication speed with target
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
 // #define TXODEBUG 1         // allow debug output over TXOnly line
@@ -91,8 +93,13 @@
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
 
 // communication bit rates 
-#define SPEEDHIGH     275000UL // maximum communication speed limit for DW
-#define SPEEDLOW      137000UL // normal speed limit
+#define SPEEDHIGH     300000UL // maximum communication speed limit for DW
+#define SPEEDLOW      150000UL // normal speed limit
+#if HIGHSPEED
+#define SPEEDLIMIT SPEEDHIGH
+#else
+#define SPEEDLIMIT SPEEDLOW
+#endif
 
 // number of tolerable timeouts for one DW command
 #define TIMEOUTMAX 20
@@ -150,10 +157,10 @@ const unsigned int BREAKCODE = 0x9598;
 // some GDB variables
 struct breakpoint
 {
-  bool used:1;         // bp is in use, i.e., has been set before; will be freed when not activated before next execution
-  bool active:1;       // breakpoint is active, i.e., has been set by GDB
-  bool inflash:1;      // breakpoint is in flash memory, i.e., BREAK instr has been set in memory
-  bool hw:1;           // breakpoint is a hardware breakpoint, i.e., not set in memory, but HWBP is used
+  boolean used:1;         // bp is in use, i.e., has been set before; will be freed when not activated before next execution
+  boolean active:1;       // breakpoint is active, i.e., has been set by GDB
+  boolean inflash:1;      // breakpoint is in flash memory, i.e., BREAK instr has been set in memory
+  boolean hw:1;           // breakpoint is a hardware breakpoint, i.e., not set in memory, but HWBP is used
   unsigned int waddr;  // word address of breakpoint
   unsigned int opcode; // opcode that has been replaced by BREAK (in little endian mode)
 } bp[MAXBREAK*2];
@@ -307,7 +314,7 @@ struct mcu_info_type {
 // untested ones are marked 
 const mcu_info_type mcu_info[] PROGMEM = {
   // sig sram low eep flsh dwdr  pg er4 boot    eecr eearh rcosc extosc xtosc slosc plus name
-  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0x0B, 0, attiny13},
+  //{0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0x0B, 0, attiny13},
 
   {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0x26, 0, attiny2313},
   {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0x26, 0, attiny4313},
@@ -376,7 +383,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
 const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
-unsigned long speedlimit = SPEEDHIGH;
+unsigned long speedlimit = SPEEDLIMIT;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, CkSlow, Erase, DWEN };
 
@@ -662,9 +669,13 @@ void gdbHandleCmd(void)
       }
     }
     break;
+
+  case 0x05: // enquiry, answer back with dw-link
+    Serial.print(F("dw-link"));
+    break;
     
   default:
-    // simply ignore, we only accept records or ACK/NACK
+    // simply ignore, we only accept records, ACK/NACK, a Ctrl-C, or an ENQ (=0x05) 
     break;
   }
 }
@@ -707,23 +718,22 @@ void gdbParsePacket(const byte *buff)
   case 'X':                                          /* write memory from binary data */
     gdbWriteMemory(buff + 1, true); 
     break;
-  case 'D':                                          /* detach the debugger */
+  case 'D':                                          /* detach from target */
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    targetContinue();                                /* let the target machine do what it wants to do! */
-    setSysState(NOTCONN_STATE);                      /* set to unconnected state */
-    gdbSendReply("OK");                              /* and signal that everything is OK */
-    break;
-  case 'k':                                          /* kill request */
-    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit! */
-    setSysState(NOTCONN_STATE);                      /* set to unconnected state, will reconnect if "run" follows */
+    if (gdbStop(false))                              /* disable DW mode */
+      gdbSendReply("OK");                            /* and signal that everything is OK */
     break;
   case 'c':                                          /* continue */
   case 'C':                                          /* continue with signal - just ignore signal! */
     s = gdbContinue();                               /* start execution on target at current PC */
     if (s) gdbSendState(s);                          /* if s != 0, it is a signal notifying an error */
                                                      /* otherwise the target is now executing */
+    break;
+  case 'k':
+    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
+    gdbStop(false);                                  /* stop DW mode */
     break;
   case 's':                                          /* single step */
   case 'S':                                          /* step with signal - just ignore signal */
@@ -735,10 +745,14 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          /* Run command */
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {
-      setSysState(CONN_STATE);                       /* "reconnect" after kill command */
-      gdbReset();                                    /* reset MCU and initialize registers */
-      gdbSendState(SIGTRAP);                         /* stop at start address (= 0x000) */
+      gdbConnect(false);                             /* re-enable DW mode */
+      setSysState(CONN_STATE);     
+      //gdbSendState(0);                               /* no signal */
                                                      /* GDB will auto restart! */
+    } else if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
+      gdbUpdateBreakpoints(true);                    /* remove BREAKS in memory before exit */
+      if (gdbStop(false))                            /* stop DW mode */
+	gdbSendReply("OK");                            /* and signal that everything is OK */
     } else {
        gdbSendReply("");                             /* not supported */
     }
@@ -785,7 +799,7 @@ void gdbParseMonitorPacket(const byte *buf)
   
   
   if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
-    gdbStop();                                                              /* dwo[ff] */
+    gdbStop(true);                                                            /* dwo[ff] */
   else if (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)
     if (gdbConnect(true)) gdbSendReply("OK");                               /* dwc[onnnect] */
     else gdbSendReply("E03");
@@ -868,7 +882,11 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor hwbp         - allow only 1 breakpoint, i.e., the hardware bp"), -1);
   gdbDebugMessagePSTR(PSTR("monitor safestep     - prohibit interrupts while single-stepping(default)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor unsafestep   - allow interrupts while single-stepping"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (=250kbps) (def.) or l (=125kbps)"), -1);
+#if HIGHSPEED
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (300kbps) (def.) or l (150kbps)"), -1);
+#else
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (300kbps) or l (150kbps) (def.)"), -1);
+#endif  
   gdbDebugMessagePSTR(PSTR("monitor flashcount   - number of flash pages written since start"), -1);
   gdbDebugMessagePSTR(PSTR("monitor timeouts     - number of timeouts"), -1);
   gdbDebugMessagePSTR(PSTR("monitor lasterror    - last fatal error"), -1);
@@ -930,10 +948,12 @@ void gdbSetSpeed(const byte cmd[])
     break;
   case 'l': speedlimit = SPEEDLOW;
     break;
-  case '\0': gdbGetSpeed();
-    return;
+  case '\0':
+    gdbDebugMessagePSTR(PSTR("Current limit:             "), speedlimit);
+    break;
   default:
     gdbSendReply("");
+    return;
   }
   doBreak();
   gdbGetSpeed();
@@ -1099,15 +1119,24 @@ void power(boolean on)
 
 // "monitor dwoff" 
 // try to disable the debugWIRE interface on the target system
-void gdbStop(void)
+boolean gdbStop(boolean verbose)
 {
+#if NOAUTODWOFF
+  if (!verbose) return true; // no silent exits from DW mode
+#endif
   if (targetStop()) {
-    gdbDebugMessagePSTR(Connected,-2);
-    gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+    if (verbose) {
+      gdbDebugMessagePSTR(Connected,-2);
+      gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+    }
     setSysState(NOTCONN_STATE);
+    return true;
   } else {
-    gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
+    if (verbose) {
+      gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
+    }
     gdbSendReply("E05");
+    return false;
   }
 }
 
@@ -2103,10 +2132,13 @@ int targetISPConnect(void)
     leaveProgramMode();
     _delay_ms(1000);
     enterProgramMode();
-    result = 0;
-  }  
+    if (ispLocked()) 
+      result = -3;
+    else
+      result = 0;
+  }
   if (result == 0) {
-    if (ispProgramFuse(true, mcu.dwenfuse, 0)) {
+    if (ispProgramFuse(true, mcu.dwenfuse, 0)) { // set DWEN fuse and powercycle later
       result = 0;
     } else {
       result = -1;
@@ -2135,7 +2167,8 @@ boolean targetStop(void)
 // -1 - if we cannot enter programming mode or sig is not readable
 // -2 - if unknown MCU type
 // -3 - programming was unsuccessful
- 
+// -4 - no XTAL allowed
+// -5 - no slow clock
 
 int targetSetFuses(Fuses fuse)
 {
@@ -3493,7 +3526,7 @@ void testSummary(int failed)
   }
 }
 
-int testResult(bool succ)
+int testResult(boolean succ)
 {
   if (succ) {
     gdbDebugMessagePSTR(PSTR("  -> succeeded"), -1);
@@ -3563,7 +3596,7 @@ void setupTestCode()
 
 int gdbTests(int &num) {
   int failed = 0;
-  bool succ;
+  boolean succ;
   int testnum;
   unsigned int oldsp;
 
@@ -3809,7 +3842,7 @@ int gdbTests(int &num) {
 
 int targetTests(int &num) {
   int failed = 0;
-  bool succ;
+  boolean succ;
   int testnum;
   unsigned int i;
   long lastflashcnt;
@@ -4035,7 +4068,7 @@ int targetTests(int &num) {
 int DWtests(int &num)
 {
   int failed = 0;
-  bool succ;
+  boolean succ;
   int testnum;
   byte temp;
   unsigned int i;
