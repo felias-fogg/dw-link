@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "2.1.5"
+#define VERSION "2.1.6"
 
 // some constants, you may want to change
 #ifndef HOSTBPS 

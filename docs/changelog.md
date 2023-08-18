@@ -725,3 +725,6 @@ this is needed by the original Arduino Nano
 * introduced a new compile-time constant `NOAUTODWOFF`, which when 1 disables the feature of disabling debugWIRE when leaving the debugger
 * Also added HIGHSPEEDDW, which is off by default, i.i., 125 kbps is the the highest we permit
 
+## Version 2.1.6 (18-Aug-23)
+
+* added connect.py and changed platform.ini
