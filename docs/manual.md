@@ -24,7 +24,7 @@ Finally, you need to install a debugging environment. I will describe two option
 
 If you have performed all the above steps, then the setup should look like as in the following picture.
 
-![hardware debugger setup](pics/debugger-setup.png)
+<img src="pics/debugger-setup.png" alt="hardware debugger setup" style="zoom:50%;" />
 
 The connection between *dw-link* and the target is something that might need some enhancements. Instead of flying wires, which we use in the initial example, you may want to have a more durable connection. This is all covered in [Section 7](#section7). Finally, possible problems and trouble shooting are covered in [Section 8](#section8) and [Section 9](#trouble), respectively.
 
@@ -74,8 +74,7 @@ mermaid
     debugWIRE --\> normal: monitor dwoff
 -->
 
-
-![state diagram](pics/state-diagram.png)
+<img src="pics/state-diagram.png" alt="state diagram" style="zoom:50%;" />
 
 <a name="section3"></a>
 
@@ -141,7 +140,7 @@ Since the RESET line of the target system is used as an [open-drain](https://en.
 
 If your target system is an Arduino UNO, you have to be aware that there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse in order to start the bootloader. One can disconnect the capacitor by cutting the solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
-![Solder bridge on Uno board](pics/cutconn.jpg)
+<img src="pics/cutconn.jpg" alt="Solder bridge on Uno board" style="zoom:50%;" />
 
 A recovery method is to put a bit of soldering  on the bridge. Alternatively, you could always manually reset the UNO before the Arduino IDE attempts to upload a sketch. The trick is to release the reset button just when the compilation process has finished. 
 
@@ -195,8 +194,11 @@ First of all, notice the capacitor of 10 µF or more between RESET and GND on th
 
 If you do not have a solder iron at hand in order to solder a series resistor to the system LED, you can instead put an ordinary LED without resistor into pin D6 (-) and D5 (+). It will not be very bright since the internal pull-up resistor is used, which is around 20 kΩ, but it should be enough.
 
-<a name="Fritzing"></a>
-![ATtiny85 on a breadboard](pics/debug-attiny85new_Steckplatine.jpg)
+<a name="Fritzing"></a><center>
+
+<img src="pics/debug-attiny85new_Steckplatine.jpg" alt="ATtiny85 on a breadboard"  />
+
+</center>
 
 Third, as you can see, the Vcc rail of the breadboard is connected to pin D9 of the Arduino UNO so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino UNO is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pull-up resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino UNO and ATtiny are MOSI (Arduino UNO D11), MISO (Arduino UNO D12) and SCK (Arduino UNO D13), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
 
@@ -238,7 +240,7 @@ We are now good to go and 'only' need to install the additional debugging softwa
 
 ### 4.3 States of the hardware debugger
 
-There are four states, the debugger can be in and each is signaled by a different blink pattern of the system LED:
+There are four states the debugger can be in and each is signaled by a different blink pattern of the system LED:
 
 * not connected (LED is off)
 * waiting for power-cycling the target (LED flashes every second for 0.1 sec)
@@ -251,17 +253,15 @@ If the hardware debugger is in the error state, one should try to find out the r
 
 ## 5. Arduino IDE and avr-gdb
 
-Assuming that you are working with the Arduino IDE and/or Arduino CLI, the simplest way of starting to debug your code is to use the GNU debugger. You only have to install the avr-gdb debugger and the appropriate board manager files. Note that this works only with Arduino IDE versions 1.8.13+. 
+Assuming that you are working with the Arduino IDE and/or Arduino CLI, the simplest way of starting to debug your code is to use the GNU debugger. You only have to install the avr-gdb debugger and the appropriate board manager files. Note that this works only with Arduino IDE versions at least 1.8.13. 
 
 ### 5.1 Installing avr-gdb
 
 Unfortunately, the debugger is not any longer part of the toolchain integrated into the Arduino IDE. This means, you have to download it and install it by yourself:
 
 * macOS: Use [**homebrew**](https://brew.sh/index_de) to install it. 
-
-* Linux: Just install avr-gdb with your favorite packet manager.
-
-* Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or from [Zak's Electronic Blog\~\*](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb. You have to copy `avr-gdb.exe` (which you find in the `bin` folder) to some place (e.g., to C:\ProgramFiles\bin) and set the `PATH` variable to point to this folder. Afterwards, you can execute the debugger by simply typing `avr-gdb.exe` into a terminal window (e.g. Windows Powershell).
+* Linux: Use your favorite packet manager to install it.
+* Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or from [Zak's Electronic Blog\~\*](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb. I noticed that the most recent versions, i.e., >10.X, have a problem interacting with dw-link. So, use an earlier version. You have to copy `avr-gdb.exe` (which you find in the `bin` folder) to some place (e.g., to C:\ProgramFiles\bin) and set the `PATH` variable to point to this folder. Afterwards, you can execute the debugger by simply typing `avr-gdb.exe` into a terminal window (e.g. Windows Powershell).
 
 ### 5.2 Installing board manager files
 
@@ -276,7 +276,7 @@ After that, you can download and install the board using the `Boards Manager`, w
 
 Now we need to compile a sketch. Let us take `varblink.ino` from the `examples` folder of the *dw-link* package as our example sketch. First select the board you want to compile the sketch for under the `Tools` menu. In particular, you should select an `328P` (with 16MHz clock) from the `MiniCore` when debugging an UNO board. 
 
-Then set additional parameters for the board. In particular, you need to select `Debug` for the `Debug Compiler Flags` option. The other possibilities for this option can be chosen when the debugger should create code that more closely mirrors the source code, as described in [Section 8.11](#section811). Now compile the example `varblink.ino` with debugging enabled by requesting to `Export compiled Binary` in the `Sketch` menu. This will generate the file `varblink.ino.elf` in the sketch or build directory, depending on which version of the IDE or CLI you are using.
+Then set additional parameters for the board. Most importantly, you need to select `Debug` for the `Debug Compiler Flags` option. The other possibilities for this option can be chosen when the debugger should create code that more closely mirrors the source code, as described in [Section 8.11](#section811). Now compile the example `varblink.ino` with debugging enabled by requesting to `Export compiled Binary` in the `Sketch` menu. This will generate the file `varblink.ino.elf` in the sketch or build directory, depending on which version of the IDE or CLI you are using.
 
 ### 5.4 Example session with avr-gdb
 
@@ -348,18 +348,19 @@ Num     Type           Disp Enb Address    What
                                            at /.../varblink.ino:15
         breakpoint already hit 1 time
 (gdb) delete 1                                  # delete breakpoint 1
-(gdb) detach                                    # detach from remote target
-Detaching from program: /.../varblink.ino.elf, Remote target
-Ending remote debugging.
-[Inferior 1 (Remote target) detached]
-(gdb) quit                                      # quit debugger, which will autoimatically disable debugWIRE
+(gdb) quit                                      # quit debugger, which will automatically disable debugWIRE
+A debugging session is active.
+
+	Inferior 1 [Remote target] will be killed.
+
+Quit anyway? (y or n) y
 >
 ```
 
 
 ### 5.4 Disabling debugWIRE mode explicitly
 
-Exiting GDB should disable debugWIRE mode. However, if something went wrong or you killed the debug session, the ATtiny MCU might still be in debugWIRE mode and the RESET pin cannot be used to reset the chip and/or you cannot use ISP programming. In this case, fyou can explicitly disable debugWIRE, as shown below. 
+Exiting GDB should disable debugWIRE mode. However, if something went wrong or you killed the debug session, the ATtiny MCU might still be in debugWIRE mode and the RESET pin cannot be used to reset the chip and/or you cannot use ISP programming. In this case, you can explicitly disable debugWIRE, as shown below. 
 
 ```
 > avr-gdb
@@ -378,95 +379,79 @@ debugWIRE is now disabled
 ```
 ### 5.5 GDB commands
 
-In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most relevant commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
+In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most relevant commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). For the most common commands, it is enough to just type the first character. In general, you only have to type as many characters as are necessary to make the command unambiguous. You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
 
 command | action
 --- | ---
-h[elp] | get help on gdb commands
-h[elp] *command* | get help on a specific command
-s[tep] [*number*] | single step statement, descending into functions (step in), *number* times 
-n[ext] [*number*] | single step statement without descending into functions (step over)
-stepi \| si [*number*] | single step a machine instruction, descending into functions
-nexti \| ni [*number*] | single step a machine instruction without descending into functions
-fin[ish] | finish current function and return from call (step out)
-c[ontinue] [*number*] | continue from current position
-r[un] | reset MCU and restart program at address 0x0000
-ba[cktrace] \| bt | show call stack
-up | go one stack frame up (in order to display variables)
-down | go one stack frame down (only possible after up)
-b[reak] *function* | set breakpoint at beginning of *function*
-b[reak] [*file*:]*number* | set breakpoint at source code line *number* in the current file or the given *file* 
-b[reak] **addr* | set a breakpoint at address *addr* 
-i[nfo] b[reakpoints] | list all breakpoints
-dis[able] *number* ... | disable breakpoint(s) *number*
-en[able] *number* ... | enable breakpoint(s) *number*
-d[elete] *number* ... | delete breakpoint(s) *number*
-d[elete] | delete all breakpoints
-cond[ition] *number* *expression* | stop at breakpoinit *number* only if *expression* is true
-cond[ition] *number* | make breakpoint *number* unconditional
+help [*command*] | get help on a specific command
+step [*number*] | single step statement, descending into functions (step in), *number* times 
+next [*number*] | single step statement without descending into functions (step over)
+finish | finish current function and return from call (step out)
+continue [*number*] | continue from current position and stop after *number* breakpoints have been hit. 
+run | reset MCU and restart program at address 0x0000
+break *function* \| [*file*:]*number* | set breakpoint at beginning of *function* or at line *number* in *file* 
+info breakpoints | list all breakpoints
+delete [*number* ...] | delete breakpoint(s) *number* or all breakpoints 
 
-In order to display information about the program and variables in it, the following commands are helpful.
+In order to display information about the program and variables in it, the following commands are helpful. Further, you may want to change the value of variables.
 
 command | action
 --- | ---
-l[ist] | show source code around current point
-l[ist] *function* | show source code around start of code for *function* and shift focus to function
-l[ist] [*filename*:]*number* | show source code around line *number* in *filename* 
-disas[semble] *function* | show assembly code of *function*
-disas[semble] *address* | show assembly code of function around memory location *address*
-p[rint] *expression* | evaluate expression and print 
-i[nfo] reg[isters] | print contents of all registers
-i[nfo] reg[isters] *regname* ... | print contents of specified register(s)
-x *address* | examine memory contents at *address* and print it as a 4-byte hex-number
-x/*nfu* *address* | examine memory contents at *address* with repeat count *n*, format *f*, and unit size *u* (they are all optional); format can be, e.g., **d** for decimal, **u** for unsigned decimal, **x** for hexadecimal, **c** for ASCII characters, **i** for machine instruction, and **s** for string; unit size can be **b** for one byte, **h** for a halfword, i.e., a 2-byte word, **w** for a 4-byte word, and **g** for a giant 8-byte word 
-disp[lay]\[/*f*] *expression* | display expression using format *f* each time the program halts
-disp[lay]/*nfu* *address* | display memory contents using *nfu* each time the program halts
-i[nfo] di[splay] | print all auto-display commands
-dis[able] d[display] *number* ... | disable auto-display command(s) numbered *number*
-en[able]  d[display] *number* ... | enable auto-display command(s)
-d[elete] d[display] *number* ... | delete auto-display commands(s)
-d[elete] d[display] | delete all auto-display commands(s)
-
-*address* in the above commands can be any numerical value or also the register names prefixed with a \$-sign, e.g., `$pc`. `display/i $pc`, for example, displays after each stop the machine instruction at the location where the program has stopped.
+list [*function* \| [*filename*:]*number*] | show source code around current point, of *function*, or around line *number* in *filename* 
+print *expression* | evaluate expression and print 
+set var *variable* = *expression* | set the variable to a new value 
+display\[/*f*] *expression* | display expression using format *f* each time the program halts
+info display | print all auto-display commands
+delete display [*number* ...] | delete auto-display commands(s) or all auto-display commands 
 
 <a name="controlcommands"></a>In addition to the commands above, you have to know a few more commands that control the execution of `avr-gdb`.
 
 command | action
 --- | ---
-set se[rial] b[aud] *number* | set baud rate of serial port to the hardware debugger (same as using the `-b` option when starting `avr-gdb`); only effective when called before establishing a connection with the `target` command 
-tar[get] rem[ote] *serialport* | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE (use only after baud rate has been specified!) 
-tar[get] ext[ended-remote] *serialport* | establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command
-r[un] | reset MCU and restart program, which works only if we are in extended remote mode 
-det[ach] | detach from target and disable debugWIRE mode 
-fil[e] *name*.elf | load the symbol table from the specified ELF file (should be done before establishing the connection to the target)
-lo[ad] | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
-q[uit] | exit from GDB 
+set serial baud *number* | set baud rate of serial port to the hardware debugger (same as using the `-b` option when starting `avr-gdb`); only effective when called before establishing a connection with the `target` command 
+target [extended-]remote *serialport* \| | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE; if extended is used, then establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command 
+run | reset MCU and restart program, which works only if we are in extended remote mode 
+file *name*.elf | load the symbol table from the specified ELF file 
+load | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
+quit | exit from GDB 
 
-<a name="monitor-commands"></a>Finally, there are commands that control the settings of the debugger and the MCU, which are particular to *dw-link*. They all start with the keyword `monitor`.
+Finally, there are commands that control the settings of the debugger and the MCU, which are particular to *dw-link*. They all start with the keyword `monitor`. You can abbreviate all keywords to 2 or 3 characters, if this is unambiguous.
 
-command | action
---- | ---
-mo[nitor] he[lp] | give a help message on monitor commands 
-mo[nitor] dwc[onnect] | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected) (*) 
-mo[nitor] dwo[ff] | disable debugWIRE mode in the target (which is executed when leaving GDB, or when executing the `kill` or `detach` command) (*) 
-mo[nitor] re[set] | resets the MCU (*) 
-mo[nitor] ck8[prescaler] | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator) (*) 
-mo[nitor] ck1[prescaler] | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator) (*) 
-mo[nitor] rc[osc] | set clock source to internal RC oscillator (*) 
-mo[nitor] ex[tosc] | set clock source to external clock (*) 
-mo[nitor] xt[alosc] | set clock source to crystal oscillator (*) 
-mo[nitor] sl[owosc] | set clock source to internal low frequency oscillator (125 kHz) (*) 
-mo[nitor] hw[bp] | set number of allowed breakpoints to 1 (i.e., only HW BP) 
-mo[nitor] sw[bp] | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default
-mo[nitor] sp[eed] [\<option>] | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed 
-mo[nitor] la[sterror] | print error number of last fatal error 
-mo[nitor] fla[shcount] | reports on how many flash-page write operation have taken place since start  
-mo[nitor] ti[meouts] | report number of timeouts (should be 0!) 
-mo[nitor] sa[festep] | single-stepping is uninterruptible and time is frozen during single-stepping, which is the default 
-mo[nitor] un[safestep] | single stepping is interruptible and time advances during single-stepping 
-mo[nitor] ve[rsion] | print version number of firmware
+| command              | action                                                       |
+| :------------------- | ------------------------------------------------------------ |
+| monitor help         | give a help message on monitor commands                      |
+| monitor dwconnect    | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected) (*) |
+| monitor dwoff        | disable debugWIRE mode in the target (which is executed when leaving GDB, or when executing the `kill` or `detach` command) (*) |
+| monitor reset        | resets the MCU (*)                                           |
+| monitor ck8prescaler | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator) (*) |
+| monitor ck1prescaler | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator) (*) |
+| monitor rcosc        | set clock source to internal RC oscillator (*)               |
+| monitor extosc       | set clock source to external clock (*)                       |
+| monitor xtalosc      | set clock source to crystal oscillator (*)                   |
+| monitor slowosc      | set clock source to internal low frequency oscillator (125 kHz) (*) |
+| monitor hwbp         | set number of allowed breakpoints to 1 (i.e., only HW BP)    |
+| monitor swbp         | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default |
+| monitor speed [l\|h] | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
+| monitor lasterror    | print error number of last fatal error                       |
+| monitor flashcount   | reports on how many flash-page write operation have taken place since start |
+| monitor timeouts     | report number of timeouts (should be 0!)                     |
+| monitor safestep     | single-stepping is uninterruptible and time is frozen during single-stepping, which is the default |
+| monitor unsafestep   | single stepping is interruptible and time advances during single-stepping |
+| monitor version      | print version number of firmware                             |
 
-Note that all monitor commands that change fuses also implicitly reset the MCU. These commands are marked by (*).
+All of the commands marked with (*) reset the MCU.
+
+### 5.6 A graphical user interface: *Gede*
+
+If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from a [Github repository](https://github.com/felias-fogg/gede) and compile it by yourself. Or you just use the binary in the `gui` folder that I compiled for you. I would recommend to  copy it to `/usr/local/bin`. The `gui` directory contains also a Python script called *dw-server.py*. If you now start *dw-server.py*, it will try to discover a dw-link adapter connected to a serial line. After that it starts *Gede*, and then it forwards the serial connection over TCP/IP to *Gede*, which will present you with the following window.
+
+<img src="pics/gede-start.png" alt="gede" style="zoom:40%;" />
+
+`Project dir` and `Program` are specific to your debugging session. The rest should be copied as it is shown. And with clicking on OK, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI.
+
+I have added an additional command to the interface that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
+
+Unfortunately, there is no Windows version yet. However, I will look into it when time permits.
 
 <a name="section6"></a>
 
@@ -514,7 +499,7 @@ On a Mac, unfortunately it does not work out of the box, because the gcc-toolcha
 But, of course, this is not the real thing. No LED is blinking. So close the window and copy the following file from `examples/pio-config` to the project directory of your new PlatformIO project:
 
 * `platformio.ini`
-* `connect.py`
+* `discover-dw-link.py`
 
 Both files need to be present in any project you create. The first one is an INI-style configuration that you can adapt to your wishes. You can find an extensive description of what can be configured in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). Note one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. The second file is a Python script that discovers the dw-link adapter by probing all connected serial devices. If one of them identifies itself as a dw-link adapter, GDB connects to it.
 
@@ -524,17 +509,17 @@ A very [readable introduction to debugging](https://piolabs.com/blog/insights/de
 
 ### 6.5 Disabling debugWIRE mode
 
-There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwoff` in the debugging terminal window of the PlatformIO IDE. 
+There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwoff` in the debugging terminal window after having started a debugging session in PlatformIO IDE. 
 
 <a name="section7"></a>
 
 ## 7. A "real" hardware debugger
 
-The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 jumper wires to connect *dw-link* to your target as described in [Section 4.2](#section42). However, if you want to use this tool more than once, then there should be at least something like a ISP cable connection. Otherwise you might scratch your head which cable goes where.
+The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 jumper wires to connect *dw-link* to your target as described in [Section 4.2](#section42). However, if you want to use this tool more than once, then there should be at least something like a ISP cable connection. Otherwise you might scratch your head which cable goes where every time you start a debugging session.
 
 ### 7.1 The basic solution
 
-For most of the wires, we use the same pins on the debugger and the target. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). And in contrast to such a programmer cable, it makes sense to also break out the Vcc wire. And you definitely do not want to integrate a capacitor between RESET and GND in such a cable as described in the instructable!
+For most of the wires, we use the same pins on the debugger and the target. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). In contrast to such a programmer cable, it makes sense to also break out the Vcc wire. And you definitely do not want to integrate a capacitor between RESET and GND in such a cable as described in the instructable!
 
 ![isp-cable](pics/isp-cable.jpg)
 
@@ -652,7 +637,7 @@ Sometimes, in particular when using a clock speed below 1 MHz, responses from th
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen (see [monitor commands](#monitor-commands)). Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing these commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen. Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing these commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
 
 With an optimal setting, i.e., 250 kbps for the debugWIRE line and 230400 bps for the host communication line, loading is done with 500-800 bytes/second. It should be 3-5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed). For the default setting (115200bps to host, 125000bps for debugWIRE), it is probably half the speed.
 
@@ -734,11 +719,9 @@ You switched optimization option from **-Og -fno-lto** back to normal and you re
 
 #### Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*
 
-Something in the `platformio.ini` file is not quite right. Perhaps a missing declaration of the `debug_port`. Sometimes an additional line of information is given that identifies the problem.
+Something in the `platformio.ini` file is not quite right. Sometimes an additional line of information is given that identifies the problem. If you see also see the message `"monitor" command not supported by this target` then the dw-link adapter could not be found.
 
-One common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the `platformio.ini` file accordingly.
-
-Another common problem is that the connection to the target cannot be established. In this case, you should see the appropriate error message. 
+One other common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the `platformio.ini` file accordingly.
 
 #### Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*
 
@@ -752,7 +735,7 @@ A further (unlikely) reason for a failure in connecting to the host might be tha
 
 Depending on the concrete error message, the problem fix varies.
 
-- *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)).
+- *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor a debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)).
 - *Cannot connect: Unsupported MCU*: This MCU is not supported by *dw-link*. It most probably has no debugWIRE connectivity. 
 - *Cannot connect: PC with stuck-at-one bits*: dw-link tried to connect to an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
 - *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!

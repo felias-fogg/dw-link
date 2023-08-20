@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "2.1.6"
+#define VERSION "2.1.7"
 
 // some constants, you may want to change
 #ifndef HOSTBPS 
@@ -555,7 +555,7 @@ void initSession(void)
   bpcnt = 0;
   bpused = 0;
   hwbp = 0xFFFF;
-  lastsignal = SIGTRAP;
+  lastsignal = 0;
   validpg = false;
   buffill = 0;
   fatalerror = NO_FATAL;
@@ -697,6 +697,9 @@ void gdbParsePacket(const byte *buff)
   case '?':                                          /* last signal */
     gdbSendSignal(lastsignal);
     break;
+  case '!':                                          /* Set to extended mode, always OK */
+    gdbSendReply("OK");
+    break;
   case 'H':                                          /* Set thread, always OK */
     gdbSendReply("OK");
     break;
@@ -745,14 +748,15 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          /* Run command */
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {
-      gdbConnect(false);                             /* re-enable DW mode */
-      setSysState(CONN_STATE);     
-      //gdbSendState(0);                               /* no signal */
-                                                     /* GDB will auto restart! */
-    } else if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
+      if (gdbConnect(false)) {                       /* re-enable DW mode reset MCU and clear PC */
+	setSysState(CONN_STATE);
+	gdbSendState(0);                             /* no signal */
+      } 
+    } else
+	if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
       gdbUpdateBreakpoints(true);                    /* remove BREAKS in memory before exit */
       if (gdbStop(false))                            /* stop DW mode */
-	gdbSendReply("OK");                            /* and signal that everything is OK */
+	gdbSendReply("OK");                          /* and signal that everything is OK */
     } else {
        gdbSendReply("");                             /* not supported */
     }
@@ -763,8 +767,8 @@ void gdbParsePacket(const byte *buff)
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
 	if (ctx.state != CONN_STATE) initSession();  /* init all vars when gdb connects */
-	gdbConnect(false);                           /* and try to connect */
-	gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
+	if (gdbConnect(false))                       /* and try to connect */
+	  gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                          /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
@@ -1048,6 +1052,7 @@ boolean gdbConnect(boolean verbose)
       gdbDebugMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
     }
     gdbCleanupBreakpointTable();
+    targetInitRegisters();
     return true;
   }
   if (verbose) {
@@ -1065,6 +1070,7 @@ boolean gdbConnect(boolean verbose)
   setSysState(ERROR_STATE);
   if (conncode == -1) dw.enable(false); // otherwise if DWLINE has no pullup, the program goes astray!
   flushInput();
+  targetInitRegisters();
   return false;
 }
 

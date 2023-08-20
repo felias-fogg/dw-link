@@ -728,3 +728,12 @@ this is needed by the original Arduino Nano
 ## Version 2.1.6 (18-Aug-23)
 
 * added connect.py and changed platform.ini
+
+## Version 2.1.7 (20-Aug-2023)
+* added initialization of registers to gdbConnect (which also resets
+  the MCU) so that we start at the right address
+* renamed connect.py to discover-dw-link.py, which is now called as an
+extra_script in the platform.ini file
+* also kept old version of platform.ini
+* wrote new script dw-server.py, which is used to discover the dw-link adapter and to interface over TCP/IP with gede
+* added gede as binaries for linux and macosx

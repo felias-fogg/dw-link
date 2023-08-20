@@ -1,6 +1,5 @@
 import serial.tools.list_ports
 import time
-import gdb
 
 def connect():
     for delay in (0, 2):
@@ -12,10 +11,12 @@ def connect():
                         ser.write(b'\x05')
                         if ser.read(7) == b'dw-link':
                             ser.close()
-                            gdb.execute("set serial baud " + str(sp))
-                            gdb.execute("target extended-remote " + s.device)
+                            with open(".gdb-connect-to-dw-link", "w") as cmd:
+                                 cmd.write("set serial baud " + str(sp) + "\n")
+                                 cmd.write("target extended-remote " + s.device +"\n")
                             return
             except:
                 pass
-    print("No dw-link adapter found")
+    with open(".gdb-connect-to-dw-link", "w") as cmd:
+         cmd.write('print "No dw-link adapter found"\n')
 connect()
