@@ -34,8 +34,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests, probably
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
-
-#define VERSION "2.1.7"
+#define VERSION "2.1.8"
 
 // some constants, you may want to change
 #ifndef HOSTBPS 
@@ -87,7 +86,7 @@
 
 // some size restrictions
 
-#define MAXBUF 150 // input buffer for GDB communication
+#define MAXBUF 160 // input buffer for GDB communication (enough for initial packet in gdb 12.1)
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
@@ -1697,7 +1696,7 @@ void gdbReadMemory(const byte *buff)
   parseHex(buff + 1, &sz);
   
   if (sz > MAXMEMBUF || sz*2 > MAXBUF) { // should not happen because we required packet length to be less
-    gdbSendReply("E05");
+    gdbSendReply("E04");
     reportFatalError(PACKET_LEN_FATAL, false);
     //DEBLN(F("***Packet length too large"));
     return;
@@ -1795,7 +1794,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
   switch (flag) {
   case SRAM_OFFSET:
     if (addr+sz > mcu.ramsz+mcu.rambase) {
-      gdbSendReply("E01"); 
+      gdbSendReply("E02"); 
       return;
     }
     targetWriteSram(addr, membuf, sz);
@@ -1803,7 +1802,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
   case FLASH_OFFSET:
     if (addr+sz > mcu.flashsz) {
       //DEBPR(F("addr,sz,flashsz=")); DEBLN(addr); DEBLN(sz); DEBLN(mcu.flashsz);
-      gdbSendReply("E01"); 
+      gdbSendReply("E03"); 
       return;
     }
     setSysState(LOAD_STATE);
@@ -1811,13 +1810,13 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     break;
   case EEPROM_OFFSET:
     if (addr+sz > mcu.eepromsz) {
-      gdbSendReply("E01"); 
+      gdbSendReply("E04"); 
       return;
     }
     targetWriteEeprom(addr, membuf, sz);
     break;
   default:
-    gdbSendReply("E05"); 
+    gdbSendReply("E06"); 
     reportFatalError(WRONG_MEM_FATAL, false);
     return;
   }

@@ -737,3 +737,7 @@ extra_script in the platform.ini file
 * also kept old version of platform.ini
 * wrote new script dw-server.py, which is used to discover the dw-link adapter and to interface over TCP/IP with gede
 * added gede as binaries for linux and macosx
+
+## Version 2.1.8 (21-Aug-2023)
+* changed MAXBUFSIZE from 150 to 160 in order to accomodate the qSupported string from GDB 12.1
+  
