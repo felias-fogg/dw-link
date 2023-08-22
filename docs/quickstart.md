@@ -41,12 +41,14 @@ Download the dw-link repository into a place inside the *Arduino sketchbook* (sh
 
 * open the webpage https://github.com/felias-fogg/dw-link, 
 * click on the green`Code` button,  and select `Download ZIP`. 
-* Select then either a folder in the sketchbook as the destination or copy the ZIP file after the download to the place. Finally unzip the ZIP-archive in place.
+* Select then either a folder in the sketchbook as the destination or copy the ZIP file after the download to the place. 
+* Finally unzip the ZIP-archive in place.
 
 In order to install the firmware, 
 
 * first connect the Arduino UNO to your computer with a USB cable. 
-* Now open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`. Perhaps, you have to select the right `Port` in the `Tools` menu as well. 
+* Now open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`. 
+* Perhaps, you have to select the right `Port` in the `Tools` menu as well. 
 * Now load the *dw-link* sketch into the IDE, which is located at `dw-link-master/dw-link/dw.link.ino`. 
 * Finally, compile and download the sketch by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now a hardware debugger (but needs a bit of additional hardware).
 
@@ -130,14 +132,14 @@ where *\<sketchname\>* is the name of the Arduino sketch. This should fire up th
 target remote <serial-port>
 ```
 
-where *\<serial-port\>* is the serial port of the UNO, then the system LED should light up and one should get a message similar to the following one:
+where *\<serial-port\>* is the serial port of the UNO, then, after a few seconds, the system LED should light up and one should get a message similar to the following one:
 
 ```
 Remote debugging using <serial-port> 
 0x00000000 in __vectors ()  
 ```
 
-If this is the case, we are in business! The only thing missing is now that the sketch has not been uploaded to the chip. But the next command will exactly do this:
+If this is the case, we are in business! The only thing missing now is that the sketch is not yet in flash memory. But the next command will exactly do this:
 
 ```
 load
@@ -170,7 +172,7 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **p *var*** - prints the current value of the variable *var*
 - **q** - Quits gdb
 
-There are tons of commands, too many to show here! On the [home page of the GDB system](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/gdb.pdf).
+There are tons of commands, too many to show here! On the [home page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/gdb.pdf).
 
 ## Step 8 (optional): Install a graphical user interface
 
