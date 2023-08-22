@@ -8,7 +8,9 @@
 
 This is an Arduino sketch that turns your Arduino ATmega328  board into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program running on the target hardware (e.g. an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
-Why is this good news? The current version of the Arduino IDE does not support debugging at all. Even the new version will not provide any debugging tools for the small AVR MCUs. With this sketch, you are provided with a tool that allows you to set breakpoints, to single-step, and to inspect and change variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
+Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new version will not provide any debugging tools for the small AVR MCUs. With this sketch, you are provided with a tool that allows you to set breakpoints, to single-step, and to inspect and change variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
+
+Do you want to try it out? Use the [quick-start guide](docs/quickstart.md) in order find out whether it works for you.
 
 If you are interested in the background and ongoing development of dw-link, visit my [blog](https://hinterm-ziel.de/). In particular, the blogs tagged with [dw-link](https://hinterm-ziel.de/index.php/tag/dw-link/) will be interesting for you.
 
@@ -17,9 +19,10 @@ This repository contains the following directories:
 * [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger
 * [**docs**](docs/): Contains the documentation, in particular the [manual](docs/manual.md)
 * [**gui**](bin/): The macOS and Linux binaries of the *[Gede](https://gede.dexar.se/pmwiki.php)* GUI and the dw-server.py script that interfaces between dw-link and Gede
-* [**examples**](examples/): Contains two tiny Arduino sketches and a PlatformIO project
+* [**examples**](examples/): Contains a tiny Arduino sketch and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
 * [**pcb**](pcb/): Contains design data (Eagle and Gerber) for the (optional) adapter boards 
 * [**core-mods**](core-mods/): Contains all the modifications to the core files necessary to support the generation of debug-friendly object files
+* [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as C program to generate the lists.
 
 Note that the debugger is a beta release and may contain bugs. If you encounter behavior that you think is wrong, try to be as specific as possible so that I can reproduce the behavior. I have prepared an [issue form](docs/issue_form.md) for that purpose. Current issues, known bugs, and limitations are listed in Section 8 of the [manual](docs/manual.md). 

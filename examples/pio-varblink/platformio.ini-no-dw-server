@@ -11,15 +11,15 @@
 default_envs = debug
 
 [env:debug]
-extends = env:BOARD-TO-BE-SPECIFIED   ;; <--- substitute the right board here
-extra_scripts = pre:discover-dw-link.py
+extends = env:attiny85                ;; <--- substitute the right board here
 build_type = debug
+debug_port = SERIAL-PORT              ;; <--- substitute your own serial port here
 debug_tool = custom
 debug_load_cmds = load
 debug_build_flags = 
-	-Og
-	-g
-	-fno-lto
+	-g                            ; includes debugging info
+	-Og                           ; is the debuging optimization level; -Os is more to the truth
+	-fno-lto                      ; no link-time optimization (could be disregarded)
 debug_init_cmds = 
 	define pio_reset_halt_target
 	       monitor reset
@@ -29,7 +29,8 @@ debug_init_cmds =
 	       detach
 	end
 	file "$PROG_PATH"
-	source ./.gdb-connect-to-dw-link
+  	set serial baud 115200
+  	target remote $DEBUG_PORT
 	monitor dwconnect
 	load
 	$INIT_BREAK

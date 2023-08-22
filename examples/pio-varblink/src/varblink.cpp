@@ -1,8 +1,7 @@
-#ifndef ARDUINO_AVR_UNO
- #define LED 4
-#else
- #define LED LED_BUILTIN
-#endif
+#include <Arduino.h>
+
+#define LED 4
+
 byte thisByte = 0;
 void setup() {
   pinMode(LED, OUTPUT);

@@ -20,7 +20,9 @@ When you want hardware debugging support, you could buy expensive hardware-debug
 
 For your first excursion into the wonderful world of debugging, you need an Arduino UNO (or something equivalent) as the hardware debugger (see [Section 3.1](#section31)) and a chip or board that understands debugWIRE (see [Section 3.2](#section32)), i.e., a classic ATtiny or an ATmegaX8. Then you only have to install the firmware for the debugger on the UNO ([Section 4.1](#section41)) and to set up the hardware for a debugging session ([Section 4.2](#section42)).
 
-Finally, you need to install a debugging environment. I will describe two options for that. The first one, covered in [Section 5](#section5), is the easiest one. In addition to installing new board definition files, it requires you to download *avr-gdb*. The second option, described in [Section 6](#section6), involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. There are numerous other possibilities, which you might try out. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which applies to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/). 
+Finally, you need to install a debugging environment. I will describe two approaches. The first one, covered in [Section 5](#section5), is the easiest one. In addition to installing new board definition files, it requires you to download *avr-gdb*. Debugging will then take place in a shell window, in which you have to start *avr-gdb*. For people unhappy with command line interfaces, Section 5.6 covers how to install and use a graphical user interface (which works only for maxOS and Linux).  The second method, described in [Section 6](#section6), involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. 
+
+There are numerous other possibilities, which you might try out. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which applies to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/). 
 
 If you have performed all the above steps, then the setup should look like as in the following picture.
 
@@ -188,17 +190,17 @@ Before you can start debugging, you have to setup the hardware. I'll use an ATti
 
 In order to debug an ATtiny85, we will assume it is completely "naked" and plugged into a breadboard as shown below. 
 
-First of all, notice the capacitor of 10 µF or more between RESET and GND on the UNO board. This will disable auto-reset of the UNO board. Second, note the LED and resistor plugged in to pin 7 and 6. This is the system LED which is used to visualise the internal state of the debugger (see below). This is optional, but very helpful. 
 
-If you do not have a solder iron at hand in order to solder a series resistor to the system LED, you can instead put an ordinary LED without resistor into pin D6 (-) and D5 (+). It will not be very bright since the internal pull-up resistor is used, which is around 20 kΩ, but it should be enough.
 
 <a name="Fritzing"></a><center>
 
-<img src="pics/debug-attiny85new_Steckplatine.jpg" alt="ATtiny85 on a breadboard"  />
+<img src="pics/debug-attiny85new-dim-LED.png" alt="ATtiny85 on a breadboard"  />
 
 </center>
 
-Third, as you can see, the Vcc rail of the breadboard is connected to pin D9 of the Arduino UNO so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino UNO is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pull-up resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino UNO and ATtiny are MOSI (Arduino UNO D11), MISO (Arduino UNO D12) and SCK (Arduino UNO D13), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
+First of all, notice the capacitor of 10 µF or more between RESET and GND on the UNO board. This will disable auto-reset of the UNO board. Second, note the LED plugged in to pin D5 and D6. This is the system LED which is used to visualise the internal state of the debugger (see below). It uses the internal pull-up resistor as a limiting resistor and is therefore quite dim. You can also build an LED with a series resistor soldered on and then use pin D6 and D7.
+
+As you can see, the Vcc rail of the breadboard is connected to pin D9 of the Arduino UNO so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino UNO is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pull-up resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino UNO and ATtiny are MOSI (Arduino UNO D11), MISO (Arduino UNO D12) and SCK (Arduino UNO D13), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
 
 
 ![ATtiny85 pinout](https://raw.githubusercontent.com/SpenceKonde/ATTinyCore/v2.0.0-devThis-is-the-head-submit-PRs-against-this/avr/extras/Pinout_x5.jpg)
@@ -210,15 +212,15 @@ ATtiny pin# | Arduino UNO pin | component
 1 (Reset) | D8 | 10k resistor to Vcc 
 2 (D3) |  |
 3 (D4) |  |220 Ω resistor to LED (+)
-4 (GND) | GND | LED (-), decoupling cap 100 nF, blocking cap of 10µF (-), 
+4 (GND) | GND | LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-) 
 5 (D0, MOSI) | D11 |
 6 (D1, MISO) | D12 |
 7 (D2, SCK) | D13 |
 8 (Vcc) | D9 | 10k resistor, decoupling cap 100 nF 
-&nbsp;|RESET|blocking cap of 10 µF (+)
-&nbsp;|D7|system LED (+)
-&nbsp;|D6|200 Ω to system LED (-) (or possibly dark LED(-) without resistor)
-&nbsp;|D5|(possibly dark system LED (+))
+&nbsp;|RESET|RESET blocking cap of 10 µF (+)
+&nbsp;|D7|(alternative bright system LED (+)
+&nbsp;|D6|dim system LED(-) (alternative 200 Ω to bright system LED (-))
+&nbsp;|D5|dim system LED (+)
 
 
 
@@ -265,8 +267,13 @@ Unfortunately, the debugger is not any longer part of the toolchain integrated i
 
 In order to be able to debug the MCUs mentioned in  the indroduction, you need to install 3rd party cores. For the classic ATtiny family, this is [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md) and for the ATmegaX8 family (including the Arduino UNO), it is [MiniCore](https://github.com/MCUdude/MiniCore). In fact, in order to be able to generate object files that are debug friendly, you need to install my fork of the board manager files. You first have to add URLs under the `Additional Board Manager URLs` in the `Preference` menu:
 
-- ATTinyCore: `https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json` (for all the classic ATtinys)
-- MiniCore: `https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json` (for all the ATmegaX8 MCUs)
+- ```
+  https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+  ```
+
+- ```
+  https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+  ```
 
 After that, you can download and install the board using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools/Board`. Currently, choose the versions that have a `+debug` suffix in its version number! I hope the capability of generating debug-friendly binaries will be incorporated in future versions of these board manager files, in which case you can rely on the regular board manager files by MCUdude and SpenceKonde.
 
@@ -278,10 +285,12 @@ Then set additional parameters for the board. Most importantly, you need to sele
 
 ### 5.4 Example session with avr-gdb
 
-Open a terminal window, and change into the directory where the Arduino IDE/CLI has copied the ELF file to. After that, we start the debugging session by connecting the hardware debugger to the host computer and start avr-gdb. All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment. **\<serial port\>** is the serial port you use to communicate with the hardware debugger.
+Open now a terminal window, and change into the directory where the Arduino IDE/CLI has copied the ELF file to. Assuming that you have connected the hardware debugger to the target board and to the host computer, we can start a debugging session.
+
+All the lines starting with either the **>** or the **(gdb)** prompt contain user input and everything after # is a comment. **\<serial port\>** is the serial port you use to communicate with the hardware debugger and **\<bps\>** is the baud rate, i.e., 115200, provided you have not changed the compile-time constant `HOSTBPS`.
 
 ```
-> avr-gdb -b 115200 varblink.ino.elf 
+> avr-gdb -b <bps> varblink.ino.elf 
 GNU gdb (GDB) 10.1
 Copyright (C) 2020 Free Software Foundation, Inc.
 ...
@@ -441,7 +450,17 @@ All of the commands marked with (*) reset the MCU.
 
 ### 5.6 A graphical user interface: *Gede*
 
-If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from a [Github repository](https://github.com/felias-fogg/gede) and compile it by yourself. Or you just use the binary in the `gui` folder that I compiled for you. I would recommend to  copy it to `/usr/local/bin`. The `gui` directory contains also a Python script called *dw-server.py*. If you now start *dw-server.py*, it will try to discover a dw-link adapter connected to a serial line. After that it starts *Gede*, and then it forwards the serial connection over TCP/IP to *Gede*, which will present you with the following window.
+If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Windows is not an option, unfortunately. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede) and compile it by yourself. Or you just use the binary in the `gui` folder that I compiled for you. I would recommend to  copy it to `/usr/local/bin` (using, of course, `sudo`). The `gui` directory contains also a Python script called *dw-server.py*, which you also should copy to `/usr/local/bin`. 
+
+Open now a terminal window, `cd` into the folder that contains the ELF file, and type
+
+ 
+
+```
+dw-server.py -s gede
+```
+
+The script will try to discover a dw-link adapter connected to a serial line. After that it starts *Gede*, and then it forwards the serial connection over TCP/IP to *Gede*, which will present you with the following window.
 
 <img src="pics/gede-start.png" alt="gede" style="zoom:40%;" />
 
@@ -449,7 +468,7 @@ If you believe that GDB is too much typing, then you are probably the type of pr
 
 I have added an additional command to the interface that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
 
-Unfortunately, there is no Windows version yet. However, I will look into it when time permits.
+Unfortunately, there is no Windows version. And there is no straight-forward way to port *Gede*c to Windows.
 
 <a name="section6"></a>
 
@@ -460,8 +479,8 @@ Unfortunately, there is no Windows version yet. However, I will look into it whe
 The main differences to the Arduino IDE are:
 
 1. You do not select the MCU and its parameters using a dropdown menu, but you have to write/modify the INI-style file `platform.ini`.
-2. Libraries are not global, but they are local to each project. That means that a new library version will not break your project, but  you have to update library versions for each project separately.
-3. There is no preprocessor that generates function declarations automagically. You have to add the include statement for the arduino header file and all function declarations by yourself. In addition, you need to import `Arduino.h` explicitly.
+2. Libraries are not global by default, but they are usual local to each project. That means that a new library version will not break your project, but  you have to update library versions for each project separately.
+3. There is no preprocessor that generates function declarations automagically as the Arduino IDE/CLI doe for you. You have to add the include statement for the arduino header file and all function declarations by yourself. In addition, you need to import `Arduino.h` explicitly.
 4. There is already a powerful editor integrated into the IDE.
 5. Most importantly, the IDE contains ways to configure the debugging interface, which makes it possible to integrate dw-link easily. Note that this is still not possible for the Arduino IDE 2.X!
 
@@ -471,43 +490,59 @@ So, moving from the Arduino IDE to PlatformIO is a significant step and I have n
 
 Installing PlatformIO is straight forward. Download and install Visual Studio Code. Then start it and click on the extension icon on the left, search for the PlatformIO extension and install it, as is described [here](https://platformio.org/install/ide?install=vscode). Check out the [quick start guide](https://docs.platformio.org/en/latest//integration/ide/vscode.html#quick-start). Now we are all set.
 
-### 6.2 Import an Arduino project into PlatformIO
+On a Mac, unfortunately it does not work out of the box, because the gcc-toolchain PlatformIO uses is quite dated, and the included version of avr-gdb is not any longer compatible with recent macOS versions. Simply install avr-gdb with homebrew and copy the file (`/usr/local/bin/avr-gdb`) linto the toolchain directory (`~/.platformio/packages/toolchain-atmelavr/bin/`).
 
-Now let us prepare a debugging session with the same project we had before. Startup Visual Studio Code and click on the home symbol in the lower navigation bar. Now PlatformIO offers you to create a new project, import an Arduino project, open a project, or take some project examples. Choose **Import Arduino Project** and PlatformIO will ask you which platform you want to use. Type in **attiny85** and choose **ATtiny85 generic**. If you have a different board, you can, of course, select a different board. After that, you can navigate to the directory containing the Arduino project and PlatformIO will import it. It will also tell you to convert your INO sketch into a well-formed C++ program. This is something we can do later, though.
+### 6.2 Open an existing project
+
+Now let us prepare a debugging session with the same Arduino sketch. However, this time it is a C++ file (with the extension `cpp`) and it contains the necessary include of `Arduino.h`. Startup Visual Studio Code and click on the home symbol in the lower navigation bar. Now PlatformIO offers you to create a new project, import an Arduino project, open a project, or take some project examples. Choose **Open Project** and select the folder `dw-link/examples/pio-varblink`. 
+
+![PIO](pics/pio01.png)
 
 
 ### 6.3 Debugging with PlatformIO
 
-If you now click on the debug symbol in the left navigation bar (fourth from the top), PlatformIO enables debugging using **simavr**, the default debugger for this chip. 
+If you now click on the debug symbol in the left navigation bar (fourth from the top), PlatformIO enables debugging using the custom specifications in `platform.ini`.
 
-![PIO](pics/pio1s.png)
+![PIO](pics/pio02.png)
 
 You can now start a debug session by clicking the green triangle at the top navigation bar labeled **PIO Debug**. 
 
-![PIOdebug](pics/pio2s.png)
+![PIOdebug](pics/pio04.png)
 
-On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. Try to play around with it!
+On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. 
 
-![PIOdebugactive](pics/pio3s.png)
+![PIOdebugactive](pics/pio05.png)
 
-On a Mac, unfortunately it does not work out of the box, because the gcc-toolchain PlatformIO uses is quite dated and avr-gdb is not any longer compatible with recent macOS versions. Simply install avr-gdb with homebrew and copy the file (`/usr/local/bin/avr-gdb`) linto the toolchain directory (`~/.platformio/packages/toolchain-atmelavr/bin/`).
+Before we now play around with the debug control buttons, let us set a breakpoint in the user program. First select the explorer view by clicking an the left top icon, then select the file varblink.cpp.
 
-### 6.4 *Dw-link* setup
+![PIOexplore](pics/pio06.png)
 
-But, of course, this is not the real thing. No LED is blinking. So close the window and copy the following file from `examples/pio-config` to the project directory of your new PlatformIO project:
+Now, we can set a breakpoint, e.g. in line 11, and start execution by pressing the execute button.
 
-* `platformio.ini`
-* `discover-dw-link.py`
+![PIObreakpoint](pics/pio07.png)
 
-Both files need to be present in any project you create. The first one is an INI-style configuration that you can adapt to your wishes. You can find an extensive description of what can be configured in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). Note one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. The second file is a Python script that discovers the dw-link adapter by probing all connected serial devices. If one of them identifies itself as a dw-link adapter, GDB connects to it.
+After a brief moment. the debugger will then stop at the set breakpoint.
 
-After having copied the file into the project directory and having set up the hardware as described in [Section 4](#section4), you should reopen the project window. Now you should be able to debug your project as described above. Only you are debugging the program on the target system, i.e., the LED really blinks (if it is connected to the right pin).
+![PIObreak](pics/pio08.png)
 
-A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
-
-### 6.5 Disabling debugWIRE mode
+### 6.4 Disabling debugWIRE mode
 
 There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwoff` in the debugging terminal window after having started a debugging session in PlatformIO IDE. 
+
+### 6.5 Configuting `platformio.ini`
+
+This is not the place to tell you all about what can be configured in the `platformio.ini` file.  There is one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
+
+You may have noticed the file `dw-server.py` in the project folder, which is mentioned as the `debug_sever` in the `platformio.ini` file:
+
+```
+debug_server = ./dw-server.py
+      -p 3333
+```
+
+This Python script acts as a debug server, i.e., it will discover a dw-link adapter, if one is present, and then create a serial-to-IP bridge on the specified port. Instead of having the Python script in the project folder, you can put it at a fixed location, e.g., `/usr/local/bin` or `C:\Program Files\bin` . If your path environment variable points there, then you have to delete the `./` part. Otherwise,  you need to specify the full path for the `debug_server`, e.g. `C:\Program Files\bin\dw-server.py`.
+
+When creating new projects, you can take this project folder as a blue print and modify and extend `platformio.ini` according to your needs. You can find an extensive description of how to do that in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
 <a name="section7"></a>
 
@@ -554,7 +589,9 @@ Taking it one one step further, one might think about a prototype shield for an 
 
 ![dw-probe-fritzing](pics/dw-probe-2.0.png)
 
-You can also do a similar thing with the Arduino Nano. Note, however, that the maximum communication speed of a Nano is 115200.  
+In reality, that might look like as in the following picture.
+
+![dw-probe-pcb-V2.0](pics/dw-probe-pcb-V2.0.jpg)
 
 ### 7.3 Adapter board/shield with level-shifter and switchable power supply
 
@@ -711,6 +748,16 @@ I have encountered situations [when it was impossible to get the right informati
 
 ## 9 Trouble shooting
 
+#### Problem: After debugging, the chip is unresponsive, i.e., does not respond anymore to ISP programming or bootloader upload
+
+There are many possible causes. 
+
+The DWEN fuse is still programmed, i.e., the MCU is still in debugWIRE mode. In this case, it may help to enter and leave the debugger again, provided that there are not any [problems with the RESET line](#worstcase). It may also be helpful to issue the command `monitor dwoff`. 
+
+Another fuse has been programmed by accident. In particular, there are the `monitor` commands that change the clock source. If an external clock or an XTAL has been chosen, then you can recover the chip only by providing such an external clock or XTAL and then use either ISP programming or connect again to dw-link. 
+
+If nothing helps, then [high-voltage programming](#worstcase) might still be last resort.
+
 #### Problem: After changing optimization options, the binary is still too large/very small
 
 You switched optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this is not longer an option. You need to look at where the files are compiled and stored and delete them manually.
@@ -804,14 +851,6 @@ So, before blaming the debugger, check for the three possible causes.
 #### Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command
 
 This appears to happen even when the optimization level is set to **-Og**, but not when you use **-O0**. So, if it is important for you to change the value of local variables, you should use the latter optimization level (see the preceding problem).
-
-#### Problem: In PlatformIO, the global variables are not displayed
-
-I have no idea, why that is the case. If you want to see the value of a global variable, you can set a `watchpoint`.
-
-#### Problem: The disassembly cannot be displayed
-
-Older versions of avr-gdb had a problem with disassembly: [https://sourceware.org/bugzilla/show_bug.cgi?id=13519](https://sourceware.org/bugzilla/show_bug.cgi?id=13519). In the current version the problem has been fixed, though. So, you might want to get hold of a current version.
 
 <a name="fatalerror"></a>
 
@@ -930,4 +969,5 @@ Initial version
 - changed Section 7 in order to describe the V2.0 design
 - have thrown out ATtiny13 since it behaves strangely
 - added that disabling debugWIRE is now done automatically 
-- added dw-c.py
+- added dw-server.py
+- added description of the GUI gede
