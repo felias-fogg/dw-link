@@ -1,6 +1,6 @@
 # dw-link
 
-# Quick-start guide
+# Quickstart Guide
 
 Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 1 optional) steps. 
 
@@ -12,7 +12,7 @@ Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 
 * Breadboard
 * 9 Jumper wires (male-to-male)
 * 2 LEDs
-* 2 Resistors (10 kΩ, 330Ω)
+* 3 Resistors (10 kΩ, 220Ω, 220Ω)
 * 2 Capacitors (100 nF, 10 µF)
 * USB cable 
 
@@ -20,7 +20,7 @@ Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 
 
 ## Step 1: Install Arduino IDE or CLI
 
-You probably already have installed the Arduino IDE. If not, download and install it from https://arduino.cc. It does not matter whether it is the IDE 1 or 2. Even the CLI will work. However, it should be an IDE with  version >= 1.8.13. 
+You probably already have installed the Arduino IDE. If not, download and install it from https://arduino.cc. It does not matter whether it is the IDE 1 or 2. However, it should be an IDE with  version >= 1.8.13. 
 
 **Check:** Start IDE and check the `About Arduino`  entry under the `Arduino` or `Help` menu for the version number.
 
@@ -64,7 +64,15 @@ In order to install the firmware,
 
 ##### On a Mac: 
 
-You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. Then you can install avr-gdb, the host debugger, as follows:
+You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. This can take some considerable time.
+
+Before you can download avr-gdb, you have to inform homebrew about a 'tap' you want to consider, when looking for packages:
+
+```
+brew tap osx-cross/avr
+```
+
+After that, you can install avr-gdb, the host debugger, as follows:
 
 ```
 brew install avr-gdb
@@ -80,15 +88,15 @@ sudo apt-get install gdb-avr
 
 ##### Under Windows:
 
-The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gcc` to some place, e.g. `C:\Progam Files\bin\` . Afterwards, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then change the value of the `PATH` environment.
+The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gcc` to some place, e.g. `C:\Progam Files\bin\` . Afterwards, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then add `C:\Progam Files\bin` to the `PATH` environment variable.
 
-**Check:** Open a terminal window and type in `avr-gdb`. This should start up the debugger.
+**Check:** Open a terminal window and type in `avr-gdb`. This should start up the debugger. You can quit the debugger with the command `quit`.
 
 ## Step 5: Hardware setup
 
-The description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to physically alter the board (cut a solder bridge). 
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to physically alter the board (cut a solder bridge). How to set up an UNO is described in [Section 4.5.2](manual.md#section452) of the manual.
 
-![ATtiny85-debug](pics/debug-attiny85new-dim-LED.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
+![ATtiny85-debug](pics/debug-attiny85-LED-onboard.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
 
 Here is a table of all the connections so that you can check that you have made all the connections. 
 
@@ -96,18 +104,14 @@ Here is a table of all the connections so that you can check that you have made 
 | ------------ | --------------- | ------------------------------------------------------------ |
 | 1 (Reset)    | D8              | 10k resistor to Vcc                                          |
 | 2 (D3)       |                 |                                                              |
-| 3 (D4)       |                 | 220 Ω resistor to LED (+)                                    |
-| 4 (GND)      | GND             | LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-), |
+| 3 (D4)       |                 | 220 Ω resistor to target (red) LED (+)                       |
+| 4 (GND)      | GND             | red and yellow LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-) |
 | 5 (D0, MOSI) | D11             |                                                              |
 | 6 (D1, MISO) | D12             |                                                              |
 | 7 (D2, SCK)  | D13             |                                                              |
 | 8 (Vcc)      | D9              | 10k resistor, decoupling cap 100 nF                          |
 | &nbsp;       | RESET           | RESET blocking cap of 10 µF (+)                              |
-| &nbsp;       | D7              | (alternative bright system LED (+))                          |
-| &nbsp;       | D6              | dim system LED (alternative 200 Ω to bright system LED (-))  |
-| &nbsp;       | D5              | dim system LED (+)                                           |
-
-The yellow system LED is directly connected to the Arduino pins. The internal pull-up resistor is used as a limiting resistor, which leads to a LED that is very dim. If you have a soldering iron, you can solder a series resistor to the system LED and then use pins 6 and 7.
+| &nbsp;       | D7              | 220 Ω to system (yellow) LED (+)                             |
 
 The system LED gives you information about the internal state of the debugger: 
 
@@ -116,19 +120,19 @@ The system LED gives you information about the internal state of the debugger:
 * target is connected (LED is on) 
 * error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec)
 
-**Check:** Go through table above and check every connection. Wrong wiring can often cause hours of debugging the software. Of course, without success!
+**Check:** Go through the table above and check every connection. Wrong wiring can often cause hours of debugging the software!
 
 ## Step 6: Compiling the Arduino sketch
 
 * Load the sketch, you want to debug  (e.g., `dw-link-master/examples/varblink/varblink.ino`) into the IDE and the select `ATtiny85 (no bootloader)` as the board. 
 * As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). For the `Debug Compile Flags` option choose `Debug`. 
-* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder, where the sketch is located. If you use the IDE 2 or CLI, then the ELF file can be found in the folder `build/<board-type>/` inside the sketch folder. 
+* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder, where the sketch is located. If you use the IDE 2, then the ELF file can be found in the folder `build/<board-type>/` inside the sketch folder. 
 
-**Check:** Open terminal window an change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be there (Arduino IDE 1.X) or in a subdirectory of the `build` folder (Arduino IDE 2.X or CLI). 
+**Check:** Open terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be there (Arduino IDE 1.X) or in a subdirectory of the `build` folder (Arduino IDE 2.X). 
 
 ## Step 7: Start Debugging
 
-Now, we are ready to debug the sketch that is executing on the target chip. Check that the `host`, the computer you are sitting at, is connected to the hardware debugger, the UNO, with a USB cable. The hardware debugger should in turn be connected to the target chip, the ATtiny85, by 6 flying wires.
+Now, we are ready to debug the sketch on the target chip. Check that the *host*, the computer you are sitting at, is connected to the *hardware debugger*, the UNO, with a USB cable. The hardware debugger should in turn be connected to the *target* chip, the ATtiny85, by 6 flying wires.
 
 Open a terminal window and change into the folder where the ELF file resides. Then type
 
@@ -149,15 +153,14 @@ Remote debugging using <serial-port>
 0x00000000 in __vectors ()  
 ```
 
-and the system LED should light up. If this is the case, we are in business! If the LED is instead furiously blinking, then the hardware debugger could not connect to the target. Type:
+and the system LED should light up. If this is the case, we are in business! 
 
-```
-monitor dwconnect
-```
+What else could happen?
 
-which should give you the reason. Probably: Wrong wiring. 
+* If the LED stays dark and you receive the message `/dev/XXXXXXXX: Resource busy`, the some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.
+* If the LED stays dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
 
-If the LED stayed dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
+* If the LED is instead blinking, then the hardware debugger could not connect to the target. Type: `monitor dwconnect`, which should give you the reason. Probably: Wrong wiring. 
 
 Assuming that everything went according to plan, the only thing missing now is that the sketch is loaded into flash memory. But the next command will exactly do this:
 
@@ -198,30 +201,36 @@ You should always end your debugging session with the quit command, which will t
 
 ## Step 8 (optional): Install a graphical user interface
 
-If you would like to work with a GUI, then you can install *Gede*, a simple and easy to install GUI for GDB, provided your host OS is  macOS or Linux. Alternatively, you can install PlatformIO, as described in detail in the [dw-link manual in Section 6](manual.md#section6), which also works for Windows.
+If you would like to work with a GUI, then *Gede* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is  macOS or Linux. Alternatively, you can install PlatformIO, as described in detail in the [dw-link manual in Section 6](manual.md#section6), which also works for Windows.
 
-You can either download and build Gede from [my forked Gede repository](https://github.com/felias-fogg/gede), or use the ready-made binaries in `dw-link-master/gui/<OS>/`. You need to copy the binary as well as the Python script `dw-server.py` in the `gui` folder to `/user/local/bin`. Under Linux, you may have to install *Python3*, if this has not been done already.
-
-**Check**: Open a terminal window and type `which dw-server.py` and `which gede`. In both cases, you should get an reply such as `/usr/local/bin/<progname>`. 
-
-In order to start a debugging session, you have as above to open a terminal window and to change into the sketch directory. Now type the following command:
+As a prerequisite, we need to make sure that *PySerial* is installed. So type into a terminal:
 
 ```
-dw-server.py -s gede
+pip3 install pyserial
+```
+
+Now you need to build *Gede* from [my forked Gede repository](https://github.com/felias-fogg/gede). Just follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-master/dw-server` to `/user/local/bin` (of course, using `sudo`).
+
+**Check**: Open a terminal window and type `gede`. This should bring up a window, which you can kill. Typing `dw-server.py` should give you the output `--- No dw-link adapter discovered ---`, when no adapter is present, or `Waiting for connection on 2000`.
+
+In order to start a debugging session, you have, as above, to open a terminal window and change into the sketch directory. Now type the following command:
+
+```
+dw-server.py -g
 ```
 
 The `dw-server.py` script will discover the serial port of the hardware debugger, if there is any, and start *gede*, which will present the following window.
 
-<img src="pics/gede-start.png" alt="gede" style="zoom:40%;" />
+![gede](pics/gede-start.png)
 
-`Project dir` and `Program` are specific to your debugging session. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
+`Project dir` and `Program` are specific to your debugging session. The former is the directory *gede* was started in, the latter is the location of the ELF file. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
 
 *Gede* has now an additional command (arrow pointing down) that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
 
 ## What can go wrong?
 
-If something does not work as advertised, it is very often a simple wiring problem. The next possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the right permissions, the PATH variable is not right, or one has installed the wrong board manager files. There is also a [troubleshooting section](manual.md#trouble) in the regular manual, which may be helpful. 
+If something does not work as advertised, it is very often a simple wiring problem. The next possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the right permissions, the PATH variable is not right, or one has installed the wrong board manager files. When some strange error messages show up, it may also be an indication that some component has not been installed. Google for the error message! Often there are hints how to mitigate the problem. Finally, there is also a [troubleshooting section](manual.md#trouble) in the regular manual, which may be helpful. 
 
-The most annoying problem is that it can happen that after a debugging session, an MCU is not responsive anymore. The reason can be that the RESET line, which during debugging is used as a communication line, has not been reenabled. While a regular exit of the debugger restores the RESET line, it can happen that the debugger is terminated without restoring the RESET line. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`. 
+The most annoying problem is that after a debugging session, an MCU might not be responsive anymore. The reason can be that the RESET line, which during debugging is used as a communication line, has not been reenabled. While a regular exit of the debugger restores the RESET line, it can happen that the debugger is terminated without restoring the RESET line. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`. 
 
 If you think that you have found a bug, please consider posting it on [issues](https://github.com/felias-fogg/dw-link/issues) and consider filling out the [issue form](issue_form.md) before.

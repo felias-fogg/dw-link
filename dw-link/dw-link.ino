@@ -34,7 +34,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests, probably
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
-#define VERSION "2.1.8"
+#define VERSION "2.1.9"
 
 // some constants, you may want to change
 #ifndef HOSTBPS 
@@ -204,7 +204,6 @@ const byte VSUP = 9;
 const byte IVSUP = 2;
 const byte DEBTX = 3;
 const byte SYSLED = 7;
-const byte DARKSYSLED = 5;
 const byte LEDGND = 6;
 const byte DWLINE = 8;
 
@@ -442,14 +441,11 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
     if (cnt < 0) {
       cnt = offtime;
       digitalWrite(SYSLED, LOW);
-      digitalWrite(DARKSYSLED, LOW);
-      pinMode(DARKSYSLED, OUTPUT);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
       digitalWrite(SYSLED, HIGH);
-      pinMode(DARKSYSLED, INPUT_PULLUP);
     }
   }
   busy--;
@@ -596,11 +592,8 @@ void setSysState(statetype newstate)
   pinMode(SYSLED, OUTPUT);
   if (ontimes[newstate] == 0) {
     digitalWrite(SYSLED, LOW);
-    digitalWrite(DARKSYSLED, LOW);
-    pinMode(DARKSYSLED, OUTPUT);
   } else if (offtimes[newstate] == 0) {
     digitalWrite(SYSLED, HIGH);
-    pinMode(DARKSYSLED, INPUT_PULLUP);
   } else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);

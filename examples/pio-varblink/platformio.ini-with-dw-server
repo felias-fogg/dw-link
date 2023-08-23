@@ -11,15 +11,16 @@
 default_envs = debug
 
 [env:debug]
-extends = env:attiny85                ;; <--- substitute the right board here
+extends = env:attiny85                     ;; <--- substitute the right board here
 build_type = debug
-debug_port = SERIAL-PORT              ;; <--- substitute your own serial port here
 debug_tool = custom
 debug_load_cmds = load
+debug_server = dw-server.py                ;; <-- needs to be callable (e.g., in /usr/local/bin)
+	-p 3333
 debug_build_flags = 
-	-g                            ; includes debugging info
-	-Og                           ; is the debuging optimization level; -Os is more to the truth
-	-fno-lto                      ; no link-time optimization (could be disregarded)
+	-Og
+	-g
+	-fno-lto
 debug_init_cmds = 
 	define pio_reset_halt_target
 	       monitor reset
@@ -29,8 +30,7 @@ debug_init_cmds =
 	       detach
 	end
 	file "$PROG_PATH"
-  	set serial baud 115200
-  	target remote $DEBUG_PORT
+	target remote $DEBUG_PORT
 	monitor dwconnect
 	load
 	$INIT_BREAK

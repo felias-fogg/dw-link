@@ -49,6 +49,8 @@ if __name__ == '__main__':
                             help='local port on machine (default 2000)')
     parser.add_argument('-s', '--start',  dest='prg', 
                             help='start specified program')
+    parser.add_argument('-g', '--gede',  action="store_true",
+                            help='start gede with "--no-run" option')
     args=parser.parse_args()
 
     # discover adapter
@@ -56,7 +58,6 @@ if __name__ == '__main__':
     if speed == None or device == None:
         sys.stderr.write('--- No dw-link adapter discovered ---\n')
         exit(2)
-    print(args)
     
     # connect to serial port
     ser = serial.serial_for_url(device, do_not_open=True)
@@ -76,6 +77,9 @@ if __name__ == '__main__':
     ser_to_net = SerialToNet()
     serial_worker = serial.threaded.ReaderThread(ser, ser_to_net)
     serial_worker.start()
+
+    if args.gede:
+        args.prg = "gede --no-run"
 
     if args.prg:
         cmd = shlex.split(args.prg)

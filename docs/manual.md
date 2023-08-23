@@ -190,15 +190,11 @@ Before you can start debugging, you have to setup the hardware. I'll use an ATti
 
 In order to debug an ATtiny85, we will assume it is completely "naked" and plugged into a breadboard as shown below. 
 
+<a name="Fritzing"></a>
 
+![Fritz-attiny](pics/debug-attiny85-LED-onboard.png)
 
-<a name="Fritzing"></a><center>
-
-<img src="pics/debug-attiny85new-dim-LED.png" alt="ATtiny85 on a breadboard"  />
-
-</center>
-
-First of all, notice the capacitor of 10 µF or more between RESET and GND on the UNO board. This will disable auto-reset of the UNO board. Second, note the LED plugged in to pin D5 and D6. This is the system LED which is used to visualise the internal state of the debugger (see below). It uses the internal pull-up resistor as a limiting resistor and is therefore quite dim. You can also build an LED with a series resistor soldered on and then use pin D6 and D7.
+First of all, notice the capacitor of 10 µF or more between RESET and GND on the UNO board. This will disable auto-reset of the UNO board. Second, note the yellow LED plugged into pin D7. This is the system LED which is used to visualise the internal state of the debugger (see below).  You can also build an LED with a series resistor soldered on and then use pin D6 and D7, where D6 is used as GND.
 
 As you can see, the Vcc rail of the breadboard is connected to pin D9 of the Arduino UNO so that it will be able to power-cycle the target chip. Furthermore, pin D8 of the Arduino UNO is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pull-up resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino UNO and ATtiny are MOSI (Arduino UNO D11), MISO (Arduino UNO D12) and SCK (Arduino UNO D13), which you need for ISP programming. In addition, there is a LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the next figure (with the usual "counter-clockwise" numbering of Arduino pins).
 
@@ -211,28 +207,28 @@ ATtiny pin# | Arduino UNO pin | component
 --- | --- | ---
 1 (Reset) | D8 | 10k resistor to Vcc 
 2 (D3) |  |
-3 (D4) |  |220 Ω resistor to LED (+)
-4 (GND) | GND | LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-) 
+3 (D4) |  |220 Ω resistor to (red) target LED (+)
+4 (GND) | GND | both LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-) 
 5 (D0, MOSI) | D11 |
 6 (D1, MISO) | D12 |
 7 (D2, SCK) | D13 |
 8 (Vcc) | D9 | 10k resistor, decoupling cap 100 nF 
 &nbsp;|RESET|RESET blocking cap of 10 µF (+)
-&nbsp;|D7|(alternative bright system LED (+)
-&nbsp;|D6|dim system LED(-) (alternative 200 Ω to bright system LED (-))
-&nbsp;|D5|dim system LED (+)
+&nbsp;|D7|220 Ω resistor to (yellow) system LED (+)
 
-
+<a name="section452"></a>
 
 #### 4.5.2 Debugging an UNO
 
-If instead of an ATtiny85, you want to debug an UNO board, everything said above applies here as well. The Fritzing sketch below shows you the connections. Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))! When you first establish a connection with the UNO as a target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared.
+If instead of an ATtiny85, you want to debug an UNO board, everything said above applies here as well. The Fritzing sketch below shows you the connections. Here, the series resistor for the system LED is soldered to the LED cathode so that we do not need a breadboard at all. However, you can, of course, use a breadboard.
+
+Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))! When you first establish a connection with the UNO as a target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared.
 
 ![Uno as DUT](pics/Debug-Uno.png)
 
 When after a debugging session you want to restore the target so that it behaves again like an ordinary UNO, you have to execute the following steps:
 
-1. Exit the debugWIRE state as described in [Section 2](#section2). This should happened automatically when exiting GDB.
+1. Exit the debugWIRE state as described in [Section 2](#section2). This should have happened automatically when last quitting GDB. However, to make sure the UNO is not in debugWIRE state, you should use the method described in [Section 5.5](#exlpicit1) or [Section 6.4](#explicit2). 
 2. Reestablish the `RESET EN` connection by putting a solder blob on the connection.
 3. Burn the bootloader into the UNO again, [as described on the Arduino website](https://support.arduino.cc/hc/en-us/articles/4841602539164-Burn-the-bootloader-on-UNO-Mega-and-classic-Nano-using-another-Arduino).
 
@@ -365,7 +361,10 @@ Quit anyway? (y or n) y
 ```
 
 
-### 5.4 Disabling debugWIRE mode explicitly
+
+<a name="#explicit1"></a>
+
+### 5.5 Disabling debugWIRE mode explicitly
 
 Exiting GDB should disable debugWIRE mode. However, if something went wrong or you killed the debug session, the ATtiny MCU might still be in debugWIRE mode and the RESET pin cannot be used to reset the chip and/or you cannot use ISP programming. In this case, you can explicitly disable debugWIRE, as shown below. 
 
@@ -384,7 +383,7 @@ debugWIRE is now disabled
 (gdb) quit
 >
 ```
-### 5.5 GDB commands
+### 5.6 GDB commands
 
 In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most relevant commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). For the most common commands, it is enough to just type the first character. In general, you only have to type as many characters as are necessary to make the command unambiguous. You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
 
@@ -448,7 +447,7 @@ Finally, there are commands that control the settings of the debugger and the MC
 
 All of the commands marked with (*) reset the MCU.
 
-### 5.6 A graphical user interface: *Gede*
+### 5.7 A graphical user interface: *Gede*
 
 If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Windows is not an option, unfortunately. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede) and compile it by yourself. Or you just use the binary in the `gui` folder that I compiled for you. I would recommend to  copy it to `/usr/local/bin` (using, of course, `sudo`). The `gui` directory contains also a Python script called *dw-server.py*, which you also should copy to `/usr/local/bin`. 
 
@@ -494,20 +493,33 @@ On a Mac, unfortunately it does not work out of the box, because the gcc-toolcha
 
 ### 6.2 Open an existing project
 
-Now let us prepare a debugging session with the same Arduino sketch. However, this time it is a C++ file (with the extension `cpp`) and it contains the necessary include of `Arduino.h`. Startup Visual Studio Code and click on the home symbol in the lower navigation bar. Now PlatformIO offers you to create a new project, import an Arduino project, open a project, or take some project examples. Choose **Open Project** and select the folder `dw-link/examples/pio-varblink`. 
+Now let us prepare a debugging session with the same Arduino sketch. However, this time it is a C++ file (with the extension `cpp`) and it contains the necessary include of `Arduino.h`. Startup *Visual Studio Code* and click on the Ant symbol in the left bar, then on Open in the list menu, and finally on **Open Project** in the right panel. 
 
-![PIO](pics/pio01.png)
+![PIO](pics/pio00a.png)
 
+After that you have to navigate through your file structure and find the project that you want to open. Finally click on **Open pio-varblink**.
+
+![PIO-open](pics/pio00b.png)
+
+### 6.2 Adapting the `platformio.ini` file
+
+PlatformIO will then open the project and come up with platform.ini in the editor window. There it is obvious that we need to replace the string SERIAL-PORT with the actual port, our hardware debugger is connected to. 
+
+![PIO-ini](pics/pio01.png)
+
+In order to find, which port it is, we can ask for the connected serial ports as shown below. Then we can just copy the name of the port by clicking right to the on the paper icon.
+
+![PIO-device](pics/pio02.png)
+
+After that, the string can be inserted into the `platformio.ini` file.
+
+![PIO-insert-device](pics/pio03.png)
 
 ### 6.3 Debugging with PlatformIO
 
-If you now click on the debug symbol in the left navigation bar (fourth from the top), PlatformIO enables debugging using the custom specifications in `platform.ini`.
+If you now click on the debug symbol in the left navigation bar (fourth from the top), PlatformIO enables debugging using the custom specifications in `platform.ini`. You can now start a debug session by clicking the green triangle at the top navigation bar labeled **PIO Debug**. 
 
-![PIO](pics/pio02.png)
-
-You can now start a debug session by clicking the green triangle at the top navigation bar labeled **PIO Debug**. 
-
-![PIOdebug](pics/pio04.png)
+![PIO](pics/pio04.png)
 
 On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. 
 
@@ -525,6 +537,8 @@ After a brief moment. the debugger will then stop at the set breakpoint.
 
 ![PIObreak](pics/pio08.png)
 
+<a name="explicit2"></a>
+
 ### 6.4 Disabling debugWIRE mode
 
 There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwoff` in the debugging terminal window after having started a debugging session in PlatformIO IDE. 
@@ -533,14 +547,14 @@ There are two ways of switching off the debugWIRE mode. It happens automatically
 
 This is not the place to tell you all about what can be configured in the `platformio.ini` file.  There is one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
 
-You may have noticed the file `dw-server.py` in the project folder, which is mentioned as the `debug_sever` in the `platformio.ini` file:
+You may have noticed the file `platformio.ini-with-dw-server` in the project folder, where a  `debug_sever` is mentioned:
 
 ```
-debug_server = ./dw-server.py
+debug_server = dw-server.py
       -p 3333
 ```
 
-This Python script acts as a debug server, i.e., it will discover a dw-link adapter, if one is present, and then create a serial-to-IP bridge on the specified port. Instead of having the Python script in the project folder, you can put it at a fixed location, e.g., `/usr/local/bin` or `C:\Program Files\bin` . If your path environment variable points there, then you have to delete the `./` part. Otherwise,  you need to specify the full path for the `debug_server`, e.g. `C:\Program Files\bin\dw-server.py`.
+Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this INI file, provided the Python module *PySerial* is installed and the script is stored in an executable path, i.e., in /usr/local/bin on an *nix machine. 
 
 When creating new projects, you can take this project folder as a blue print and modify and extend `platformio.ini` according to your needs. You can find an extensive description of how to do that in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 

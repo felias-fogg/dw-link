@@ -740,4 +740,7 @@ extra_script in the platform.ini file
 
 ## Version 2.1.8 (21-Aug-2023)
 * changed MAXBUFSIZE from 150 to 160 in order to accomodate the qSupported string from GDB 12.1
-  
+
+## Version 2.1.9 (23-Aug-2023)
+* removed DARKSYSLED (i.e., a system LED driven by the pullup resistor
+of pin D5)
