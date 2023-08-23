@@ -1,3 +1,5 @@
+# dw-link
+
 # Quick-start guide
 
 Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 1 optional) steps. 
@@ -9,16 +11,18 @@ Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 
 * ATTiny85 (or any other classic ATTiny or ATmega8X as the *target*)
 * Breadboard
 * 9 Jumper wires (male-to-male)
-* 2 LEDs (3 or 5 mm)
+* 2 LEDs
 * 2 Resistors (10 kΩ, 330Ω)
 * 2 Capacitors (100 nF, 10 µF)
-* USB cable
+* USB cable 
 
 
 
 ## Step 1: Install Arduino IDE or CLI
 
 You probably already have installed the Arduino IDE. If not, download and install it from https://arduino.cc. It does not matter whether it is the IDE 1 or 2. Even the CLI will work. However, it should be an IDE with  version >= 1.8.13. 
+
+**Check:** Start IDE and check the `About Arduino`  entry under the `Arduino` or `Help` menu for the version number.
 
 ## Step 2: Install new board definition files
 
@@ -34,6 +38,8 @@ Close the `Preference` dialog with `OK`. Now we want to install the two cores `A
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
 * In the search field, type first `MiniCore` and install the most recent version (or upgrade to the most recent one). 
 * Afterwards, do the same with `ATTinyCore`.
+
+**Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Falgs: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
 ## Step 3: Install *dw-link* firmware
 
@@ -51,6 +57,8 @@ In order to install the firmware,
 * Perhaps, you have to select the right `Port` in the `Tools` menu as well. 
 * Now load the *dw-link* sketch into the IDE, which is located at `dw-link-master/dw-link/dw.link.ino`. 
 * Finally, compile and download the sketch by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now a hardware debugger (but needs a bit of additional hardware).
+
+**Check:** Open the `Serial Monitor` (under `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
 
 ## Step 4: Install *avr-gdb* debugger on host computer
 
@@ -74,9 +82,7 @@ sudo apt-get install gdb-avr
 
 The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gcc` to some place, e.g. `C:\Progam Files\bin\` . Afterwards, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then change the value of the `PATH` environment.
 
-##### All OS:
-
-Finally check, whether the installation was successful. Open a terminal window and type in `avr-gdb`. This should start up the debugger.
+**Check:** Open a terminal window and type in `avr-gdb`. This should start up the debugger.
 
 ## Step 5: Hardware setup
 
@@ -110,17 +116,21 @@ The system LED gives you information about the internal state of the debugger:
 * target is connected (LED is on) 
 * error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec)
 
+**Check:** Go through table above and check every connection. Wrong wiring can often cause hours of debugging the software. Of course, without success!
+
 ## Step 6: Compiling the Arduino sketch
 
 * Load the sketch, you want to debug  (e.g., `dw-link-master/examples/varblink/varblink.ino`) into the IDE and the select `ATtiny85 (no bootloader)` as the board. 
-* As `Clock Source` choose `1 MHz (internal)` (assuming that no fuse has been changed). For the `Debug Compile Flags` option choose `Debug`. 
+* As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). For the `Debug Compile Flags` option choose `Debug`. 
 * When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder, where the sketch is located. If you use the IDE 2 or CLI, then the ELF file can be found in the folder `build/<board-type>/` inside the sketch folder. 
+
+**Check:** Open terminal window an change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be there (Arduino IDE 1.X) or in a subdirectory of the `build` folder (Arduino IDE 2.X or CLI). 
 
 ## Step 7: Start Debugging
 
 Now, we are ready to debug the sketch that is executing on the target chip. Check that the `host`, the computer you are sitting at, is connected to the hardware debugger, the UNO, with a USB cable. The hardware debugger should in turn be connected to the target chip, the ATtiny85, by 6 flying wires.
 
-Open a terminal window and change into the sketch folder. Then type
+Open a terminal window and change into the folder where the ELF file resides. Then type
 
 ```
 avr-gdb -b 115200 <sketchname>.ino.elf
@@ -132,14 +142,24 @@ where *\<sketchname\>* is the name of the Arduino sketch. This should fire up th
 target remote <serial-port>
 ```
 
-where *\<serial-port\>* is the serial port of the UNO, then, after a few seconds, the system LED should light up and one should get a message similar to the following one:
+where *\<serial-port\>* is the serial port of the UNO, then, after a few seconds, one should get a message similar to the following one
 
 ```
 Remote debugging using <serial-port> 
 0x00000000 in __vectors ()  
 ```
 
-If this is the case, we are in business! The only thing missing now is that the sketch is not yet in flash memory. But the next command will exactly do this:
+and the system LED should light up. If this is the case, we are in business! If the LED is instead furiously blinking, then the hardware debugger could not connect to the target. Type:
+
+```
+monitor dwconnect
+```
+
+which should give you the reason. Probably: Wrong wiring. 
+
+If the LED stayed dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
+
+Assuming that everything went according to plan, the only thing missing now is that the sketch is loaded into flash memory. But the next command will exactly do this:
 
 ```
 load
@@ -172,13 +192,17 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **p *var*** - prints the current value of the variable *var*
 - **q** - Quits gdb
 
-There are tons of commands, too many to show here! On the [home page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/gdb.pdf).
+There are tons of GDB commands, too many to show here! On the [home page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf).
+
+You should always end your debugging session with the quit command, which will turn off debugging mode on the target chip so that the RESET line could be used again.
 
 ## Step 8 (optional): Install a graphical user interface
 
 If you would like to work with a GUI, then you can install *Gede*, a simple and easy to install GUI for GDB, provided your host OS is  macOS or Linux. Alternatively, you can install PlatformIO, as described in detail in the [dw-link manual in Section 6](manual.md#section6), which also works for Windows.
 
 You can either download and build Gede from [my forked Gede repository](https://github.com/felias-fogg/gede), or use the ready-made binaries in `dw-link-master/gui/<OS>/`. You need to copy the binary as well as the Python script `dw-server.py` in the `gui` folder to `/user/local/bin`. Under Linux, you may have to install *Python3*, if this has not been done already.
+
+**Check**: Open a terminal window and type `which dw-server.py` and `which gede`. In both cases, you should get an reply such as `/usr/local/bin/<progname>`. 
 
 In order to start a debugging session, you have as above to open a terminal window and to change into the sketch directory. Now type the following command:
 
