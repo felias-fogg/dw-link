@@ -18,7 +18,7 @@ This repository contains the following directories:
 
 * [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger
 * [**docs**](docs/): Contains the documentation, in particular the [manual](docs/manual.md)
-* [**gui**](bin/): The macOS and Linux binaries of the *[Gede](https://gede.dexar.se/pmwiki.php)* GUI and the dw-server.py script that interfaces between dw-link and Gede
+* [**dw-server**](dw-server/): Contains the Python script dw-server.py, which discovers the serial line dw-link is connected to and provides a serial-to-TCP/IP bridge
 * [**examples**](examples/): Contains a tiny Arduino sketch and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
 * [**pcb**](pcb/): Contains design data (Eagle and Gerber) for the (optional) adapter boards 
