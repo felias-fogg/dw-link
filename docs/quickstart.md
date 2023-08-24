@@ -2,7 +2,7 @@
 
 # Quickstart Guide
 
-Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 1 optional) steps. 
+Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 1 optional) steps. Takes less than one hour. 
 
 ## What you need
 
@@ -10,7 +10,7 @@ Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 
 * Arduino UNO (will become the *hardware debugger*)
 * ATTiny85 (or any other classic ATTiny or ATmega8X as the *target*)
 * Breadboard
-* 9 Jumper wires (male-to-male)
+* 11 Jumper wires (male-to-male)
 * 2 LEDs
 * 3 Resistors (10 kΩ, 220Ω, 220Ω)
 * 2 Capacitors (100 nF, 10 µF)
@@ -18,7 +18,7 @@ Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 
 
 
 
-## Step 1: Install Arduino IDE or CLI
+## Step 1: Install Arduino IDE
 
 You probably already have installed the Arduino IDE. If not, download and install it from https://arduino.cc. It does not matter whether it is the IDE 1 or 2. However, it should be an IDE with  version >= 1.8.13. 
 
@@ -43,20 +43,21 @@ Close the `Preference` dialog with `OK`. Now we want to install the two cores `A
 
 ## Step 3: Install *dw-link* firmware
 
-Download the dw-link repository into a place inside the *Arduino sketchbook* (shown in `Preference` dialog). This means, you should 
+Download the dw-link firmware into a place inside the *Arduino sketchbook*. This means, you should 
 
 * open the webpage https://github.com/felias-fogg/dw-link, 
-* click on the green`Code` button,  and select `Download ZIP`. 
-* Select then either a folder in the sketchbook as the destination or copy the ZIP file after the download to the place. 
-* Finally unzip the ZIP-archive in place.
+* click on `Latest` in the field **Releases**,
+* choose either *zip* or the *tar.gz*,
+* select then either a folder in the sketchbook as the destination or copy the archive after the download to a place in the sketchbook, 
+* finally extract the firmware using `unzip` or `tar -xvzf`. 
 
 In order to install the firmware, 
 
 * first connect the Arduino UNO to your computer with a USB cable. 
 * Now open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`. 
 * Perhaps, you have to select the right `Port` in the `Tools` menu as well. 
-* Now load the *dw-link* sketch into the IDE, which is located at `dw-link-master/dw-link/dw.link.ino`. 
-* Finally, compile and download the sketch by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now a hardware debugger (but needs a bit of additional hardware).
+* Now load the *dw-link* sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw.link.ino`. 
+* Finally, compile and download the sketch to the UNO by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now a hardware debugger (but needs a bit of additional hardware).
 
 **Check:** Open the `Serial Monitor` (under `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
 
@@ -66,7 +67,7 @@ In order to install the firmware,
 
 You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. This can take some considerable time.
 
-Before you can download avr-gdb, you have to inform homebrew about a 'tap' you want to consider, when looking for packages:
+Before you can download avr-gdb, you have to inform homebrew about a 'tap' you want to consider when looking for packages:
 
 ```
 brew tap osx-cross/avr
@@ -120,19 +121,19 @@ The system LED gives you information about the internal state of the debugger:
 * target is connected (LED is on) 
 * error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec)
 
-**Check:** Go through the table above and check every connection. Wrong wiring can often cause hours of debugging the software!
+**Check:** Go through the table above and check every connection. Wrong wiring can often cause hours of useless software debugging!
 
-## Step 6: Compiling the Arduino sketch
+## Step 6: Compiling the Arduino sketch for the target
 
-* Load the sketch, you want to debug  (e.g., `dw-link-master/examples/varblink/varblink.ino`) into the IDE and the select `ATtiny85 (no bootloader)` as the board. 
+* Load the sketch, you want to debug  (e.g., `dw-link-x.y.z/examples/varblink/varblink.ino`) into the IDE and select `ATtiny25/45/85 (no bootloader)` as the board. 
 * As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). For the `Debug Compile Flags` option choose `Debug`. 
 * When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder, where the sketch is located. If you use the IDE 2, then the ELF file can be found in the folder `build/<board-type>/` inside the sketch folder. 
 
 **Check:** Open terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be there (Arduino IDE 1.X) or in a subdirectory of the `build` folder (Arduino IDE 2.X). 
 
-## Step 7: Start Debugging
+## Step 7: Debugging
 
-Now, we are ready to debug the sketch on the target chip. Check that the *host*, the computer you are sitting at, is connected to the *hardware debugger*, the UNO, with a USB cable. The hardware debugger should in turn be connected to the *target* chip, the ATtiny85, by 6 flying wires.
+Now, we are ready to debug the sketch on the target chip. Check that the *host*, the computer you are sitting at, is connected to the *hardware debugger*, the UNO, with a USB cable. The hardware debugger should in turn be connected to the *target* chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.
 
 Open a terminal window and change into the folder where the ELF file resides. Then type
 
@@ -153,14 +154,14 @@ Remote debugging using <serial-port>
 0x00000000 in __vectors ()  
 ```
 
-and the system LED should light up. If this is the case, we are in business! 
+and the system LED lights up. If this is the case, we are in business! 
 
 What else could happen?
 
-* If the LED stays dark and you receive the message `/dev/XXXXXXXX: Resource busy`, the some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.
+* If the LED stays dark and you receive the message `/dev/XXXXXXXX: Resource busy`, then some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.
 * If the LED stays dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
 
-* If the LED is instead blinking, then the hardware debugger could not connect to the target. Type: `monitor dwconnect`, which should give you the reason. Probably: Wrong wiring. 
+* If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type: `monitor dwconnect`, which should give you the reason. Probably: Wrong wiring. So check wiring or maybe try a different MCU.
 
 Assuming that everything went according to plan, the only thing missing now is that the sketch is loaded into flash memory. But the next command will exactly do this:
 
@@ -194,36 +195,37 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **bt** - print the call stack
 - **p *var*** - prints the current value of the variable *var*
 - **q** - Quits gdb
+- `CTRL-C` while the programming is running stops the execution asynchronously
 
-There are tons of GDB commands, too many to show here! On the [home page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf).
+There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf).
 
 You should always end your debugging session with the quit command, which will turn off debugging mode on the target chip so that the RESET line could be used again.
 
 ## Step 8 (optional): Install a graphical user interface
 
-If you would like to work with a GUI, then *Gede* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is  macOS or Linux. Alternatively, you can install PlatformIO, as described in detail in the [dw-link manual in Section 6](manual.md#section6), which also works for Windows.
+If you would like to work with a GUI, then *Gede* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is macOS or Linux. An alternative is PlatformIO, as described in detail in the [dw-link manual in Section 6](manual.md#section6), which also works for Windows.
 
-As a prerequisite, we need to make sure that *PySerial* is installed. So type into a terminal:
+A prerequisite for using the debugger is that we make sure that *PySerial* is installed. So type into a terminal:
 
 ```
 pip3 install pyserial
 ```
 
-Now you need to build *Gede* from [my forked Gede repository](https://github.com/felias-fogg/gede). Just follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-master/dw-server` to `/user/local/bin` (of course, using `sudo`).
+Now you need to build *Gede* from [my forked Gede repository](https://github.com/felias-fogg/gede). Just download the latest release and follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-x.y.z/dw-server` to `/user/local/bin` (of course, using `sudo`).
 
-**Check**: Open a terminal window and type `gede`. This should bring up a window, which you can kill. Typing `dw-server.py` should give you the output `--- No dw-link adapter discovered ---`, when no adapter is present, or `Waiting for connection on 2000`.
+**Check**: Open a terminal window and type `gede`. This should bring up a window, which you can kill. Typing `dw-server.py` should give you the output `--- No dw-link adapter discovered ---`, when no adapter is present, or `Waiting for connection on 2000`. Stop the script with `CTRL-C`.
 
-In order to start a debugging session, you have, as above, to open a terminal window and change into the sketch directory. Now type the following command:
+In order to start a debugging session, you have to open a terminal window and change into the sketch directory. Now type the following command:
 
 ```
 dw-server.py -g
 ```
 
-The `dw-server.py` script will discover the serial port of the hardware debugger, if there is any, and start *gede*, which will present the following window.
+The `dw-server.py` script will discover the serial port of the hardware debugger, if there is any, and start *Gede*, which will present the following window.
 
 ![gede](pics/gede-start.png)
 
-`Project dir` and `Program` are specific to your debugging session. The former is the directory *gede* was started in, the latter is the location of the ELF file. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
+`Project dir` and `Program` are specific to your debugging session. The former is the directory *Gede* was started in, the latter is the location of the ELF file. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
 
 *Gede* has now an additional command (arrow pointing down) that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
 

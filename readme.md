@@ -6,11 +6,11 @@
 ![Hit Counter](https://visitor-badge.laobi.icu/badge?page_id=felias-fogg_dw-link)
 [![Build Status](https://github.com/felias-fogg/dw-link/workflows/Build/badge.svg)](https://github.com/felias-fogg/dw-link/actions)
 
-This is an Arduino sketch that turns your Arduino ATmega328  board into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program running on the target hardware (e.g. an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
+This is an Arduino sketch that turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program running on the target hardware (e.g. an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
-Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new version will not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, to single-step, and to inspect and change variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
+Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new version will not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, to single-step, and to inspect variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
 
-Do you want to try it? Use the [**quick-start guide**](docs/quickstart.md) in order find out whether it works for you.
+Do you want to try it? Use the [**Quickstart Guide**](docs/quickstart.md) in order find out whether it works for you.
 
 If you are interested in the background and ongoing development of dw-link, visit my [blog](https://arduino-craft-corner.de/). In particular, the blogs tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be interesting for you.
 

@@ -5,11 +5,10 @@
 * test prototype of such  a board
 * design case for debugger and print it
 
-
-
 * a mode where reads & writes are double-checked: "monitor
   verify/noverify". Could be on or off by default.
 * perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
+* integrate programmer into code so that one also could do ISP programming
 
 
 

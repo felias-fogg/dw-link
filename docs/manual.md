@@ -20,7 +20,7 @@ When you want hardware debugging support, you could buy expensive hardware-debug
 
 For your first excursion into the wonderful world of debugging, you need an Arduino UNO (or something equivalent) as the hardware debugger (see [Section 3.1](#section31)) and a chip or board that understands debugWIRE (see [Section 3.2](#section32)), i.e., a classic ATtiny or an ATmegaX8. Then you only have to install the firmware for the debugger on the UNO ([Section 4.1](#section41)) and to set up the hardware for a debugging session ([Section 4.2](#section42)).
 
-Finally, you need to install a debugging environment. I will describe two approaches. The first one, covered in [Section 5](#section5), is the easiest one. In addition to installing new board definition files, it requires you to download *avr-gdb*. Debugging will then take place in a shell window, in which you have to start *avr-gdb*. For people unhappy with command line interfaces, Section 5.6 covers how to install and use a graphical user interface (which works only for maxOS and Linux).  The second method, described in [Section 6](#section6), involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. 
+Finally, you need to install a debugging environment. I will describe two approaches. The first one, covered in [Section 5](#section5), is the easiest one. In addition to installing new board definition files, it requires you to download *avr-gdb*. Debugging will then take place in a shell window, in which you have to start *avr-gdb*. For people unhappy with command line interfaces, Section 5.6 covers how to install and use a graphical user interface (which works only for maxOS and Linux, though).  The second method, described in [Section 6](#section6), involves downloading the [PlatformIO](https://platformio.org/) IDE, setting up a project, and starting your first debug session with this IDE. 
 
 There are numerous other possibilities, which you might try out. In the [guide](https://github.com/jdolinay/avr_debug/blob/master/doc/avr_debug.pdf) to debugging with *avr_debug*, there is an extensive description of how to setup [Eclipse](https://www.eclipse.org/) for debugging with *avr_debug*, which applies to *dw-link* as well. Another option may be [Emacs](https://www.gnu.org/software/emacs/). 
 
@@ -449,25 +449,23 @@ All of the commands marked with (*) reset the MCU.
 
 ### 5.7 A graphical user interface: *Gede*
 
-If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Windows is not an option, unfortunately. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede) and compile it by yourself. Or you just use the binary in the `gui` folder that I compiled for you. I would recommend to  copy it to `/usr/local/bin` (using, of course, `sudo`). The `gui` directory contains also a Python script called *dw-server.py*, which you also should copy to `/usr/local/bin`. 
+If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Windows is not an option, unfortunately. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede). Just download the most recent **Release** and follow the build instructions. The `dw-server` directory contains also a Python script called *dw-server.py*, which you also should copy to `/usr/local/bin`. 
 
 Open now a terminal window, `cd` into the folder that contains the ELF file, and type
 
- 
-
 ```
-dw-server.py -s gede
+dw-server.py -g
 ```
 
 The script will try to discover a dw-link adapter connected to a serial line. After that it starts *Gede*, and then it forwards the serial connection over TCP/IP to *Gede*, which will present you with the following window.
 
-<img src="pics/gede-start.png" alt="gede" style="zoom:40%;" />
+![gede-start](pics/gede-start.png)
 
-`Project dir` and `Program` are specific to your debugging session. The rest should be copied as it is shown. And with clicking on OK, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI.
+`Project dir` and `Program` are specific to your debugging session. The rest should be copied as it is shown. And with clicking on OK, you start a debugging session.
 
-I have added an additional command to the interface that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
+ Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI.
 
-Unfortunately, there is no Windows version. And there is no straight-forward way to port *Gede*c to Windows.
+An additional command has been added to the interface that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
 
 <a name="section6"></a>
 
@@ -493,7 +491,7 @@ On a Mac, unfortunately it does not work out of the box, because the gcc-toolcha
 
 ### 6.2 Open an existing project
 
-Now let us prepare a debugging session with the same Arduino sketch. However, this time it is a C++ file (with the extension `cpp`) and it contains the necessary include of `Arduino.h`. Startup *Visual Studio Code* and click on the Ant symbol in the left bar, then on Open in the list menu, and finally on **Open Project** in the right panel. 
+Now let us prepare a debugging session with the same Arduino sketch as in the last section. However, this time it is a C++ file (with the extension `cpp`) and it contains the necessary `#include <Arduino.h>`. Startup *Visual Studio Code* and click on the Ant symbol in the left bar, then on Open in the list menu, and finally on **Open Project** in the right panel. 
 
 ![PIO](pics/pio00a.png)
 
@@ -521,7 +519,7 @@ If you now click on the debug symbol in the left navigation bar (fourth from the
 
 ![PIO](pics/pio04.png)
 
-On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. 
+On the right, the debug control bar shows up, with symbols for starting execution, step-over, step-in, step-out, reset, and exit. On the left there are a number of window panes giving you information about variables, watchpoints, the call stack, breakpoints, peripherals, registers, memory, and disassembly. The program has already been started and stopped at the temporary breakpoint set at the first line of `main`.
 
 ![PIOdebugactive](pics/pio05.png)
 
@@ -529,7 +527,7 @@ Before we now play around with the debug control buttons, let us set a breakpoin
 
 ![PIOexplore](pics/pio06.png)
 
-Now, we can set a breakpoint, e.g. in line 11, and start execution by pressing the execute button.
+Now, we can set a breakpoint, e.g. in line 11, by double clicking left to line number and start execution by pressing the execute button.
 
 ![PIObreakpoint](pics/pio07.png)
 
@@ -547,14 +545,14 @@ There are two ways of switching off the debugWIRE mode. It happens automatically
 
 This is not the place to tell you all about what can be configured in the `platformio.ini` file.  There is one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
 
-You may have noticed the file `platformio.ini-with-dw-server` in the project folder, where a  `debug_sever` is mentioned:
+You may have noticed that there is an alternate INI file `platformio.ini-with-dw-server` in the project folder, where a  `debug_sever` is mentioned:
 
 ```
 debug_server = dw-server.py
       -p 3333
 ```
 
-Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this INI file, provided the Python module *PySerial* is installed and the script is stored in an executable path, i.e., in /usr/local/bin on an *nix machine. 
+Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this INI file (by renaming it `platform.ini`), provided the Python module *PySerial* is installed and the dw-server script is stored in an executable path, i.e., in /usr/local/bin on an *nix machine. 
 
 When creating new projects, you can take this project folder as a blue print and modify and extend `platformio.ini` according to your needs. You can find an extensive description of how to do that in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
@@ -570,7 +568,7 @@ For most of the wires, we use the same pins on the debugger and the target. So, 
 
 ![isp-cable](pics/isp-cable.jpg)
 
-As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such a wire we have sort of constructed a hardware debugger for less than 10 €, which can be considered as semi-durable. Just add the optional system LED and a capacitor between RESET and GND.
+As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such a wire, we have sort of constructed a hardware debugger for less than 10 €, which can be considered as semi-durable. Just add the optional system LED and a capacitor between RESET and GND.
 
 ![el cheapo debugger](pics/debugger-built.jpg)
 
@@ -580,20 +578,19 @@ The relevant pins are therefore as defined in the following table. The pins in i
 
 <a name="simplemap"></a>
 
-| Arduino pin | ISP pin | Function                            |
-| ----------- | ------- | ----------------------------------- |
-| D13         | 3       | SCK                                 |
-| D12         | 1       | MISO                                |
-| D11         | 4       | MOSI                                |
-| D9 (or Vcc) | 2       | VTG                                 |
-| D8          | 5       | RESET                               |
-| GND         | 6       | GND                                 |
-| D7          |         | System LED+                         |
-| D6          |         | System LED-                         |
-| D5          |         | System LED+ without series resistor |
-| *D4*        |         | ISP enable (active low)             |
-| *D3*        |         | Debug TX                            |
-| *D2*        |         | Power enable (active low)           |
+| Arduino pin | ISP pin | Function                                                 |
+| ----------- | ------- | -------------------------------------------------------- |
+| D13         | 3       | SCK                                                      |
+| D12         | 1       | MISO                                                     |
+| D11         | 4       | MOSI                                                     |
+| D9 (or Vcc) | 2       | VTG                                                      |
+| D8          | 5       | RESET                                                    |
+| GND         | 6       | GND                                                      |
+| D7          |         | System LED+                                              |
+| D6          |         | System LED- (if using a LED with a resistor soldered on) |
+| *D4*        |         | ISP enable (active low)                                  |
+| *D3*        |         | Debug TX                                                 |
+| *D2*        |         | Power enable (active low)                                |
 
 <a name="section71"></a>
 
@@ -770,7 +767,7 @@ The DWEN fuse is still programmed, i.e., the MCU is still in debugWIRE mode. In 
 
 Another fuse has been programmed by accident. In particular, there are the `monitor` commands that change the clock source. If an external clock or an XTAL has been chosen, then you can recover the chip only by providing such an external clock or XTAL and then use either ISP programming or connect again to dw-link. 
 
-If nothing helps, then [high-voltage programming](#worstcase) might still be last resort.
+If nothing helps, then [high-voltage programming](#worstcase) might still be a last resort.
 
 #### Problem: After changing optimization options, the binary is still too large/very small
 
@@ -786,7 +783,7 @@ One other common problem is that the debug environment is not the first environm
 
 The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino uses by default 115200 baud, but you can recompile dw-link with a changed value of `HOSTBPS`, e.g., using 230400. If GDB is told something differently, either as the argument to the `-b` option when starting *avr-gdb* or as an argument to the GDB command `set serial baud ...`, you should change that. If you did not specify the bitrate at all, GDB uses its default speed of 9600, which will not work!
 
-My experience is that 230400 bps works only with the UNO boards that use the ATmega32U2 chip as the USB interface. The Arduino Nano as well a Chinese clones using the CH320 chips cannot  communicate at that speed. You have to fall back to 115200 bps. 
+My experience is that 230400 bps works only with UNO boards. The Arduino Nano cannot  communicate at that speed, though.
 
 A further (unlikely) reason for a failure in connecting to the host might be that a different communication format was chosen (parity, two stop bits, ...). 
 
@@ -984,4 +981,4 @@ Initial version
 - have thrown out ATtiny13 since it behaves strangely
 - added that disabling debugWIRE is now done automatically 
 - added dw-server.py
-- added description of the GUI gede
+- added description of Gede
