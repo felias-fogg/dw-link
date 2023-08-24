@@ -672,4 +672,79 @@ this is needed by the original Arduino Nano
 - added monitor dwconnect to the startup sequence of the debugger in platformio.ini so that one gets a meaningful error message when the connection cannot be established
 - added new task Erase Chip to PIOs Custom tasks which can be used to clear lock bits
 - reduced debouncing in configureSupply to 5ms so that we do not lose input from the debugger when establishing the connection (and at SNSGND we read a 0)
-- 
+
+## Version 2.0.0 (11-Aug-23)
+
+* The general idea for dw-link 2.0 is to simplify the setup process dramatically and make everything more robust.
+  * For the Arduino variant: No fiddling with existing configuration files. Just download board manager files!
+  * There will be only one probe/shield with jumpers. And we remove all the different versions based on different boards and pin assignments. 
+  * No fancy speed discovery. However, we will allow for port discovery by responding with an ASCII sequence triggered by a control character. This means, we do not have to specify the debug/upload port in the platform.ini file!
+  * In case, lock bits are set, we simply erase the chip!
+  * No initial connection (which goes astray when no target is already connected)
+
+## Version 2.1.0 (15-Aug-23)
+
+* Board manager files have been generated an uploaded
+* Simplification in the manual
+* `core-mods` contains all the files that I modified in order to generate new board manager files
+*  README.md updated
+
+## Version 2.1.1 (15-Aug-23)
+
+* Constant host speed, default: 230400
+
+## Version 2.1.2 (16-Aug-23)
+
+* `monitor serial` removed since host bps is now constant
+* MCU is erased if lock bits are set
+* removed `monitor eraseflash` 
+* removed any reference to the lock bit error from the manual 
+
+## Version 2.1.3 (16-Aug-23)
+
+* remove the complicated pin mappings and just go for one mapping, which uses jumpers instead of switches
+* removed `monitor serial`
+* All in all, the current version is 1520 bytes smaller and uses 52 bytes less RAM
+
+## Version 2.1.4 (16-Aug-23)
+
+* added on Pin 5 the possibility to put in an LED without a series resistor (using the internal pull-up resistor)
+* corrected error code when MCU without debugWIRE interface is connected
+* added `monitor lasterror` command
+* removed special case for memory access at 0xFFFFFFFF in order to access the error code
+* fixed an unserious bug: If DWLINE was open (no pullup), dw-link just froze. Fixed that by disabling the interrupts using dw.enable(false) in gdbConnect, when a connection problem had been discovered.
+* changed Section 7 to describe the simplified design
+* changed back to default speed of 115200 for the host connection in order to make life easier for everybody
+
+## Version 2.1.5 (17-Aug-23)
+
+* removed ATtiny13 from the supported MCUs since it behaves strangely. After enabling dw, it seems to be stuck in the initialisation routine. Sometimes, after toggling between connect/disconnect, it seems to execute the program normally. Very strange! And I do not have the energy and motivation to find out what is behind that.
+* now, when `detach`ing or `kill`ing, debugWIRE is disabled; so one only needs the command `monitor dwoff`, when something went wrong
+* fixed `vRun` which now needs to enable debugWIRE, because the GDB command `run` sends a `vKill` first
+* removed `extra_scripts.py` because we do not need that anymore
+* introduced a new compile-time constant `NOAUTODWOFF`, which when 1 disables the feature of disabling debugWIRE when leaving the debugger
+* Also added HIGHSPEEDDW, which is off by default, i.i., 125 kbps is the the highest we permit
+
+## Version 2.1.6 (18-Aug-23)
+
+* added connect.py and changed platform.ini
+
+## Version 2.1.7 (20-Aug-2023)
+* added initialization of registers to gdbConnect (which also resets
+  the MCU) so that we start at the right address
+* renamed connect.py to discover-dw-link.py, which is now called as an
+extra_script in the platform.ini file
+* also kept old version of platform.ini
+* wrote new script dw-server.py, which is used to discover the dw-link adapter and to interface over TCP/IP with gede
+* added gede as binaries for linux and macosx
+
+## Version 2.1.8 (21-Aug-2023)
+* changed MAXBUFSIZE from 150 to 160 in order to accomodate the qSupported string from GDB 12.1
+
+## Version 2.1.9 (23-Aug-2023)
+* removed DARKSYSLED (i.e., a system LED driven by the pullup resistor
+of pin D5)
+
+## Version 2.1.10 (24-Aug-2023)
+* merged all changes done to the master branch and the V2 to a new
+version

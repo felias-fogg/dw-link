@@ -20,6 +20,6 @@
 
 **Arduino sketch:** (either put here or provide URL, where to download)
 
-**GDB log:**  (produce a log with `set trace-commands on` and  `set logging on`)
+**GDB log:**  (produce a log with `set trace-commands on`, `set debug remote 1` , and  `set logging on`)
 
 **Additional Information:** (anything else that could be helpful in locating the error)

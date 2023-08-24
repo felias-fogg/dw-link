@@ -24,35 +24,29 @@
 // Jeremy Bennett's description of an implementation of an RSP server:
 //    https://www.embecosm.com/appnotes/ean4/embecosm-howto-rsp-server-ean4-issue-2.html
 // 
-// You can run it on an Uno, a Nano V2, a Nano V3, or a Pro Mini.
-// For the three latter ones, there exists an
-// adapter board, which fits all of them, using, of course,
-// different pin assignments.  For the Nano board, there are
-// apparently two different versions around, version 2 and version 3.
-// The former one has the A0 pin close to 5V pin, version 3 boards
-// have the A0 pin close to the REF pin.  If you use the adapter
-// board with a Nano, you need to set the compile time constant
-// NANOVERSION, which by default is 3.
+// You can run it on an UNO, a Nano, or a Pro Mini.
+// For the UNO, I designed a shield with different voltage levels and
+// level shifters, which I plan to sell on Tindie.
 //
 // I thought that the sketch should also work with the Leonardo-like boards
 // and with the Mega board. For the former, I got stuck with the flashtest program.
-// For the latter, I experienced non-deterministic failures of unit tests.
-// So, it might be worthwhile to investigate both, but not now.
+// USB and tight interrupt timing do not seem to go together.
+// For the latter, I experienced non-deterministic failures of unit tests, probably
+// because relevant input ports are not in the I/O range and therefore the tight timing
+// constraints are not satisfied.
+#define VERSION "2.1.10"
 
-#define VERSION "1.3.10"
-
-#ifndef NANOVERSION
-#define NANOVERSION 3
+// some constants, you may want to change
+#ifndef HOSTBPS 
+#define HOSTBPS 115200UL // safe default speed for the host connection
+//#define HOSTBPS 230400UL // works with UNOs that use an ATmega32U2 as the USB interface         
 #endif
-
-#ifndef INITIALBPS 
-#define INITIALBPS 115200UL // initial expected communication speed with the host
-                            // 230400, 57600, 38400, 19200, 9600 are alternatives
-#endif
-
-// #define CONSTHOSTSPEED 1   // constant communication speed with host 
-// #define CONSTDWSPEED 1     // constant eommunication speed with target
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
+// #define NOAUTODWOFF 1      // do not automatically leave debugWIRE mode
+// #define HIGHSPEEDDW 1      // allow for DW speed up to 250 kbps
+
+// these should stay undefined for the ordinary user
+// #define CONSTDWSPEED 1     // constant communication speed with target
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
 // #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
@@ -92,14 +86,19 @@
 
 // some size restrictions
 
-#define MAXBUF 150 // input buffer for GDB communication
+#define MAXBUF 160 // input buffer for GDB communication (enough for initial packet in gdb 12.1)
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
 #define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
 
 // communication bit rates 
-#define SPEEDHIGH     275000UL // maximum communication speed limit for DW
-#define SPEEDLOW      137000UL // normal speed limit
+#define SPEEDHIGH     300000UL // maximum communication speed limit for DW
+#define SPEEDLOW      150000UL // normal speed limit
+#if HIGHSPEED
+#define SPEEDLIMIT SPEEDHIGH
+#else
+#define SPEEDLIMIT SPEEDLOW
+#endif
 
 // number of tolerable timeouts for one DW command
 #define TIMEOUTMAX 20
@@ -152,15 +151,15 @@
 #define EEPROM_OFFSET  0x00810000 // EEPROM address from GBD is (real addresss + 0x00810000)
 
 // instruction codes
-#define BREAKCODE 0x9598
+const unsigned int BREAKCODE = 0x9598;
 
 // some GDB variables
 struct breakpoint
 {
-  bool used:1;         // bp is in use, i.e., has been set before; will be freed when not activated before next execution
-  bool active:1;       // breakpoint is active, i.e., has been set by GDB
-  bool inflash:1;      // breakpoint is in flash memory, i.e., BREAK instr has been set in memory
-  bool hw:1;           // breakpoint is a hardware breakpoint, i.e., not set in memory, but HWBP is used
+  boolean used:1;         // bp is in use, i.e., has been set before; will be freed when not activated before next execution
+  boolean active:1;       // breakpoint is active, i.e., has been set by GDB
+  boolean inflash:1;      // breakpoint is in flash memory, i.e., BREAK instr has been set in memory
+  boolean hw:1;           // breakpoint is a hardware breakpoint, i.e., not set in memory, but HWBP is used
   unsigned int waddr;  // word address of breakpoint
   unsigned int opcode; // opcode that has been replaced by BREAK (in little endian mode)
 } bp[MAXBREAK*2];
@@ -180,10 +179,7 @@ struct context {
   byte regs[32]; // general purpose regs
   boolean saved:1; // all of the regs have been saved
   statetype state:3; // system state
-  boolean von:1; // deliver power to the target
-  boolean vhigh:1; // deliver 5 volt instead of 3.3 volt
   unsigned long bps; // debugWIRE communication speed
-  unsigned long hostbps; // host communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
 } ctx;
 
@@ -191,69 +187,25 @@ struct context {
 // LED off = not connected to target system
 // LED flashing every second = power-cycle target in order to enable debugWIRE
 // LED blinking every 1/10 second = could not connect to target board
-// LED constantly on = connected to target and target is halted
-// LED on, but every second off for 1/10 sec = loading code
-// Led blinks every 1/3 second = target is running
-#if SYSBLINK
-const unsigned int ontimes[6] =  {0,  100, 150, 1, 1000, 700}; // <<--- get still timeouts!
-const unsigned int offtimes[6] = {1, 1000, 150, 0, 100, 700};
-#else
+// LED constantly on = connected to target 
 const unsigned int ontimes[6] =  {0,  100, 150, 1, 1, 1};
 const unsigned int offtimes[6] = {1, 1000, 150, 0, 0, 0};
-#endif
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 byte ledmask;
 volatile byte *ledout;
 
-
-// pin mapping for different situations and boards
-const byte pundef = 255; // undefined pin
-struct pinmap {
-  byte VHIGH;
-  byte VON;
-  byte V5;
-  byte V33;
-  byte TSCK;
-  byte TMOSI;
-  byte TMISO;
-  byte VSUP;
-  byte DEBTX;
-  byte TISP;
-  byte SYSLED;
-  byte LEDGND;
-} pm = { pundef, pundef, pundef, pundef, 13, 11, 12, 9, 3, pundef, 7, 6 };
-#if defined(ARDUINO_AVR_UNO)
-const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 15, 3, 6, 13, pundef } ;
-const byte SNSGND = 14;
+// pins
+const byte TISP = 4;
+const byte TSCK = 13;
+const byte TMOSI = 11;
+const byte TMISO = 12;
+const byte VSUP = 9;
+const byte IVSUP = 2;
+const byte DEBTX = 3;
+const byte SYSLED = 7;
+const byte LEDGND = 6;
 const byte DWLINE = 8;
-#elif defined(ARDUINO_AVR_MEGA2560_does_not_work)
-// On my Arduino Mega boards, I got non-deterministic failures for the unit tests.
-// I suspect that the reason migt be the longer execution times in SingleWireSerial because
-// of the I/O register placement, but I do not know. This does not happen with the
-// 328 based boards. So the Mega is off at this point. It would be interesting to use one
-// of the unused serial ports; this could also work for the 32U4-based boards.
-const PROGMEM pinmap  boardpm  = { 2, 5, 9, 7, 12, 10, 11, 55, 3, 6, 13, pundef };
-const byte SNSGND = 54;
-const byte DWLINE = 49;
-#elif defined(ARDUINO_AVR_NANO)
-  #if NANOVERSION == 3
-const PROGMEM pinmap  boardpm  = { 7, 15, 6, 5, 3, 16, 19, pundef, 18, 2, 13, pundef };
-const byte SNSGND = 11;
-const byte DWLINE = 8;
-  #else
-const PROGMEM pinmap  boardpm  = { 7, 15, 6, 5, 3, 19, 16, pundef, 17, 2, 13, pundef };
-const byte SNSGND = 11;
-const byte DWLINE = 8;
-  #endif
-#elif defined(ARDUINO_AVR_PRO)
-const PROGMEM pinmap  boardpm  = { 16, 2, 14, 15, 12, 3, 6, pundef, 5, 11, 13, pundef };
-const byte SNSGND = 15;
-const byte DWLINE = 8;
-#else
-//	    #error "Board is not supported yet. dw-link works only on Uno, Mega, Nano, and Pro Mini"
-            #error "Board is not supported yet. dw-link works only on Uno, Nano, and Pro Mini"
-#endif
 
 // MCU names
 const char attiny13[] PROGMEM = "ATtiny13";
@@ -357,10 +309,10 @@ struct mcu_info_type {
 };
 
 // mcu infos (for all AVR mcus supporting debugWIRE)
-// untested ones are marked by a star
+// untested ones are marked 
 const mcu_info_type mcu_info[] PROGMEM = {
   // sig sram low eep flsh dwdr  pg er4 boot    eecr eearh rcosc extosc xtosc slosc plus name
-  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0x0B, 0, attiny13},
+  //{0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x08, 0x00, 0x0B, 0, attiny13},
 
   {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0x26, 0, attiny2313},
   {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x20, 0x3F, 0x26, 0, attiny4313},
@@ -429,19 +381,9 @@ const mcu_info_type mcu_info[] PROGMEM = {
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
 const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
-unsigned long speedlimit = SPEEDHIGH;
+unsigned long speedlimit = SPEEDLIMIT;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkXtal, CkExt, CkSlow, Erase, DWEN };
-
-const int maxbpsix = 5;
-const unsigned long rsp_bps[] = { 230400, 115200, 57600, 38400, 19200, 9600 };
-// Note that the Uno can communicate at (nominally) 230400, but the Nano cannot.
-// The deeper reason for that is that an ATmega328 at 16MHz is in fact 3.6% slower
-// when trying to communicate at 230400
-// (see https://hinterm-ziel.de/index.php/2021/10/26/communicating-asynchronously/).
-// On an Uno, the ATmega16U2 works some magic and lowers the communication speed to
-// 220000, while on a Nano the FTDI or CH340 chip sends the things at face value,
-// which is too fast for the ATmega.
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -498,12 +440,12 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (*ledout & ledmask) {
     if (cnt < 0) {
       cnt = offtime;
-      *ledout &= ~ledmask;
+      digitalWrite(SYSLED, LOW);
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      *ledout |= ledmask;
+      digitalWrite(SYSLED, HIGH);
     }
   }
   busy--;
@@ -534,56 +476,33 @@ void unblockIRQ(void)
 int main(void) {
   // Arduino init
   init();
-#if defined(USBCON)
-  USBDevice.attach();
-#endif
   
   // setup
-  Serial.begin(INITIALBPS);
-  pinMode(SNSGND, INPUT_PULLUP);
-  if (digitalRead(SNSGND) == 0) // adapter board!
-    memcpy_P(&pm, &boardpm, sizeof(pinmap));
-  ledmask = digitalPinToBitMask(pm.SYSLED);
-  ledout = portOutputRegister(digitalPinToPort(pm.SYSLED));
-  DEBINIT(pm.DEBTX);
+  Serial.begin(HOSTBPS);
+  ledmask = digitalPinToBitMask(SYSLED);
+  ledout = portOutputRegister(digitalPinToPort(SYSLED));
+  DEBINIT(DEBTX);
   DEBLN(F("\ndw-link V" VERSION));
-  DEBPR(F("SNSGND: "));DEBLN(SNSGND);
-  DEBPR(F("DWLINE: "));DEBLN(DWLINE);
-#if SDEBUG
-  Serial1.begin(115200);
-  Serial1.println(F("dw-link V" VERSION));
-#endif
   TIMSK0 = 0; // no millis interrupts
-  ctx.hostbps = INITIALBPS;
-  ctx.von = false;
-  ctx.vhigh = false;
-  pinMode(pm.VON, INPUT_PULLUP); // configure Von as input from switch
-  pinMode(pm.VHIGH, INPUT_PULLUP); // configure Vhigh as input from switch
-  pinMode(pm.LEDGND, OUTPUT);
-  digitalWrite(pm.LEDGND, LOW);
-  pinMode(pm.VSUP, OUTPUT);
-  digitalWrite(pm.VSUP, HIGH);
+  pinMode(LEDGND, OUTPUT);
+  digitalWrite(LEDGND, LOW);
+  pinMode(VSUP, OUTPUT);
+  pinMode(IVSUP, OUTPUT);
+  power(true); // switch target on
 #if SCOPEDEBUG
-  pinMode(pm.DEBTX, OUTPUT); //
-  digitalWrite(pm.DEBTX, LOW); // PD3 on UNO
+  pinMode(DEBTX, OUTPUT); //
+  digitalWrite(DEBTX, LOW); // PD3 on UNO
 #endif
   initSession(); // initialize all critical global variables
   //  DEBLN(F("Now configuereSupply"));
-  configureSupply(); // configure suppy already here
-  //  DEBLN(F("configuereSupply done"));
-  pinMode(pm.TISP, OUTPUT);
-  digitalWrite(pm.TISP, HIGH); // disable outgoing ISP lines
+  pinMode(TISP, OUTPUT);
+  digitalWrite(TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
-#if CONSTHOSTSPEED == 0
-  detectRSPCommSpeed(); // check for communication speed and select the right one
-  Serial.end();
-  Serial.begin(ctx.hostbps);
-#endif
   DEBLN(F("Setup done"));
+  
   // loop
   while (1) {
     monitorSystemLoadState();
-    configureSupply();
     if (Serial.available()) {
       gdbHandleCmd();
     } else if (ctx.state == RUN_STATE) {
@@ -622,105 +541,6 @@ void monitorSystemLoadState(void) {
   }
 }
 
-// find out communication speed of host
-// try to identify a qSupported packet
-//   if found, we are done: send '-' so that it is retransmitted
-//   if not: vary the speed and send '-' to provoke resending
-//           if one gets a response, send it again through the filter
-void detectRSPCommSpeed(void) {
-  int ix;
-  int timeout;
-
-  while (1) {
-    if (!Serial.available()) continue;
-    ix = maxbpsix + 1;
-    if (rightSpeed()) { // already found right speed
-      Serial.print("-"); // ask for retransmission
-      //DEBLN(F("Initial guess right"));
-      return; 
-    }
-    // Now send "-" in all possible speeds and wait for response
-    ix = maxbpsix + 1;
-    while (ix > 0) {
-      ix--;
-      //if (rsp_bps[ix] == INITIALBPS) continue; // do not try initial speed again
-      //DEBPR(F("Try bps:")); DEBLN(rsp_bps[ix]);
-      Serial.end();
-      Serial.begin(rsp_bps[ix]);
-      Serial.print("-");  // ask for retransmission
-      _delay_ms(20);      // necessary for Arduino Nano!!
-      timeout = 2000;
-      while (!Serial.available() && timeout--);
-      if (timeout == 0) continue; // try different speed
-      if (rightSpeed()) { // should be right one - check!
-	ctx.hostbps = rsp_bps[ix];
-	Serial.print("-");  // ask for retransmission
-	return;
-      }
-    }
-    Serial.end();
-    Serial.begin(INITIALBPS); // set to initial guess and wait again
-  }
-}
-  
-// try to find "qSupported" in a stream
-// in any case, wait until no more characters are sent
-boolean rightSpeed(void)
-{
-  char keyseq[] = "qSupported:";
-  const int maxix = strlen(keyseq);
-  int ix = 0;
-  int timeout;
-  char c;
-
-  DEBLN(F("rightSpeed"));
-  measureRam();
-  timeout = 2000;
-  while (timeout-- && ix < maxix) 
-    if (Serial.available()) {
-      timeout = 2000;
-      c = Serial.read();
-      if (c == keyseq[ix]) ix++;
-      else
-	if (c == keyseq[0]) ix = 1;
-	else ix = 0;
-    }
-  DEBPR(F("Rec loop finished. ix = ")); DEBLN(ix);
-  // now read the remaining chars
-  timeout = 2000;
-  while (timeout--)
-    if (Serial.available()) {
-      timeout = 2000;
-      Serial.read();
-    }
-  DEBPR(F("rightSpeed returns: ")); DEBLN(ix == maxix);
-  return (ix == maxix); // entire sequence found
-}
-
-// configure supply lines according to switch setting
-void configureSupply(void)
-{
-  if (digitalRead(SNSGND)) return; 
-  if (ctx.vhigh != !digitalRead(pm.VHIGH) || ctx.von != !digitalRead(pm.VON)) { // something changed
-#if SCOPEDEBUG
-  PORTD |= _BV(PD3);
-  PORTD &= ~_BV(PD3);
-#endif
-    _delay_ms(5); // debounce
-    //DEBLN(F("Some change"));
-    //DEBPR(F("VHIGH: ")); DEBPR(ctx.vhigh); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VHIGH));
-    //DEBPR(F("VON:   ")); DEBPR(ctx.von); DEBPR(F(" -> ")); DEBLN(!digitalRead(pm.VON));
-    ctx.vhigh = !digitalRead(pm.VHIGH);
-    ctx.von = !digitalRead(pm.VON);
-    pinMode(pm.V33, INPUT); // switch off both supply lines
-    pinMode(pm.V5, INPUT);
-    if (ctx.von) { // if on, switch on the right MOSFET
-      if (ctx.vhigh) pinMode(pm.V5, OUTPUT); // switch on 5V MOSFET
-      else pinMode(pm.V33, OUTPUT); // switch on 3.3 V MOSFET
-    }
-  }
-}
-
 // init all global vars when the debugger connects
 void initSession(void)
 {
@@ -730,7 +550,7 @@ void initSession(void)
   bpcnt = 0;
   bpused = 0;
   hwbp = 0xFFFF;
-  lastsignal = SIGTRAP;
+  lastsignal = 0;
   validpg = false;
   buffill = 0;
   fatalerror = NO_FATAL;
@@ -754,30 +574,32 @@ void reportFatalError(byte errnum, boolean checkio)
       return;
     }
   }
-  // DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
+  DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
   if (fatalerror == NO_FATAL) fatalerror = errnum;
   setSysState(ERROR_STATE);
 }
 
 // change system state
-// switch on blink IRQ when run, error, or power-cycle state
+// switch on blink IRQ when error, or power-cycle state
 void setSysState(statetype newstate)
 {
-  //DEBPR(F("setSysState: ")); DEBLN(newstate);
+  DEBPR(F("setSysState: ")); DEBLN(newstate);
   if (ctx.state == ERROR_STATE && fatalerror) return;
   TIMSK0 &= ~_BV(OCIE0A); // switch off!
   ctx.state = newstate;
   ontime = ontimes[newstate];
   offtime = offtimes[newstate];
-  pinMode(pm.SYSLED, OUTPUT);
-  if (ontimes[newstate] == 0) digitalWrite(pm.SYSLED, LOW);
-  else if (offtimes[newstate] == 0) digitalWrite(pm.SYSLED, HIGH);
-  else {
+  pinMode(SYSLED, OUTPUT);
+  if (ontimes[newstate] == 0) {
+    digitalWrite(SYSLED, LOW);
+  } else if (offtimes[newstate] == 0) {
+    digitalWrite(SYSLED, HIGH);
+  } else {
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
   }
-  //DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
-  //DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
+  DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
+  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
 
@@ -792,7 +614,7 @@ void gdbHandleCmd(void)
 
   measureRam();
   b = gdbReadByte();
-    
+
   switch(b) {
   case '$':
     buffill = 0;
@@ -839,9 +661,13 @@ void gdbHandleCmd(void)
       }
     }
     break;
+
+  case 0x05: // enquiry, answer back with dw-link
+    Serial.print(F("dw-link"));
+    break;
     
   default:
-    // simply ignore, we only accept records or ACK/NACK
+    // simply ignore, we only accept records, ACK/NACK, a Ctrl-C, or an ENQ (=0x05) 
     break;
   }
 }
@@ -851,7 +677,7 @@ void gdbParsePacket(const byte *buff)
 {
   byte s;
 
-  //DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
+  DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
   if (!flashidle) {
     if (*buff != 'X' && *buff != 'M')
       targetFlushFlashProg();                        /* finalize flash programming before doing something else */
@@ -862,6 +688,9 @@ void gdbParsePacket(const byte *buff)
   switch (*buff) {
   case '?':                                          /* last signal */
     gdbSendSignal(lastsignal);
+    break;
+  case '!':                                          /* Set to extended mode, always OK */
+    gdbSendReply("OK");
     break;
   case 'H':                                          /* Set thread, always OK */
     gdbSendReply("OK");
@@ -884,23 +713,22 @@ void gdbParsePacket(const byte *buff)
   case 'X':                                          /* write memory from binary data */
     gdbWriteMemory(buff + 1, true); 
     break;
-  case 'D':                                          /* detach the debugger */
+  case 'D':                                          /* detach from target */
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    targetContinue();                                /* let the target machine do what it wants to do! */
-    setSysState(NOTCONN_STATE);                      /* set to unconnected state */
-    gdbSendReply("OK");                              /* and signal that everything is OK */
-    break;
-  case 'k':                                          /* kill request */
-    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit! */
-    setSysState(NOTCONN_STATE);                      /* set to unconnected state, will reconnect if "run" follows */
+    if (gdbStop(false))                              /* disable DW mode */
+      gdbSendReply("OK");                            /* and signal that everything is OK */
     break;
   case 'c':                                          /* continue */
   case 'C':                                          /* continue with signal - just ignore signal! */
     s = gdbContinue();                               /* start execution on target at current PC */
     if (s) gdbSendState(s);                          /* if s != 0, it is a signal notifying an error */
                                                      /* otherwise the target is now executing */
+    break;
+  case 'k':
+    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
+    gdbStop(false);                                  /* stop DW mode */
     break;
   case 's':                                          /* single step */
   case 'S':                                          /* step with signal - just ignore signal */
@@ -912,10 +740,15 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          /* Run command */
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {
-      setSysState(CONN_STATE);                       /* "reconnect" after kill command */
-      gdbReset();                                    /* reset MCU and initialize registers */
-      gdbSendState(SIGTRAP);                         /* stop at start address (= 0x000) */
-                                                     /* GDB will auto restart! */
+      if (gdbConnect(false)) {                       /* re-enable DW mode reset MCU and clear PC */
+	setSysState(CONN_STATE);
+	gdbSendState(0);                             /* no signal */
+      } 
+    } else
+	if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
+      gdbUpdateBreakpoints(true);                    /* remove BREAKS in memory before exit */
+      if (gdbStop(false))                            /* stop DW mode */
+	gdbSendReply("OK");                          /* and signal that everything is OK */
     } else {
        gdbSendReply("");                             /* not supported */
     }
@@ -926,8 +759,8 @@ void gdbParsePacket(const byte *buff)
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
 	if (ctx.state != CONN_STATE) initSession();  /* init all vars when gdb connects */
-	gdbConnect(false);                           /* and try to connect */
-	gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
+	if (gdbConnect(false))                       /* and try to connect */
+	  gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                          /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
@@ -962,7 +795,7 @@ void gdbParseMonitorPacket(const byte *buf)
   
   
   if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
-    gdbStop();                                                              /* dwo[ff] */
+    gdbStop(true);                                                            /* dwo[ff] */
   else if (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)
     if (gdbConnect(true)) gdbSendReply("OK");                               /* dwc[onnnect] */
     else gdbSendReply("E03");
@@ -970,8 +803,8 @@ void gdbParseMonitorPacket(const byte *buf)
   else if (memcmp_P(buf, (void *)PSTR("68656c7000"), max(4,min(10,clen))) == 0)                  
     gdbHelp();                                                              /* he[lp] */
 #endif
-  else if (memcmp_P(buf, (void *)PSTR("73657269616c00"), max(6,min(14,clen))) == 0)
-    gdbReportRSPbps();                                                       /* serial */
+  else if (memcmp_P(buf, (void *)PSTR("6c6173746572726f7200"), max(4,min(20,clen))) == 0)
+    gdbReportLastError();                                                  /* la[sterror] */
   else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)
     gdbReportFlashCount();                                                  /* fla[shcount] */
   else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)
@@ -988,8 +821,8 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetFuses(CkXtal);                                                     /* xt[alosc] */
   else if (memcmp_P(buf, (void *)PSTR("736c6f776f736300"), max(4,min(16,clen))) == 0)
     gdbSetFuses(CkSlow);                                                     /* sl[owosc] */
-  else if (memcmp_P(buf, (void *)PSTR("657261736500"), max(4,min(12,clen))) == 0)
-    gdbSetFuses(Erase);                                                     /*er[ase]*/
+  //  else if (memcmp_P(buf, (void *)PSTR("657261736500"), max(4,min(12,clen))) == 0)
+  //  gdbSetFuses(Erase);                                                     /*er[ase]*/
   else if (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)
     gdbSetMaxBPs(1);                                                        /* hw[bp] */
   else if (memcmp_P(buf, (void *)PSTR("7377627000"), max(4,min(10,clen))) == 0)
@@ -1020,7 +853,7 @@ void gdbParseMonitorPacket(const byte *buf)
     gdbSetSteppingMode(false);                                              /* unsafestep */
   else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
     gdbVersion();                                                           /* version */
-  else if (memcmp_P(buf, (void *)PSTR("74696d656f75747300"), max(8,min(18,clen))) == 0)
+  else if (memcmp_P(buf, (void *)PSTR("74696d656f75747300"), max(4,min(18,clen))) == 0)
     gdbTimeoutCounter();                                                    /* timeouts */
   else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
     if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
@@ -1033,7 +866,7 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor help         - help function"), -1);
   gdbDebugMessagePSTR(PSTR("monitor dwconnect    - connect to target and show parameters (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor dwoff        - disconnect from target and disable DWEN (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor eraseflash   - erase flash memory (*)"), -1);
+  // gdbDebugMessagePSTR(PSTR("monitor eraseflash   - erase flash memory (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor reset        - reset target (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor ck1prescaler - unprogram CK8DIV (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor ck8prescaler - program CK8DIV (*)"), -1);
@@ -1045,13 +878,23 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor hwbp         - allow only 1 breakpoint, i.e., the hardware bp"), -1);
   gdbDebugMessagePSTR(PSTR("monitor safestep     - prohibit interrupts while single-stepping(default)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor unsafestep   - allow interrupts while single-stepping"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (=250kbps) (def.) or l (=125kbps)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor serial       - report host communication speed"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor flashcount   - report number of flash pages written since start"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor timeouts     - report timeouts"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor version      - report version number"), -1);
+#if HIGHSPEED
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (300kbps) (def.) or l (150kbps)"), -1);
+#else
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (300kbps) or l (150kbps) (def.)"), -1);
+#endif  
+  gdbDebugMessagePSTR(PSTR("monitor flashcount   - number of flash pages written since start"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor timeouts     - number of timeouts"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor lasterror    - last fatal error"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor version      - version number"), -1);
   gdbDebugMessagePSTR(PSTR("All commands with (*) lead to a reset of the target"), -1);
   gdbSendReply("OK");
+}
+
+// report last error number
+inline void gdbReportLastError(void)
+{
+  gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
 }
 
 // return timeout counter
@@ -1077,12 +920,6 @@ inline void gdbVersion(void)
   gdbReplyMessagePSTR(PSTR("dw-link V" VERSION), -1);
 }
   
-// show connection speed to host
-inline void gdbReportRSPbps(void)
-{
-  gdbReplyMessagePSTR(PSTR("Current bitrate of serial connection to host: "), ctx.hostbps);
-}
-
 // get DW speed
 inline void gdbGetSpeed(void)
 {
@@ -1107,10 +944,12 @@ void gdbSetSpeed(const byte cmd[])
     break;
   case 'l': speedlimit = SPEEDLOW;
     break;
-  case '\0': gdbGetSpeed();
-    return;
+  case '\0':
+    gdbDebugMessagePSTR(PSTR("Current limit:             "), speedlimit);
+    break;
   default:
     gdbSendReply("");
+    return;
   }
   doBreak();
   gdbGetSpeed();
@@ -1187,6 +1026,8 @@ boolean gdbConnect(boolean verbose)
 	conncode = -1;
     }
   }
+  DEBPR(F("conncode: "));
+  DEBLN(conncode);
   if (conncode == 1) {
 #if STUCKAT1PC
     mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
@@ -1203,6 +1044,7 @@ boolean gdbConnect(boolean verbose)
       gdbDebugMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
     }
     gdbCleanupBreakpointTable();
+    targetInitRegisters();
     return true;
   }
   if (verbose) {
@@ -1214,9 +1056,13 @@ boolean gdbConnect(boolean verbose)
     default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
     }
   }
+  DEBPR(F("conncode: "));
+  DEBLN(conncode);
   if (fatalerror == NO_FATAL) fatalerror = -conncode;
   setSysState(ERROR_STATE);
+  if (conncode == -1) dw.enable(false); // otherwise if DWLINE has no pullup, the program goes astray!
   flushInput();
+  targetInitRegisters();
   return false;
 }
 
@@ -1261,30 +1107,34 @@ void power(boolean on)
 {
   //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
-    digitalWrite(pm.VSUP, HIGH);
-    if (ctx.von) {
-      //DEBLN(F("VXX up"));
-      if (ctx.vhigh) pinMode(pm.V5, OUTPUT);
-      else pinMode(pm.V33, OUTPUT);
-    }
+    digitalWrite(VSUP, HIGH);
+    digitalWrite(IVSUP, LOW);
   } else { // on=false
-    digitalWrite(pm.VSUP, LOW);
-    pinMode(pm.V5, INPUT);
-    pinMode(pm.V33, INPUT);
+    digitalWrite(VSUP, LOW);
+    digitalWrite(IVSUP, HIGH);
   }
 }
 
 // "monitor dwoff" 
 // try to disable the debugWIRE interface on the target system
-void gdbStop(void)
+boolean gdbStop(boolean verbose)
 {
+#if NOAUTODWOFF
+  if (!verbose) return true; // no silent exits from DW mode
+#endif
   if (targetStop()) {
-    gdbDebugMessagePSTR(Connected,-2);
-    gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+    if (verbose) {
+      gdbDebugMessagePSTR(Connected,-2);
+      gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+    }
     setSysState(NOTCONN_STATE);
+    return true;
   } else {
-    gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
+    if (verbose) {
+      gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
+    }
     gdbSendReply("E05");
+    return false;
   }
 }
 
@@ -1839,16 +1689,9 @@ void gdbReadMemory(const byte *buff)
   parseHex(buff + 1, &sz);
   
   if (sz > MAXMEMBUF || sz*2 > MAXBUF) { // should not happen because we required packet length to be less
-    gdbSendReply("E05");
+    gdbSendReply("E04");
     reportFatalError(PACKET_LEN_FATAL, false);
     //DEBLN(F("***Packet length too large"));
-    return;
-  }
-
-  if (addr == 0xFFFFFFFF) {
-    buf[0] = nib2hex(fatalerror >> 4);
-    buf[1] = nib2hex(fatalerror & 0x0f);
-    gdbSendBuff(buf, 2);
     return;
   }
 
@@ -1944,7 +1787,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
   switch (flag) {
   case SRAM_OFFSET:
     if (addr+sz > mcu.ramsz+mcu.rambase) {
-      gdbSendReply("E01"); 
+      gdbSendReply("E02"); 
       return;
     }
     targetWriteSram(addr, membuf, sz);
@@ -1952,7 +1795,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
   case FLASH_OFFSET:
     if (addr+sz > mcu.flashsz) {
       //DEBPR(F("addr,sz,flashsz=")); DEBLN(addr); DEBLN(sz); DEBLN(mcu.flashsz);
-      gdbSendReply("E01"); 
+      gdbSendReply("E03"); 
       return;
     }
     setSysState(LOAD_STATE);
@@ -1960,13 +1803,13 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     break;
   case EEPROM_OFFSET:
     if (addr+sz > mcu.eepromsz) {
-      gdbSendReply("E01"); 
+      gdbSendReply("E04"); 
       return;
     }
     targetWriteEeprom(addr, membuf, sz);
     break;
   default:
-    gdbSendReply("E05"); 
+    gdbSendReply("E06"); 
     reportFatalError(WRONG_MEM_FATAL, false);
     return;
   }
@@ -2274,7 +2117,7 @@ boolean targetDWConnect(void)
 int targetISPConnect(void)
 {
   unsigned int sig;
-  int result;
+  int result = 0;
   
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2283,11 +2126,21 @@ int targetISPConnect(void)
   } else if (!setMcuAttr(sig)) {
     result = -2;
   } else if (ispLocked()) {
-    result = -3;
-  } else if (ispProgramFuse(true, mcu.dwenfuse, 0)) {
-    result = 0;
-  } else {
-    result = -1;
+    ispEraseFlash(); // erase flash mem and lock bits
+    leaveProgramMode();
+    _delay_ms(1000);
+    enterProgramMode();
+    if (ispLocked()) 
+      result = -3;
+    else
+      result = 0;
+  }
+  if (result == 0) {
+    if (ispProgramFuse(true, mcu.dwenfuse, 0)) { // set DWEN fuse and powercycle later
+      result = 0;
+    } else {
+      result = -1;
+    }
   }
   leaveProgramMode();
   DEBPR(F("Programming result: ")); DEBLN(result);
@@ -2312,7 +2165,8 @@ boolean targetStop(void)
 // -1 - if we cannot enter programming mode or sig is not readable
 // -2 - if unknown MCU type
 // -3 - programming was unsuccessful
- 
+// -4 - no XTAL allowed
+// -5 - no slow clock
 
 int targetSetFuses(Fuses fuse)
 {
@@ -3340,20 +3194,19 @@ void enableSpiPins () {
   digitalWrite(DWLINE, LOW);
   DEBLN(F("RESET low"));
   _delay_us(1);
-  pinMode(pm.TSCK, OUTPUT);
-  digitalWrite(pm.TSCK, LOW);
-  pinMode(pm.TMOSI, OUTPUT);
-  digitalWrite(pm.TMOSI, HIGH);
-  pinMode(pm.TMISO, INPUT);
-  digitalWrite(pm.TISP, LOW);
+  pinMode(TSCK, OUTPUT);
+  digitalWrite(TSCK, LOW);
+  pinMode(TMOSI, OUTPUT);
+  digitalWrite(TMOSI, HIGH);
+  pinMode(TMISO, INPUT);
+  digitalWrite(TISP, LOW);
 }
 
 void disableSpiPins () {
-  digitalWrite(pm.TISP, HIGH);
-  pinMode(pm.TSCK, INPUT); 
-  digitalWrite(pm.TMOSI, LOW); // disable pull up
-  pinMode(pm.TMOSI, INPUT);
-  pinMode(pm.TMISO, INPUT);
+  digitalWrite(TISP, HIGH);
+  pinMode(TSCK, INPUT); 
+  pinMode(TMOSI, INPUT);
+  pinMode(TMISO, INPUT);
 }
 
 byte ispTransfer (byte val) {
@@ -3362,11 +3215,11 @@ byte ispTransfer (byte val) {
   // that should be slow enough even for
   // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
-    digitalWrite(pm.TMOSI, (val & 0x80) ? HIGH : LOW);
-    digitalWrite(pm.TSCK, HIGH);
+    digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
+    digitalWrite(TSCK, HIGH);
     _delay_us(200); 
-    val = (val << 1) + digitalRead(pm.TMISO);
-    digitalWrite(pm.TSCK, LOW);
+    val = (val << 1) + digitalRead(TMISO);
+    digitalWrite(TSCK, LOW);
     _delay_us(200);
   }
   return val;
@@ -3671,7 +3524,7 @@ void testSummary(int failed)
   }
 }
 
-int testResult(bool succ)
+int testResult(boolean succ)
 {
   if (succ) {
     gdbDebugMessagePSTR(PSTR("  -> succeeded"), -1);
@@ -3741,7 +3594,7 @@ void setupTestCode()
 
 int gdbTests(int &num) {
   int failed = 0;
-  bool succ;
+  boolean succ;
   int testnum;
   unsigned int oldsp;
 
@@ -3987,7 +3840,7 @@ int gdbTests(int &num) {
 
 int targetTests(int &num) {
   int failed = 0;
-  bool succ;
+  boolean succ;
   int testnum;
   unsigned int i;
   long lastflashcnt;
@@ -4213,7 +4066,7 @@ int targetTests(int &num) {
 int DWtests(int &num)
 {
   int failed = 0;
-  bool succ;
+  boolean succ;
   int testnum;
   byte temp;
   unsigned int i;

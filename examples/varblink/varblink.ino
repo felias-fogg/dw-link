@@ -1,6 +1,4 @@
-#include <Arduino.h>
-
-#ifndef LED_BUILTIN
+#ifndef ARDUINO_AVR_UNO
  #define LED 4
 #else
  #define LED LED_BUILTIN

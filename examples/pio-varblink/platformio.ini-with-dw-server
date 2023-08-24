@@ -1,0 +1,48 @@
+; PlatformIO Project Configuration File
+;
+;   Build options: build flags, source filter
+;   Upload options: custom upload port, speed and extra flags
+;   Library options: dependencies, extra library storages
+;   Advanced options: extra scripting
+;
+; Please visit documentation for the other options and examples
+; https://docs.platformio.org/page/projectconf.html
+[platformio]
+default_envs = debug
+
+[env:debug]
+extends = env:attiny85                     ;; <--- substitute the right board here
+build_type = debug
+debug_tool = custom
+debug_load_cmds = load
+debug_server = dw-server.py                ;; <-- needs to be callable (e.g., in /usr/local/bin)
+	-p 3333
+debug_build_flags = 
+	-Og
+	-g
+	-fno-lto
+debug_init_cmds = 
+	define pio_reset_halt_target
+	       monitor reset
+	end
+	define pio_reset_run_target
+	       monitor reset
+	       detach
+	end
+	file "$PROG_PATH"
+	target remote $DEBUG_PORT
+	monitor dwconnect
+	load
+	$INIT_BREAK
+
+
+[env:attiny85]
+platform = atmelavr
+board = attiny85
+framework = arduino
+board_build.f_cpu = 8000000L
+
+[env:uno]
+platform = atmelavr
+board = uno
+framework = arduino
