@@ -552,7 +552,7 @@ debug_server = dw-server.py
       -p 3333
 ```
 
-Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this INI file (by renaming it `platform.ini`), provided the Python module *PySerial* is installed and the dw-server script is stored in an executable path, i.e., in /usr/local/bin on an *nix machine. 
+Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this INI file (by renaming it `platform.ini`), provided the Python module *PySerial* is installed and the `dw-server.py` script is stored in an executable path, i.e., in /usr/local/bin on an *nix machine. 
 
 When creating new projects, you can take this project folder as a blue print and modify and extend `platformio.ini` according to your needs. You can find an extensive description of how to do that in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
@@ -605,25 +605,25 @@ In reality, that might look like as in the following picture.
 
 ![dw-probe-pcb-V2.0](pics/dw-probe-pcb-V2.0.jpg)
 
-### 7.3 Adapter with level-shifter and switchable power supply: *dw-link-probe*
+### 7.3 Adapter with level-shifters and switchable power supply: *dw-link-probe*
 
 The basic adapter is quite limited. It can only source 20 mA and it cannot interact with 3.3 V systems. Thus, it would be great to have a board with the following features: 
 
 * switchable target power supply (supporting power-cycling by the hardware debugger) offering 5 volt and 3.3 volt supply at 200 mA, 
-* a bidirectional (conditional) level-shifter on the debugWIRE line,
+* a bidirectional (conditional) level-shifter on the debugWIRE/RESET line,
 * an optional pull-up resistor of 10 kΩ on this line,
 * unidirectional (conditional) level-shifters on the ISP lines, and
 * high-impedance status for the two output signals MOSI and SCK when ISP is inactive.
 
 Such a board does not need to be very complex. In fact, 3 MOS-FETs, an LED, and some passive components are enough.  For the SPI lines, we have to shift the MISO line from 3.3-5 V to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, we do not do any level shifting at all and rely on the fact that the input pins of the hardware debugger recognize a logical one already at 3.0 V. For the down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These pull-ups can be disabled when no ISP programming is active, giving full control to the target system. Finally, the RESET/debugWIRE line uses the [common bidirectional design with the N-Channel MOSFET BS138](https://cdn-shop.adafruit.com/datasheets/an97055.pdf). The schematic looks as follows.
 
-![dw-probe-chematic](../pcb/schematic.png)
+![dw-probe-chematic](../pcb/dw-link-probe-V2-schematic.png)
 
 And here is the breadboard prototype, which works beautifully.
 
 ![V2-prototype](pics/dw-probe-V2.jpg)
 
-The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory, and the order for the first batch of 3 PCBs has been made. I keep you posted!
+The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory, and the order for the first batch of 3 PCBs has been made. I will update you!
 
 Before you start debugging with the new probe, you have to set two jumpers. In addition, there are two places for headers labeled **RESET EN** and **DEB**, which both can be left untouched. Then you are all set and can start debugging. 
 
