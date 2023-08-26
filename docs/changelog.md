@@ -747,4 +747,15 @@ of pin D5)
 
 ## Version 2.1.10 (24-Aug-2023)
 * merged all changes done to the master branch and the V2 to a new
-version
+
+## Version 2.1.11 (26-Aug-2023)
+* switched back to using ledout and ledmask in blinking ISR
+* added SENSEBOARD pin for sensing whether we use level shifting
+hardware
+* new ctx field: boolean levelshifter (true, if level shifter are
+used) set in setup
+* changed to open drain logic in enable/disableSpiPins and ispTransfer
+when levelshifter is true
+* same for IVSUP in power function
+
+

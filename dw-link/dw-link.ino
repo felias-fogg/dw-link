@@ -34,7 +34,7 @@
 // For the latter, I experienced non-deterministic failures of unit tests, probably
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
-#define VERSION "2.1.10"
+#define VERSION "2.1.11"
 
 // some constants, you may want to change
 #ifndef HOSTBPS 
@@ -179,8 +179,10 @@ struct context {
   byte regs[32]; // general purpose regs
   boolean saved:1; // all of the regs have been saved
   statetype state:3; // system state
+  boolean levelshifting:1; // true when using dw-probe sitting on an Arduino board
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
+  byte origTIMSK0; // original value of timer interrupt mask register
 } ctx;
 
 // use LED to signal system state
@@ -196,16 +198,17 @@ byte ledmask;
 volatile byte *ledout;
 
 // pins
-const byte TISP = 4;
-const byte TSCK = 13;
-const byte TMOSI = 11;
-const byte TMISO = 12;
-const byte VSUP = 9;
 const byte IVSUP = 2;
 const byte DEBTX = 3;
-const byte SYSLED = 7;
+const byte TISP = 4;
+const byte SENSEBOARD = 5;
 const byte LEDGND = 6;
+const byte SYSLED = 7;
 const byte DWLINE = 8;
+const byte VSUP = 9;
+const byte TMOSI = 11;
+const byte TMISO = 12;
+const byte TSCK = 13;
 
 // MCU names
 const char attiny13[] PROGMEM = "ATtiny13";
@@ -440,12 +443,12 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
   if (*ledout & ledmask) {
     if (cnt < 0) {
       cnt = offtime;
-      digitalWrite(SYSLED, LOW);
+      *ledout &= ~ledmask;
     }
   } else {
     if (cnt < 0) {
       cnt = ontime;
-      digitalWrite(SYSLED, HIGH);
+      *ledout |= ledmask;
     }
   }
   busy--;
@@ -453,8 +456,8 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 
 byte saveTIMSK0;
 byte saveUCSR0B;
-// block all irqs but the timer1 interrupt necessary
-// for receiving bytes over the dw line
+// block all irqs but the timer1 interrupt 
+// that is necessary for receiving bytes over the dw line
 void blockIRQ(void)
 {
   saveTIMSK0 = TIMSK0;
@@ -478,16 +481,17 @@ int main(void) {
   init();
   
   // setup
+  pinMode(SENSEBOARD, INPUT_PULLUP);
+  ctx.levelshifting = !digitalRead(SENSEBOARD);
   Serial.begin(HOSTBPS);
   ledmask = digitalPinToBitMask(SYSLED);
   ledout = portOutputRegister(digitalPinToPort(SYSLED));
   DEBINIT(DEBTX);
   DEBLN(F("\ndw-link V" VERSION));
+  ctx.origTIMSK0 = TIMSK0; // save original TIMSK0 so that we can reestablish timekeeping if needed
   TIMSK0 = 0; // no millis interrupts
   pinMode(LEDGND, OUTPUT);
   digitalWrite(LEDGND, LOW);
-  pinMode(VSUP, OUTPUT);
-  pinMode(IVSUP, OUTPUT);
   power(true); // switch target on
 #if SCOPEDEBUG
   pinMode(DEBTX, OUTPUT); //
@@ -495,8 +499,6 @@ int main(void) {
 #endif
   initSession(); // initialize all critical global variables
   //  DEBLN(F("Now configuereSupply"));
-  pinMode(TISP, OUTPUT);
-  digitalWrite(TISP, HIGH); // disable outgoing ISP lines
   pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
   DEBLN(F("Setup done"));
   
@@ -1108,10 +1110,11 @@ void power(boolean on)
   //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
     digitalWrite(VSUP, HIGH);
+    pinMode(IVSUP, OUTPUT);
     digitalWrite(IVSUP, LOW);
   } else { // on=false
     digitalWrite(VSUP, LOW);
-    digitalWrite(IVSUP, HIGH);
+    pinMode(IVSUP, INPUT);
   }
 }
 
@@ -3194,19 +3197,29 @@ void enableSpiPins () {
   digitalWrite(DWLINE, LOW);
   DEBLN(F("RESET low"));
   _delay_us(1);
-  pinMode(TSCK, OUTPUT);
-  digitalWrite(TSCK, LOW);
-  pinMode(TMOSI, OUTPUT);
-  digitalWrite(TMOSI, HIGH);
+  if (ctx.levelshifting) {
+    pinMode(TISP, OUTPUT);
+    digitalWrite(TISP, LOW); // eanble pull-ups
+    digitalWrite(TSCK, LOW);
+    pinMode(TSCK, OUTPUT); // draws SCK low
+    pinMode(TMOSI, INPUT);  // MOSI is HIGH
+    digitalWrite(TMOSI, LOW); 
+  } else {
+    pinMode(TSCK, OUTPUT);
+    digitalWrite(TSCK, LOW);
+    pinMode(TMOSI, OUTPUT);
+    digitalWrite(TMOSI, HIGH);
+  }
   pinMode(TMISO, INPUT);
-  digitalWrite(TISP, LOW);
 }
 
 void disableSpiPins () {
-  digitalWrite(TISP, HIGH);
-  pinMode(TSCK, INPUT); 
-  pinMode(TMOSI, INPUT);
-  pinMode(TMISO, INPUT);
+  pinMode(TSCK, INPUT); // disconnect TSCK = High state
+  digitalWrite(TSCK, LOW); // make sure that internal pullups are off
+  pinMode(TMOSI, INPUT); // disconnect TMOSI = High state
+  digitalWrite(TMOSI, LOW); // make sure that internal pullups are off
+  pinMode(TISP, INPUT); // release TISP = switch off external pullups (now completely unconnected)
+  pinMode(TMISO, INPUT); // should be input in any case
 }
 
 byte ispTransfer (byte val) {
@@ -3215,11 +3228,20 @@ byte ispTransfer (byte val) {
   // that should be slow enough even for
   // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
-    digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
-    digitalWrite(TSCK, HIGH);
+    if (ctx.levelshifting) {
+      pinMode(TMOSI,  (val & 0x80) ? INPUT : OUTPUT);
+      pinMode(TSCK, INPUT);
+    } else {
+      digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
+      digitalWrite(TSCK, HIGH);
+    }
     _delay_us(200); 
     val = (val << 1) + digitalRead(TMISO);
-    digitalWrite(TSCK, LOW);
+    if (ctx.levelshifting) {
+      pinMode(TSCK, OUTPUT);
+    } else {
+      digitalWrite(TSCK, LOW);
+    }
     _delay_us(200);
   }
   return val;

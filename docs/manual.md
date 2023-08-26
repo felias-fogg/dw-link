@@ -54,7 +54,7 @@ Read [Sections 3.3 & 3.4](#section33) about the requirements on the RESET line c
 
 ## 2. The debugWIRE interface
 
-The basic idea of ***debugWIRE*** is that the RESET line is used as a communication line between the ***target system*** (the system you want to debug) and the ***hardware debugger***, which in turn can then communicate with the development machine or ***host***, which runs a debug program such as *gdb* or in our case *avr-gdb*. The idea of using only a single line that is not used otherwise is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU. Although *dw-link* tries to hide all this from you by enabling the debugWire mode when starting a debugging session and disabling it, when terminating the session, it is a good idea to get an idea what is going on behind the scene.
+The basic idea of ***debugWIRE*** is that the RESET line is used as a communication line between the ***target system*** (the system you want to debug) and the ***hardware debugger***, which in turn can then communicate with the development machine or ***host***, which runs a debug program such as GDB or in our case *avr-gdb*. The idea of using only a single line that is not used otherwise is very cool because it does not waste any of the other pins for debugging purposes (as does e.g. the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU. Although *dw-link* tries to hide all this from you by enabling the debugWire mode when starting a debugging session and disabling it, when terminating the session, it is a good idea to get an idea what is going on behind the scene.
 
 With respect to the debugWIRE protocol there are basically three states your MCU could be in:
 
@@ -385,7 +385,7 @@ debugWIRE is now disabled
 ```
 ### 5.6 GDB commands
 
-In the example session above, we saw a number of relevant commands already. If you really want to debug using gdb, you need to know a few more commands, though. Let me just give a brief overview of the most relevant commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). For the most common commands, it is enough to just type the first character. In general, you only have to type as many characters as are necessary to make the command unambiguous. You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
+In the example session above, we saw a number of relevant commands already. If you really want to debug using GDB, you need to know a few more commands, though. Let me just give a brief overview of the most relevant commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, arguments are in italics). For the most common commands, it is enough to just type the first character. In general, you only have to type as many characters as are necessary to make the command unambiguous. You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
 
 command | action
 --- | ---
@@ -449,7 +449,7 @@ All of the commands marked with (*) reset the MCU.
 
 ### 5.7 A graphical user interface: *Gede*
 
-If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Windows is not an option, unfortunately. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede). Just download the most recent **Release** and follow the build instructions. The `dw-server` directory contains also a Python script called *dw-server.py*, which you also should copy to `/usr/local/bin`. 
+If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Windows is not an option, unfortunately. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede). Just download the most recent **Release** and follow the build instructions. The `dw-server` directory contains a Python script called *dw-server.py*, which you should also copy to `/usr/local/bin`. 
 
 Open now a terminal window, `cd` into the folder that contains the ELF file, and type
 
@@ -564,11 +564,11 @@ The hardware part of our hardware debugger is very limited so far. You can, of c
 
 ### 7.1 The basic solution
 
-For most of the wires, we use the same pins on the debugger and the target. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). In contrast to such a programmer cable, it makes sense to also break out the Vcc wire. And you definitely do not want to integrate a capacitor between RESET and GND in such a cable as described in the instructable!
+For most of the wires, we use the same pins on the debugger and the target. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). In contrast to such a programmer cable, it makes sense to also break out the Vcc wire. And you definitely do not want to integrate a capacitor between RESET and GND in such a cable in contrast to what is described in the instructable!
 
 ![isp-cable](pics/isp-cable.jpg)
 
-As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such a wire, we have sort of constructed a hardware debugger for less than 10 €, which can be considered as semi-durable. Just add the optional system LED and a capacitor between RESET and GND.
+As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such an ISP cable, we have sort of constructed a hardware debugger for less than 10 €, which can be considered as semi-durable. Just add the optional system LED with an attached resistor and a capacitor between RESET and GND.
 
 ![el cheapo debugger](pics/debugger-built.jpg)
 
@@ -578,25 +578,26 @@ The relevant pins are therefore as defined in the following table. The pins in i
 
 <a name="simplemap"></a>
 
-| Arduino pin | ISP pin | Function                                                 |
-| ----------- | ------- | -------------------------------------------------------- |
-| D13         | 3       | SCK                                                      |
-| D12         | 1       | MISO                                                     |
-| D11         | 4       | MOSI                                                     |
-| D9 (or Vcc) | 2       | VTG                                                      |
-| D8          | 5       | RESET                                                    |
-| GND         | 6       | GND                                                      |
-| D7          |         | System LED+                                              |
-| D6          |         | System LED- (if using a LED with a resistor soldered on) |
-| *D4*        |         | ISP enable (active low)                                  |
-| *D3*        |         | Debug TX                                                 |
-| *D2*        |         | Power enable (active low)                                |
+| Arduino pin | ISP pin | Function                                                     |
+| ----------- | ------- | ------------------------------------------------------------ |
+| D13         | 3       | SCK                                                          |
+| D12         | 1       | MISO                                                         |
+| D11         | 4       | MOSI                                                         |
+| D9 (or Vcc) | 2       | VTG                                                          |
+| D8          | 5       | RESET                                                        |
+| GND         | 6       | GND                                                          |
+| D7          |         | System LED+                                                  |
+| D6          |         | System LED- (if using a LED with a resistor soldered on)     |
+| *D5*        |         | Sense pin: Connected to GND when a board with level shifter is used |
+| *D4*        |         | ISP pullup enable (active low)                               |
+| *D3*        |         | Debug TX                                                     |
+| *D2*        |         | Power enable (active low)                                    |
 
 <a name="section71"></a>
 
 ### 7.2 A simple shield
 
-Taking it one one step further, one might think about a prototype shield for an UNO or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger that can be used without much preparation. Just take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
+Taking it one one step further, one might think about a prototype shield for an UNO or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger. Just take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
 
 ![dw-probe-fritzing](pics/dw-probe-2.0.png)
 
@@ -604,28 +605,32 @@ In reality, that might look like as in the following picture.
 
 ![dw-probe-pcb-V2.0](pics/dw-probe-pcb-V2.0.jpg)
 
-### 7.3 Adapter board/shield with level-shifter and switchable power supply
+### 7.3 Adapter with level-shifter and switchable power supply: *dw-link-probe*
 
-So, it would be great to have a board with the following features: 
+The basic adapter is quite limited. It can only source 20 mA and it cannot interact with 3.3 V systems. Thus, it would be great to have a board with the following features: 
 
-* switchable target power supply (supporting power-cycling by the hardware debugger),
-* offering 5 volt and 3.3 volt supply at 200 mA, 
-* a bidirectional level-shifter on the debugWIRE line,
+* switchable target power supply (supporting power-cycling by the hardware debugger) offering 5 volt and 3.3 volt supply at 200 mA, 
+* a bidirectional (conditional) level-shifter on the debugWIRE line,
 * an optional pull-up resistor of 10 kΩ on this line,
-* unidirectional level-shifters on the ISP lines, and
-* tri-state buffers for the two output signals MOSI and SCK.
+* unidirectional (conditional) level-shifters on the ISP lines, and
+* high-impedance status for the two output signals MOSI and SCK when ISP is inactive.
 
-I have designed an UNO shield with these features. You only have to set jumpers, then plug in a USB cable on one side and an ISP cable on the other side, and off you go. The following picture shows the version 2.0 dw-probe board in action. It all works flawlessly. 
+Such a board does not need to be very complex. In fact, 3 MOS-FETs, an LED, and some passive components are enough.  For the SPI lines, we have to shift the MISO line from 3.3-5 V to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, we do not do any level shifting at all and rely on the fact that the input pins of the hardware debugger recognize a logical one already at 3.0 V. For the down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These pull-ups can be disabled when no ISP programming is active, giving full control to the target system. Finally, the RESET/debugWIRE line uses the [common bidirectional design with the N-Channel MOSFET BS138](https://cdn-shop.adafruit.com/datasheets/an97055.pdf). The schematic looks as follows.
 
-The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory. This design is currently untested but should work.
+![dw-probe-chematic](../pcb/schematic.png)
 
-You have to set three different jumpers.
+And here is the breadboard prototype, which works beautifully.
+
+![V2-prototype](pics/dw-probe-V2.jpg)
+
+The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory, and the order for the first batch of 3 PCBs has been made. I keep you posted!
+
+Before you start debugging with the new probe, you have to set two jumpers. In addition, there are two places for headers labeled **RESET EN** and **DEB**, which both can be left untouched. Then you are all set and can start debugging. 
 
 Label | Left | Middle | Right 
 --- | --- | --- | --- 
-**Supply** | **3.3V** are supplied to the target | **no**: target needs to its own supply and power cycling has to be done manually | **5V** are supplied to the target 
-**Pullup** | A **10kΩ** pull-up resistor is connected to the RESET line of the target | &nbsp; | There is **no** pull-up resistor connected 
-**Cap** | A **10µF** cap disables the auto-reset feature of the debugger |&nbsp;|There is no cap connected to the RESET line of the debugger
+**Supply** | **3.3V** are supplied to the target | **ext.**: target needs its own supply and power cycling has to be done manually | **5V** are supplied to the target 
+**Pullup** | There is **no** pull-up resistor connected | &nbsp; | A **10kΩ** pull-up resistor is connected to the RESET line of the target 
 
 <a name="section8"></a>
 
@@ -651,13 +656,13 @@ Apart from bugs, there are, of course, shortcomings that one cannot avoid. I wil
 
 Setting and removing *breakpoints* is one of the main functionality of a debugger. Setting a breakpoint is mainly accomplished by changing an instruction in flash memory to the BREAK instruction. This, however, implies that one has to *reprogram flash memory*. Since flash memory wears out, one should try to minimize the number of flash memory reprogramming operations.
 
-One now has to understand that gdb does not pass *breakpoint set* and *breakpoint delete* commands from the user to the hardware debugger, but instead it sends a list of *breakpoint set* commands before execution starts. After execution stops, it sends *breakpoint delete* commands for all breakpoints. In particular, when thinking about conditional breakpoints, it becomes clear that gdb may send a large number of *breakpoint set* and *breakpoint delete* commands for one breakpoint during one debug session. Although it is guaranteed that flash memory can be reprogrammed at least 10,000 times according to the data sheets, this number can easily be reached even in a few debug sessions, provided there are loops which are often executed and where a conditional breakpoint has been inserted. Fortunately, the situation is not as bad as it looks since there are a number of ways of getting around the need of reprogramming flash memory.
+GDB does not pass *breakpoint set* and *breakpoint delete* commands from the user to the hardware debugger, but instead it sends a list of *breakpoint set* commands before execution starts. After execution stops, it sends *breakpoint delete* commands for all breakpoints. In particular, when thinking about conditional breakpoints, it becomes clear that GDB may send a large number of *breakpoint set* and *breakpoint delete* commands for one breakpoint during one debug session. Although it is guaranteed that flash memory can be reprogrammed at least 10,000 times according to the data sheets, this number can easily be reached even in a few debug sessions, provided there are loops which are often executed and where a conditional breakpoint has been inserted. Fortunately, the situation is not as bad as it looks since there are a number of ways of getting around the need of reprogramming flash memory.
 
-First of all, *dw-link* leaves the breakpoint in memory, even when gdb requests to remove them. Only when gdb requests to continue execution, the breakpoints in flash memory are updated. Well, the same happens before loading program code, detaching, exiting, etc. Assuming that the user does not change breakpoints too often, this will reduce flash reprogramming significantly.  
+First of all, *dw-link* leaves the breakpoint in memory, even when GDB requests to remove them. Only when GDB requests to continue execution, the breakpoints in flash memory are updated. Well, the same happens before loading program code, detaching, exiting, etc. Assuming that the user does not change breakpoints too often, this will reduce flash reprogramming significantly.  
 
 Second, if there are many breakpoints on the same flash page, then the page is reprogrammed only once instead of reprogramming it for each breakpoint individually.
 
-Third, when one restarts from a location where a breakpoint has been set, gdb removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-link* does not update flash memory before single-stepping. Instead, if the instruction is a single-word instructions, it loads the original instruction into the *instruction register* of the MCU and executes it there. 
+Third, when one restarts from a location where a breakpoint has been set, GDB removes this breakpoint temporarily, single steps to the next instruction, reinserts the breakpoint, and only then continues execution. This would lead to two reprogramming operations. However, *dw-link* does not update flash memory before single-stepping. Instead, if the instruction is a single-word instructions, it loads the original instruction into the *instruction register* of the MCU and executes it there. 
 
 For two-word instructions (i.e., LDS, STS, JUMP, and CALL), things are a bit more complicated. The Microchip documents state that one should refrain from  inserting breakpoints at double word instructions, implying that this would create problems. Indeed, RikusW noted in his [reverse engineering notes about debugWIRE](http://www.ruemohr.org/docs/debugwire.html):
 >Seems that its not possible to execute a 32 bit instruction this way.
@@ -825,7 +830,7 @@ You use more than the allowed number of breakpoints, i.e., usually 32 (+1 for a 
 
 #### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
 
-The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for gdb. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
+The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for GDB. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
 
 #### Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised
 

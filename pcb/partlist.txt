@@ -1,0 +1,38 @@
+Partlist
+
+Exported from dw-link-probe-V2.brd at 26.08.23 22:25
+
+EAGLE Version 9.5.1 Copyright (c) 1988-2019 Autodesk, Inc.
+
+Assembly variant: 
+
+Part     Value               Package           Library         Position (mil)        Orientation
+
+AD                           1X06              pinhead         (2250 100)            R0
+C1       10µF                C1206             rcl             (1500 475)            R90
+C2       10µF                C1206             rcl             (1700 475)            R90
+C3       10µF                C1206             rcl             (1300 475)            R270
+DEBUG    CON_HEADER_1X02-PTH M1X2              dp_devices      (2390 435)            R0
+IC1      TS1117BCW33_RPG     SOT230P700X190-4N TS1117BCW33_RPG (1480 910)            R0
+IOH                          1X08              pinhead         (1290 2000)           R180
+IOL                          1X08              pinhead         (2150 2000)           R180
+ISP                          CONN-2X03         arduino_jw      (2350 1000)           R0
+LED1                         CHIPLED_1206      led             (385 1670)            R180
+POWER                        1X06              pinhead         (1550 100)            R0
+PULLUP   CON_HEADER_1X03-PTH M1X3              dp_devices      (680 610)             R0
+Q1       BSS138              SOT23             m-pad-2.1       (2000 1475)           R90
+Q2       IRLML6402           SOT95P237X112-3N  IRLML6402       (1030 1370)           R0
+Q3       IRLML6402           SOT95P237X112-3N  IRLML6402       (545 830)             R0
+R1       4.7k                R1206             rcl             (370 1275)            R90
+R2       10k                 R1206             rcl             (1600 1450)           R0
+R3       10k                 R1206             rcl             (1600 1250)           R0
+R4       10k                 R1206             rcl             (230 680)             R0
+R5       4.7k                R1206             rcl             (1970 1050)           R0
+R6       220                 R1206             rcl             (225 950)             R0
+R7       4.7k                R1206             rcl             (1965 780)            R0
+R8       220                 R1206             rcl             (715 1490)            R0
+R9       10k                 R1206             rcl             (710 1225)            R0
+R10      10M                 R1206             rcl             (1155 1655)           R90
+R11      10M                 R1206             rcl             (1380 1650)           R90
+RES_EN   CON_HEADER_1X02-PTH M1X2              dp_devices      (1980 435)            R0
+SUPPLY   CON_HEADER_1X04     M1X4              dp_devices      (565 310)             R0
