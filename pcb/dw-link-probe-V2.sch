@@ -12611,6 +12611,70 @@ http://dangerousprototypes.com</description>
 </deviceset>
 </devicesets>
 </library>
+<library name="Ergaenzung">
+<packages>
+<package name="TASTER-9314_SMD">
+<wire x1="-3" y1="3" x2="3" y2="3" width="0.127" layer="21"/>
+<wire x1="3" y1="3" x2="3" y2="-3" width="0.127" layer="21"/>
+<wire x1="3" y1="-3" x2="-3" y2="-3" width="0.127" layer="21"/>
+<wire x1="-3" y1="-3" x2="-3" y2="3" width="0.127" layer="21"/>
+<wire x1="-3.95" y1="2.25" x2="-3.95" y2="2.3" width="0" layer="21"/>
+<wire x1="-3.65" y1="-2.25" x2="-3.65" y2="-2.05" width="0" layer="21"/>
+<circle x="-2.25" y="2.25" radius="0.3201" width="0" layer="21"/>
+<circle x="-2.25" y="-2.25" radius="0.3201" width="0" layer="21"/>
+<circle x="2.25" y="-2.25" radius="0.3201" width="0" layer="21"/>
+<circle x="2.25" y="2.25" radius="0.3201" width="0" layer="21"/>
+<circle x="0" y="0" radius="1.7492" width="0" layer="21"/>
+<smd name="2" x="5" y="2.25" dx="1.4" dy="2.1" layer="1" rot="R90"/>
+<smd name="4" x="5" y="-2.25" dx="1.4" dy="2.1" layer="1" rot="R90"/>
+<smd name="3" x="-5" y="-2.25" dx="1.4" dy="2.1" layer="1" rot="R90"/>
+<smd name="1" x="-5" y="2.25" dx="1.4" dy="2.1" layer="1" rot="R90"/>
+<text x="-3" y="4.25" size="1.27" layer="25">&gt;NAME</text>
+<text x="-3" y="-5" size="1.27" layer="27">&gt;VALUE</text>
+<rectangle x1="3" y1="-2.6" x2="5" y2="-1.9" layer="21"/>
+<rectangle x1="3" y1="1.9" x2="5" y2="2.6" layer="21"/>
+<rectangle x1="-5" y1="1.9" x2="-3" y2="2.6" layer="21"/>
+<rectangle x1="-5" y1="-2.6" x2="-3" y2="-1.9" layer="21"/>
+</package>
+</packages>
+<symbols>
+<symbol name="TASTER-4POLIG">
+<wire x1="0" y1="-2.54" x2="-1.27" y2="2.54" width="0.254" layer="94"/>
+<wire x1="-2.54" y1="-5.08" x2="0" y2="-5.08" width="0.254" layer="94"/>
+<wire x1="0" y1="-5.08" x2="2.54" y2="-5.08" width="0.254" layer="94"/>
+<wire x1="-2.54" y1="5.08" x2="0" y2="5.08" width="0.254" layer="94"/>
+<wire x1="0" y1="5.08" x2="2.54" y2="5.08" width="0.254" layer="94"/>
+<wire x1="0" y1="5.08" x2="0" y2="2.54" width="0.254" layer="94"/>
+<wire x1="0" y1="-2.54" x2="0" y2="-5.08" width="0.254" layer="94"/>
+<text x="4.445" y="10.795" size="1.778" layer="95" rot="R180">&gt;NAME</text>
+<text x="4.445" y="8.255" size="1.778" layer="96" rot="R180">&gt;VALUE</text>
+<pin name="2" x="5.08" y="5.08" visible="pad" length="short" direction="pas" rot="R180"/>
+<pin name="1" x="-5.08" y="5.08" visible="pad" length="short" direction="pas"/>
+<pin name="3" x="-5.08" y="-5.08" visible="pad" length="short" direction="pas"/>
+<pin name="4" x="5.08" y="-5.08" visible="pad" length="short" direction="pas" rot="R180"/>
+</symbol>
+</symbols>
+<devicesets>
+<deviceset name="TASTER-9314_SMD" prefix="S" uservalue="yes">
+<gates>
+<gate name="G$1" symbol="TASTER-4POLIG" x="-2.54" y="2.54"/>
+</gates>
+<devices>
+<device name="" package="TASTER-9314_SMD">
+<connects>
+<connect gate="G$1" pin="1" pad="1"/>
+<connect gate="G$1" pin="2" pad="2"/>
+<connect gate="G$1" pin="3" pad="3"/>
+<connect gate="G$1" pin="4" pad="4"/>
+</connects>
+<technologies>
+<technology name=""/>
+</technologies>
+</device>
+</devices>
+</deviceset>
+</devicesets>
+</library>
 </libraries>
 <attributes>
 </attributes>
@@ -12667,53 +12731,55 @@ http://dangerousprototypes.com</description>
 <part name="GND10" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="R11" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="R1206" package3d_urn="urn:adsk.eagle:package:23540/2" value="10M"/>
 <part name="GND11" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
+<part name="RESET" library="Ergaenzung" deviceset="TASTER-9314_SMD" device=""/>
+<part name="GND12" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 </parts>
 <sheets>
 <sheet>
 <plain>
-<text x="215.265" y="21.59" size="1.778" layer="91" grouprefs="IO IOL1 PINS">0</text>
-<text x="215.265" y="24.13" size="1.778" layer="91" grouprefs="IO IOL1 PINS">1</text>
-<text x="215.265" y="26.67" size="1.778" layer="91" grouprefs="IO IOL1 PINS">2</text>
-<text x="215.265" y="29.21" size="1.778" layer="91" grouprefs="IO IOL1 PINS">3</text>
-<text x="215.265" y="31.75" size="1.778" layer="91" grouprefs="IO IOL1 PINS">4</text>
-<text x="215.265" y="34.29" size="1.778" layer="91" grouprefs="IO IOL1 PINS">5</text>
-<text x="215.265" y="36.83" size="1.778" layer="91" grouprefs="IO IOL1 PINS">6</text>
-<text x="215.265" y="39.37" size="1.778" layer="91" grouprefs="IO IOL1 PINS">7</text>
-<text x="215.265" y="50.8" size="1.778" layer="91" grouprefs="IO LABH PINS">8</text>
-<text x="215.265" y="53.34" size="1.778" layer="91" grouprefs="IO LABH PINS">9</text>
-<text x="215.265" y="55.88" size="1.778" layer="91" grouprefs="IO LABH PINS">10</text>
-<text x="215.265" y="58.42" size="1.778" layer="91" grouprefs="IO PINS">11</text>
-<text x="215.265" y="60.96" size="1.778" layer="91" grouprefs="IO LABH PINS">12</text>
-<text x="215.265" y="63.5" size="1.778" layer="91" grouprefs="IO LABH PINS">13</text>
-<text x="215.265" y="66.04" size="1.778" layer="91" grouprefs="IO PINS">GND</text>
-<text x="215.265" y="68.58" size="1.778" layer="91" grouprefs="IO PINS">REF</text>
-<text x="215.265" y="121.92" size="1.778" layer="91" grouprefs="IO PINS">RESET</text>
-<text x="215.265" y="119.38" size="1.778" layer="91" grouprefs="IO PINS">3V3</text>
-<text x="215.265" y="116.84" size="1.778" layer="91" grouprefs="IO PINS">5V</text>
-<text x="215.265" y="114.3" size="1.778" layer="91" grouprefs="IO PINS">GND</text>
-<text x="215.265" y="111.76" size="1.778" layer="91" grouprefs="IO PINS">GND</text>
-<text x="215.265" y="109.22" size="1.778" layer="91" grouprefs="IO PINS">Vin</text>
-<text x="215.265" y="96.52" size="1.778" layer="91" grouprefs="IO PINS">A5</text>
-<text x="215.265" y="94.615" size="1.778" layer="91" grouprefs="IO PINS">A4</text>
-<text x="215.265" y="92.075" size="1.778" layer="91" grouprefs="IO PINS">A3</text>
-<text x="215.265" y="89.535" size="1.778" layer="91" grouprefs="IO PINS">A2</text>
-<text x="215.265" y="86.995" size="1.778" layer="91" grouprefs="IO PINS">A1</text>
-<text x="215.265" y="84.455" size="1.778" layer="91" grouprefs="IO PINS">A0</text>
+<text x="215.265" y="21.59" size="1.778" layer="91" grouprefs="PINS IOL1 IO">0</text>
+<text x="215.265" y="24.13" size="1.778" layer="91" grouprefs="PINS IOL1 IO">1</text>
+<text x="215.265" y="26.67" size="1.778" layer="91" grouprefs="PINS IOL1 IO">2</text>
+<text x="215.265" y="29.21" size="1.778" layer="91" grouprefs="PINS IOL1 IO">3</text>
+<text x="215.265" y="31.75" size="1.778" layer="91" grouprefs="PINS IOL1 IO">4</text>
+<text x="215.265" y="34.29" size="1.778" layer="91" grouprefs="PINS IOL1 IO">5</text>
+<text x="215.265" y="36.83" size="1.778" layer="91" grouprefs="PINS IOL1 IO">6</text>
+<text x="215.265" y="39.37" size="1.778" layer="91" grouprefs="PINS IOL1 IO">7</text>
+<text x="215.265" y="50.8" size="1.778" layer="91" grouprefs="PINS LABH IO">8</text>
+<text x="215.265" y="53.34" size="1.778" layer="91" grouprefs="PINS LABH IO">9</text>
+<text x="215.265" y="55.88" size="1.778" layer="91" grouprefs="PINS LABH IO">10</text>
+<text x="215.265" y="58.42" size="1.778" layer="91" grouprefs="PINS IO">11</text>
+<text x="215.265" y="60.96" size="1.778" layer="91" grouprefs="PINS LABH IO">12</text>
+<text x="215.265" y="63.5" size="1.778" layer="91" grouprefs="PINS LABH IO">13</text>
+<text x="215.265" y="66.04" size="1.778" layer="91" grouprefs="PINS IO">GND</text>
+<text x="215.265" y="68.58" size="1.778" layer="91" grouprefs="PINS IO">REF</text>
+<text x="215.265" y="121.92" size="1.778" layer="91" grouprefs="PINS IO">RESET</text>
+<text x="215.265" y="119.38" size="1.778" layer="91" grouprefs="PINS IO">3V3</text>
+<text x="215.265" y="116.84" size="1.778" layer="91" grouprefs="PINS IO">5V</text>
+<text x="215.265" y="114.3" size="1.778" layer="91" grouprefs="PINS IO">GND</text>
+<text x="215.265" y="111.76" size="1.778" layer="91" grouprefs="PINS IO">GND</text>
+<text x="215.265" y="109.22" size="1.778" layer="91" grouprefs="PINS IO">Vin</text>
+<text x="215.265" y="96.52" size="1.778" layer="91" grouprefs="PINS IO">A5</text>
+<text x="215.265" y="94.615" size="1.778" layer="91" grouprefs="PINS IO">A4</text>
+<text x="215.265" y="92.075" size="1.778" layer="91" grouprefs="PINS IO">A3</text>
+<text x="215.265" y="89.535" size="1.778" layer="91" grouprefs="PINS IO">A2</text>
+<text x="215.265" y="86.995" size="1.778" layer="91" grouprefs="PINS IO">A1</text>
+<text x="215.265" y="84.455" size="1.778" layer="91" grouprefs="PINS IO">A0</text>
 </plain>
 <instances>
-<instance part="IOL" gate="A" x="213.36" y="33.02" smashed="yes" rot="MR180" grouprefs="IO IOL1 PINS">
+<instance part="IOL" gate="A" x="213.36" y="33.02" smashed="yes" rot="MR180" grouprefs="PINS IOL1 IO">
 <attribute name="NAME" x="207.01" y="19.685" size="1.778" layer="95" rot="MR180"/>
 <attribute name="VALUE" x="207.01" y="45.72" size="1.778" layer="96" rot="MR180"/>
 </instance>
-<instance part="IOH" gate="A" x="213.36" y="60.96" smashed="yes" rot="MR180" grouprefs="IO PINS">
+<instance part="IOH" gate="A" x="213.36" y="60.96" smashed="yes" rot="MR180" grouprefs="PINS IO">
 <attribute name="NAME" x="207.01" y="47.625" size="1.778" layer="95" rot="MR180"/>
 <attribute name="VALUE" x="207.01" y="73.66" size="1.778" layer="96" rot="MR180"/>
 </instance>
-<instance part="AD" gate="A" x="212.725" y="92.71" smashed="yes" rot="MR180" grouprefs="IO PINS">
+<instance part="AD" gate="A" x="212.725" y="92.71" smashed="yes" rot="MR180" grouprefs="PINS IO">
 <attribute name="NAME" x="206.375" y="81.915" size="1.778" layer="95" rot="MR180"/>
 <attribute name="VALUE" x="206.375" y="102.87" size="1.778" layer="96" rot="MR180"/>
 </instance>
-<instance part="POWER" gate="A" x="212.725" y="114.935" smashed="yes" grouprefs="IO PINS">
+<instance part="POWER" gate="A" x="212.725" y="114.935" smashed="yes" grouprefs="PINS IO">
 <attribute name="NAME" x="206.375" y="125.73" size="1.778" layer="95"/>
 <attribute name="VALUE" x="206.375" y="104.775" size="1.778" layer="96"/>
 </instance>
@@ -12746,8 +12812,8 @@ http://dangerousprototypes.com</description>
 <instance part="GND5" gate="1" x="142.24" y="116.84" smashed="yes">
 <attribute name="VALUE" x="139.7" y="114.3" size="1.778" layer="96"/>
 </instance>
-<instance part="GND6" gate="1" x="162.56" y="111.76" smashed="yes">
-<attribute name="VALUE" x="160.02" y="109.22" size="1.778" layer="96"/>
+<instance part="GND6" gate="1" x="162.56" y="106.68" smashed="yes">
+<attribute name="VALUE" x="160.02" y="104.14" size="1.778" layer="96"/>
 </instance>
 <instance part="Q3" gate="G$1" x="49.53" y="105.41" smashed="yes" rot="R90">
 <attribute name="NAME" x="45.72" y="116.84" size="1.778" layer="95" rot="R90" align="center-left"/>
@@ -12835,6 +12901,13 @@ http://dangerousprototypes.com</description>
 <instance part="GND11" gate="1" x="27.94" y="38.1" smashed="yes">
 <attribute name="VALUE" x="25.4" y="35.56" size="1.778" layer="96"/>
 </instance>
+<instance part="RESET" gate="G$1" x="177.8" y="119.38" smashed="yes">
+<attribute name="NAME" x="182.245" y="130.175" size="1.778" layer="95" rot="R180"/>
+<attribute name="VALUE" x="182.245" y="127.635" size="1.778" layer="96" rot="R180"/>
+</instance>
+<instance part="GND12" gate="1" x="177.8" y="106.68" smashed="yes">
+<attribute name="VALUE" x="175.26" y="104.14" size="1.778" layer="96"/>
+</instance>
 </instances>
 <busses>
 </busses>
@@ -12867,9 +12940,9 @@ http://dangerousprototypes.com</description>
 <wire x1="142.24" y1="121.92" x2="142.24" y2="119.38" width="0.1524" layer="91"/>
 </segment>
 <segment>
-<pinref part="C1" gate="G$1" pin="2"/>
 <pinref part="GND6" gate="1" pin="GND"/>
-<wire x1="162.56" y1="116.84" x2="162.56" y2="114.3" width="0.1524" layer="91"/>
+<pinref part="C1" gate="G$1" pin="2"/>
+<wire x1="162.56" y1="116.84" x2="162.56" y2="109.22" width="0.1524" layer="91"/>
 </segment>
 <segment>
 <pinref part="R1" gate="G$1" pin="1"/>
@@ -12927,6 +13000,17 @@ http://dangerousprototypes.com</description>
 <pinref part="C2" gate="G$1" pin="2"/>
 <pinref part="GND7" gate="1" pin="GND"/>
 <wire x1="104.14" y1="110.49" x2="104.14" y2="109.22" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="RESET" gate="G$1" pin="3"/>
+<pinref part="RESET" gate="G$1" pin="4"/>
+<wire x1="182.88" y1="114.3" x2="182.88" y2="111.76" width="0.1524" layer="91"/>
+<wire x1="182.88" y1="111.76" x2="177.8" y2="111.76" width="0.1524" layer="91"/>
+<wire x1="177.8" y1="111.76" x2="172.72" y2="111.76" width="0.1524" layer="91"/>
+<wire x1="172.72" y1="111.76" x2="172.72" y2="114.3" width="0.1524" layer="91"/>
+<pinref part="GND12" gate="1" pin="GND"/>
+<wire x1="177.8" y1="111.76" x2="177.8" y2="109.22" width="0.1524" layer="91"/>
+<junction x="177.8" y="111.76"/>
 </segment>
 </net>
 <net name="N$1" class="0">
@@ -13183,7 +13267,16 @@ http://dangerousprototypes.com</description>
 <pinref part="POWER" gate="A" pin="1"/>
 <pinref part="C3" gate="G$1" pin="2"/>
 <wire x1="210.185" y1="122.555" x2="198.12" y2="122.555" width="0.1524" layer="91"/>
-<wire x1="198.12" y1="122.555" x2="198.12" y2="138.43" width="0.1524" layer="91"/>
+<wire x1="198.12" y1="122.555" x2="198.12" y2="129.54" width="0.1524" layer="91"/>
+<pinref part="RESET" gate="G$1" pin="2"/>
+<wire x1="198.12" y1="129.54" x2="198.12" y2="138.43" width="0.1524" layer="91"/>
+<wire x1="182.88" y1="124.46" x2="182.88" y2="129.54" width="0.1524" layer="91"/>
+<wire x1="182.88" y1="129.54" x2="198.12" y2="129.54" width="0.1524" layer="91"/>
+<junction x="198.12" y="129.54"/>
+<pinref part="RESET" gate="G$1" pin="1"/>
+<wire x1="172.72" y1="124.46" x2="172.72" y2="129.54" width="0.1524" layer="91"/>
+<wire x1="172.72" y1="129.54" x2="182.88" y2="129.54" width="0.1524" layer="91"/>
+<junction x="182.88" y="129.54"/>
 </segment>
 </net>
 </nets>

@@ -1,6 +1,6 @@
 Partlist
 
-Exported from dw-link-probe-V2.brd at 27.08.23 09:40
+Exported from dw-link-probe-V2.brd at 27.08.23 13:56
 
 EAGLE Version 9.5.1 Copyright (c) 1988-2019 Autodesk, Inc.
 
@@ -35,4 +35,5 @@ R9       10k                 R1206             rcl             (710 1225)       
 R10      10M                 R1206             rcl             (1155 1655)           R90
 R11      10M                 R1206             rcl             (1380 1650)           R90
 RESDIS   CON_HEADER_1X02-PTH M1X2              dp_devices      (1980 435)            R0
+RESET                        TASTER-9314_SMD   Ergaenzung      (645 1040)            R0
 SUPPLY   CON_HEADER_1X04     M1X4              dp_devices      (565 310)             R0

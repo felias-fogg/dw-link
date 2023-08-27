@@ -16,7 +16,7 @@
 
 The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notes that a lot of important features are missing. In particular, neither the old nor the new IDE supports any kind of debugging for AVR chips. So what can you do when you want to debug your Arduino project on small ATmegas (such as the popular ATmega328) or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support [on-chip debugging](https://en.wikipedia.org/wiki/In-circuit_emulation#On-chip_debugging) via [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
 
-When you want hardware debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE or the MPLAB Snap and you have to use the propriatery development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). The question is, of course, whether there are open-source alternatives? Preferably supporting *avr-gdb*, the [GNU debugger](https://www.gnu.org/software/gdb/) for AVR MCUs.  With *dw-link*, you have such a solution. It turns an Arduino UNO into a hardware debugger that implements the GDB remote serial protocol.
+When you want hardware debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE or the MPLAB Snap and you have to use the propriatery development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). The question is, of course, whether there are open-source alternatives. Preferably supporting *avr-gdb*, the [GNU debugger](https://www.gnu.org/software/gdb/) for AVR MCUs.  With *dw-link*, you have such a solution. It turns an Arduino UNO into a hardware debugger that implements the GDB remote serial protocol.
 
 For your first excursion into the wonderful world of debugging, you need an Arduino UNO (or something equivalent) as the hardware debugger (see [Section 3.1](#section31)) and a chip or board that understands debugWIRE (see [Section 3.2](#section32)), i.e., a classic ATtiny or an ATmegaX8. Then you only have to install the firmware for the debugger on the UNO ([Section 4.1](#section41)) and to set up the hardware for a debugging session ([Section 4.2](#section42)).
 
@@ -29,6 +29,8 @@ If you have performed all the above steps, then the setup should look like as in
 <img src="pics/debugger-setup.png" alt="hardware debugger setup" style="zoom:50%;" />
 
 The connection between *dw-link* and the target is something that might need some enhancements. Instead of six flying wires, which we use in the initial example in [Section 4.2](#section42), you may want to have a more durable connection. This is covered in [Section 7](#section7). Finally, possible problems and trouble shooting are covered in [Section 8](#section8) and [Section 9](#trouble), respectively.
+
+And what do you with your hardware debugger once you have debugged all your programs and they work flawlessly? Since version 2.2.0, you can use *dw-link* also as an STK500 v1 ISP programmer. If you connect to *dw-link* either with 19200 or 115200 bps and start *avrdude*, then *dw-link* turns into an ISP programmer.
 
 #### 1.1 Other debugging approaches for classic ATtinys and ATmegaX8s
 
@@ -230,18 +232,19 @@ When after a debugging session you want to restore the target so that it behaves
 
 1. Exit the debugWIRE state as described in [Section 2](#section2). This should have happened automatically when last quitting GDB. However, to make sure the UNO is not in debugWIRE state, you should use the method described in [Section 5.5](#exlpicit1) or [Section 6.4](#explicit2). 
 2. Reestablish the `RESET EN` connection by putting a solder blob on the connection.
-3. Burn the bootloader into the UNO again, [as described on the Arduino website](https://support.arduino.cc/hc/en-us/articles/4841602539164-Burn-the-bootloader-on-UNO-Mega-and-classic-Nano-using-another-Arduino).
+3. Burn the bootloader into the UNO again. This means that you need to select the `Arduino UNO` again as the target board in the `Tools` menu, select `AVR ISP` as the `Programmer` , and choose `Burn Bootloader` from the `Tools` menu. As mentioned in Section 1, since version 2.2.0, the hardware debugger can also act as programmer!
 
 We are now good to go and 'only' need to install the additional debugging software on the host. Before we do that, let us have a look, in which states the hardware debugger can be and how it signals that using the system LED.
 
 ### 4.3 States of the hardware debugger
 
-There are four states the debugger can be in and each is signaled by a different blink pattern of the system LED:
+There are five states the debugger can be in and each is signaled by a different blink pattern of the system LED:
 
-* not connected (LED is off)
-* waiting for power-cycling the target (LED flashes every second for 0.1 sec)
-* target is connected (LED is on) 
-* error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec)
+* not connected (LED is off),
+* waiting for power-cycling the target (LED flashes every second for 0.1 sec),
+* target is connected (LED is on) ,
+* ISP programming (LED is blinking slowly every 0.5 sec), or
+* error, i.e., it is not possible to connect to the target or there is an internal error (LED blinks furiously every 0.1 sec).
 
 If the hardware debugger is in the error state, one should try to find out the reason by typing the command `monitor lasterror`, study the [error message table](#fatalerror) at the end of the document, finish the GDB session, reset the debugger, and restart everything. If the problem persists, please check the section on [trouble shooting](#trouble).
 
@@ -253,10 +256,20 @@ Assuming that you are working with the Arduino IDE and/or Arduino CLI, the simpl
 
 ### 5.1 Installing avr-gdb
 
-Unfortunately, the debugger is not any longer part of the toolchain integrated into the Arduino IDE. This means, you have to download it and install it by yourself:
+Unfortunately, the debugger is not any longer part of the toolchain integrated into the Arduino IDE. This means, you have to download and install it by yourself:
 
-* macOS: Use [**homebrew**](https://brew.sh/index_de) to install it. 
-* Linux: Use your favorite packet manager to install it.
+* macOS: Use [**homebrew**](https://brew.sh/index_de) to install it: 
+
+  ```
+  brew tap osx-cross/avr && brew install avr-gdb
+  ```
+
+* Linux: Use your favorite packet manager to install the package **gdb-avr**, i.e., under Ubuntu/Debian:
+
+  ```
+  sudo apt-get install gdb-avr 
+  ```
+
 * Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or from [Zak's Electronic Blog\~\*](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb. You have to copy `avr-gdb.exe` (which you find in the `bin` folder) to some place (e.g., to C:\ProgramFiles\bin) and set the `PATH` variable to point to this folder. Afterwards, you can execute the debugger by simply typing `avr-gdb.exe` into a terminal window (e.g. Windows Powershell).
 
 ### 5.2 Installing board manager files
@@ -541,7 +554,7 @@ After a brief moment. the debugger will then stop at the set breakpoint.
 
 There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwoff` in the debugging terminal window after having started a debugging session in PlatformIO IDE. 
 
-### 6.5 Configuting `platformio.ini`
+### 6.5 Configuring `platformio.ini`
 
 This is not the place to tell you all about what can be configured in the `platformio.ini` file.  There is one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
 
@@ -552,7 +565,7 @@ debug_server = dw-server.py
       -p 3333
 ```
 
-Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this INI file (by renaming it `platform.ini`), provided the Python module *PySerial* is installed and the `dw-server.py` script is stored in an executable path, i.e., in /usr/local/bin on an *nix machine. 
+Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this alternate INI file (by renaming it `platform.ini`), provided the Python module *PySerial* is installed and the `dw-server.py` script (which you find in the `dw-server` folder) is stored in an executable path, i.e., in /usr/local/bin on an *nix machine. 
 
 When creating new projects, you can take this project folder as a blue print and modify and extend `platformio.ini` according to your needs. You can find an extensive description of how to do that in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
@@ -625,7 +638,7 @@ And here is the breadboard prototype, which works beautifully.
 
 The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory, and the order for the first batch of 3 PCBs has been made. 
 
-Before you start debugging with the new probe, you have to set two jumpers. In addition, there are two places for headers labeled **RESET EN** and **DEB**, which both can be left untouched. Then you are all set and can start debugging. 
+Before you start debugging with the new probe, you have to set two jumpers. In addition, there are two places for headers labeled **RESDIS** and **DEB**, which both can be left untouched. Then you are all set and can start debugging. 
 
 Label | Left | Middle | Right 
 --- | --- | --- | --- 
@@ -992,3 +1005,5 @@ Initial version
 - added dw-server.py
 - added description of Gede
 - added description of new hardware version
+- added that dw-link is now also an ISP programmer
+- simplified recovery for UNO

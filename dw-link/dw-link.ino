@@ -34,12 +34,13 @@
 // For the latter, I experienced non-deterministic failures of unit tests, probably
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
-#define VERSION "2.1.11"
+#define VERSION "2.2.0"
 
 // some constants, you may want to change
+#define PROGBPS 19200         // ISP programmer communication speed
 #ifndef HOSTBPS 
-#define HOSTBPS 115200UL // safe default speed for the host connection
-//#define HOSTBPS 230400UL // works with UNOs that use an ATmega32U2 as the USB interface         
+#define HOSTBPS 115200UL      // safe default speed for the host connection
+//#define HOSTBPS 230400UL    // works with UNOs that use an ATmega32U2 as the USB interface         
 #endif
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
 // #define NOAUTODWOFF 1      // do not automatically leave debugWIRE mode
@@ -170,7 +171,7 @@ byte maxbreak = MAXBREAK; // actual number of active breakpoints allowed
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
-enum statetype {NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, LOAD_STATE, RUN_STATE};
+enum statetype {NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, LOAD_STATE, RUN_STATE, PROG_STATE};
 
 struct context {
   unsigned int wpc; // pc (using word addresses)
@@ -190,8 +191,8 @@ struct context {
 // LED flashing every second = power-cycle target in order to enable debugWIRE
 // LED blinking every 1/10 second = could not connect to target board
 // LED constantly on = connected to target 
-const unsigned int ontimes[6] =  {0,  100, 150, 1, 1, 1};
-const unsigned int offtimes[6] = {1, 1000, 150, 0, 0, 0};
+const unsigned int ontimes[7] =  {0,  100, 150, 1, 1, 1, 500};
+const unsigned int offtimes[7] = {1, 1000, 150, 0, 0, 0, 500};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 byte ledmask;
@@ -504,6 +505,12 @@ int main(void) {
   
   // loop
   while (1) {
+    if (ctx.state == NOTCONN_STATE) { // check whether there is an ISP programmer
+      if (UCSR0A & _BV(FE0))  // frame error -> break, meaning programming!
+	ISPprogramming(false);
+      else if (Serial.peek() == '0') // sign on from ISP programmer using HOSTBPS
+	ISPprogramming(true);
+    }
     monitorSystemLoadState();
     if (Serial.available()) {
       gdbHandleCmd();
@@ -3222,9 +3229,9 @@ void disableSpiPins () {
   pinMode(TMISO, INPUT); // should be input in any case
 }
 
-byte ispTransfer (byte val) {
+byte ispTransfer (byte val, boolean fast) {
   measureRam();
-  // ISP frequency is now 12500
+  // standard ISP frequency is now 12500
   // that should be slow enough even for
   // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
@@ -3235,27 +3242,29 @@ byte ispTransfer (byte val) {
       digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
       digitalWrite(TSCK, HIGH);
     }
-    _delay_us(200); 
+    if (fast) _delay_us(4); 
+    else _delay_us(200); 
     val = (val << 1) + digitalRead(TMISO);
     if (ctx.levelshifting) {
       pinMode(TSCK, OUTPUT);
     } else {
       digitalWrite(TSCK, LOW);
     }
-    _delay_us(200);
+    if (fast) _delay_us(4); 
+    else _delay_us(200); 
   }
   return val;
 }
 
-byte ispSend (byte c1, byte c2, byte c3, byte c4, boolean last) {
+byte ispSend (byte c1, byte c2, byte c3, byte c4, boolean last, boolean fast) {
   byte res;
-  ispTransfer(c1);
-  ispTransfer(c2);
-  res = ispTransfer(c3);
+  ispTransfer(c1, fast);
+  ispTransfer(c2, fast);
+  res = ispTransfer(c3, fast);
   if (last)
-    res = ispTransfer(c4);
+    res = ispTransfer(c4, fast);
   else
-    ispTransfer(c4);
+    ispTransfer(c4, fast);
   return res;
 }
 
@@ -3274,7 +3283,7 @@ boolean enterProgramMode ()
     _delay_us(30);             // short positive RESET pulse of at least 2 clock cycles
     pinMode(DWLINE, OUTPUT);  
     _delay_ms(30);            // wait at least 20 ms before sending enable sequence
-    if (ispSend(0xAC, 0x53, 0x00, 0x00, false) == 0x53) break;
+    if (ispSend(0xAC, 0x53, 0x00, 0x00, false, false) == 0x53) break;
   } while (--timeout);
   if (timeout == 0) {
     leaveProgramMode();
@@ -3301,9 +3310,9 @@ void leaveProgramMode()
 unsigned int ispGetChipId ()
 {
   unsigned int id;
-  if (ispSend(0x30, 0x00, 0x00, 0x00, true) != 0x1E) return 0;
-  id = ispSend(0x30, 0x00, 0x01, 0x00, true) << 8;
-  id |= ispSend(0x30, 0x00, 0x02, 0x00, true);
+  if (ispSend(0x30, 0x00, 0x00, 0x00, true, false) != 0x1E) return 0;
+  id = ispSend(0x30, 0x00, 0x01, 0x00, true, false) << 8;
+  id |= ispSend(0x30, 0x00, 0x02, 0x00, true, false);
   //DEBPR(F("ISP SIG:   "));
   //DEBLNF(id,HEX);
   return id;
@@ -3316,9 +3325,9 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
   byte lowfuse, highfuse, extfuse;
   boolean succ = true;
 
-  lowfuse = ispSend(0x50, 0x00, 0x00, 0x00, true);
-  highfuse = ispSend(0x58, 0x08, 0x00, 0x00, true);
-  extfuse = ispSend(0x50, 0x08, 0x00, 0x00, true);
+  lowfuse = ispSend(0x50, 0x00, 0x00, 0x00, true, false);
+  highfuse = ispSend(0x58, 0x08, 0x00, 0x00, true, false);
+  extfuse = ispSend(0x50, 0x08, 0x00, 0x00, true, false);
 
   if (high) newfuse = highfuse;
   else newfuse = lowfuse;
@@ -3330,24 +3339,24 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
   if (high) highfuse = newfuse;
   else lowfuse = newfuse;
 
-  ispSend(0xAC, 0xA0, 0x00, lowfuse, true);
+  ispSend(0xAC, 0xA0, 0x00, lowfuse, true, false);
   _delay_ms(15);
-  succ &= (ispSend(0x50, 0x00, 0x00, 0x00, true) == lowfuse);
+  succ &= (ispSend(0x50, 0x00, 0x00, 0x00, true, false) == lowfuse);
 
-  ispSend(0xAC, 0xA4, 0x00, extfuse, true);
+  ispSend(0xAC, 0xA4, 0x00, extfuse, true, false);
   _delay_ms(15);
-  succ &= (ispSend(0x50, 0x08, 0x00, 0x00, true) == extfuse);
+  succ &= (ispSend(0x50, 0x08, 0x00, 0x00, true, false) == extfuse);
 
-  ispSend(0xAC, 0xA8, 0x00, highfuse, true);
+  ispSend(0xAC, 0xA8, 0x00, highfuse, true, false);
   _delay_ms(15);
-  succ &= (ispSend(0x58, 0x08, 0x00, 0x00, true) == highfuse);
+  succ &= (ispSend(0x58, 0x08, 0x00, 0x00, true, false) == highfuse);
 
   return succ;
 }
 
 boolean ispEraseFlash(void)
 {
-  ispSend(0xAC, 0x80, 0x00, 0x00, true);
+  ispSend(0xAC, 0x80, 0x00, 0x00, true, false);
   _delay_ms(20);
   pinMode(DWLINE, INPUT); // short positive pulse
   _delay_ms(1);
@@ -3357,7 +3366,7 @@ boolean ispEraseFlash(void)
 
 boolean ispLocked()
 {
-  return (ispSend(0x58, 0x00, 0x00, 0x00, true) != 0xFF);
+  return (ispSend(0x58, 0x00, 0x00, 0x00, true, false) != 0xFF);
 }
 
 
@@ -4322,5 +4331,323 @@ int DWtests(int &num)
     testSummary(failed);
     gdbSendReply("OK");
     return 0;
+  }
+}
+
+/************************************** ISP programmer ***********************************/
+
+//
+//  In-System Programmer (adapted from ArduinoISP sketch by Randall Bohn and its mods by Wayne Holder)
+//
+//  My changes to Mr Bohn's original code include removing and renaming functions that were redundant with
+//  my code, converting other functions to cases in a master switch() statement, removing code that served
+//  no purpose, and making some structural changes to reduce the size of the code.
+//  
+//  Portions of the code after this point were originally Copyright (c) 2008-2011 Randall Bohn
+//    If you require a license, see:  http://www.opensource.org/licenses/bsd-license.php
+//
+
+// STK Definitions
+#define STK_OK      0x10    // DLE
+#define STK_FAILED  0x11    // DC1
+#define STK_UNKNOWN 0x12    // DC2
+#define STK_INSYNC  0x14    // DC4
+#define STK_NOSYNC  0x15    // NAK
+#define CRC_EOP     0x20    // Ok, it is a space...
+
+// Code definitions
+#define EECHUNK   (32)
+
+// Variables used by In-System Programmer code
+
+uint16_t      pagesize;
+uint16_t      eepromsize;
+bool          rst_active_high;
+int           pmode = 0;
+unsigned int  here;           // Address for reading and writing, set by 'U' command
+unsigned int  hMask;          // Pagesize mask for 'here" address
+
+void ISPprogramming(boolean fast) {
+  
+  setSysState(PROG_STATE);
+  if (!fast) {
+    Serial.end();
+    Serial.begin(PROGBPS);
+  }
+
+  while (true) {
+    if (Serial.available()) {
+      avrisp();
+    }
+    if (ctx.state != PROG_STATE) {
+      if (!fast) {
+	Serial.end();
+	Serial.begin(HOSTBPS);
+      }
+      leaveProgramMode();
+      return; // return when finished
+    }
+  }
+}
+
+uint8_t getch () {
+  while (!Serial.available());
+  return Serial.read();
+}
+
+void fill (int n) {
+  for (int x = 0; x < n; x++) {
+    buf[x] = getch();
+  }
+}
+
+void empty_reply () {
+  if (CRC_EOP == getch()) {
+    Serial.write(STK_INSYNC);
+    Serial.write(STK_OK);
+  } else {
+    Serial.write(STK_NOSYNC);
+  }
+}
+
+void breply (uint8_t b) {
+  if (CRC_EOP == getch()) {
+    Serial.write(STK_INSYNC);
+    Serial.write(b);
+    Serial.write(STK_OK);
+  } else {
+    Serial.write(STK_NOSYNC);
+  }
+}
+
+////////////////////////////////////
+//      Command Dispatcher
+////////////////////////////////////
+
+void avrisp () {
+  uint8_t ch = getch();
+  switch (ch) {
+    case 0x30:                                  // '0' - 0x30 Get Synchronization (Sign On)
+      empty_reply();
+      break;
+      
+    case 0x31:                                  // '1' - 0x31 Check if Starterkit Present
+      if (getch() == CRC_EOP) {
+        Serial.write(STK_INSYNC);
+        Serial.print("AVR ISP");
+        Serial.write(STK_OK);
+      } else {
+        Serial.write(STK_NOSYNC);
+      }
+      break;
+
+    case 0x41:                                  // 'A' - 0x41 Get Parameter Value
+      switch (getch()) {
+        case 0x80:
+          breply(0x02); // HWVER
+          break;
+        case 0x81:
+          breply(0x01); // SWMAJ
+          break;
+        case 0x82:
+          breply(0x12); // SWMIN
+          break;
+        case 0x93:
+          breply('S');  // Serial programmer
+          break;
+        default:
+          breply(0);
+      }
+      break;
+      
+    case 0x42:                                  // 'B' - 0x42 Set Device Programming Parameters
+      fill(20);
+      // AVR devices have active low reset, AT89Sx are active high
+      rst_active_high = (buf[0] >= 0xE0);
+      pagesize   = (buf[12] << 8) + buf[13];
+      // Setup page mask for 'here' address variable
+      if (pagesize == 32) {
+        hMask = 0xFFFFFFF0;
+      } else if (pagesize == 64) {
+        hMask = 0xFFFFFFE0;
+      } else if (pagesize == 128) {
+        hMask = 0xFFFFFFC0;
+      } else if (pagesize == 256) {
+        hMask = 0xFFFFFF80;
+      } else {
+        hMask = 0xFFFFFFFF;
+      }
+      eepromsize = (buf[14] << 8) + buf[15];
+      empty_reply();
+      break;
+      
+    case 0x45:                                  // 'E' - 0x45 Set Extended Device Programming Parameters (ignored)
+      fill(5);
+      empty_reply();
+      break;
+      
+    case 0x50:                                  // 'P' - 0x50 Enter Program Mode
+      if (!pmode) {
+	if (enterProgramMode()) 
+	  pmode = 1;
+      }
+      if (pmode) {
+	empty_reply();
+      } else {
+	setSysState(ERROR_STATE);
+	return;
+      }
+      break;
+      
+    case 0x51:                                  // 'Q' - 0x51 Leave Program Mode
+      // We're about to take the target out of reset so configure SPI pins as input
+      leaveProgramMode();
+      pmode = 0;
+      setSysState(NOTCONN_STATE);
+      empty_reply();
+      break;
+
+    case  0x55:                                 // 'U' - 0x55 Load Address (word)
+      here = getch();
+      here += 256 * getch();
+      empty_reply();
+      break;
+
+    case 0x56:                                  // 'V' - 0x56 Universal Command
+      fill(4);
+      breply(ispSend(buf[0], buf[1], buf[2], buf[3], true, true));
+      break;
+
+    case 0x60:                                  // '`' - 0x60 Program Flash Memory
+      getch(); // low addr
+      getch(); // high addr
+      empty_reply();
+      break;
+      
+    case 0x61:                                  // 'a' - 0x61 Program Data Memory
+      getch(); // data
+      empty_reply();
+      break;
+
+    case 0x64: {                                // 'd' - 0x64 Program Page (Flash or EEPROM)
+      char result = STK_FAILED;
+      unsigned int length = 256 * getch();
+      length += getch();
+      char memtype = getch();
+      // flash memory @here, (length) bytes
+      if (memtype == 'F') {
+        fill(length);
+        if (CRC_EOP == getch()) {
+          Serial.write(STK_INSYNC);
+          int ii = 0;
+          unsigned int page = here & hMask;
+          while (ii < length) {
+            if (page != (here & hMask)) {
+              ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true, true);  // commit(page);
+              page = here & hMask;
+            }
+            ispSend(0x40 + 8 * LOW, here >> 8 & 0xFF, here & 0xFF, buf[ii++], true, true);
+            ispSend(0x40 + 8 * HIGH, here >> 8 & 0xFF, here & 0xFF, buf[ii++], true, true);
+            here++;
+          }
+          ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true, true);      // commit(page);
+          Serial.write(STK_OK);
+          break;
+        } else {
+          Serial.write(STK_NOSYNC);
+        }
+        break;
+      } else if (memtype == 'E') {
+        // here is a word address, get the byte address
+        unsigned int start = here * 2;
+        unsigned int remaining = length;
+        if (length > eepromsize) {
+          result = STK_FAILED;
+        } else {
+          while (remaining > EECHUNK) {
+            // write (length) bytes, (start) is a byte address
+            // this writes byte-by-byte, page writing may be faster (4 bytes at a time)
+            fill(length);
+            for (unsigned int ii = 0; ii < EECHUNK; ii++) {
+              unsigned int addr = start + ii;
+              ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true, true);
+              delay(45);
+            }
+            start += EECHUNK;
+            remaining -= EECHUNK;
+          }
+          // write (length) bytes, (start) is a byte address
+          // this writes byte-by-byte, page writing may be faster (4 bytes at a time)
+          fill(length);
+          for (unsigned int ii = 0; ii < remaining; ii++) {
+            unsigned int addr = start + ii;
+            ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true, true);
+            delay(45);
+          }
+          result = STK_OK;
+        }
+        if (CRC_EOP == getch()) {
+          Serial.write(STK_INSYNC);
+          Serial.write(result);
+        } else {
+          Serial.write(STK_NOSYNC);
+        }
+        break;
+      }
+      Serial.write(STK_FAILED);
+    } break;
+
+    case 0x74: {                                // 't' - 0x74 Read Page (Flash or EEPROM)
+      char result = STK_FAILED;
+      int length = 256 * getch();
+      length += getch();
+      char memtype = getch();
+      if (CRC_EOP != getch()) {
+        Serial.write(STK_NOSYNC);
+        break;
+      }
+      Serial.write(STK_INSYNC);
+      if (memtype == 'F') {
+        for (int ii = 0; ii < length; ii += 2) {
+          Serial.write(ispSend(0x20 + LOW * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true, true));   // low
+          Serial.write(ispSend(0x20 + HIGH * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true, true));  // high
+          here++;
+        }
+        result = STK_OK;
+      } else if (memtype == 'E') {
+        // here again we have a word address
+        int start = here * 2;
+        for (int ii = 0; ii < length; ii++) {
+          int addr = start + ii;
+          Serial.write(ispSend(0xA0, (addr >> 8) & 0xFF, addr & 0xFF, 0xFF, true, true));
+        }
+        result = STK_OK;
+      }
+      Serial.write(result);
+    } break;
+
+    case 0x75:                                  // 'u' - 0x75 Read Signature Bytes
+      if (CRC_EOP != getch()) {
+        Serial.write(STK_NOSYNC);
+        break;
+      }
+      Serial.write(STK_INSYNC);
+      Serial.write(ispSend(0x30, 0x00, 0x00, 0x00, true, true)); // high
+      Serial.write(ispSend(0x30, 0x00, 0x01, 0x00, true, true)); // middle
+      Serial.write(ispSend(0x30, 0x00, 0x02, 0x00, true, true)); // low
+      Serial.write(STK_OK);
+      break;
+
+    case 0x20:                                  // ' ' - 0x20 CRC_EOP
+      // expecting a command, not CRC_EOP, this is how we can get back in sync
+      Serial.write(STK_NOSYNC);
+      break;
+
+    default:                                    // anything else we will return STK_UNKNOWN
+      if (CRC_EOP == getch()) {
+        Serial.write(STK_UNKNOWN);
+      } else {
+        Serial.write(STK_NOSYNC);
+      }
   }
 }

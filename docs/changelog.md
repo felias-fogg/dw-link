@@ -758,4 +758,11 @@ used) set in setup
 when levelshifter is true
 * same for IVSUP in power function
 
+## Version 2.2.0 (27-Aug-2023)
+* programmer integrated
+* switch to programmer when a break condition is detected; if
+  somebody sent a '0' using 19200 baud, i.e. half a byte is LOW, and
+  the speed is only 1/5th, meaning more than 9 bit times at 115200 are
+  LOW, then this results in a framing error = break 
+* if a '0' is received in disconnected state (using standard bps of 115200), then ISP programming mode is entered as well
 

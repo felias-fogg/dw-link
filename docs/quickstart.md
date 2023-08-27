@@ -65,23 +65,15 @@ In order to install the firmware,
 
 ##### On a Mac: 
 
-You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. This can take some considerable time.
-
-Before you can download avr-gdb, you have to inform homebrew about a 'tap' you want to consider when looking for packages:
+You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. Installing homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, as follows:
 
 ```
-brew tap osx-cross/avr
-```
-
-After that, you can install avr-gdb, the host debugger, as follows:
-
-```
-brew install avr-gdb
+brew tap osx-cross/avr && brew install avr-gdb
 ```
 
 ##### Under Linux:
 
-You can install avr-gdb with the appropriate packet manager. For Debian/Ubuntu that looks as follows:
+You can install avr-gdb with the appropriate packet manager. For Debian/Ubuntu that looks as follows (note that the package is indeed named gdb-avr):
 
 ```
 sudo apt-get install gdb-avr 
@@ -116,10 +108,11 @@ Here is a table of all the connections so that you can check that you have made 
 
 The system LED gives you information about the internal state of the debugger: 
 
-* not connected (LED is off)
-* waiting for power-cycling the target (LED flashes every second for 0.1 sec)
-* target is connected (LED is on) 
-* error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec)
+* not connected (LED is off),
+* waiting for power-cycling the target (LED flashes every second for 0.1 sec),
+* target is connected (LED is on),
+* ISP programming (LED is blinking slowly),
+* error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec).
 
 **Check:** Go through the table above and check every connection. Wrong wiring can often cause hours of useless software debugging!
 
@@ -236,3 +229,7 @@ If something does not work as advertised, it is very often a simple wiring probl
 The most annoying problem is that after a debugging session, an MCU might not be responsive anymore. The reason can be that the RESET line, which during debugging is used as a communication line, has not been reenabled. While a regular exit of the debugger restores the RESET line, it can happen that the debugger is terminated without restoring the RESET line. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`. 
 
 If you think that you have found a bug, please consider posting it on [issues](https://github.com/felias-fogg/dw-link/issues) and consider filling out the [issue form](issue_form.md) before.
+
+## After debugging has finished
+
+So what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1).  
