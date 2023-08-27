@@ -7,7 +7,7 @@
 <setting keepoldvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.05" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -12658,7 +12658,7 @@ http://dangerousprototypes.com</description>
 <part name="R8" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="R1206" package3d_urn="urn:adsk.eagle:package:23540/2" value="220"/>
 <part name="R9" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="R1206" package3d_urn="urn:adsk.eagle:package:23540/2" value="10k"/>
 <part name="DEBUG" library="dp_devices" deviceset="CON_HEADER_1X02" device="-PTH"/>
-<part name="RES_EN" library="dp_devices" deviceset="CON_HEADER_1X02" device="-PTH"/>
+<part name="RESDIS" library="dp_devices" deviceset="CON_HEADER_1X02" device="-PTH"/>
 <part name="GND3" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND1" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="GND4" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
@@ -12671,49 +12671,49 @@ http://dangerousprototypes.com</description>
 <sheets>
 <sheet>
 <plain>
-<text x="215.265" y="21.59" size="1.778" layer="91" grouprefs="PINS IOL1 IO">0</text>
-<text x="215.265" y="24.13" size="1.778" layer="91" grouprefs="PINS IOL1 IO">1</text>
-<text x="215.265" y="26.67" size="1.778" layer="91" grouprefs="PINS IOL1 IO">2</text>
-<text x="215.265" y="29.21" size="1.778" layer="91" grouprefs="PINS IOL1 IO">3</text>
-<text x="215.265" y="31.75" size="1.778" layer="91" grouprefs="PINS IOL1 IO">4</text>
-<text x="215.265" y="34.29" size="1.778" layer="91" grouprefs="PINS IOL1 IO">5</text>
-<text x="215.265" y="36.83" size="1.778" layer="91" grouprefs="PINS IOL1 IO">6</text>
-<text x="215.265" y="39.37" size="1.778" layer="91" grouprefs="PINS IOL1 IO">7</text>
-<text x="215.265" y="50.8" size="1.778" layer="91" grouprefs="PINS LABH IO">8</text>
-<text x="215.265" y="53.34" size="1.778" layer="91" grouprefs="PINS LABH IO">9</text>
-<text x="215.265" y="55.88" size="1.778" layer="91" grouprefs="PINS LABH IO">10</text>
-<text x="215.265" y="58.42" size="1.778" layer="91" grouprefs="PINS IO">11</text>
-<text x="215.265" y="60.96" size="1.778" layer="91" grouprefs="PINS LABH IO">12</text>
-<text x="215.265" y="63.5" size="1.778" layer="91" grouprefs="PINS LABH IO">13</text>
-<text x="215.265" y="66.04" size="1.778" layer="91" grouprefs="PINS IO">GND</text>
-<text x="215.265" y="68.58" size="1.778" layer="91" grouprefs="PINS IO">REF</text>
-<text x="215.265" y="121.92" size="1.778" layer="91" grouprefs="PINS IO">RESET</text>
-<text x="215.265" y="119.38" size="1.778" layer="91" grouprefs="PINS IO">3V3</text>
-<text x="215.265" y="116.84" size="1.778" layer="91" grouprefs="PINS IO">5V</text>
-<text x="215.265" y="114.3" size="1.778" layer="91" grouprefs="PINS IO">GND</text>
-<text x="215.265" y="111.76" size="1.778" layer="91" grouprefs="PINS IO">GND</text>
-<text x="215.265" y="109.22" size="1.778" layer="91" grouprefs="PINS IO">Vin</text>
-<text x="215.265" y="96.52" size="1.778" layer="91" grouprefs="PINS IO">A5</text>
-<text x="215.265" y="94.615" size="1.778" layer="91" grouprefs="PINS IO">A4</text>
-<text x="215.265" y="92.075" size="1.778" layer="91" grouprefs="PINS IO">A3</text>
-<text x="215.265" y="89.535" size="1.778" layer="91" grouprefs="PINS IO">A2</text>
-<text x="215.265" y="86.995" size="1.778" layer="91" grouprefs="PINS IO">A1</text>
-<text x="215.265" y="84.455" size="1.778" layer="91" grouprefs="PINS IO">A0</text>
+<text x="215.265" y="21.59" size="1.778" layer="91" grouprefs="IO IOL1 PINS">0</text>
+<text x="215.265" y="24.13" size="1.778" layer="91" grouprefs="IO IOL1 PINS">1</text>
+<text x="215.265" y="26.67" size="1.778" layer="91" grouprefs="IO IOL1 PINS">2</text>
+<text x="215.265" y="29.21" size="1.778" layer="91" grouprefs="IO IOL1 PINS">3</text>
+<text x="215.265" y="31.75" size="1.778" layer="91" grouprefs="IO IOL1 PINS">4</text>
+<text x="215.265" y="34.29" size="1.778" layer="91" grouprefs="IO IOL1 PINS">5</text>
+<text x="215.265" y="36.83" size="1.778" layer="91" grouprefs="IO IOL1 PINS">6</text>
+<text x="215.265" y="39.37" size="1.778" layer="91" grouprefs="IO IOL1 PINS">7</text>
+<text x="215.265" y="50.8" size="1.778" layer="91" grouprefs="IO LABH PINS">8</text>
+<text x="215.265" y="53.34" size="1.778" layer="91" grouprefs="IO LABH PINS">9</text>
+<text x="215.265" y="55.88" size="1.778" layer="91" grouprefs="IO LABH PINS">10</text>
+<text x="215.265" y="58.42" size="1.778" layer="91" grouprefs="IO PINS">11</text>
+<text x="215.265" y="60.96" size="1.778" layer="91" grouprefs="IO LABH PINS">12</text>
+<text x="215.265" y="63.5" size="1.778" layer="91" grouprefs="IO LABH PINS">13</text>
+<text x="215.265" y="66.04" size="1.778" layer="91" grouprefs="IO PINS">GND</text>
+<text x="215.265" y="68.58" size="1.778" layer="91" grouprefs="IO PINS">REF</text>
+<text x="215.265" y="121.92" size="1.778" layer="91" grouprefs="IO PINS">RESET</text>
+<text x="215.265" y="119.38" size="1.778" layer="91" grouprefs="IO PINS">3V3</text>
+<text x="215.265" y="116.84" size="1.778" layer="91" grouprefs="IO PINS">5V</text>
+<text x="215.265" y="114.3" size="1.778" layer="91" grouprefs="IO PINS">GND</text>
+<text x="215.265" y="111.76" size="1.778" layer="91" grouprefs="IO PINS">GND</text>
+<text x="215.265" y="109.22" size="1.778" layer="91" grouprefs="IO PINS">Vin</text>
+<text x="215.265" y="96.52" size="1.778" layer="91" grouprefs="IO PINS">A5</text>
+<text x="215.265" y="94.615" size="1.778" layer="91" grouprefs="IO PINS">A4</text>
+<text x="215.265" y="92.075" size="1.778" layer="91" grouprefs="IO PINS">A3</text>
+<text x="215.265" y="89.535" size="1.778" layer="91" grouprefs="IO PINS">A2</text>
+<text x="215.265" y="86.995" size="1.778" layer="91" grouprefs="IO PINS">A1</text>
+<text x="215.265" y="84.455" size="1.778" layer="91" grouprefs="IO PINS">A0</text>
 </plain>
 <instances>
-<instance part="IOL" gate="A" x="213.36" y="33.02" smashed="yes" rot="MR180" grouprefs="PINS IOL1 IO">
+<instance part="IOL" gate="A" x="213.36" y="33.02" smashed="yes" rot="MR180" grouprefs="IO IOL1 PINS">
 <attribute name="NAME" x="207.01" y="19.685" size="1.778" layer="95" rot="MR180"/>
 <attribute name="VALUE" x="207.01" y="45.72" size="1.778" layer="96" rot="MR180"/>
 </instance>
-<instance part="IOH" gate="A" x="213.36" y="60.96" smashed="yes" rot="MR180" grouprefs="PINS IO">
+<instance part="IOH" gate="A" x="213.36" y="60.96" smashed="yes" rot="MR180" grouprefs="IO PINS">
 <attribute name="NAME" x="207.01" y="47.625" size="1.778" layer="95" rot="MR180"/>
 <attribute name="VALUE" x="207.01" y="73.66" size="1.778" layer="96" rot="MR180"/>
 </instance>
-<instance part="AD" gate="A" x="212.725" y="92.71" smashed="yes" rot="MR180" grouprefs="PINS IO">
+<instance part="AD" gate="A" x="212.725" y="92.71" smashed="yes" rot="MR180" grouprefs="IO PINS">
 <attribute name="NAME" x="206.375" y="81.915" size="1.778" layer="95" rot="MR180"/>
 <attribute name="VALUE" x="206.375" y="102.87" size="1.778" layer="96" rot="MR180"/>
 </instance>
-<instance part="POWER" gate="A" x="212.725" y="114.935" smashed="yes" grouprefs="PINS IO">
+<instance part="POWER" gate="A" x="212.725" y="114.935" smashed="yes" grouprefs="IO PINS">
 <attribute name="NAME" x="206.375" y="125.73" size="1.778" layer="95"/>
 <attribute name="VALUE" x="206.375" y="104.775" size="1.778" layer="96"/>
 </instance>
@@ -12808,7 +12808,7 @@ http://dangerousprototypes.com</description>
 <attribute name="VALUE" x="107.95" y="94.742" size="1.778" layer="96" rot="R180"/>
 </instance>
 <instance part="DEBUG" gate="J" x="190.5" y="27.94" smashed="yes" rot="R180"/>
-<instance part="RES_EN" gate="J" x="217.17" y="146.05" smashed="yes"/>
+<instance part="RESDIS" gate="J" x="217.17" y="146.05" smashed="yes"/>
 <instance part="GND3" gate="1" x="193.04" y="8.89" smashed="yes">
 <attribute name="VALUE" x="190.5" y="6.35" size="1.778" layer="96"/>
 </instance>
@@ -12902,12 +12902,12 @@ http://dangerousprototypes.com</description>
 </segment>
 <segment>
 <pinref part="GND8" gate="1" pin="GND"/>
-<pinref part="RES_EN" gate="J" pin="2"/>
+<pinref part="RESDIS" gate="J" pin="2"/>
 <wire x1="217.17" y1="143.51" x2="214.63" y2="143.51" width="0.1524" layer="91"/>
 <wire x1="214.63" y1="143.51" x2="214.63" y2="138.43" width="0.1524" layer="91"/>
 <wire x1="214.63" y1="138.43" x2="214.63" y2="137.16" width="0.1524" layer="91"/>
 <pinref part="C3" gate="G$1" pin="1"/>
-<pinref part="RES_EN" gate="J" pin="1"/>
+<pinref part="RESDIS" gate="J" pin="1"/>
 <wire x1="198.12" y1="146.05" x2="214.63" y2="146.05" width="0.1524" layer="91"/>
 <wire x1="214.63" y1="146.05" x2="217.17" y2="146.05" width="0.1524" layer="91"/>
 <wire x1="214.63" y1="146.05" x2="214.63" y2="143.51" width="0.1524" layer="91"/>
