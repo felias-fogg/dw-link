@@ -597,7 +597,7 @@ The relevant pins are therefore as defined in the following table. The pins in i
 
 ### 7.2 A simple shield
 
-Taking it one one step further, one might think about a prototype shield for an UNO or adapter board for an Arduino Nano. It is actually very straightforward to build a basic hardware debugger. Just take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
+Taking it one one step further, one might think about a prototype shield for an UNO. Just take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
 
 ![dw-probe-fritzing](pics/dw-probe-2.0.png)
 
@@ -609,13 +609,13 @@ In reality, that might look like as in the following picture.
 
 The basic adapter is quite limited. It can only source 20 mA and it cannot interact with 3.3 V systems. Thus, it would be great to have a board with the following features: 
 
-* switchable target power supply (supporting power-cycling by the hardware debugger) offering 5 volt and 3.3 volt supply at 200 mA, 
+* switchable target power supply (supporting power-cycling by the hardware debugger) offering 5 volt and 3.3 volt supply up to 400 mA, 
 * a bidirectional (conditional) level-shifter on the debugWIRE/RESET line,
 * an optional pull-up resistor of 10 kΩ on this line,
 * unidirectional (conditional) level-shifters on the ISP lines, and
 * high-impedance status for the two output signals MOSI and SCK when ISP is inactive.
 
-Such a board does not need to be very complex. In fact, 3 MOS-FETs, an LED, and some passive components are enough.  For the SPI lines, we have to shift the MISO line from 3.3-5 V to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, we do not do any level shifting at all and rely on the fact that the input pins of the hardware debugger recognize a logical one already at 3.0 V. For the down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These pull-ups can be disabled when no ISP programming is active, giving full control to the target system. Finally, the RESET/debugWIRE line uses the [common bidirectional design with the N-Channel MOSFET BS138](https://cdn-shop.adafruit.com/datasheets/an97055.pdf). The schematic looks as follows.
+Such a board does not need to be very complex. In fact, 3 MOS-FETs, an LED, and some passive components are enough.  For the SPI lines, we have to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, we do not do any level shifting at all and rely on the fact that the input pins of the hardware debugger recognize a logical one already at 3.0 V. For the down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These pull-ups can be disabled when no ISP programming is active, giving full control to the target system. Finally, the RESET/debugWIRE line uses the [common bidirectional design with the N-Channel MOSFET BS138](https://cdn-shop.adafruit.com/datasheets/an97055.pdf). The schematic looks as follows.
 
 ![dw-probe-chematic](../pcb/dw-link-probe-V2-schematic.png)
 
@@ -623,7 +623,7 @@ And here is the breadboard prototype, which works beautifully.
 
 ![V2-prototype](pics/dw-probe-V2.jpg)
 
-The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory, and the order for the first batch of 3 PCBs has been made. I will update you!
+The Eagle design files of the Version 2.0 board are in the [pcb](../pcb/) directory, and the order for the first batch of 3 PCBs has been made. 
 
 Before you start debugging with the new probe, you have to set two jumpers. In addition, there are two places for headers labeled **RESET EN** and **DEB**, which both can be left untouched. Then you are all set and can start debugging. 
 
@@ -991,3 +991,4 @@ Initial version
 - added that disabling debugWIRE is now done automatically 
 - added dw-server.py
 - added description of Gede
+- added description of new hardware version
