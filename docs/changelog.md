@@ -766,3 +766,8 @@ when levelshifter is true
   LOW, then this results in a framing error = break 
 * if a '0' is received in disconnected state (using standard bps of 115200), then ISP programming mode is entered as well
 
+## Version 2.2.1 (27-Aug-2023)
+
+* fixed the error in power() that VSUP was not set to OUTPUT
+* added a few declarations in dw-link.h
+* dealt with the warnings in avrisp()

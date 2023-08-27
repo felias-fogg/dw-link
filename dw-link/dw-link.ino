@@ -34,7 +34,8 @@
 // For the latter, I experienced non-deterministic failures of unit tests, probably
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
-#define VERSION "2.2.0"
+
+#define VERSION "2.2.1"
 
 // some constants, you may want to change
 #define PROGBPS 19200         // ISP programmer communication speed
@@ -1116,6 +1117,7 @@ void power(boolean on)
 {
   //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
+    pinMode(VSUP, OUTPUT);
     digitalWrite(VSUP, HIGH);
     pinMode(IVSUP, OUTPUT);
     digitalWrite(IVSUP, LOW);
@@ -3198,7 +3200,7 @@ byte DWflushInput(void)
 /***************************** a little bit of SPI programming ********/
 
 
-void enableSpiPins () {
+void enableSpiPins (void) {
   DEBLN(F("Eenable SPI ..."));
   pinMode(DWLINE, OUTPUT);
   digitalWrite(DWLINE, LOW);
@@ -3220,7 +3222,7 @@ void enableSpiPins () {
   pinMode(TMISO, INPUT);
 }
 
-void disableSpiPins () {
+void disableSpiPins (void) {
   pinMode(TSCK, INPUT); // disconnect TSCK = High state
   digitalWrite(TSCK, LOW); // make sure that internal pullups are off
   pinMode(TMOSI, INPUT); // disconnect TMOSI = High state
@@ -3269,7 +3271,7 @@ byte ispSend (byte c1, byte c2, byte c3, byte c4, boolean last, boolean fast) {
 }
 
 
-boolean enterProgramMode ()
+boolean enterProgramMode (void)
 {
   byte timeout = 5;
 
@@ -3296,7 +3298,7 @@ boolean enterProgramMode ()
   }
 }
 
-void leaveProgramMode()
+void leaveProgramMode(void)
 {
   //DEBLN(F("Leaving progmode"));
   disableSpiPins();
@@ -3307,7 +3309,7 @@ void leaveProgramMode()
   
 
 // identify chip
-unsigned int ispGetChipId ()
+unsigned int ispGetChipId (void)
 {
   unsigned int id;
   if (ispSend(0x30, 0x00, 0x00, 0x00, true, false) != 0x1E) return 0;
@@ -4365,7 +4367,7 @@ uint16_t      eepromsize;
 bool          rst_active_high;
 int           pmode = 0;
 unsigned int  here;           // Address for reading and writing, set by 'U' command
-unsigned int  hMask;          // Pagesize mask for 'here" address
+unsigned long  hMask;          // Pagesize mask for 'here" address
 
 void ISPprogramming(boolean fast) {
   
@@ -4390,7 +4392,7 @@ void ISPprogramming(boolean fast) {
   }
 }
 
-uint8_t getch () {
+byte getch (void) {
   while (!Serial.available());
   return Serial.read();
 }
@@ -4401,7 +4403,7 @@ void fill (int n) {
   }
 }
 
-void empty_reply () {
+void empty_reply (void) {
   if (CRC_EOP == getch()) {
     Serial.write(STK_INSYNC);
     Serial.write(STK_OK);
@@ -4410,7 +4412,7 @@ void empty_reply () {
   }
 }
 
-void breply (uint8_t b) {
+void breply (byte b) {
   if (CRC_EOP == getch()) {
     Serial.write(STK_INSYNC);
     Serial.write(b);
@@ -4424,8 +4426,12 @@ void breply (uint8_t b) {
 //      Command Dispatcher
 ////////////////////////////////////
 
-void avrisp () {
-  uint8_t ch = getch();
+void avrisp (void) {
+  byte ch = getch();
+  char memtype;
+  char result;
+  unsigned int length, start, remaining, page, ii, addr;
+  
   switch (ch) {
     case 0x30:                                  // '0' - 0x30 Get Synchronization (Sign On)
       empty_reply();
@@ -4467,15 +4473,15 @@ void avrisp () {
       pagesize   = (buf[12] << 8) + buf[13];
       // Setup page mask for 'here' address variable
       if (pagesize == 32) {
-        hMask = 0xFFFFFFF0;
+        hMask = 0xFFFFFFF0UL;
       } else if (pagesize == 64) {
-        hMask = 0xFFFFFFE0;
+        hMask = 0xFFFFFFE0UL;
       } else if (pagesize == 128) {
-        hMask = 0xFFFFFFC0;
+        hMask = 0xFFFFFFC0UL;
       } else if (pagesize == 256) {
-        hMask = 0xFFFFFF80;
+        hMask = 0xFFFFFF80UL;
       } else {
-        hMask = 0xFFFFFFFF;
+        hMask = 0xFFFFFFFFUL;
       }
       eepromsize = (buf[14] << 8) + buf[15];
       empty_reply();
@@ -4530,17 +4536,17 @@ void avrisp () {
       break;
 
     case 0x64: {                                // 'd' - 0x64 Program Page (Flash or EEPROM)
-      char result = STK_FAILED;
-      unsigned int length = 256 * getch();
+      result = STK_FAILED;
+      length = 256 * getch();
       length += getch();
-      char memtype = getch();
+      memtype = getch();
       // flash memory @here, (length) bytes
       if (memtype == 'F') {
         fill(length);
         if (CRC_EOP == getch()) {
           Serial.write(STK_INSYNC);
-          int ii = 0;
-          unsigned int page = here & hMask;
+          ii = 0;
+          page = here & hMask;
           while (ii < length) {
             if (page != (here & hMask)) {
               ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true, true);  // commit(page);
@@ -4559,8 +4565,8 @@ void avrisp () {
         break;
       } else if (memtype == 'E') {
         // here is a word address, get the byte address
-        unsigned int start = here * 2;
-        unsigned int remaining = length;
+        start = here * 2;
+        remaining = length;
         if (length > eepromsize) {
           result = STK_FAILED;
         } else {
@@ -4568,8 +4574,8 @@ void avrisp () {
             // write (length) bytes, (start) is a byte address
             // this writes byte-by-byte, page writing may be faster (4 bytes at a time)
             fill(length);
-            for (unsigned int ii = 0; ii < EECHUNK; ii++) {
-              unsigned int addr = start + ii;
+            for (ii = 0; ii < EECHUNK; ii++) {
+              addr = start + ii;
               ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true, true);
               delay(45);
             }
@@ -4579,8 +4585,8 @@ void avrisp () {
           // write (length) bytes, (start) is a byte address
           // this writes byte-by-byte, page writing may be faster (4 bytes at a time)
           fill(length);
-          for (unsigned int ii = 0; ii < remaining; ii++) {
-            unsigned int addr = start + ii;
+          for (ii = 0; ii < remaining; ii++) {
+            addr = start + ii;
             ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true, true);
             delay(45);
           }
@@ -4598,17 +4604,17 @@ void avrisp () {
     } break;
 
     case 0x74: {                                // 't' - 0x74 Read Page (Flash or EEPROM)
-      char result = STK_FAILED;
-      int length = 256 * getch();
+      result = STK_FAILED;
+      length = 256 * getch();
       length += getch();
-      char memtype = getch();
+      memtype = getch();
       if (CRC_EOP != getch()) {
         Serial.write(STK_NOSYNC);
         break;
       }
       Serial.write(STK_INSYNC);
       if (memtype == 'F') {
-        for (int ii = 0; ii < length; ii += 2) {
+        for (ii = 0; ii < length; ii += 2) {
           Serial.write(ispSend(0x20 + LOW * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true, true));   // low
           Serial.write(ispSend(0x20 + HIGH * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true, true));  // high
           here++;
@@ -4616,9 +4622,9 @@ void avrisp () {
         result = STK_OK;
       } else if (memtype == 'E') {
         // here again we have a word address
-        int start = here * 2;
-        for (int ii = 0; ii < length; ii++) {
-          int addr = start + ii;
+        start = here * 2;
+        for (ii = 0; ii < length; ii++) {
+          addr = start + ii;
           Serial.write(ispSend(0xA0, (addr >> 8) & 0xFF, addr & 0xFF, 0xFF, true, true));
         }
         result = STK_OK;
