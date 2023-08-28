@@ -776,3 +776,6 @@ when levelshifter is true
 * added two new possible clocks: alternate RC clock and ULP
 * added new command: `monitor clock`
 
+## Version 3.0.0 (28-Aug-2023)
+* restructured monitor commands so that most of them have now
+one argument
