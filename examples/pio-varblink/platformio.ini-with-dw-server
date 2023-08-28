@@ -31,7 +31,7 @@ debug_init_cmds =
 	end
 	file "$PROG_PATH"
 	target remote $DEBUG_PORT
-	monitor dwconnect
+	monitor dwire
 	load
 	$INIT_BREAK
 

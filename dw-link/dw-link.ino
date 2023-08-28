@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "2.3.0"
+#define VERSION "3.0.0"
 
 // some constants, you may want to change
 #define PROGBPS 19200         // ISP programmer communication speed
@@ -57,7 +57,8 @@
 // #define UNITDW 1           // enable debugWIRE unit tests
 // #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
-// #define NOMONINTORHELP 1   // disable monitor help function 
+// #define NOMONITORHELP 1   // disable monitor help function
+// #define NOISPPROG 1        // disable ISP programmer
 
 #if UNITALL == 1
 #undef  UNITDW
@@ -394,6 +395,44 @@ const byte speedcmd[] PROGMEM = { 0x83, 0x82, 0x81, 0x80, 0xA0, 0xA1 };
 unsigned long speedlimit = SPEEDLIMIT;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkARc, CkXtal, CkExt, CkSlow, CkUlp, Erase, DWEN, UnknownFuse };
+
+// monitor command names
+const char mohelp[] PROGMEM = "help";
+const char moversion[] PROGMEM = "version";
+const char modwire[] PROGMEM = "dwire";
+const char moreset[] PROGMEM = "reset";
+const char mockdiv[] PROGMEM = "ckdiv";
+const char moosc[] PROGMEM = "oscillator";
+const char mobreak[] PROGMEM = "breakpoint";
+const char mospeed[] PROGMEM = "speed";
+const char mosinglestep[] PROGMEM = "singlestep";
+const char moflashcount[] PROGMEM = "flashcount";
+const char molasterror[] PROGMEM = "lasterror";
+const char motimeouts[] PROGMEM = "timeouts";
+const char moram[] PROGMEM = "ramusage";
+const char motest[] PROGMEM = "test";
+
+// command index
+#define MOHELP 0
+#define MOVERSION 1
+#define MODWIRE 2
+#define MORESET 3
+#define MOCKDIV 4
+#define MOOSC 5
+#define MOBREAK 6
+#define MOSPEED 7
+#define MOSINGLESTEP 8
+#define MOFLASHCOUNT 9
+#define MOLASTERROR 10
+#define MOTIMEOUTS 11
+#define MORAM 12
+#define MOTEST 13
+#define NUMMONCMDS 14
+
+// array with all monitor commands
+const char *const mocmds[NUMMONCMDS] PROGMEM = {
+  mohelp, moversion, modwire, moreset, mockdiv, moosc, mobreak, mospeed, mosinglestep,
+  moflashcount, molasterror, motimeouts, moram, motest }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -796,241 +835,166 @@ void gdbParsePacket(const byte *buff)
   }
 }
 
-void gdbParseMonitorPacket(const byte *buf)
+      
+
+// parse a monitor command and execute the appropriate actions
+void gdbParseMonitorPacket(byte *buf)
 {
    [[maybe_unused]] int para = 0;
+   char cmdbuf[40];
+   int mocmd = -1;
+   char moopt = '\0';
 
   measureRam();
 
   gdbUpdateBreakpoints(true);  // update breakpoints in memory before any monitor ops
 
-  int clen = strlen((const char *)buf);
-  //DEBPR(F("clen=")); DEBLN(clen);
-  //DEBLN((const char *)buf);
+  convBufferHex2Ascii(cmdbuf, buf, 40); // conver to ASCII string
+  mocmd = gdbDetermineMonitorCommand(cmdbuf, moopt); // get command number and option char
+  if (strlen(cmdbuf) == 0) mocmd = MOHELP;
   
-  
-  if (memcmp_P(buf, (void *)PSTR("64776f666600"), max(6,min(12,clen))) == 0)                  
-    gdbStop(true);                                                            /* dwo[ff] */
-  else if (memcmp_P(buf, (void *)PSTR("6477636f6e6e65637400"), max(6,min(20,clen))) == 0)
-    if (gdbConnect(true)) gdbSendReply("OK");                               /* dwc[onnnect] */
-    else gdbSendReply("E03");
-#if NOMONITORHELP == 0
-  else if (memcmp_P(buf, (void *)PSTR("68656c7000"), max(4,min(10,clen))) == 0)                  
-    gdbHelp();                                                              /* he[lp] */
+  switch(mocmd) {
+#if (!NOMONITORHELP)
+  case MOHELP:
+    gdbHelp();
+    break;
 #endif
-  else if (memcmp_P(buf, (void *)PSTR("6c6173746572726f7200"), max(4,min(20,clen))) == 0)
-    gdbReportLastError();                                                  /* la[sterror] */
-  else if (memcmp_P(buf, (void *)PSTR("666c617368636f756e7400"), max(6,min(22,clen))) == 0)
-    gdbReportFlashCount();                                                  /* fla[shcount] */
-  else if (memcmp_P(buf, (void *)PSTR("72616d757361676500"), max(6,min(18,clen))) == 0)
-    gdbReportRamUsage();                                                    /* ram[usage] */
-  else if (memcmp_P(buf, (void *)PSTR("636b387072657363616c657200"), max(6,min(26,clen))) == 0)
-    gdbSetFuses(CkDiv8);                                                    /* ck8[prescaler] */
-  else if (memcmp_P(buf, (void *)PSTR("636b317072657363616c657200"), max(6,min(26,clen))) == 0) 
-    gdbSetFuses(CkDiv1);                                                    /* ck1[prescaler] */
-  else if (memcmp_P(buf, (void *)PSTR("72636f736300"), max(4,min(12,clen))) == 0)
-    gdbSetFuses(CkRc);                                                      /* rc[osc] */
-  else if (memcmp_P(buf, (void *)PSTR("6172636f736300"), max(4,min(14,clen))) == 0)
-    gdbSetFuses(CkARc);                                                      /* ar[cosc] */
-  else if (memcmp_P(buf, (void *)PSTR("6578746f736300"), max(4,min(14,clen))) == 0)
-    gdbSetFuses(CkExt);                                                     /* ex[tosc] */
-  else if (memcmp_P(buf, (void *)PSTR("7874616c6f736300"), max(4,min(16,clen))) == 0)
-    gdbSetFuses(CkXtal);                                                     /* xt[alosc] */
-  else if (memcmp_P(buf, (void *)PSTR("736c6f776f736300"), max(4,min(16,clen))) == 0)
-    gdbSetFuses(CkSlow);                                                     /* sl[owosc] */
-  else if (memcmp_P(buf, (void *)PSTR("756c706f736300"), max(4,min(14,clen))) == 0)
-    gdbSetFuses(CkUlp);                                                     /* ul[posc] */
-  else if (memcmp_P(buf, (void *)PSTR("636c6f636b00"), max(4,min(12,clen))) == 0)
-    gdbGetFuses();                                                     /* cl[ock] */
-  //  else if (memcmp_P(buf, (void *)PSTR("657261736500"), max(4,min(12,clen))) == 0)
-  //  gdbSetFuses(Erase);                                                     /*er[ase]*/
-  else if (memcmp_P(buf, (void *)PSTR("6877627000"), max(4,min(10,clen))) == 0)
-    gdbSetMaxBPs(1);                                                        /* hw[bp] */
-  else if (memcmp_P(buf, (void *)PSTR("7377627000"), max(4,min(10,clen))) == 0)
-    gdbSetMaxBPs(MAXBREAK);                                                 /* sw[bp] */
-  else if (memcmp_P(buf, (void *)PSTR("34627000"), max(2,min(8,clen))) == 0)
-    gdbSetMaxBPs(4);                                                        /* 4[bp] */
-  else if (memcmp_P(buf, (void *)PSTR("7370"), 4) == 0)
-    gdbSetSpeed(buf);                                                       /* sp[eed] [h|l] */
+  case MOVERSION:
+    gdbVersion();
+    break;
+  case MODWIRE:
+    switch (moopt) {
+    case '+': gdbConnect(true); break;
+    case '-': gdbStop(true); break;
+    case '\0': gdbReportConnected(); break;
+    default: gdbSendReply("E09"); break;
+    }
+    break;
+  case MORESET:
+    if (gdbReset()) gdbSendReply("OK");
+    else gdbSendReply("E05");
+    break;
+  case MOCKDIV:
+    switch (moopt) {
+    case '1': gdbSetFuses(CkDiv1); break;
+    case '8': gdbSetFuses(CkDiv8); break;
+    case '\0': gdbGetFuses(true, false); break;
+    default: gdbSendReply("E09"); break;
+    }
+    break;
+  case MOOSC:
+    switch (moopt) {
+    case 'r': gdbSetFuses(CkRc); break;
+    case 'a': gdbSetFuses(CkARc); break;
+    case 'x': gdbSetFuses(CkXtal); break;
+    case 'e': gdbSetFuses(CkExt); break;
+    case 's': gdbSetFuses(CkSlow); break;
+    case 'u': gdbSetFuses(CkUlp); break;
+    case '\0': gdbGetFuses(false,false); break;
+    default: gdbSendReply("E09"); break;
+    }
+    break;
+  case MOBREAK:
+    switch (moopt) {
+    case 'h': gdbSetMaxBPs(1); break;
+    case 's': gdbSetMaxBPs(MAXBREAK); break;
+    case '4': gdbSetMaxBPs(4); break;
+    case '\0': gdbGetMaxBPs(); break;
+    default: gdbSendReply("E09"); break;
+    }
+    break;
+  case MOSPEED: gdbSpeed(moopt); break;
+  case MOSINGLESTEP: gdbSteppingMode(moopt); break;
+  case MOFLASHCOUNT: gdbReportFlashCount(); break;
+  case MOLASTERROR: gdbReportLastError(); break;
+  case MOTIMEOUTS: gdbTimeoutCounter(); break;
+  case MORAM: gdbReportRamUsage(); break;
+  case MOTEST:
+    switch (moopt) {
+#if UNITALL
+    case 'a': alltests(); break;
+#endif
 #if UNITDW
-  else if  (memcmp_P(buf, (void *)PSTR("746573746477"), 12) == 0)
-    DWtests(para);                                                          /* testdw */
+    case 'd': DWtests(para); break;
 #endif
 #if UNITTG
-  else if  (memcmp_P(buf, (void *)PSTR("746573747467"), 12) == 0)
-    targetTests(para);                                                      /* testtg */
+    case 't': targetTests(para); break;
 #endif
 #if UNITGDB
-  else if  (memcmp_P(buf, (void *)PSTR("74657374676462"), 14) == 0)
-    gdbTests(para);                                                         /* testgdb */
+    case 'g': gdbTests(para); break;
 #endif
-#if UNITALL
-  else if  (memcmp_P(buf, (void *)PSTR("74657374616c6c"), 14) == 0)
-    alltests();                                                             /* testall */
-#endif
-  else if (memcmp_P(buf, (void *)PSTR("736166657374657000"), max(4,min(18,clen))) == 0)
-    gdbSetSteppingMode(true);                                               /* safestep */
-  else if (memcmp_P(buf, (void *)PSTR("756e736166657374657000"), max(4,min(12,clen))) == 0)
-    gdbSetSteppingMode(false);                                              /* unsafestep */
-  else if (memcmp_P(buf, (void *)PSTR("76657273696f6e00"), max(4,min(16,clen))) == 0) 
-    gdbVersion();                                                           /* version */
-  else if (memcmp_P(buf, (void *)PSTR("74696d656f75747300"), max(4,min(18,clen))) == 0)
-    gdbTimeoutCounter();                                                    /* timeouts */
-  else if (memcmp_P(buf, (void *)PSTR("726573657400"), max(4,min(12,clen))) == 0) {
-    if (gdbReset()) gdbSendReply("OK");                                     /* re[set] */
-    else gdbSendReply("E09");
-  } else gdbSendReply("");
+    default: gdbSendReply("");
+    }
+    break;
+  default:
+    gdbSendReply("");
+    break;
+  }
+}
+
+// determine command and option for monitor command given in 'line'
+int gdbDetermineMonitorCommand(char *line, char &option)
+{
+  int ix, cmdix;
+  boolean succ = false;
+  char *checkcmd;
+
+  measureRam();
+  
+  for (cmdix = 0; cmdix < NUMMONCMDS && !succ; cmdix++) {
+    checkcmd = (char *)pgm_read_word(&(mocmds[cmdix]));
+    for (ix = 0; ix < strlen(line)+1; ix++) {
+      if (line[ix] == ' ' || line[ix] == '\0') {
+	if (ix > 1) {
+	  succ = true;
+	  break;
+	} else {
+	  return -1;
+	}
+      } else if (line[ix] != (char)pgm_read_byte(&checkcmd[ix])) {
+	break;
+      }
+    }
+  }
+  if (--cmdix >= NUMMONCMDS) return -1;
+  option = '\0';
+  succ = false;
+  for (ix=0; ix<strlen(line)+1; ix++) {
+    if (line[ix] == '\0') return cmdix;
+    else if (line[ix] == ' ') succ = true;
+    else if (succ && line[ix] != ' ') {
+      option = line[ix];
+      return cmdix;
+    }
+  }
+  return cmdix;
 }
 
 // help function (w/o unit tests)
 inline void gdbHelp(void) {
-  gdbDebugMessagePSTR(PSTR("monitor help         - help function"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor dwconnect    - connect to target and show parameters (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor dwoff        - disconnect from target and disable DWEN (*)"), -1);
-  // gdbDebugMessagePSTR(PSTR("monitor eraseflash   - erase flash memory (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor reset        - reset target (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor ck1prescaler - unprogram CK8DIV (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor ck8prescaler - program CK8DIV (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor extosc       - use external clock source (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor xtalosc      - use XTAL as clock source (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor rcosc        - use internal RC oscillator (8 MHz) as clock source (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor arcosc       - use alternate internal RC oscillator as clock source (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor slowosc      - use internal 128 kHz oscillator as clock source (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor ulposc       - use internal ULP 32 kHz oscillator as clock source (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor clock        - report clock source and CKDIV8 state (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor swbp         - allow 32 software breakpoints (default)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor hwbp         - allow only 1 breakpoint, i.e., the hardware bp"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor safestep     - prohibit interrupts while single-stepping(default)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor unsafestep   - allow interrupts while single-stepping"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor help             - help function"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor version          - firmware version"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor dwire [+|-]      - connect (+) or disconnect (-) to/from target (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor reset            - reset target (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]      - program (8) or unprogram (1) CK8DIV (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
+  gdbDebugMessagePSTR(PSTR("                         - use RC/alt RC/XTAL/ext/slow/ULP osc. (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s] - allow 1 (h) or 32 (s) breakpoints"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor singlestep [s|u] - disallow (s) or allow (u) IRQs while single-stepping"), -1);
 #if HIGHSPEED
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (300kbps) (def.) or l (150kbps)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps) (def.) or l (150kbps)"), -1);
 #else
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]  - speed limit is h (300kbps) or l (150kbps) (def.)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps) or l (150kbps) (def.)"), -1);
 #endif  
-  gdbDebugMessagePSTR(PSTR("monitor flashcount   - number of flash pages written since start"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor timeouts     - number of timeouts"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor lasterror    - last fatal error"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor version      - version number"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor flashcount       - number of flash pages written since start"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor timeouts         - number of timeouts"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor lasterror        - last fatal error"), -1);
+  gdbDebugMessagePSTR(PSTR("Commands given without arguments report status"), -1);
   gdbDebugMessagePSTR(PSTR("All commands with (*) lead to a reset of the target"), -1);
   gdbSendReply("OK");
 }
 
-// report last error number
-inline void gdbReportLastError(void)
-{
-  gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
-}
-
-// return timeout counter
-inline void gdbTimeoutCounter(void)
-{
-  gdbReplyMessagePSTR(PSTR("Number of timeouts: "), timeoutcnt);
-}
-
-
-// set stepping mode
-inline void gdbSetSteppingMode(boolean safe)
-{
-  ctx.safestep = safe;
-  if (safe)
-    gdbReplyMessagePSTR(PSTR("Single-stepping now interrupt-free"), -1);
-  else
-    gdbReplyMessagePSTR(PSTR("Single-stepping now interruptible"), -1);
-}
-
-// show version
-inline void gdbVersion(void)
-{
-  gdbReplyMessagePSTR(PSTR("dw-link V" VERSION), -1);
-}
-  
-// get DW speed
-inline void gdbGetSpeed(void)
-{
-  gdbReplyMessagePSTR(PSTR("Current debugWIRE bitrate: "), ctx.bps);
-}
-
-// set DW communication speed
-void gdbSetSpeed(const byte cmd[])
-{
-  byte arg;
-  //DEBLN(F("gdbSetSpeed"));
-  byte argix = findArg(cmd);
-  if (argix == 0) {
-    gdbSendReply("");
-    return;
-  }
-  //DEBPR(F("argix=")); DEBPR(argix); DEBPR(F(" arg=")); DEBPR((char)cmd[argix]); DEBLN((char)cmd[argix+1]);
-  if (cmd[argix] == '\0') arg = '\0';
-  else arg = (hex2nib(cmd[argix])<<4) + hex2nib(cmd[argix+1]);
-  switch (arg) {
-  case 'h': speedlimit = SPEEDHIGH;
-    break;
-  case 'l': speedlimit = SPEEDLOW;
-    break;
-  case '\0':
-    gdbDebugMessagePSTR(PSTR("Current limit:             "), speedlimit);
-    break;
-  default:
-    gdbSendReply("");
-    return;
-  }
-  doBreak();
-  gdbGetSpeed();
-  return;
-}
-
-byte findArg(const byte cmd[])
-{
-  byte ix = 4;
-  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
-  if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
-  if (cmd[ix] =='\0') return ix;
-  if (cmd[ix] != '6' || cmd[ix+1] != '5')  return 0;
-  ix += 2;
-  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
-  if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
-  if (cmd[ix] == '\0') return ix;
-  if (cmd[ix] != '6' || cmd[ix+1] != '5')  return 0;
-  ix +=2;
-  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
-  if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
-  if (cmd[ix] =='\0') return ix;
-  if (cmd[ix] != '6' || cmd[ix+1] != '4')  return 0;
-  ix += 2;
-  //DEBPR((char)cmd[ix]); DEBLN((char)cmd[ix+1]);
-  if (cmd[ix] =='2' && cmd[ix+1] == '0') return ix + 2;
-  if (cmd[ix] =='\0') return ix;
-  return 0;
-}
-
-// "monitor swbp/hwbp/4bp"
-// set maximum number of breakpoints
-inline void gdbSetMaxBPs(byte num)
-{
-  maxbreak = num;
-  gdbReplyMessagePSTR(PSTR("Maximum number of breakpoints now: "), num);
-}
-
-// "monitor flashcount"
-// report on how many flash pages have been written
-inline void gdbReportFlashCount(void)
-{
-  gdbReplyMessagePSTR(PSTR("Number of flash write operations: "), flashcnt);
-}
-
-// "monitor ramusage"
-inline void gdbReportRamUsage(void)
-{
-#if FREERAM
-  gdbReplyMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
-#else
-  gdbSendReply("");
-#endif
-}
-
-
-// "monitor dwconnect"
+// "monitor dwire [+|-]"
 // try to enable debugWIRE
 // this might imply that the user has to power-cycle the target system
 boolean gdbConnect(boolean verbose)
@@ -1064,8 +1028,7 @@ boolean gdbConnect(boolean verbose)
   if (conncode == 1) {
     setSysState(CONN_STATE);
     if (verbose) {
-      gdbDebugMessagePSTR(Connected,-2);
-      gdbDebugMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
+      gdbReportConnected();
     }
     gdbCleanupBreakpointTable();
     targetInitRegisters();
@@ -1089,6 +1052,120 @@ boolean gdbConnect(boolean verbose)
   targetInitRegisters();
   return false;
 }
+
+// "monitor dwoff" 
+// try to disable the debugWIRE interface on the target system
+boolean gdbStop(boolean verbose)
+{
+#if NOAUTODWOFF
+  if (!verbose) return true; // no silent exits from DW mode
+#endif
+  if (targetStop()) {
+    setSysState(NOTCONN_STATE);
+    if (verbose) {
+      gdbReportConnected();
+    }
+    return true;
+  } else {
+    if (verbose) {
+      gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
+    }
+    gdbSendReply("E05");
+    return false;
+  }
+}
+
+void gdbReportConnected(void)
+{
+  gdbDebugMessagePSTR(Connected,-2);
+  if (!targetOffline() || targetDWConnect()) {
+    gdbReset();
+    gdbReplyMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
+  } else {
+    gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+  }
+}
+
+// report last error number
+inline void gdbReportLastError(void)
+{
+  gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
+}
+
+// return timeout counter
+inline void gdbTimeoutCounter(void)
+{
+  gdbReplyMessagePSTR(PSTR("Number of timeouts: "), timeoutcnt);
+}
+
+
+// set stepping mode
+inline void gdbSteppingMode(char arg)
+{
+  if (arg != '\0') ctx.safestep = (arg == 's');
+  if (ctx.safestep)
+    gdbReplyMessagePSTR(PSTR("Single-stepping is interrupt-free"), -1);
+  else
+    gdbReplyMessagePSTR(PSTR("Single-stepping is interruptible"), -1);
+}
+
+// show version
+inline void gdbVersion(void)
+{
+  gdbReplyMessagePSTR(PSTR("dw-link V" VERSION), -1);
+}
+  
+// set DW communication speed
+void gdbSpeed(char arg)
+{
+  switch (arg) {
+  case 'h': speedlimit = SPEEDHIGH;
+    break;
+  case 'l': speedlimit = SPEEDLOW;
+    break;
+  case '\0':
+    gdbDebugMessagePSTR(PSTR("Current limit:             "), speedlimit);
+    break;
+  default:
+    gdbSendReply("");
+    return;
+  }
+  if (arg) doBreak();
+  gdbReplyMessagePSTR(PSTR("Current debugWIRE bitrate: "), ctx.bps);
+  return;
+}
+
+
+// "monitor swbp/hwbp/4bp"
+// set maximum number of breakpoints
+inline void gdbSetMaxBPs(byte num)
+{
+  maxbreak = num;
+  gdbGetMaxBPs();
+}
+
+inline void gdbGetMaxBPs(void)
+{
+  gdbReplyMessagePSTR(PSTR("Maximum number of breakpoints: "), maxbreak);
+}
+
+// "monitor flashcount"
+// report on how many flash pages have been written
+inline void gdbReportFlashCount(void)
+{
+  gdbReplyMessagePSTR(PSTR("Number of flash write operations: "), flashcnt);
+}
+
+// "monitor ramusage"
+inline void gdbReportRamUsage(void)
+{
+#if FREERAM
+  gdbReplyMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
+#else
+  gdbSendReply("");
+#endif
+}
+
 
 // power-cycle and check periodically whether it is possible
 // to establish a debugWIRE connection, return false when we timeout
@@ -1141,28 +1218,6 @@ void power(boolean on)
   }
 }
 
-// "monitor dwoff" 
-// try to disable the debugWIRE interface on the target system
-boolean gdbStop(boolean verbose)
-{
-#if NOAUTODWOFF
-  if (!verbose) return true; // no silent exits from DW mode
-#endif
-  if (targetStop()) {
-    if (verbose) {
-      gdbDebugMessagePSTR(Connected,-2);
-      gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
-    }
-    setSysState(NOTCONN_STATE);
-    return true;
-  } else {
-    if (verbose) {
-      gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
-    }
-    gdbSendReply("E05");
-    return false;
-  }
-}
 
 // "monitor reset"
 // issue reset on target
@@ -1191,18 +1246,20 @@ void gdbSetFuses(Fuses fuse)
     else if (res == -3) gdbDebugMessagePSTR(PSTR("Fuse programming failed"),-1);
     else gdbDebugMessagePSTR(PSTR("Clock setting impossible"),-1);
     flushInput();
-    gdbSendReply("E05");
-    return;
+    if (res >= -3) {
+      gdbSendReply("E05");
+      return;
+    }
   }
   switch (fuse) {
-  case CkDiv8: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now programmed"),-1); break;
-  case CkDiv1: gdbDebugMessagePSTR(PSTR("CKDIV8 fuse is now unprogrammed"),-1); break;
-  case CkRc: gdbDebugMessagePSTR(PSTR("Using RC oscillator"),-1); break;
-  case CkARc: gdbDebugMessagePSTR(PSTR("Using Alternate RC oscillator"),-1); break;
-  case CkExt: gdbDebugMessagePSTR(PSTR("Using EXTernal oscillator"),-1); break;
-  case CkXtal: gdbDebugMessagePSTR(PSTR("Using XTAL oscillator"),-1); break;
-  case CkSlow: gdbDebugMessagePSTR(PSTR("Using 128 kHz oscillator"),-1); break;
-  case CkUlp: gdbDebugMessagePSTR(PSTR("Using 32 kHz oscillator"),-1); break;
+  case CkDiv8: 
+  case CkDiv1: gdbGetFuses(true, true); break;
+  case CkRc: 
+  case CkARc:
+  case CkExt:
+  case CkXtal:
+  case CkSlow:
+  case CkUlp: gdbGetFuses(false, true); break;
   case Erase: gdbDebugMessagePSTR(PSTR("Chip erased"),-1); break;
   default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
   }
@@ -1219,7 +1276,7 @@ void gdbSetFuses(Fuses fuse)
     gdbSendReply("OK");
 }
 
-void gdbGetFuses(void)
+void gdbGetFuses(boolean ckdiv, boolean noreply)
 {
   Fuses CkSource, CkDiv;
   boolean offline = targetOffline();
@@ -1233,26 +1290,28 @@ void gdbGetFuses(void)
     gdbSendReply("E05");
     return;
   }
-  switch (CkSource) {
-  case CkRc: gdbDebugMessagePSTR(PSTR("Clock: RC osc."),-1); break;
-  case CkARc: gdbDebugMessagePSTR(PSTR("Clock: alt. RC osc."),-1); break;
-  case CkExt: gdbDebugMessagePSTR(PSTR("Clock: ext."),-1); break;
-  case CkXtal: gdbDebugMessagePSTR(PSTR("Clock: XTAL"),-1); break;
-  case CkSlow: gdbDebugMessagePSTR(PSTR("Clock: 128 kHz osc."),-1); break;
-  case CkUlp: gdbDebugMessagePSTR(PSTR("Clock: 32 kHz osc."),-1); break;
-  default: gdbDebugMessagePSTR(PSTR("Clock: unknown"),-1); break;
+  if (!ckdiv) {
+    switch (CkSource) {
+    case CkRc: gdbDebugMessagePSTR(PSTR("Clock: RC osc."),-1); break;
+    case CkARc: gdbDebugMessagePSTR(PSTR("Clock: alt. RC osc."),-1); break;
+    case CkExt: gdbDebugMessagePSTR(PSTR("Clock: ext."),-1); break;
+    case CkXtal: gdbDebugMessagePSTR(PSTR("Clock: XTAL"),-1); break;
+    case CkSlow: gdbDebugMessagePSTR(PSTR("Clock: 128 kHz osc."),-1); break;
+    case CkUlp: gdbDebugMessagePSTR(PSTR("Clock: 32 kHz osc."),-1); break;
+    default: gdbDebugMessagePSTR(PSTR("Clock: unknown"),-1); break;
+    }
+  } else {
+    if (CkDiv == CkDiv8) gdbDebugMessagePSTR(PSTR("CKDIV8: programmed"),-1);
+    else gdbDebugMessagePSTR(PSTR("CKDIV8: unprogrammed"),-1);
   }
-  if (CkDiv == CkDiv8) gdbDebugMessagePSTR(PSTR("CKDIV8: on"),-1);
-  else gdbDebugMessagePSTR(PSTR("CKDIV8: off"),-1);
-  
-  if (!offline) gdbDebugMessagePSTR(PSTR("Reconnecting ..."),-1);
+  if (noreply) return;
   _delay_ms(200);
   flushInput();
   if (offline) {
     gdbSendReply("OK");
     return;
   }
-  if (!gdbConnect(true))
+  if (!gdbConnect(false))
     gdbSendReply("E02");
   else 
     gdbSendReply("OK");
@@ -3604,6 +3663,22 @@ void convNum(byte numbuf[10], long num)
   numbuf[i] = '\0';
 }
 
+// convert two ASCII characters representing a hex number into an ASCII char
+char convHex2Ascii(char char1, char char2)
+{
+  return (hex2nib(char1) << 4) | hex2nib(char2);
+}
+
+// convert a buffer with a string of hex numbers into a string in place
+void convBufferHex2Ascii(byte *outbuf, byte *buf, int maxlen)
+{
+  int i, clen = strlen((const char *)buf);
+
+  for (i=0; i<min(clen/2,maxlen-1); i++) 
+    outbuf[i] = convHex2Ascii(buf[i*2], buf[i*2+1]);
+  outbuf[min(clen/2,maxlen-1)] = '\0';
+}
+
 #if FREERAM
 void freeRamMin(void)
 {
@@ -4480,7 +4555,7 @@ unsigned int  here;           // Address for reading and writing, set by 'U' com
 unsigned long  hMask;          // Pagesize mask for 'here" address
 
 void ISPprogramming(boolean fast) {
-  
+#if (!NOISPPROG)
   setSysState(PROG_STATE);
   if (!fast) {
     Serial.end();
@@ -4500,6 +4575,7 @@ void ISPprogramming(boolean fast) {
       return; // return when finished
     }
   }
+#endif
 }
 
 byte getch (void) {

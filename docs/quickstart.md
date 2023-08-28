@@ -87,7 +87,7 @@ The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolc
 
 ## Step 5: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to physically alter the board (cut a solder bridge). How to set up an UNO is described in [Section 4.5.2](manual.md#section452) of the manual.
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to physically alter the board (cut a solder bridge). How to set up an UNO is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
 
 ![ATtiny85-debug](pics/debug-attiny85-LED-onboard.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
 
@@ -154,7 +154,7 @@ What else could happen?
 * If the LED stays dark and you receive the message `/dev/XXXXXXXX: Resource busy`, then some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.
 * If the LED stays dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
 
-* If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type: `monitor dwconnect`, which should give you the reason. Probably: Wrong wiring. So check wiring or maybe try a different MCU.
+* If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type `monitor dwire`, which should give you the reason. Probably: Wrong wiring. So check the wiring or maybe try a different MCU.
 
 Assuming that everything went according to plan, the only thing missing now is that the sketch is loaded into flash memory. But the next command will exactly do this:
 
@@ -190,15 +190,15 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **q** - Quits gdb
 - `CTRL-C` while the programming is running stops the execution asynchronously
 
-There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf).
+There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of `monitor` commands, which are specific to the dw-link debugger, can be found in Section 5.6 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
 
-You should always end your debugging session with the quit command, which will turn off debugging mode on the target chip so that the RESET line could be used again.
+You should always end your debugging session with the `quit` command, which will turn off debugging mode on the target chip so that the RESET line could be used again.
 
 ## Step 8 (optional): Install a graphical user interface
 
-If you would like to work with a GUI, then *Gede* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is macOS or Linux. An alternative is PlatformIO, as described in detail in the [dw-link manual in Section 6](manual.md#section6), which also works for Windows.
+If you would like to work with a GUI, then *Gede* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is macOS or Linux. An alternative is PlatformIO, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) in Section 6, which also works for Windows.
 
-A prerequisite for using the debugger is that we make sure that *PySerial* is installed. So type into a terminal:
+A prerequisite for using *Gede* is that we make sure that *PySerial* is installed. So type into a terminal:
 
 ```
 pip3 install pyserial
@@ -224,7 +224,7 @@ The `dw-server.py` script will discover the serial port of the hardware debugger
 
 ## What can go wrong?
 
-If something does not work as advertised, it is very often a simple wiring problem. The next possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the right permissions, the PATH variable is not right, or one has installed the wrong board manager files. When some strange error messages show up, it may also be an indication that some component has not been installed. Google for the error message! Often there are hints how to mitigate the problem. Finally, there is also a [troubleshooting section](manual.md#trouble) in the regular manual, which may be helpful. 
+If something does not work as advertised, it is very often a simple wiring problem. The next possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the right permissions, the PATH variable is not right, or one has installed the wrong board manager files. When some strange error messages show up, it may also be an indication that some component has not been installed. Google for the error message! Often there are hints how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf), which may be helpful. 
 
 The most annoying problem is that after a debugging session, an MCU might not be responsive anymore. The reason can be that the RESET line, which during debugging is used as a communication line, has not been reenabled. While a regular exit of the debugger restores the RESET line, it can happen that the debugger is terminated without restoring the RESET line. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`. 
 
@@ -232,4 +232,4 @@ If you think that you have found a bug, please consider posting it on [issues](h
 
 ## After debugging has finished
 
-So what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1).  
+So what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `AVR ISP`.

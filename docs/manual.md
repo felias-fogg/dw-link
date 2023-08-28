@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 2.0 - August 2023**
+**Version 3.0 - August 2023**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -64,19 +64,18 @@ With respect to the debugWIRE protocol there are basically three states your MCU
 2. The **transitional** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, in order to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** **state**.
 3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to a transition to the **transitional  state**, from which one can reach the **normal state** using ordinary ISP programming. 
 
-The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwconnect``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state will take place when you terminate GDB. It can also be achieved by the GDB command ```monitor dwoff```. If things seemed to have not worked out, you can simply reconnect the target to the hardware debugger and issue `monitor dwoff` again.
-<!--
-mermaid
+The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwire +``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state will take place when you terminate GDB. It can also be achieved by the GDB command ```monitor dwire -```. If things seemed to have not worked out, you can simply reconnect the target to the hardware debugger and issue `monitor dwoff` again.
+
+<!-- mermaid
     stateDiagram
     normal --\> transitional: set DWEN 
     transitional --\> normal: clear DWEN
-    normal --\> debugWIRE: monitor dwconnect
+    normal --\> debugWIRE: monitor dwc +\ntarget remote ...
     transitional --\> debugWIRE: power cycle
     debugWIRE --\> transitional: disable debugWIRE
-    debugWIRE --\> normal: monitor dwoff
--->
+    debugWIRE --\> normal: monitor dw -\nquit -->
 
-<img src="pics/state-diagram.png" alt="state diagram" style="zoom:50%;" />
+![state-dia](pics/state-diagram.png)
 
 <a name="section3"></a>
 
@@ -307,7 +306,7 @@ Reading symbols from varblink.ino.elf...
 (gdb) target remote <serial port>              # connect to the serial port of the debugger  
 Remote debugging using <serial port>           # connection made
 0x00000000 in __vectors ()                     # we always start at location 0x0000
-(gdb) monitor dwconnect                        # show properties of the debugWIRE connection
+(gdb) monitor dwire                            # show properties of the debugWIRE connection
 Connected to ATtiny85
 debugWIRE is now enabled, bps: 125736
 (gdb) load                                     # load binary file
@@ -390,7 +389,7 @@ GNU gdb (GDB) 10.1
 (gdb) target remote <serial port>       # connect to serial port of debugger    
 Remote debugging using <serial port>
 0x00000000 in __vectors ()
-(gdb) monitor dwoff                     # terminate debugWIRE mode 
+(gdb) monitor dwire -                   # terminate debugWIRE mode 
 Connected to ATtiny85
 debugWIRE is now disabled
 (gdb) quit
@@ -434,32 +433,22 @@ file *name*.elf | load the symbol table from the specified ELF file
 load | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
 quit | exit from GDB 
 
-Finally, there are commands that control the settings of the debugger and the MCU, which are particular to *dw-link*. They all start with the keyword `monitor`. You can abbreviate all keywords to 2 or 3 characters, if this is unambiguous.
+Finally, there are commands that control the settings of the debugger and the MCU, which are particular to *dw-link*. They all start with the keyword `monitor`. You can abbreviate all keywords to 2 characters, if this is unambiguous.
 
-| command              | action                                                       |
-| :------------------- | ------------------------------------------------------------ |
-| monitor help         | give a help message on monitor commands                      |
-| monitor dwconnect    | establishes the debugWIRE link to the target (is already executed by the `target remote` command); will report MCU type and communication speed (even when already connected) (*) |
-| monitor dwoff        | disable debugWIRE mode in the target (which is executed when leaving GDB, or when executing the `kill` or `detach` command) (*) |
-| monitor reset        | resets the MCU (*)                                           |
-| monitor ck8prescaler | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator) (*) |
-| monitor ck1prescaler | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator) (*) |
-| monitor rcosc        | set clock source to internal RC oscillator (*)               |
-| monitor arcosc       | set clock source to alternate RC oscillator (*)              |
-| monitor extosc       | set clock source to external clock (*)                       |
-| monitor xtalosc      | set clock source to crystal oscillator (*)                   |
-| monitor slowosc      | set clock source to internal low frequency oscillator (125 kHz) (*) |
-| monitor ulposc       | set clock source to ultra low power oscillator (32 kHz) (*)  |
-| monitor clock        | report about clock source and divider                        |
-| monitor hwbp         | set number of allowed breakpoints to 1 (i.e., only HW BP)    |
-| monitor swbp         | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default |
-| monitor speed [l\|h] | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
-| monitor lasterror    | print error number of last fatal error                       |
-| monitor flashcount   | reports on how many flash-page write operation have taken place since start |
-| monitor timeouts     | report number of timeouts (should be 0!)                     |
-| monitor safestep     | single-stepping is uninterruptible and time is frozen during single-stepping, which is the default |
-| monitor unsafestep   | single stepping is interruptible and time advances during single-stepping |
-| monitor version      | print version number of firmware                             |
+| command                               | action                                                       |
+| :------------------------------------ | ------------------------------------------------------------ |
+| monitor help                          | give a help message on monitor commands                      |
+| monitor version                       | print version number of firmware                             |
+| monitor dwire [+\|-]                  | + establishes the debugWIRE; - will disconnect; without any argument, it will report MCU type and communication speed (*) |
+| monitor reset                         | resets the MCU (*)                                           |
+| monitor ckdiv [1\|8]                  | '1' unprograms the CKDIV8 fuse, '8' programs it; without an argument, the state of the fuse is reported (*) |
+| monitor oscillator [r\|a\|x\|e\|s\|u] | set clock source to 'r': RC osc., 'a': alternate RC osc., 'x': XTAL, 'e': external osc., 's': 128 kHz osc., 'u': 32 kHz osc.; without argument, it reports the fuse setting (*) |
+| monitor breakpoint [h\|s]             | set number of allowed breakpoints to 1, when 'h', or 32, when 's'; without argument it reports setting |
+| monitor speed [l\|h]                  | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
+| monitor singlestep [s\|u]             | Sets single stepping to **s**afe or **u**nsafe; without an argument, it reports state |
+| monitor lasterror                     | print error number of last fatal error                       |
+| monitor flashcount                    | reports on how many flash-page write operation have taken place since start |
+| monitor timeouts                      | report number of timeouts (should be 0!)                     |
 
 All of the commands marked with (*) reset the MCU.
 
@@ -555,7 +544,7 @@ After a brief moment. the debugger will then stop at the set breakpoint.
 
 ### 6.4 Disabling debugWIRE mode
 
-There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwoff` in the debugging terminal window after having started a debugging session in PlatformIO IDE. 
+There are two ways of switching off the debugWIRE mode. It happens automatically when you terminate the debugger using the exit button. Alternatively, you should be able to bring back your MCU to the normal state by typing `monitor dwire -` in the debugging terminal window after having started a debugging session in PlatformIO IDE. 
 
 ### 6.5 Configuring `platformio.ini`
 
@@ -692,7 +681,7 @@ Fifth, when reprogramming of a flash page is requested, *dw-link* first checks w
 
 With all of that in mind, you do not have to worry too much about flash memory wear when debugging. As a general rule, you should not make massive changes of the breakpoints each time the MCU stops executing. Finally, Microchip recommends that chips that have been used for debugging using debugWIRE should not been shipped to customers. Well, I never ship chips to customers anyway.
 
-<a name="paranoid"></a>For the really paranoid,  there is the option that permits only one breakpoint, i.e., the hardware breakpoint: `monitor hwbp`. In this case, one either can set one breakpoint or on can single-step, but not both. So, if you want to continue after a break by single-stepping, you first have to delete the breakpoint. By the way, with `monitor swbp`, one switches back to normal mode, in which 32 (+1 temporary) breakpoints are allowed.
+<a name="paranoid"></a>For the really paranoid,  there is the option that permits only one breakpoint, i.e., the hardware breakpoint: `monitor breakpoint h`. In this case, one either can set one breakpoint or on can single-step, but not both. So, if you want to continue after a break by single-stepping, you first have to delete the breakpoint. By the way, with `monitor breakpoint s`, one switches back to normal mode, in which 32 (+1 temporary) breakpoints are allowed.
 
 In addition, there is the debugger command `monitor flashcount`, which returns the number of how many flash page reprogramming commands have been executed since the debugger had been started. This includes also the flash reprogramming commands needed when loading code.
 
@@ -704,7 +693,7 @@ Sometimes, in particular when using a clock speed below 1 MHz, responses from th
 
 >Setting the CLKDIV8 fuse can cause connection problems when using debugWIRE. For best results, leave this fuse un-programmed during debugging. 
 
-"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ck8prescaler` and `monitor ck1prescaler` to the hardware debugger that allows you to change this fuse. `monitor ck8prescaler` programs the fuse, i.e., the clock is divided by 8, `monitor ck1prescaler` un-programs this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen. Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing these commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
+"Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default. In order to simplify life, I added the two commands `monitor ckdiv 8` and `monitor ckdiv 1` to the hardware debugger that allows you to change this fuse. `monitor ckdiv 8` programs the fuse, i.e., the clock is divided by 8, `monitor ckdiv 1` un-programs this fuse. Using the monitor cldiv command with our an argument reports the setting of this fuse. In addition to changing the CKDIV8 fuse, you can also change the clock source with monitor commands, whereby always the slowest startup time is chosen. Be careful about setting it to *XTAL* or *external clock*! Your MCU will get unresponsive if there is no crystal oscillator or external clock, respectively. Note that after executing these commands, the MCU is reset (and the register values shown by the GDB `register info` command are not valid anymore). 
 
 With an optimal setting, i.e., 250 kbps for the debugWIRE line and 230400 bps for the host communication line, loading is done with 500-800 bytes/second. It should be 3-5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed). For the default setting (115200bps to host, 125000bps for debugWIRE), it is probably half the speed.
 
@@ -716,11 +705,11 @@ If you use *conditional breakpoints*, the program is slowed down significantly. 
 
 ### 8.4 Single-stepping and interrupt handling clash
 
-In many debuggers, it is impossible to do single-stepping when timer interrupts are active since after each step the program ends up in the interrupt routine. This is not the case with *avr-gdb* and *dw-link*. Instead, time is frozen and interrupts cannot be raised while the debugger single-steps. Only when the `continue` command is used, interrupts are serviced and the timers are advanced. One can change this behavior by using the command `monitor unsafestep`. In this case it can happen that control is transferred to the interrupt vector table while single-stepping.
+In many debuggers, it is impossible to do single-stepping when timer interrupts are active since after each step the program ends up in the interrupt routine. This is not the case with *avr-gdb* and *dw-link*. Instead, time is frozen and interrupts cannot be raised while the debugger single-steps. Only when the `continue` command is used, interrupts are serviced and the timers are advanced. One can change this behavior by using the command `monitor singlestep u`. In this case it can happen that control is transferred to the interrupt vector table while single-stepping.
 
 ### 8.5 Limited number of breakpoints
 
-The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints (+1 temporary breakpoint for single-stepping) are supported by default. You can reduce this to 1 by issuing the command `monitor hwbp` ([see above](#paranoid)). If you set more breakpoints than the maximum number, it will not be possible to start execution. Instead one will get the warning `Cannot insert breakpoint ... Command aborted`. You have to delete or disable some breakpoints before program execution can continue. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
+The hardware debugger supports only a limited number of breakpoints. Currently, 32 breakpoints (+1 temporary breakpoint for single-stepping) are supported by default. You can reduce this to 1 by issuing the command `monitor breakpoint h` ([see above](#paranoid)). If you set more breakpoints than the maximum number, it will not be possible to start execution. Instead one will get the warning `Cannot insert breakpoint ... Command aborted`. You have to delete or disable some breakpoints before program execution can continue. However, you should not use that many breakpoints in any case. One to five breakpoints are usually enough. 
 
 ### 8.6 Power saving is not operational 
 
@@ -784,7 +773,7 @@ I have encountered situations [when it was impossible to get the right informati
 
 There are many possible causes. 
 
-The DWEN fuse is still programmed, i.e., the MCU is still in debugWIRE mode. In this case, it may help to enter and leave the debugger again, provided that there are not any [problems with the RESET line](#worstcase). It may also be helpful to issue the command `monitor dwoff`. 
+The DWEN fuse is still programmed, i.e., the MCU is still in debugWIRE mode. In this case, it may help to enter and leave the debugger again, provided that there are not any [problems with the RESET line](#worstcase). It may also be helpful to issue the command `monitor dwire -`. 
 
 Another fuse has been programmed by accident. In particular, there are the `monitor` commands that change the clock source. If an external clock or an XTAL has been chosen, then you can recover the chip only by providing such an external clock or XTAL and then use either ISP programming or connect again to dw-link. 
 
@@ -808,7 +797,7 @@ My experience is that 230400 bps works only with UNO boards. The Arduino Nano ca
 
 A further (unlikely) reason for a failure in connecting to the host might be that a different communication format was chosen (parity, two stop bits, ...). 
 
-#### Problem: In response to the `monitor dwconnect` command, you get the error message *Cannot connect: ...*
+#### Problem: In response to the `monitor dwire -` command, you get the error message *Cannot connect: ...*
 
 Depending on the concrete error message, the problem fix varies.
 
@@ -842,7 +831,7 @@ One reason for that could be that the target is run with a clock less than 1 MHz
 
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted* 
 
-You use more than the allowed number of breakpoints, i.e., usually 32 (+1 for a temporary breakpoint for single-stepping). If you have executed the `monitor hwbp` command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.
+You use more than the allowed number of breakpoints, i.e., usually 32 (+1 for a temporary breakpoint for single-stepping). If you have executed the `monitor breakpoint h` command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.
 
 #### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
 
@@ -850,11 +839,11 @@ The problem is similar to the one above: You used too many breakpoints and there
 
 #### Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised
 
-This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the `continue` command (or when the `next` command skips over a function call). You can change this behavior by using the command `monitor unsafestep`, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping control is transferred into an interrupt routine.
+This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the `continue` command (or when the `next` command skips over a function call). You can change this behavior by using the command `monitor singlestep u`, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping control is transferred into an interrupt routine.
 
 #### Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030
 
-This should only happen when you have used the command `monitor unsafestep` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. If you want to avoid this behavior in the future, issue the debugger command `monitor safestep`. 
+This should only happen when you have used the command `monitor singlestep u` before, which  enables interrupts while single-stepping. In this case an interrupt might have raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. If you want to avoid this behavior in the future, issue the debugger command `monitor singlestep s`. 
 
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution*, you get the message *illegal instruction*, and the program receives a `SIGILL` signal
 
@@ -890,7 +879,7 @@ This appears to happen even when the optimization level is set to **-Og**, but n
 
 In this case some serious internal error had happened. You have to stop the current debug session and restart. 
 
-The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. If it is a connection error that happened when you tried to establish a connection, you may get the error message by typing `monitor dwconnect`. You can find out what kind of error happened by typing the following command:
+The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. If it is a connection error that happened when you tried to establish a connection, you may get the error message by typing `monitor dwire -`. You can find out what kind of error happened by typing the following command:
 
 ```
 monitor lasterror
@@ -898,7 +887,7 @@ monitor lasterror
 
 If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors (see below).
 
-If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). By the way: `monitor dwoff` can still be executed, provided there is still a functioning connection to the target. So you should still be able to disable debugWIRE on the target MCU even if a fatal error has happened. 
+If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. Please try to distill a minimal example leading to the problem and fill out the [*issue form*](issue_form.md). By the way: `monitor dwire -` can still be executed, provided there is still a functioning connection to the target. So you should still be able to disable debugWIRE on the target MCU even if a fatal error has happened. 
 
 
 Error #  | Meaning
@@ -1010,3 +999,7 @@ Initial version
 - added description of new hardware version
 - added that dw-link is now also an ISP programmer
 - simplified recovery for UNO
+
+#### V 3.0
+
+​	* redesign of monitor commands; most of them now take an argument
