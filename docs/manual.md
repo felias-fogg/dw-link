@@ -445,9 +445,12 @@ Finally, there are commands that control the settings of the debugger and the MC
 | monitor ck8prescaler | program the CKDIV8 fuse (i.e., set MCU clock to 1MHz if running on internal oscillator) (*) |
 | monitor ck1prescaler | un-program the CKDIV8 fuse (i.e., set MCU to 8MHz if running on internal oscillator) (*) |
 | monitor rcosc        | set clock source to internal RC oscillator (*)               |
+| monitor arcosc       | set clock source to alternate RC oscillator (*)              |
 | monitor extosc       | set clock source to external clock (*)                       |
 | monitor xtalosc      | set clock source to crystal oscillator (*)                   |
 | monitor slowosc      | set clock source to internal low frequency oscillator (125 kHz) (*) |
+| monitor ulposc       | set clock source to ultra low power oscillator (32 kHz) (*)  |
+| monitor clock        | report about clock source and divider                        |
 | monitor hwbp         | set number of allowed breakpoints to 1 (i.e., only HW BP)    |
 | monitor swbp         | set number of allowed user breakpoints to 32 (+1 system breakpoint), which is the default |
 | monitor speed [l\|h] | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |

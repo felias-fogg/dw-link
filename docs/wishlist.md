@@ -1,18 +1,25 @@
 # Wish list for dw-link
 
 
-* design new adapter board
-* test prototype of such  a board
 * design case for debugger and print it
 
 * a mode where reads & writes are double-checked: "monitor
   verify/noverify". Could be on or off by default.
+
 * perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
-* integrate programmer into code so that one also could do ISP programming
+
+* `monitor clock` command that displays the current clock setting
+
+  
 
 
 
 List of tasks done:
+
+* integrate programmer into code so that one also could do ISP programming
+
+* design new adapter board
+* test prototype of such  a board
 
 * Adding response in dw-link to one special byte in order to be able to identify the debug serial port
 * writing Python function for identifying debug port

@@ -771,3 +771,8 @@ when levelshifter is true
 * fixed the error in power() that VSUP was not set to OUTPUT
 * added a few declarations in dw-link.h
 * dealt with the warnings in avrisp()
+
+## Version 2.3.0 (28-Aug-2023)
+* added two new possible clocks: alternate RC clock and ULP
+* added new command: `monitor clock`
+
