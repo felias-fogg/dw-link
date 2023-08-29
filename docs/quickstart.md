@@ -182,9 +182,8 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **i b** - list breakpoints
 - **d *num*** - deletes breakpoint number *num*
 - **c** - continues running the program until the next breakpoint or stop by CTRL-C
-- **f** - runs until the current function is finished
 - **s** - runs the next line of the program
-- **s *num*** - Runs the next *num* lines of the program
+- **s *num*** - Run the next *num* lines of the program
 - **n** - like s, but it does not step into functions
 - **monitor reset** - resets MCUs and sets program counter to 0
 - **bt** - print the call stack
@@ -198,7 +197,7 @@ You should always end your debugging session with the `quit` command, which will
 
 ## Step 8 (optional): Install a graphical user interface
 
-If you would like to work with a GUI, then *Gede* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is macOS or Linux. An alternative is PlatformIO, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) in Section 6, which also works for Windows.
+If you would like to work with a GUI, then *[Gede](https://gede.dexar.se/)* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is macOS or Linux. An alternative is [PlatformIO](https://platformio.org/) IDE, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) in Section 6, which also works for Windows.
 
 A prerequisite for using *Gede* is that we make sure that *PySerial* is installed. So type into a terminal:
 
@@ -234,4 +233,4 @@ If you think that you have found a bug, please consider posting it on [issues](h
 
 ## After debugging has finished
 
-So what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `AVR ISP`.
+So what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `AVR ISP` or `Arduino as ISP`.
