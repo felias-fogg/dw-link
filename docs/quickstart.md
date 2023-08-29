@@ -47,9 +47,9 @@ Download the dw-link firmware into a place inside the *Arduino sketchbook*. This
 
 * open the webpage https://github.com/felias-fogg/dw-link, 
 * click on `Latest` in the field **Releases**,
-* choose either *zip* or the *tar.gz*,
-* select then either a folder in the sketchbook as the destination or copy the archive after the download to a place in the sketchbook, 
-* finally extract the firmware using `unzip` or `tar -xvzf`. 
+* choose either *zip* or *tar.gz*,
+* copy the archive to a place in the sketchbook, 
+* extract the firmware using `unzip` or `tar -xvzf`. 
 
 In order to install the firmware, 
 
@@ -108,11 +108,13 @@ Here is a table of all the connections so that you can check that you have made 
 
 The system LED gives you information about the internal state of the debugger: 
 
-* not connected (LED is off),
-* waiting for power-cycling the target (LED flashes every second for 0.1 sec),
-* target is connected (LED is on),
-* ISP programming (LED is blinking slowly),
-* error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec).
+1. not connected (LED is off),
+2. waiting for power-cycling the target (LED flashes every second for 0.1 sec),3.
+3. target is connected (LED is on),
+4. ISP programming (LED is blinking slowly),
+5. error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec).
+
+Note that state 2 (power-cycling) will be skipped in our configuration, where the debugger provides the power supply to the target via a GPIO line and does the power-cycling for you.
 
 **Check:** Go through the table above and check every connection. Wrong wiring can often cause hours of useless software debugging!
 

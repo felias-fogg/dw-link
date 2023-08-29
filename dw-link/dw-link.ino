@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.0.0"
+#define VERSION "3.0.1"
 
 // some constants, you may want to change
 #define PROGBPS 19200         // ISP programmer communication speed
@@ -57,7 +57,7 @@
 // #define UNITDW 1           // enable debugWIRE unit tests
 // #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
-// #define NOMONITORHELP 1   // disable monitor help function
+// #define NOMONITORHELP 1    // disable monitor help function
 // #define NOISPPROG 1        // disable ISP programmer
 
 #if UNITALL == 1
@@ -838,7 +838,7 @@ void gdbParsePacket(const byte *buff)
       
 
 // parse a monitor command and execute the appropriate actions
-void gdbParseMonitorPacket(byte *buf)
+void gdbParseMonitorPacket(const byte *buf)
 {
    [[maybe_unused]] int para = 0;
    char cmdbuf[40];
@@ -849,7 +849,7 @@ void gdbParseMonitorPacket(byte *buf)
 
   gdbUpdateBreakpoints(true);  // update breakpoints in memory before any monitor ops
 
-  convBufferHex2Ascii(cmdbuf, buf, 40); // conver to ASCII string
+  convBufferHex2Ascii(cmdbuf, buf, 40); // convert to ASCII string
   mocmd = gdbDetermineMonitorCommand(cmdbuf, moopt); // get command number and option char
   if (strlen(cmdbuf) == 0) mocmd = MOHELP;
   
@@ -935,7 +935,8 @@ void gdbParseMonitorPacket(byte *buf)
 // determine command and option for monitor command given in 'line'
 int gdbDetermineMonitorCommand(char *line, char &option)
 {
-  int ix, cmdix;
+  unsigned int ix;
+  int cmdix;
   boolean succ = false;
   char *checkcmd;
 
@@ -3397,7 +3398,7 @@ byte ispTransfer (byte val, boolean fast) {
       digitalWrite(TSCK, HIGH);
     }
     if (fast) _delay_us(4); 
-    else _delay_us(200); 
+    else _delay_us(800); 
     val = (val << 1) + digitalRead(TMISO);
     if (ctx.levelshifting) {
       pinMode(TSCK, OUTPUT);
@@ -3405,7 +3406,7 @@ byte ispTransfer (byte val, boolean fast) {
       digitalWrite(TSCK, LOW);
     }
     if (fast) _delay_us(4); 
-    else _delay_us(200); 
+    else _delay_us(800); 
   }
   return val;
 }
@@ -3670,7 +3671,7 @@ char convHex2Ascii(char char1, char char2)
 }
 
 // convert a buffer with a string of hex numbers into a string in place
-void convBufferHex2Ascii(byte *outbuf, byte *buf, int maxlen)
+void convBufferHex2Ascii(char *outbuf, byte *buf, int maxlen)
 {
   int i, clen = strlen((const char *)buf);
 
@@ -4230,7 +4231,8 @@ int targetTests(int &num) {
   ctx.sp = mcu.ramsz+mcu.rambase-1; // SP to upper limit of RAM
   targetRestoreRegisters(); 
   targetStep();
-  if (!expectBreakAndU()) succ = false;
+  if (!expectBreakAndU())
+    succ = false;
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xda && ctx.regs[18] == 0x49);
 

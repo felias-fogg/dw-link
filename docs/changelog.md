@@ -778,4 +778,8 @@ when levelshifter is true
 
 ## Version 3.0.0 (28-Aug-2023)
 * restructured monitor commands so that most of them have now
-one argument
+  one argument
+
+## Version 3.0.1 (29-Aug-2023)
+* fixed some inconsistencies in dw-link.h so that the program is again
+  a valid C++ program
