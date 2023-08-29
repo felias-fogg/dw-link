@@ -401,37 +401,36 @@ In the example session above, we saw a number of relevant commands already. If y
 
 command | action
 --- | ---
-help [*command*] | get help on a specific command
-step [*number*] | single step statement, descending into functions (step in), *number* times 
-next [*number*] | single step statement without descending into functions (step over)
+**h**elp [*command*] | get help on a specific command
+**s**tep [*number*] | single step statement, descending into functions (step in), *number* times 
+**n**ext [*number*] | single step statement without descending into functions (step over)
 finish | finish current function and return from call (step out)
-continue [*number*] | continue from current position and stop after *number* breakpoints have been hit. 
-run | reset MCU and restart program at address 0x0000
-break *function* \| [*file*:]*number* | set breakpoint at beginning of *function* or at line *number* in *file* 
-info breakpoints | list all breakpoints
-delete [*number* ...] | delete breakpoint(s) *number* or all breakpoints 
+**c**ontinue [*number*] | continue from current position and stop after *number* breakpoints have been hit. 
+**r**un | reset MCU and restart program at address 0x0000
+**b**reak *function* \| [*file*:]*number* | set breakpoint at beginning of *function* or at line *number* in *file* 
+**i**nfo **b**reakpoints | list all breakpoints
+**d**elete [*number* ...] | delete breakpoint(s) *number* or all breakpoints 
 
 In order to display information about the program and variables in it, the following commands are helpful. Further, you may want to change the value of variables.
 
 command | action
 --- | ---
-list [*function* \| [*filename*:]*number*] | show source code around current point, of *function*, or around line *number* in *filename* 
-print *expression* | evaluate expression and print 
+**l**ist [*function* \| [*filename*:]*number*] | show source code around current point, of *function*, or around line *number* in *filename* 
+**p**rint *expression* | evaluate expression and print 
 set var *variable* = *expression* | set the variable to a new value 
 display\[/*f*] *expression* | display expression using format *f* each time the program halts
-info display | print all auto-display commands
-delete display [*number* ...] | delete auto-display commands(s) or all auto-display commands 
+**i**nfo display | print all auto-display commands
+**d**elete display [*number* ...] | delete auto-display commands(s) or all auto-display commands 
 
 <a name="controlcommands"></a>In addition to the commands above, you have to know a few more commands that control the execution of *avr-gdb*.
 
 command | action
 --- | ---
 set serial baud *number* | set baud rate of serial port to the hardware debugger (same as using the `-b` option when starting *avr-gdb*); only effective when called before establishing a connection with the `target` command 
-target [extended-]remote *serialport* \| | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE; if extended is used, then establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command 
-run | reset MCU and restart program, which works only if we are in extended remote mode 
+target [extended-]remote *serialport* | establish a connection to the hardware debugger via *serialport*, which in turn will set up a connection to the target via debugWIRE; if extended is used, then establish a connection in the *extended remote mode*, i.e., one can restart the program using the `run` command 
 file *name*.elf | load the symbol table from the specified ELF file 
 load | load the ELF file into flash memory (should be done every time after the `target remote` command; it will only change the parts of the flash memory that needs to be changed)
-quit | exit from GDB 
+**q**uit | exit from GDB 
 
 Finally, there are commands that control the settings of the debugger and the MCU, which are particular to *dw-link*. They all start with the keyword `monitor`. You can abbreviate all keywords to 2 characters, if this is unambiguous.
 
@@ -439,13 +438,13 @@ Finally, there are commands that control the settings of the debugger and the MC
 | :------------------------------------ | ------------------------------------------------------------ |
 | monitor help                          | give a help message on monitor commands                      |
 | monitor version                       | print version number of firmware                             |
-| monitor dwire [+\|-]                  | + establishes the debugWIRE; - will disconnect; without any argument, it will report MCU type and communication speed (*) |
+| monitor dwire [+\|-]                  | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
 | monitor reset                         | resets the MCU (*)                                           |
-| monitor ckdiv [1\|8]                  | '1' unprograms the CKDIV8 fuse, '8' programs it; without an argument, the state of the fuse is reported (*) |
-| monitor oscillator [r\|a\|x\|e\|s\|u] | set clock source to 'r': RC osc., 'a': alternate RC osc., 'x': XTAL, 'e': external osc., 's': 128 kHz osc., 'u': 32 kHz osc.; without argument, it reports the fuse setting (*) |
-| monitor breakpoint [h\|s]             | set number of allowed breakpoints to 1, when 'h', or 32, when 's'; without argument it reports setting |
+| monitor ckdiv [1\|8]                  | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*) |
+| monitor oscillator [r\|a\|x\|e\|s\|u] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., **s**low osc. (128 kHz), or **u**lp osc. (32 kHz); without argument, it reports the fuse setting (*) |
+| monitor breakpoint [h\|s]             | set number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 33, when also **s**oftware breakpoints are permitted; without argument it reports setting |
 | monitor speed [l\|h]                  | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
-| monitor singlestep [s\|u]             | Sets single stepping to **s**afe or **u**nsafe; without an argument, it reports state |
+| monitor singlestep [s\|u]             | Sets single stepping to **s**afe (no interrupts) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
 | monitor lasterror                     | print error number of last fatal error                       |
 | monitor flashcount                    | reports on how many flash-page write operation have taken place since start |
 | monitor timeouts                      | report number of timeouts (should be 0!)                     |
@@ -454,7 +453,9 @@ All of the commands marked with (*) reset the MCU.
 
 ### 5.7 A graphical user interface: *Gede*
 
-If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Windows is not an option, unfortunately. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede). Just download the most recent **Release** and follow the build instructions. The `dw-server` directory contains a Python script called *dw-server.py*, which you should also copy to `/usr/local/bin`. 
+If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Unfortunately, Windows is not supported. However, you could use [*WSL2*](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux) to run Gede, avr-gdb, dw-server.py and the Arduiono IDE. Connecting to a serial port could then be done by using [*usb-ip*](https://github.com/dorssel/usbipd-win). 
+
+Making a long story short, you can download the modified source from my [Github repository](https://github.com/felias-fogg/gede). Just download the most recent **Release** and follow the build instructions. The `dw-server` directory of the dw-link directory contains a Python script called *dw-server.py*, which you should also copy to `/usr/local/bin`. 
 
 Open now a terminal window, `cd` into the folder that contains the ELF file, and type
 

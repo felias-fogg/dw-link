@@ -39,7 +39,7 @@ Close the `Preference` dialog with `OK`. Now we want to install the two cores `A
 * In the search field, type first `MiniCore` and install the most recent version (or upgrade to the most recent one). 
 * Afterwards, do the same with `ATTinyCore`.
 
-**Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Falgs: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
+**Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Flags: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
 ## Step 3: Install *dw-link* firmware
 
@@ -81,9 +81,9 @@ sudo apt-get install gdb-avr
 
 ##### Under Windows:
 
-The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gcc` to some place, e.g. `C:\Progam Files\bin\` . Afterwards, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then add `C:\Progam Files\bin` to the `PATH` environment variable.
+The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gdb` to some place, e.g. `C:\Progam Files\bin\` . Afterwards, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then add `C:\Progam Files\bin` to the `PATH` environment variable.
 
-**Check:** Open a terminal window and type in `avr-gdb`. This should start up the debugger. You can quit the debugger with the command `quit`.
+**Check:** Open a terminal window and type `avr-gdb`. This should start up the debugger. You can quit the debugger with the command `quit`.
 
 ## Step 5: Hardware setup
 
