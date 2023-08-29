@@ -2,7 +2,7 @@
 
 # Quickstart Guide
 
-Setting up an embedded debugging environment for classic AVR chips in 7 easy (+ 1 optional) steps. Takes less than one hour. 
+Turn your Arduino UNO into a  hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps (+ 1 optional step). Takes less than one hour. 
 
 ## What you need
 
