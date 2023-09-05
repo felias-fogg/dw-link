@@ -15,6 +15,7 @@ void gdbSteppingMode(char);
 void gdbVersion();
 void gdbSpeed(char);
 byte findArg(const byte []);
+
 void gdbSetMaxBPs(byte);
 void gdbGetMaxBPs();
 void gdbReportFlashCount();

@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.0.1"
+#define VERSION "3.1.0"
 
 // some constants, you may want to change
 #define PROGBPS 19200         // ISP programmer communication speed
@@ -209,6 +209,7 @@ const byte LEDGND = 6;
 const byte SYSLED = 7;
 const byte DWLINE = 8;
 const byte VSUP = 9;
+const byte TODSCK = 10;
 const byte TMOSI = 11;
 const byte TMISO = 12;
 const byte TSCK = 13;
@@ -3362,8 +3363,7 @@ void enableSpiPins (void) {
   if (ctx.levelshifting) {
     pinMode(TISP, OUTPUT);
     digitalWrite(TISP, LOW); // eanble pull-ups
-    digitalWrite(TSCK, LOW);
-    pinMode(TSCK, OUTPUT); // draws SCK low
+    pinMode(TODSCK, OUTPUT); // draws SCK low
     pinMode(TMOSI, INPUT);  // MOSI is HIGH
     digitalWrite(TMOSI, LOW); 
   } else {
@@ -3376,8 +3376,12 @@ void enableSpiPins (void) {
 }
 
 void disableSpiPins (void) {
-  pinMode(TSCK, INPUT); // disconnect TSCK = High state
-  digitalWrite(TSCK, LOW); // make sure that internal pullups are off
+  if (ctx.levelshifting) {
+    pinMode(TODSCK, INPUT); // disconnect TSCK (always LOW!)
+  } else {
+    pinMode(TSCK, INPUT); // disconnect TSCK = High state
+    digitalWrite(TSCK, LOW); // make sure that internal pullups are off
+  }
   pinMode(TMOSI, INPUT); // disconnect TMOSI = High state
   digitalWrite(TMOSI, LOW); // make sure that internal pullups are off
   pinMode(TISP, INPUT); // release TISP = switch off external pullups (now completely unconnected)
@@ -3392,7 +3396,7 @@ byte ispTransfer (byte val, boolean fast) {
   for (byte ii = 0; ii < 8; ++ii) {
     if (ctx.levelshifting) {
       pinMode(TMOSI,  (val & 0x80) ? INPUT : OUTPUT);
-      pinMode(TSCK, INPUT);
+      pinMode(TODSCK, INPUT);
     } else {
       digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
       digitalWrite(TSCK, HIGH);
@@ -3401,7 +3405,7 @@ byte ispTransfer (byte val, boolean fast) {
     else _delay_us(800); 
     val = (val << 1) + digitalRead(TMISO);
     if (ctx.levelshifting) {
-      pinMode(TSCK, OUTPUT);
+      pinMode(TODSCK, OUTPUT);
     } else {
       digitalWrite(TSCK, LOW);
     }

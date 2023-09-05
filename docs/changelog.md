@@ -783,3 +783,8 @@ when levelshifter is true
 ## Version 3.0.1 (29-Aug-2023)
 * fixed some inconsistencies in dw-link.h so that the program is again
   a valid C++ program
+
+## Version 3.1.0 (05-Sep-2023)
+* In case we are using the level shifting shield, then D10 (TODSCK) instead of
+D13 (TSCK) is used for SCK in order to avoid the highly loaded line
+

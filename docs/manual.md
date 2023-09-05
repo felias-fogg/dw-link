@@ -580,30 +580,24 @@ As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/202
 
 
 
-The relevant pins are therefore as defined in the following table. The pins in italics are not used in this basic version, but have its use for a more complex adapter board.
+The relevant pins are therefore as defined in the following table. 
 
 <a name="simplemap"></a>
 
-| Arduino pin | ISP pin | Function                                                     |
-| ----------- | ------- | ------------------------------------------------------------ |
-| D13         | 3       | SCK                                                          |
-| D12         | 1       | MISO                                                         |
-| D11         | 4       | MOSI                                                         |
-| D9 (or Vcc) | 2       | VTG                                                          |
-| D8          | 5       | RESET                                                        |
-| GND         | 6       | GND                                                          |
-| D7          |         | System LED+                                                  |
-| D6          |         | System LED- (if using a LED with a resistor soldered on)     |
-| *D5*        |         | Sense pin: Connected to GND when a board with level shifter is used |
-| *D4*        |         | ISP pullup enable (active low)                               |
-| *D3*        |         | Debug TX                                                     |
-| *D2*        |         | Power enable (active low)                                    |
-
-<a name="section71"></a>
+| Arduino pin | ISP pin | Function                                                 |
+| ----------- | ------- | -------------------------------------------------------- |
+| D13         | 3       | SCK                                                      |
+| D12         | 1       | MISO                                                     |
+| D11         | 4       | MOSI                                                     |
+| D9          | 2       | VTG                                                      |
+| D8          | 5       | RESET                                                    |
+| GND         | 6       | GND                                                      |
+| D7          |         | System LED+                                              |
+| D6          |         | System LED- (if using a LED with a resistor soldered on) |
 
 ### 7.2 A simple shield
 
-Taking it one one step further, one might think about a prototype shield for an UNO. Just take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
+Taking it one one step further, one can take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You probably should also plan to have jumper pins in order to be able to disconnect the target power supply line from the Arduino pin that delivers the supply voltage. And finally, you probably also want to place the system LED on the board. So, it could look like as in the following Fritzing sketch. 
 
 ![dw-probe-fritzing](pics/dw-probe-2.0.png)
 
@@ -611,17 +605,39 @@ In reality, that might look like as in the following picture.
 
 ![dw-probe-pcb-V2.0](pics/dw-probe-pcb-V2.0.jpg)
 
-### 7.3 Adapter with level-shifters and switchable power supply: *dw-link-probe*
+### 7.3 Adapter with level-shifters and switchable power supply: *dw-link probe*
 
-The basic adapter is quite limited. It can only source 20 mA and it cannot interact with 3.3 V systems. Thus, it would be great to have a board with the following features: 
+The basic adapter is quite limited. It can only supply 20 mA to the target board, it cannot interact with 3.3 V systems, and it has a high load on the SCK line. Thus, it would be great to have a board with the following features: 
 
-* switchable target power supply (supporting power-cycling by the hardware debugger) offering 5 volt and 3.3 volt supply up to 400 mA, 
+* switchable target power supply (supporting power-cycling by the hardware debugger) offering 5 volt and 3.3 volt supply up to 300 mA, 
 * a bidirectional (conditional) level-shifter on the debugWIRE/RESET line,
 * an optional pull-up resistor of 10 kΩ on this line,
 * unidirectional (conditional) level-shifters on the ISP lines, and
 * high-impedance status for the two output signals MOSI and SCK when ISP is inactive.
 
-Such a board does not need to be very complex. In fact, 3 MOS-FETs, an LED, and some passive components are enough.  For the SPI lines, we have to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, we do not do any level shifting at all and rely on the fact that the input pins of the hardware debugger recognize a logical one already at 3.0 V. For the down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These pull-ups can be disabled when no ISP programming is active, giving full control to the target system. Finally, the RESET/debugWIRE line uses the [common bidirectional design with the N-Channel MOSFET BS138](https://cdn-shop.adafruit.com/datasheets/an97055.pdf). The schematic looks as follows.
+Such a board does not need to be very complex. In fact, 3 MOS-FETs, a voltage regulator, an LED, and some passive components are enough.  For the SPI lines, we have to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, we do not do any level shifting at all and rely on the fact that the input pins of the hardware debugger recognize a logical one already at 3.0 V. For the down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These pull-ups will be disabled when no ISP programming is active, giving full control to the target system. Finally, the RESET/debugWIRE line uses the [common bidirectional design with the N-Channel MOSFET BS138](https://cdn-shop.adafruit.com/datasheets/an97055.pdf). 
+
+The pin mapping is a bit different from the basic design described above, which is controlled by pin D5, which is tight to ground in order to signal that the more complex pin mapping is used. The additional pins are all in italics.
+
+ 
+
+| Arduino pin | ISP pin  | Function                                                     |
+| ----------- | -------- | ------------------------------------------------------------ |
+| <s>D13</s>  | <s>3</s> | <s>SCK</s>                                                   |
+| D12         | 1        | MISO                                                         |
+| D11         | 4        | MOSI (open drain)                                            |
+| *D10*       | 3        | SCK (open drain)                                             |
+| D9          | 2        | VTG                                                          |
+| D8          | 5        | RESET                                                        |
+| GND         | 6        | GND                                                          |
+| D7          |          | System LED+                                                  |
+| D6          |          | System LED- (if using a LED with a resistor soldered on)     |
+| *D5*        |          | Sense pin: Connected to GND when a board with level shifter is used |
+| *D4*        |          | ISP pullup enable (open drain, active low)                   |
+| *D3*        |          | Automatic debugWire switching disable (open drain, active low) |
+| *D2*        |          | Power enable (open drain, active low)                        |
+
+
 
 ![dw-probe-chematic](../pcb/dw-link-probe-V2-schematic.png)
 
