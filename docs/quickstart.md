@@ -8,7 +8,7 @@ Turn your Arduino UNO into a hardware debugger that can be used for embedded deb
 
 * Computer running Windows, macOS, or Linux (the *host*)
 * Arduino UNO (will become the *hardware debugger*)
-* ATTiny85 (or any other classic ATTiny or ATmega8X as the *target*)
+* ATTiny85 (or any other classic ATTiny or ATmegaX8 as the *target*)
 * Breadboard
 * 11 Jumper wires (male-to-male)
 * 2 LEDs
@@ -61,7 +61,7 @@ In order to install the firmware,
 
 **Check:** Open the `Serial Monitor` (under `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
 
-## Step 4: Install *avr-gdb* debugger on host computer
+## Step 4: Install *avr-gdb* on host computer
 
 ##### On a Mac: 
 
