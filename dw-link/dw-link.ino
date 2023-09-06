@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.1.0"
+#define VERSION "3.1.1"
 
 // some constants, you may want to change
 #define PROGBPS 19200         // ISP programmer communication speed
@@ -215,6 +215,7 @@ const byte TMISO = 12;
 const byte TSCK = 13;
 
 // MCU names
+const char unknown[] PROGMEM ="Unknown";
 const char attiny13[] PROGMEM = "ATtiny13";
 const char attiny43[] PROGMEM = "ATtiny43U";
 const char attiny2313[] PROGMEM = "ATtiny2313";
@@ -324,7 +325,7 @@ struct mcu_info_type {
 // untested ones are marked 
 const mcu_info_type mcu_info[] PROGMEM = {
 // sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh rcosc arosc extosc xtosc slosc ulosc plus name
-//{0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x09, 0x08, 0xFF, 0x0B, 0xFF, 0, attiny13},
+//  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x09, 0x08, 0xFF, 0x0B, 0xFF, 0, attiny13},
 
   {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0xFF, 0, attiny2313},
   {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0xFF, 0, attiny4313},
@@ -611,6 +612,7 @@ void initSession(void)
   fatalerror = NO_FATAL;
   setSysState(NOTCONN_STATE);
   targetInitRegisters();
+  mcu.name = (const char *)unknown;
 }
 
 // report a fatal error and stop everything
@@ -1045,11 +1047,14 @@ boolean gdbConnect(boolean verbose)
     default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
     }
   }
+  if (verbose) {
+    gdbReportConnected();
+  }
   DEBPR(F("conncode: "));
   DEBLN(conncode);
   if (fatalerror == NO_FATAL) fatalerror = -conncode;
   setSysState(ERROR_STATE);
-  if (conncode == -1) dw.enable(false); // otherwise if DWLINE has no pullup, the program goes astray!
+  if (conncode < 0) dw.enable(false); // otherwise if DWLINE has no pullup, the program goes astray!
   flushInput();
   targetInitRegisters();
   return false;
@@ -1079,12 +1084,16 @@ boolean gdbStop(boolean verbose)
 
 void gdbReportConnected(void)
 {
-  gdbDebugMessagePSTR(Connected,-2);
-  if (!targetOffline() || targetDWConnect()) {
-    gdbReset();
-    gdbReplyMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
-  } else {
-    gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+  if (mcu.name == unknown) {
+    gdbReplyMessagePSTR(PSTR("Not connected"),-1);
+  } else { 
+    gdbDebugMessagePSTR(Connected,-2);
+    if (!targetOffline() || targetDWConnect()) {
+      gdbReset();
+      gdbReplyMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
+    } else {
+      gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+    }
   }
 }
 
@@ -3355,17 +3364,22 @@ byte DWflushInput(void)
 
 
 void enableSpiPins (void) {
-  DEBLN(F("Eenable SPI ..."));
+  DEBLN(F("Enable SPI ..."));
+  if (ctx.levelshifting) {
+    pinMode(TISP, OUTPUT);
+    digitalWrite(TISP, LOW); // enable pull-ups
+    _delay_us(10);
+  }
   pinMode(DWLINE, OUTPUT);
   digitalWrite(DWLINE, LOW);
   DEBLN(F("RESET low"));
-  _delay_us(1);
+  _delay_us(10);
   if (ctx.levelshifting) {
-    pinMode(TISP, OUTPUT);
-    digitalWrite(TISP, LOW); // eanble pull-ups
     pinMode(TODSCK, OUTPUT); // draws SCK low
+    digitalWrite(TODSCK, LOW);
     pinMode(TMOSI, INPUT);  // MOSI is HIGH
     digitalWrite(TMOSI, LOW); 
+    _delay_us(10);
   } else {
     pinMode(TSCK, OUTPUT);
     digitalWrite(TSCK, LOW);
@@ -3439,7 +3453,7 @@ boolean enterProgramMode (void)
     enableSpiPins();
     //DEBLN(F("Pins enabled ..."));
     pinMode(DWLINE, INPUT); 
-    _delay_us(30);             // short positive RESET pulse of at least 2 clock cycles
+    _delay_us(600);             // short positive RESET pulse of at least 2 clock cycles
     pinMode(DWLINE, OUTPUT);  
     _delay_ms(30);            // wait at least 20 ms before sending enable sequence
     if (ispSend(0xAC, 0x53, 0x00, 0x00, false, false) == 0x53) break;
@@ -3675,7 +3689,7 @@ char convHex2Ascii(char char1, char char2)
 }
 
 // convert a buffer with a string of hex numbers into a string in place
-void convBufferHex2Ascii(char *outbuf, byte *buf, int maxlen)
+void convBufferHex2Ascii(char *outbuf, const byte *buf, int maxlen)
 {
   int i, clen = strlen((const char *)buf);
 

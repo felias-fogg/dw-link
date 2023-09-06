@@ -788,3 +788,14 @@ when levelshifter is true
 * In case we are using the level shifting shield, then D10 (TODSCK) instead of
 D13 (TSCK) is used for SCK in order to avoid the highly loaded line
 
+##  Version 3.1.1 (06-Sep-2023)
+* set reasonable default value for MCU so that in case of connection
+problems the displayed name is not garbarge
+* give unconnected message after unsuccessful connection approach
+* changed varblink.ino so that now the local variable is not any
+longer optimized away
+* changed the short positive pulse from 30 us to 600 us; this should
+be enough for a 4 kHz clock!
+* changed the wait time after engaging RESET in enableSpiPins from 1
+  us to 10 us and added 10 us after enabling the pullup resistors and
+  after pulling SCK low and setting MOSI high

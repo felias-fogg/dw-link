@@ -8,7 +8,7 @@ void setup() {
 }
 
 void loop() {
-  int i=random(3);
+  int i=digitalRead(1)+20;
   digitalWrite(LED, HIGH);  
   delay(1000);              
   digitalWrite(LED, LOW);              

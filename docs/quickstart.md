@@ -156,7 +156,7 @@ What else could happen?
 * If the LED stays dark and you receive the message `/dev/XXXXXXXX: Resource busy`, then some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.
 * If the LED stays dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
 
-* If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type `monitor dwire`, which should give you the reason. Probably: Wrong wiring. So check the wiring or maybe try a different MCU.
+* If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type `monitor dwire +`, which should give you the reason. Probably: Wrong wiring. So check the wiring or maybe try a different MCU.
 
 Assuming that everything went according to plan, the only thing missing now is that the sketch is loaded into flash memory. But the next command will exactly do this:
 
@@ -197,15 +197,15 @@ You should always end your debugging session with the `quit` command, which will
 
 ## Step 8 (optional): Install a graphical user interface
 
-If you would like to work with a GUI, then *[Gede](https://gede.dexar.se/)* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host OS is macOS or Linux. An alternative is [PlatformIO](https://platformio.org/) IDE, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) in Section 6, which also works for Windows.
+If you would like to work with a GUI, then *[Gede](https://gede.dexar.se/)* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host operating system is macOS or Linux. An alternative to Gede is the [PlatformIO](https://platformio.org/) IDE, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) in Section 6, which also works for Windows.
 
-A prerequisite for using *Gede* is that we make sure that *PySerial* is installed. So type into a terminal:
+A prerequisite for using Gede is that we make sure that *PySerial* is installed. So type into a terminal:
 
 ```
 pip3 install pyserial
 ```
 
-Now you need to build *Gede* from [my forked Gede repository](https://github.com/felias-fogg/gede). Just download the latest release and follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-x.y.z/dw-server` to `/user/local/bin` (of course, using `sudo`).
+Now you need to build Gede from [my forked Gede repository](https://github.com/felias-fogg/gede). Just download the latest release and follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-x.y.z/dw-server` to `/user/local/bin` (of course, using `sudo`).
 
 **Check**: Open a terminal window and type `gede`. This should bring up a window, which you can kill. Typing `dw-server.py` should give you the output `--- No dw-link adapter discovered ---`, when no adapter is present, or `Waiting for connection on 2000`. Stop the script with `CTRL-C`.
 
@@ -222,6 +222,8 @@ The `dw-server.py` script will discover the serial port of the hardware debugger
 `Project dir` and `Program` are specific to your debugging session. The former is the directory *Gede* was started in, the latter is the location of the ELF file. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
 
 *Gede* has now an additional command (arrow pointing down) that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
+
+![gede](pics/gede.png)
 
 ## What can go wrong?
 

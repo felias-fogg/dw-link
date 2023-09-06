@@ -1,5 +1,11 @@
 # Wish list for dw-link
 
+* Important (3.1.0): When trying to debug the boarduino at 5V with the probe shield, the feedback
+  is: `Wrong Wiring`. It works flawlessly with a lot of other boards (ATtiny,
+  UNO, ...), with other shields, with 5V, you name it.
+  * Record ISP lines in the two different configurations!
+  * Probably has something to do with the particular kind of managing
+    the SPI lines
 
 * design case for debugger and print it
 
@@ -8,13 +14,14 @@
 
 * perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
 
-* `monitor clock` command that displays the current clock setting
-
   
 
 
 
 List of tasks done:
+
+* `monitor clock` command that displays the current clock setting --
+  well, redesigned all monitor commands! 
 
 * integrate programmer into code so that one also could do ISP programming
 
