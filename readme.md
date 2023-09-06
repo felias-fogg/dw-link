@@ -33,5 +33,5 @@ Note that the debugger is a beta release and may contain bugs. If you encounter 
 
 
 
-<small>The cover picture was designed based on vector graphics by [captainvector at 123RF](https://de.123rf.com/profile_captainvector).</small>
+<font size="-3">The cover picture was designed based on vector graphics by [captainvector at 123RF](https://de.123rf.com/profile_captainvector).</font>
 
