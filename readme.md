@@ -16,7 +16,7 @@ Why is this good news? Arduino IDE 1.X does not support debugging at all. Even t
 
 Do you want to try it? Use the [**Quickstart Guide**](docs/quickstart.md) in order find out whether it works for you.
 
-If you are interested in the background and ongoing development of dw-link, visit my [blog](https://arduino-craft-corner.de/). In particular, the blogs tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be interesting for you.
+If you are interested in the background and ongoing development of dw-link, visit my [blog](https://arduino-craft-corner.de/). In particular, the blogs tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be of interest to you.
 
 This repository contains the following directories:
 
@@ -30,4 +30,8 @@ This repository contains the following directories:
 * [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as C program to generate the lists.
 
 Note that the debugger is a beta release and may contain bugs. If you encounter behavior that you think is wrong, try to be as specific as possible so that I can reproduce the behavior. I have prepared an [issue form](docs/issue_form.md) for that purpose. Current issues, known bugs, and limitations are listed in Section 8 of the [manual](docs/manual.md). 
+
+
+
+<small>The cover picture was designed based on vector graphics by [captainvector at 123RF](https://de.123rf.com/profile_captainvector).</small>
 

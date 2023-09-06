@@ -1,6 +1,6 @@
 # dw-link
 
-# Quickstart Guide
+# Quick-start Guide
 
 Turn your Arduino UNO into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps (+ 1 optional step). Takes less than one hour. 
 
@@ -47,8 +47,8 @@ Download the dw-link firmware into a place inside the *Arduino sketchbook*. This
 
 * open the webpage https://github.com/felias-fogg/dw-link, 
 * click on `Latest` in the field **Releases**,
-* choose either *zip* or *tar.gz*,
-* copy the archive to a place in the sketchbook, 
+* choose either `zip` or `tar.gz`,
+* copy the archive to a place in the Arduino sketchbook, 
 * extract the firmware using `unzip` or `tar -xvzf`. 
 
 In order to install the firmware, 
@@ -56,7 +56,7 @@ In order to install the firmware,
 * first connect the Arduino UNO to your computer with a USB cable. 
 * Now open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`. 
 * Perhaps, you have to select the right `Port` in the `Tools` menu as well. 
-* Now load the *dw-link* sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw.link.ino`. 
+* Now load the dw-link sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw.link.ino`. 
 * Finally, compile and download the sketch to the UNO by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now a hardware debugger (but needs a bit of additional hardware).
 
 **Check:** Open the `Serial Monitor` (under `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
@@ -65,7 +65,7 @@ In order to install the firmware,
 
 ##### On a Mac: 
 
-You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. Installing homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, as follows:
+You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, as follows:
 
 ```
 brew tap osx-cross/avr && brew install avr-gdb
@@ -215,13 +215,13 @@ In order to start a debugging session, you have to open a terminal window and ch
 dw-server.py -g
 ```
 
-The `dw-server.py` script will discover the serial port of the hardware debugger, if there is any, and start *Gede*, which will present the following window.
+The `dw-server.py` script will discover the serial port of the hardware debugger, if there is any, and start Gede, which will present the following window.
 
 ![gede](pics/gede-start.png)
 
-`Project dir` and `Program` are specific to your debugging session. The former is the directory *Gede* was started in, the latter is the location of the ELF file. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
+`Project dir` and `Program` are specific to your debugging session. The former is the directory Gede was started in, the latter is the location of the ELF file. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
 
-*Gede* has now an additional command (arrow pointing down) that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
+Gede has now an additional command (arrow pointing down) that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
 
 ![gede](pics/gede.png)
 
@@ -236,3 +236,5 @@ If you think that you have found a bug, please consider posting it on [issues](h
 ## After debugging has finished
 
 So what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `AVR ISP` or `Arduino as ISP`.
+
+If you want to create a debugging solution that is more durable, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 7.
