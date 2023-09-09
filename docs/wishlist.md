@@ -1,11 +1,10 @@
 # Wish list for dw-link
 
-* Important (3.1.0): When trying to debug the boarduino at 5V with the probe shield, the feedback
-  is: `Wrong Wiring`. It works flawlessly with a lot of other boards (ATtiny,
-  UNO, ...), with other shields, with 5V, you name it.
-  * Record ISP lines in the two different configurations!
-  * Probably has something to do with the particular kind of managing
-    the SPI lines
+* use the DEBTX (if not defined) as a sensing pin to disable automatic DWEN programming, i.e., you have to use mo dw +/- by yourself.
+
+* implement semi-hosting
+
+* integrate into the Arduino VSC plugin
 
 * design case for debugger and print it
 
@@ -19,6 +18,10 @@
 
 
 List of tasks done:
+
+* Important (3.1.0): When trying to debug the boarduino at 5V with the probe shield, the feedback
+  is: `Wrong Wiring`. It works flawlessly with a lot of other boards (ATtiny,
+  UNO, ...), with other shields, with 5V, you name it --> turned out to be that the boarduino had a particularly strong pull-down resistor. That is, the cure is to use 1K pull-ups on the SPI lines!
 
 * `monitor clock` command that displays the current clock setting --
   well, redesigned all monitor commands! 

@@ -12,7 +12,7 @@ This is an Arduino sketch that turns your Arduino UNO into a hardware debugger f
 
 The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program running on the target hardware (e.g. an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
-Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new version will not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, to single-step, and to inspect variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
+Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new version will not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, to single-step, and to inspect and set variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
 
 Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart.md) in order find out whether it works for you.
 
@@ -25,7 +25,7 @@ This repository contains the following directories:
 * [**dw-server**](dw-server/): Contains the Python script dw-server.py, which discovers the serial line dw-link is connected to and provides a serial-to-TCP/IP bridge
 * [**examples**](examples/): Contains a tiny Arduino sketch and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
-* [**pcb**](pcb/): Contains design data (Eagle and Gerber) for the (optional) adapter boards 
+* [**pcb**](pcb/): Contains design data (KiCad) for the (optional) adapter boards 
 * [**core-mods**](core-mods/): Contains all the modifications to the core files necessary to support the generation of debug-friendly object files
 * [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as C program to generate the lists.
 

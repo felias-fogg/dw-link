@@ -439,20 +439,20 @@ load | load the ELF file into flash memory (should be done every time after the 
 
 Finally, there are commands that control the settings of the debugger and the MCU, which are particular to dw-link. They all start with the keyword `monitor`. You can abbreviate all keywords to 2 characters, if this is unambiguous.
 
-| command                               | action                                                       |
-| :------------------------------------ | ------------------------------------------------------------ |
-| monitor help                          | give a help message on monitor commands                      |
-| monitor version                       | print version number of firmware                             |
-| monitor dwire [+\|-]                  | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
-| monitor reset                         | resets the MCU (*)                                           |
-| monitor ckdiv [1\|8]                  | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*) |
-| monitor oscillator [r\|a\|x\|e\|s\|u] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., **s**low osc. (128 kHz), or **u**lp osc. (32 kHz); without argument, it reports the fuse setting (*) |
-| monitor breakpoint [h\|s]             | set number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 33, when also **s**oftware breakpoints are permitted; without argument it reports setting |
-| monitor speed [l\|h]                  | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
-| monitor singlestep [s\|u]             | Sets single stepping to **s**afe (no interrupts) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
-| monitor lasterror                     | print error number of last fatal error                       |
-| monitor flashcount                    | reports on how many flash-page write operation have taken place since start |
-| monitor timeouts                      | report number of timeouts (should be 0!)                     |
+| command                            | action                                                       |
+| :--------------------------------- | ------------------------------------------------------------ |
+| monitor help                       | give a help message on monitor commands                      |
+| monitor version                    | print version number of firmware                             |
+| monitor dwire [+\|-]               | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
+| monitor reset                      | resets the MCU (*)                                           |
+| monitor ckdiv [1\|8]               | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*) |
+| monitor oscillator [r\|a\|x\|e\|s] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., or **s**low osc. (128 kHz); without argument, it reports the fuse setting (*) |
+| monitor breakpoint [h\|s]          | set number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 33, when also **s**oftware breakpoints are permitted; without argument it reports setting |
+| monitor speed [l\|h]               | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
+| monitor singlestep [s\|u]          | Sets single stepping to **s**afe (no interrupts) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
+| monitor lasterror                  | print error number of last fatal error                       |
+| monitor flashcount                 | reports on how many flash-page write operation have taken place since start |
+| monitor timeouts                   | report number of timeouts (should be 0!)                     |
 
 All of the commands marked with (*) reset the MCU.
 
@@ -614,7 +614,7 @@ In reality, that might look like as in the following picture.
 
 ### 7.3 Adapter with level-shifters and switchable power supply: *dw-link probe*
 
-The basic adapter is quite limited. It can only supply 20 mA to the target board, it cannot interact with 3.3 V systems, and it has a high load on the SCK line (because the UNO LED is driven by this pin). Thus, it would be great to have a board with the following features: 
+The basic adapter is quite limited. It can only supply 20 mA to the target board, it cannot interact with 3.3 V systems, and it has a high load on the SCK line (because the UNO LED is driven by this pin) when the ISP mode is disabled. Thus, it would be great to have a board with the following features: 
 
 * switchable target power supply (supporting power-cycling by the hardware debugger) offering 5 volt and 3.3 volt supply up to 300 mA, 
 * a bidirectional (conditional) level-shifter on the debugWIRE/RESET line,
@@ -622,9 +622,13 @@ The basic adapter is quite limited. It can only supply 20 mA to the target board
 * unidirectional (conditional) level-shifters on the ISP lines, and
 * high-impedance status for the two output signals MOSI and SCK when ISP is inactive.
 
-Such a board does not need to be very complex. In fact, 3 MOS-FETs, a voltage regulator, an LED, and some passive components are enough.  For the SPI lines, we have to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, we do not do any level shifting at all and rely on the fact that the input pins of the hardware debugger recognize a logical one already at 3.0 V. For the down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These pull-ups will be disabled when no ISP programming is active, giving full control to the target system. Finally, the RESET/debugWIRE line uses the [common bidirectional design with the N-Channel MOSFET BS138](https://cdn-shop.adafruit.com/datasheets/an97055.pdf). 
+Such a board does not need to be very complex. In fact, 2 MOS-FETs, a voltage regulator, an LED, and some passive components are enough.  The electronic design is minimalistic. It uses just two MOS-FETs, one LED, one voltage regulator, and some passive components. We need to  level-shift the RESET line in a bidirectional manner and the SPI lines  unidirectionally.  One needs to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former  case, no level shifting is done at all, relying on the fact that the  input pins of the hardware debugger recognize a logical one already at  3.0 V. For the RESET line, which is open drain, we rely on the same  fact. This means that this hardware debugger cannot deal with systems  that use a supply voltage with less than 3 V, though.
 
-The pin mapping is a bit different from the basic design described above, which is controlled by pin D5, which is tight to ground in order to signal that the more complex pin mapping is used. The additional pins are all in italics.
+For down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because a  number of possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors which guarantee that the signal level is  above 3V on the SCK line, when we supply the board with 5V. These  pull-ups will be disabled when no ISP programming is active, giving full control of the two lines to the target system. The schematic looks as  follows.
+
+![KiCad-Schematic](pics/dw-link-probe-V3.0-sch.png)
+
+The pin mapping is a bit different from the basic design described above. It is controlled by pin D5, which is tight to ground in order to signal that the more complex pin mapping is used. The additional pins are all in italics.
 
  
 
@@ -646,20 +650,19 @@ The pin mapping is a bit different from the basic design described above, which 
 
 
 
-![dw-probe-chematic](../pcb/dw-link-probe-V2-schematic.png)
-
 And here is the breadboard prototype, which works beautifully.
 
 ![V2-prototype](pics/dw-probe-V2.jpg)
 
 
 
-Before you start debugging with the new probe, you have to set two jumpers. In addition, there are two places for headers labeled **RESDIS** and **DEB**, which both can be left untouched. Then you are all set and can start debugging. 
+Before you start, you have to set three jumpers. Then you are all set and can start debugging. 
 
 Label | Left | Middle | Right 
 --- | --- | --- | --- 
-**Supply** | **3.3V** are supplied to the target | **ext.**: target needs its own supply and power cycling has to be done manually | **5V** are supplied to the target 
+**Supply** | **5 V** are supplied to the target | **extern**: target needs its own supply and power cycling has to be done manually | **3.3 V** are supplied to the target 
 **Pullup** | There is **no** pull-up resistor connected | &nbsp; | A **10kΩ** pull-up resistor is connected to the RESET line of the target 
+**Auto_DW** | Atomatic transitions to and from debugWIRE mode is **off** |  | Atomatic transitions to and from debugWIRE mode is **on** 
 
 <a name="section8"></a>
 
@@ -759,7 +762,7 @@ The list of known issues mentions also the following four potential problems:
 * The voltage should not be changed during a debug session
 * The CKDIV8 fuse should not be in the programmed state when running off a 128 kHz clock source
 
-However, I had no problems reconnecting to the target when the target had been stopped asynchronously or by a breakpoint. The only problem was that the target will not stop at the hardware breakpoint after a reset, since this hardware breakpoint will be cleared by the reset. So, if you want to be sure to stop after a reset, place two different breakpoints in the startup routine. Changing the clock frequency is also not a problem since at each stop the debugger re-synchronizes with the target. Further, changing the supply voltage can be done, if you have level-shifting hardware in place. Finally, debugging at very low clock frequencies (128 kHz/8 = 16 kHz) is not impossible, but communication is extremely slow.
+However, I had no problems reconnecting to the target when the target had been stopped asynchronously or by a breakpoint. The only problem was that the target will not stop at the hardware breakpoint after a reset, since this hardware breakpoint will be cleared by the reset. So, if you want to be sure to stop after a reset, place two different breakpoints in the startup routine. Changing the clock frequency is also not a problem since at each stop the debugger re-synchronizes with the target. Further, changing the supply voltage can be done, if you have level-shifting hardware in place. Finally, debugging at very low clock frequencies (128 kHz/8 = 16 kHz) is not impossible, but communication is extremely slow. If you go below this clock frequency by using the ULP 32 kHz oscillator, which are present on some MCUs,  and a programmed CKDIV8 fuse (resulting in a 4 kHz clock), dw-link is unable to connect to the MCU (similar to most ISP programmers).
 
 ### 8.8 BREAK instructions in your program
 
@@ -821,7 +824,7 @@ My experience is that 230400 bps works only with UNO boards. The Arduino Nano ca
 
 A further (unlikely) reason for a failure in connecting to the host might be that a different communication format was chosen (parity, two stop bits, ...). 
 
-#### Problem: In response to the `monitor dwire -` command, you get the error message *Cannot connect: ...*
+#### Problem: In response to the `monitor dwire +` command, you get the error message *Cannot connect: ...*
 
 Depending on the concrete error message, the problem fix varies.
 
