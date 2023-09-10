@@ -25,7 +25,7 @@ This repository contains the following directories:
 * [**dw-server**](dw-server/): Contains the Python script dw-server.py, which discovers the serial line dw-link is connected to and provides a serial-to-TCP/IP bridge
 * [**examples**](examples/): Contains a tiny Arduino sketch and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
-* [**pcb**](pcb/): Contains design data (KiCad) for the (optional) adapter boards 
+* [**pcb**](pcb/): Contains design data (KiCad) for the optional adapter board, which you can buy at [Tindie](https://www.tindie.com/products/31798/) 
 * [**core-mods**](core-mods/): Contains all the modifications to the core files necessary to support the generation of debug-friendly object files
 * [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as C program to generate the lists.
 

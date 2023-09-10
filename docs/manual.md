@@ -18,7 +18,7 @@
 
 The Arduino IDE is very simple and makes it easy to get started. After a while, however, one notices that a lot of important features are missing. In particular, neither the old nor the new IDE supports any kind of debugging for the classic AVR chips. So what can you do when you want to debug your Arduino project on small ATmegas (such as the popular ATmega328) or ATtinys? The usual way is to insert print statements and see whether the program does the things it is supposed to do. However, supposedly one should be able to do better than that because the above mentioned MCUs support [on-chip debugging](https://en.wikipedia.org/wiki/In-circuit_emulation#On-chip_debugging) via [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE).
 
-When you want hardware debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE or the MPLAB Snap and you have to use the propriatery development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). The question is, of course, whether there are open-source alternatives. Preferably supporting *avr-gdb*, the [GNU debugger](https://www.gnu.org/software/gdb/) for AVR MCUs.  With *dw-link*, you have such a solution. It turns an Arduino UNO into a hardware debugger that implements the GDB remote serial protocol.
+When you want hardware debugging support, you could buy expensive hardware-debuggers such as the Atmel-ICE or the MPLAB Snap and you have to use the propriatery development IDE [Microchip Studio](https://www.microchip.com/en-us/development-tools-tools-and-software/microchip-studio-for-avr-and-sam-devices) (for Windows) or [MPLAB X IDE](https://www.microchip.com/en-us/development-tools-tools-and-software/mplab-x-ide) (for all platforms). The question is, of course, whether there are open-source alternatives. Preferably supporting *avr-gdb*, the [GNU debugger](https://www.gnu.org/software/gdb/) for AVR MCUs.  With *dw-link*, you have such a solution. It turns an Arduino UNO into a hardware debugger that implements the GDB remote serial protocol. Meanwhile, you can also buy an UNO shield called [*dw-link probe* at Tindie](https://www.tindie.com/products/31798/), which allows to debug also 3.3 Volt systems and is able to provide up to 300 mA current supply.
 
 ### 1.1 Enter the wonderful world of debugging in a few easy steps 
 
@@ -652,9 +652,11 @@ The pin mapping is a bit different from the basic design described above. It is 
 
 And here is the breadboard prototype, which works beautifully.
 
-![V2-prototype](pics/dw-probe-V2.jpg)
+![V2-prototype](pics/dw-probe-V3.jpg)
 
+I have turned that into a PCB, which you can buy [at Tindie](https://www.tindie.com/products/31798/).
 
+![board](../pcb/board.png)
 
 Before you start, you have to set three jumpers. Then you are all set and can start debugging. 
 
@@ -795,6 +797,10 @@ I have encountered situations [when it was impossible to get the right informati
 <a name="trouble"></a>
 
 ## 9 Trouble shooting
+
+#### Problem: It is impossible to upload the dw-link firmware to the UNO board
+
+Maybe, the dw-link probe shield or the auto-reset disabling capacitor is still plugged into the UNO board? Remove, and try gain.
 
 #### Problem: After debugging, the chip is unresponsive, i.e., does not respond anymore to ISP programming or bootloader upload
 

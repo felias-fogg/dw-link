@@ -8,7 +8,7 @@ Turn your Arduino UNO into a hardware debugger that can be used for embedded deb
 
 * Computer running Windows, macOS, or Linux (the *host*)
 * Arduino UNO (will become the *hardware debugger*)
-* ATTiny85 (or any other classic ATTiny or ATmegaX8 as the *target*)
+* ATtiny85 (or any other classic ATtiny or ATmegaX8 as the *target*)
 * Breadboard
 * 11 Jumper wires (male-to-male)
 * 2 LEDs
@@ -53,10 +53,11 @@ Download the dw-link firmware into a place inside the *Arduino sketchbook*. This
 
 In order to install the firmware, 
 
-* first connect the Arduino UNO to your computer with a USB cable. 
-* Now open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`. 
-* Perhaps, you have to select the right `Port` in the `Tools` menu as well. 
-* Now load the dw-link sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw.link.ino`. 
+* first make sure that the auto-reset feature of the UNO is not disabled, e.g., by a shield or a capacitor plugged into the UNO board,
+* then connect the Arduino UNO to your computer with a USB cable,
+* open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`, 
+* select the right `Port` in the `Tools` menu, 
+* and load the dw-link sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw.link.ino`. 
 * Finally, compile and download the sketch to the UNO by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now a hardware debugger (but needs a bit of additional hardware).
 
 **Check:** Open the `Serial Monitor` (under `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
@@ -65,7 +66,7 @@ In order to install the firmware,
 
 ##### On a Mac: 
 
-You need to install the package system *Homebrew* first, if you have not done that yet. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, as follows:
+You need to install the package manager *Homebrew* first, if you have not done so yet. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, by typing the following line into a shell:
 
 ```
 brew tap osx-cross/avr && brew install avr-gdb
@@ -89,7 +90,7 @@ The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolc
 
 This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to physically alter the board (cut a solder bridge). How to set up an UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
 
-When you are the proud owner of a [dw-link probe](https://github.com/felias-fogg/dw-link/blob/master/pcb/readme.md), and you own a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable. If this is not the case, then you need to set up the hardware on a breadboard and use 6 wires to connect the ATtiny to your UNO turned hardware debugger. 
+When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable. If this is not the case, then you need to set up the hardware on a breadboard and use 6 wires to connect the ATtiny to your UNO turned hardware debugger. 
 
 ![ATtiny85-debug](pics/debug-attiny85-LED-onboard.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
 
