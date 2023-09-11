@@ -7,7 +7,7 @@
   * break is now long enough (400 ms),
   * calibration works down to 12 bps (see Version 1.1.12),
   * for bit delay times we now also take into account a prescaler of 256, which should mean that we can go down to 10 bps. 
-    * This feature needs to be tested, perhaps using a 32 kHz crystal in order to avoid the potential bricking problem with SMD MCUs
+    * This feature needs to be tested, perhaps using a 32 kHz crystal or external oscillator in order to avoid the potential bricking problem with SMD MCUs
 * The power-cycle times have been reduced from 1700 ms to 500 ms, when it is done automatically; since the break time has been expanded from 120 to 400 ms, the gain is 'only' 920 ms.
 
 
