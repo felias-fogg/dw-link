@@ -27,7 +27,11 @@ The kit contains the following parts. They are all THT, except for Q1 and Q2.
 | IOH1, IOL1                   | Pin Header (1x8)                   | 2      |
 | POWER1, AD1                  | Pin Header (1x6)                   | 2      |
 
-When assembling the kit, just follow what is specified in the table. Start from the top and go down. In case, you do not know  the color codes for resistors by heart, try this [online calculator](https://www.allaboutcircuits.com/tools/resistor-color-code-calculator/). For the capacitors C1 and C3 (bipolar capacitors have the negative connection marked and the negative connection has usually a shorter lead) and the LED (negative lead has a shorter lead), watch out for the polarity, which should be matched the symbols on the PCB. Q1, Q2, and U1 should all be soldered with the marking pointing upwards.
+When assembling the kit, just follow what is specified in the table. Start from the top and go down. In case, you do not know  the color codes for resistors by heart, try this [online calculator](https://www.allaboutcircuits.com/tools/resistor-color-code-calculator/). 
+
+For the capacitors C1 and C3 and the LED, watch out for the polarity, which should be matched with the symbols on the PCB. Bipolar capacitors have the negative connection marked and the negative connection has usually a shorter lead. The other lead should go into the hole marked with '+'.  Similarly, also LEDs have a long and a short lead, where the short one marks the cathode. This one should go into the hole marked with a square.
+
+Q1, Q2, and U1 should all be soldered with the marking pointing upwards.
 
 When soldering the shield connectors to the board, it is a good idea to do that when the plugs are inserted into the sockets of the Arduino UNO. 
 
