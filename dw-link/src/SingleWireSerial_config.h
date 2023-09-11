@@ -24,6 +24,7 @@
   #define ICF   ICF0
   #define ICIE  ICIE0
   #define OCFA  OCF0A
+  #define CS2   CS02
   #define CS1   CS01
   #define CS0   CS00
   #define ICES  ICES0
@@ -44,6 +45,7 @@
   #define ICF   ICF1
   #define ICIE  ICIE1
   #define OCFA  OCF1A
+  #define CS2   CS12
   #define CS1   CS11
   #define CS0   CS10
   #define ICES  ICES1
@@ -64,6 +66,7 @@
   #define ICF   ICF2
   #define ICIE  ICIE2
   #define OCFA  OCF2A
+  #define CS2   CS22
   #define CS1   CS21
   #define CS0   CS20
   #define ICES  ICES2
@@ -84,6 +87,7 @@
   #define ICF   ICF3
   #define ICIE  ICIE3
   #define OCFA  OCF3A
+  #define CS2   CS32
   #define CS1   CS31
   #define CS0   CS30
   #define ICES  ICES3
@@ -104,6 +108,7 @@
   #define ICF   ICF4
   #define ICIE  ICIE4
   #define OCFA  OCF4A
+  #define CS2   CS42
   #define CS1   CS41
   #define CS0   CS40
   #define ICES  ICES4
@@ -124,6 +129,7 @@
   #define ICF   ICF5
   #define ICIE  ICIE5
   #define OCFA  OCF5A
+  #define CS2   CS52
   #define CS1   CS51
   #define CS0   CS50
   #define ICES  ICES5
