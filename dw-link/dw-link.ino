@@ -35,13 +35,15 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.2.0"
+#define VERSION "3.3.0"
 
 // some constants, you may want to change
+#ifndef PROGBPS
 #define PROGBPS 19200         // ISP programmer communication speed
+#endif
 #ifndef HOSTBPS 
 #define HOSTBPS 115200UL      // safe default speed for the host connection
-//#define HOSTBPS 230400UL    // works with UNOs that use an ATmega32U2 as the USB interface         
+//#define HOSTBPS 230400UL    // works with UNOs, but not with Nanos
 #endif
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
 // #define NOAUTODWOFF 1      // do not automatically leave debugWIRE mode
@@ -175,6 +177,8 @@ unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
 enum statetype {NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, LOAD_STATE, RUN_STATE, PROG_STATE};
 
+enum ispspeedtype {SUPER_SLOW_ISP, SLOW_ISP, NORMAL_ISP }; // isp speed: 0.8 kHz, 20 kHz, 50 kHz
+
 struct context {
   unsigned int wpc; // pc (using word addresses)
   unsigned int sp; // stack pointer
@@ -185,7 +189,7 @@ struct context {
   boolean levelshifting:1; // true when using dw-probe sitting on an Arduino board
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
-  byte origTIMSK0; // original value of timer interrupt mask register
+  ispspeedtype ispspeed; 
 } ctx;
 
 // use LED to signal system state
@@ -534,7 +538,6 @@ int main(void) {
   ledout = portOutputRegister(digitalPinToPort(SYSLED));
   DEBINIT(DEBTX);
   DEBLN(F("\ndw-link V" VERSION));
-  ctx.origTIMSK0 = TIMSK0; // save original TIMSK0 so that we can reestablish timekeeping if needed
   TIMSK0 = 0; // no millis interrupts
   pinMode(LEDGND, OUTPUT);
   digitalWrite(LEDGND, LOW);
@@ -1184,14 +1187,16 @@ boolean powerCycle(boolean verbose)
 
   dw.enable(false);
   setSysState(PWRCYC_STATE);
-  while (retry < 20) {
+  while (retry < 30) {
     //DEBPR(F("retry=")); DEBLN(retry);
     if (retry%3 == 0) { // try to power-cycle
       //DEBLN(F("Power cycle!"));
       power(false); // cutoff power to target
-      _delay_ms(500);
+      //_delay_ms(500);
+      _delay_ms(200);
       power(true); // power target again
-      _delay_ms(200); // wait for target to startup
+      //_delay_ms(200); // wait for target to startup
+      _delay_ms(100);
       //DEBLN(F("Power cycling done!"));	
     }
     if ((retry++)%3 == 0 && retry >= 3) {
@@ -1202,7 +1207,8 @@ boolean powerCycle(boolean verbose)
 	} else b ='+';
       } while (b == '-');
     }
-    _delay_ms(1000);
+    //_delay_ms(1000);
+    _delay_ms(200);
     dw.enable(true);
     if (targetDWConnect()) {
       setSysState(CONN_STATE);
@@ -3393,11 +3399,8 @@ void disableSpiPins (void) {
   pinMode(TMISO, INPUT); // should be input in any case
 }
 
-byte ispTransfer (byte val, boolean fast) {
+byte ispTransfer (byte val) {
   measureRam();
-  // standard ISP frequency is now 12500
-  // that should be slow enough even for
-  // MCU clk of 128 KHz
   for (byte ii = 0; ii < 8; ++ii) {
     if (ctx.levelshifting) {
       pinMode(TMOSI,  (val & 0x80) ? INPUT : OUTPUT);
@@ -3406,48 +3409,58 @@ byte ispTransfer (byte val, boolean fast) {
       digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
       digitalWrite(TSCK, HIGH);
     }
-    if (fast) _delay_us(4); 
-    else _delay_us(800); 
+    if (ctx.ispspeed != NORMAL_ISP) {
+      if (ctx.ispspeed == SLOW_ISP) _delay_us(15); // meaning 50 us == 20 kHz (OK for 128 kHz clock)
+      else _delay_us(600); // meaning 1200 us == 830 Hz (OK for 4 kHz clock)
+    }
     val = (val << 1) + digitalRead(TMISO);
     if (ctx.levelshifting) {
       pinMode(TODSCK, OUTPUT);
     } else {
       digitalWrite(TSCK, LOW);
     }
-    if (fast) _delay_us(4); 
-    else _delay_us(800); 
+    if (ctx.ispspeed != NORMAL_ISP) {
+      if (ctx.ispspeed == SLOW_ISP) _delay_us(15); 
+      else _delay_us(600); 
+    }
   }
   return val;
 }
 
-byte ispSend (byte c1, byte c2, byte c3, byte c4, boolean last, boolean fast) {
+inline void ispDelay(void) {
+}
+
+byte ispSend (byte c1, byte c2, byte c3, byte c4, boolean last) {
   byte res;
-  ispTransfer(c1, fast);
-  ispTransfer(c2, fast);
-  res = ispTransfer(c3, fast);
+  ispTransfer(c1);
+  ispTransfer(c2);
+  res = ispTransfer(c3);
   if (last)
-    res = ispTransfer(c4, fast);
+    res = ispTransfer(c4);
   else
-    ispTransfer(c4, fast);
+    ispTransfer(c4);
   return res;
 }
 
 
 boolean enterProgramMode (void)
 {
-  byte timeout = 5;
+  byte timeout = 6;
 
   //DEBLN(F("Entering progmode"));
   dw.enable(false);
+  ctx.ispspeed = NORMAL_ISP;
   do {
+    if (timeout < 5) ctx.ispspeed = SLOW_ISP;
+    if (timeout < 3) ctx.ispspeed = SUPER_SLOW_ISP;
     //DEBLN(F("Do ..."));
     enableSpiPins();
     //DEBLN(F("Pins enabled ..."));
     pinMode(DWLINE, INPUT); 
-    _delay_us(100);             // short positive RESET pulse of at least 2 clock cycles (enough for 32 kHz)
+    _delay_us(600);             // short positive RESET pulse of at least 2 clock cycles (enough for 4 kHz)
     pinMode(DWLINE, OUTPUT);  
     _delay_ms(25);            // wait at least 20 ms before sending enable sequence
-    if (ispSend(0xAC, 0x53, 0x00, 0x00, false, false) == 0x53) break;
+    if (ispSend(0xAC, 0x53, 0x00, 0x00, false) == 0x53) break;
   } while (--timeout);
   if (timeout == 0) {
     leaveProgramMode();
@@ -3474,9 +3487,9 @@ void leaveProgramMode(void)
 unsigned int ispGetChipId (void)
 {
   unsigned int id;
-  if (ispSend(0x30, 0x00, 0x00, 0x00, true, false) != 0x1E) return 0;
-  id = ispSend(0x30, 0x00, 0x01, 0x00, true, false) << 8;
-  id |= ispSend(0x30, 0x00, 0x02, 0x00, true, false);
+  if (ispSend(0x30, 0x00, 0x00, 0x00, true) != 0x1E) return 0;
+  id = ispSend(0x30, 0x00, 0x01, 0x00, true) << 8;
+  id |= ispSend(0x30, 0x00, 0x02, 0x00, true);
   //DEBPR(F("ISP SIG:   "));
   //DEBLNF(id,HEX);
   return id;
@@ -3486,9 +3499,9 @@ unsigned int ispGetChipId (void)
 byte ispReadFuse(boolean high)
 {
   if (high)
-    return ispSend(0x58, 0x08, 0x00, 0x00, true, false);
+    return ispSend(0x58, 0x08, 0x00, 0x00, true);
   else
-    return ispSend(0x50, 0x00, 0x00, 0x00, true, false);
+    return ispSend(0x50, 0x00, 0x00, 0x00, true);
 }
 
 // program fuse and/or high fuse
@@ -3498,9 +3511,9 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
   byte lowfuse, highfuse, extfuse;
   boolean succ = true;
 
-  lowfuse = ispSend(0x50, 0x00, 0x00, 0x00, true, false);
-  highfuse = ispSend(0x58, 0x08, 0x00, 0x00, true, false);
-  extfuse = ispSend(0x50, 0x08, 0x00, 0x00, true, false);
+  lowfuse = ispSend(0x50, 0x00, 0x00, 0x00, true);
+  highfuse = ispSend(0x58, 0x08, 0x00, 0x00, true);
+  extfuse = ispSend(0x50, 0x08, 0x00, 0x00, true);
 
   if (high) newfuse = highfuse;
   else newfuse = lowfuse;
@@ -3512,24 +3525,24 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
   if (high) highfuse = newfuse;
   else lowfuse = newfuse;
 
-  ispSend(0xAC, 0xA0, 0x00, lowfuse, true, false);
+  ispSend(0xAC, 0xA0, 0x00, lowfuse, true);
   _delay_ms(15);
-  succ &= (ispSend(0x50, 0x00, 0x00, 0x00, true, false) == lowfuse);
+  succ &= (ispSend(0x50, 0x00, 0x00, 0x00, true) == lowfuse);
 
-  ispSend(0xAC, 0xA4, 0x00, extfuse, true, false);
+  ispSend(0xAC, 0xA4, 0x00, extfuse, true);
   _delay_ms(15);
-  succ &= (ispSend(0x50, 0x08, 0x00, 0x00, true, false) == extfuse);
+  succ &= (ispSend(0x50, 0x08, 0x00, 0x00, true) == extfuse);
 
-  ispSend(0xAC, 0xA8, 0x00, highfuse, true, false);
+  ispSend(0xAC, 0xA8, 0x00, highfuse, true);
   _delay_ms(15);
-  succ &= (ispSend(0x58, 0x08, 0x00, 0x00, true, false) == highfuse);
+  succ &= (ispSend(0x58, 0x08, 0x00, 0x00, true) == highfuse);
 
   return succ;
 }
 
 boolean ispEraseFlash(void)
 {
-  ispSend(0xAC, 0x80, 0x00, 0x00, true, false);
+  ispSend(0xAC, 0x80, 0x00, 0x00, true);
   _delay_ms(20);
   pinMode(DWLINE, INPUT); // short positive pulse
   _delay_ms(1);
@@ -3539,7 +3552,7 @@ boolean ispEraseFlash(void)
 
 boolean ispLocked()
 {
-  return (ispSend(0x58, 0x00, 0x00, 0x00, true, false) != 0xFF);
+  return (ispSend(0x58, 0x00, 0x00, 0x00, true) != 0xFF);
 }
 
 
@@ -4717,7 +4730,7 @@ void avrisp (void) {
 
     case 0x56:                                  // 'V' - 0x56 Universal Command
       fill(4);
-      breply(ispSend(buf[0], buf[1], buf[2], buf[3], true, true));
+      breply(ispSend(buf[0], buf[1], buf[2], buf[3], true));
       break;
 
     case 0x60:                                  // '`' - 0x60 Program Flash Memory
@@ -4745,14 +4758,14 @@ void avrisp (void) {
           page = here & hMask;
           while (ii < length) {
             if (page != (here & hMask)) {
-              ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true, true);  // commit(page);
+              ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true);  // commit(page);
               page = here & hMask;
             }
-            ispSend(0x40 + 8 * LOW, here >> 8 & 0xFF, here & 0xFF, buf[ii++], true, true);
-            ispSend(0x40 + 8 * HIGH, here >> 8 & 0xFF, here & 0xFF, buf[ii++], true, true);
+            ispSend(0x40 + 8 * LOW, here >> 8 & 0xFF, here & 0xFF, buf[ii++], true);
+            ispSend(0x40 + 8 * HIGH, here >> 8 & 0xFF, here & 0xFF, buf[ii++], true);
             here++;
           }
-          ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true, true);      // commit(page);
+          ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true);      // commit(page);
           Serial.write(STK_OK);
           break;
         } else {
@@ -4772,7 +4785,7 @@ void avrisp (void) {
             fill(length);
             for (ii = 0; ii < EECHUNK; ii++) {
               addr = start + ii;
-              ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true, true);
+              ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true);
               delay(45);
             }
             start += EECHUNK;
@@ -4783,7 +4796,7 @@ void avrisp (void) {
           fill(length);
           for (ii = 0; ii < remaining; ii++) {
             addr = start + ii;
-            ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true, true);
+            ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true);
             delay(45);
           }
           result = STK_OK;
@@ -4811,8 +4824,8 @@ void avrisp (void) {
       Serial.write(STK_INSYNC);
       if (memtype == 'F') {
         for (ii = 0; ii < length; ii += 2) {
-          Serial.write(ispSend(0x20 + LOW * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true, true));   // low
-          Serial.write(ispSend(0x20 + HIGH * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true, true));  // high
+          Serial.write(ispSend(0x20 + LOW * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true));   // low
+          Serial.write(ispSend(0x20 + HIGH * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true));  // high
           here++;
         }
         result = STK_OK;
@@ -4821,7 +4834,7 @@ void avrisp (void) {
         start = here * 2;
         for (ii = 0; ii < length; ii++) {
           addr = start + ii;
-          Serial.write(ispSend(0xA0, (addr >> 8) & 0xFF, addr & 0xFF, 0xFF, true, true));
+          Serial.write(ispSend(0xA0, (addr >> 8) & 0xFF, addr & 0xFF, 0xFF, true));
         }
         result = STK_OK;
       }
@@ -4834,9 +4847,9 @@ void avrisp (void) {
         break;
       }
       Serial.write(STK_INSYNC);
-      Serial.write(ispSend(0x30, 0x00, 0x00, 0x00, true, true)); // high
-      Serial.write(ispSend(0x30, 0x00, 0x01, 0x00, true, true)); // middle
-      Serial.write(ispSend(0x30, 0x00, 0x02, 0x00, true, true)); // low
+      Serial.write(ispSend(0x30, 0x00, 0x00, 0x00, true)); // high
+      Serial.write(ispSend(0x30, 0x00, 0x01, 0x00, true)); // middle
+      Serial.write(ispSend(0x30, 0x00, 0x02, 0x00, true)); // low
       Serial.write(STK_OK);
       break;
 

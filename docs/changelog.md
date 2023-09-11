@@ -1,11 +1,24 @@
 # Changelog for dw-link
 
+## Version 3.3.0 (11-Sep-2023)
+
+* Adaptive ISP clock (50 kHz, 20kHz, 0.8 kHz), where the latter can be used for 4 kHz CPU clocks, i.e., when an ULP 32 kHz clock is used and CKDIV8 is programmed. 
+* Also the debugWIRE interface should be able to deal with it (4 kHz/128 = 31 Hz):
+  * break is now long enough (400 ms),
+  * calibration works down to 12 bps (see Version 1.1.12),
+  * for bit delay times we now also take into account a prescaler of 256, which should mean that we can go down to 10 bps. 
+    * This feature needs to be tested, perhaps using a 32 kHz crystal in order to avoid the potential bricking problem with SMD MCUs
+* The power-cycle times have been reduced from 1700 ms to 500 ms, when it is done automatically; since the break time has been expanded from 120 to 400 ms, the gain is 'only' 920 ms.
+
+
 
 ## Version 3.2.0 (07-Sep-2023)
 
 * removed ULP clock 
 *  understood the boarduino problem: need a stronger pull-up (1k) on the SCK line, i.e., it is a hardware problem
 *  extended some of the delays in enabling SPI pins and entering program mode 
+
+
 
 ##  Version 3.1.1 (06-Sep-2023)
 * set reasonable default value for MCU so that in case of connection
@@ -395,8 +408,8 @@ enable debugging
    - new monitor command: "monitor version"
    - new default DW speed is now 125k since I had some spurious errors
    - almost all test sketches appear to work wit their debugging
-   scripts in test.py (which is now part of the distribution)
-   
+      scripts in test.py (which is now part of the distribution)
+
 ## Version 1.0.8 (11-Dec-21)
 
    - made VARSPEED=1 the default, i.e., dw-link always attempts
