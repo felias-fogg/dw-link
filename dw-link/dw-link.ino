@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.3.0"
+#define VERSION "3.4.0"
 
 // some constants, you may want to change
 #ifndef PROGBPS
@@ -187,9 +187,10 @@ struct context {
   boolean saved:1; // all of the regs have been saved
   statetype state:3; // system state
   boolean levelshifting:1; // true when using dw-probe sitting on an Arduino board
+  boolean autodw:1; // switch DW automatically on and off 
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
-  ispspeedtype ispspeed; 
+  ispspeedtype ispspeed;
 } ctx;
 
 // use LED to signal system state
@@ -201,12 +202,11 @@ const unsigned int ontimes[7] =  {0,  100, 150, 1, 1, 1, 500};
 const unsigned int offtimes[7] = {1, 1000, 150, 0, 0, 0, 500};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
-byte ledmask;
-volatile byte *ledout;
 
 // pins
 const byte IVSUP = 2;
 const byte DEBTX = 3;
+const byte AUTODWSENSE = 3;
 const byte TISP = 4;
 const byte SENSEBOARD = 5;
 const byte LEDGND = 6;
@@ -217,6 +217,10 @@ const byte TODSCK = 10;
 const byte TMOSI = 11;
 const byte TMISO = 12;
 const byte TSCK = 13;
+
+byte ledmask, todsckmask, tmosimask, tmisomask, tsckmask;
+volatile byte *ledout, *todsckmode, *tmosiout, *tmosimode, *tmisoin, *tsckout;
+
 
 // MCU names
 const char unknown[] PROGMEM ="Unknown";
@@ -534,10 +538,9 @@ int main(void) {
   pinMode(SENSEBOARD, INPUT_PULLUP);
   ctx.levelshifting = !digitalRead(SENSEBOARD);
   Serial.begin(HOSTBPS);
-  ledmask = digitalPinToBitMask(SYSLED);
-  ledout = portOutputRegister(digitalPinToPort(SYSLED));
   DEBINIT(DEBTX);
   DEBLN(F("\ndw-link V" VERSION));
+  setupio();
   TIMSK0 = 0; // no millis interrupts
   pinMode(LEDGND, OUTPUT);
   digitalWrite(LEDGND, LOW);
@@ -578,6 +581,20 @@ int main(void) {
   return 0;
 }
 
+void setupio(void) {
+  ledmask = digitalPinToBitMask(SYSLED);
+  ledout = portOutputRegister(digitalPinToPort(SYSLED));
+  todsckmask = digitalPinToBitMask(TODSCK);
+  todsckmode = portModeRegister(digitalPinToPort(TODSCK));
+  tmosimask = digitalPinToBitMask(TMOSI);
+  tmosiout = portOutputRegister(digitalPinToPort(TMOSI));
+  tmosimode = portModeRegister(digitalPinToPort(TMOSI));
+  tmisomask = digitalPinToBitMask(TMISO);
+  tmisoin =  portInputRegister(digitalPinToPort(TMISO));
+  tsckmask = digitalPinToBitMask(TSCK);
+  tsckout = portOutputRegister(digitalPinToPort(TSCK));
+}
+
 /****************** system state routines ***********************/
 
 // monitor the system state LOAD_STATE
@@ -614,6 +631,12 @@ void initSession(void)
   setSysState(NOTCONN_STATE);
   targetInitRegisters();
   mcu.name = (const char *)unknown;
+#if TXODEBUG
+  ctx.autodw = true;
+#else
+  pinMode(AUTODWSENSE, INPUT_PULLUP);
+  ctx.autodw = digitalRead(AUTODWSENSE);
+#endif
 }
 
 // report a fatal error and stop everything
@@ -775,7 +798,7 @@ void gdbParsePacket(const byte *buff)
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    if (gdbStop(false))                              /* disable DW mode */
+    if (!ctx.autodw || gdbStop(false))               /* disable DW mode */
       gdbSendReply("OK");                            /* and signal that everything is OK */
     break;
   case 'c':                                          /* continue */
@@ -786,7 +809,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'k':
     gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
-    gdbStop(false);                                  /* stop DW mode */
+    if (ctx.autodw) gdbStop(false);                  /* stop DW mode */
     break;
   case 's':                                          /* single step */
   case 'S':                                          /* step with signal - just ignore signal */
@@ -796,28 +819,32 @@ void gdbParsePacket(const byte *buff)
   case 'Z':                                          /* insert break/watch point */
     gdbHandleBreakpointCommand(buf);
     break;
-  case 'v':                                          /* Run command */
-    if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {
-      if (gdbConnect(false)) {                       /* re-enable DW mode reset MCU and clear PC */
+  case 'v':                                          
+    if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) { /* Run command */
+      if (targetOffline() && !ctx.autodw) {
+	gdbSendReply("E01");
+      } else if (gdbConnect(false)) {               /* re-enable DW mode, reset MCU, and clear PC */
 	setSysState(CONN_STATE);
-	gdbSendState(0);                             /* no signal */
-      } 
+	gdbSendState(SIGTRAP);                             /* trap signal */
+      } else {
+	gdbSendReply("E02");
+      }
     } else
-	if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
-      gdbUpdateBreakpoints(true);                    /* remove BREAKS in memory before exit */
-      if (gdbStop(false))                            /* stop DW mode */
-	gdbSendReply("OK");                          /* and signal that everything is OK */
-    } else {
-       gdbSendReply("");                             /* not supported */
-    }
+      if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
+	gdbUpdateBreakpoints(true);                    /* remove BREAKS in memory before exit */
+	if (!ctx.autodw || gdbStop(false))             /* stop DW mode (if autodw) */
+	  gdbSendReply("OK");                          /* and signal that everything is OK */
+      } else {
+	gdbSendReply("");                             /* not supported */
+      }
     break;
   case 'q':                                          /* query requests */
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0)/* monitor command */
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
-	if (ctx.state != CONN_STATE) initSession();  /* init all vars when gdb connects */
-	if (gdbConnect(false))                       /* and try to connect */
+      initSession();                                 /* always init all vars when gdb connects */
+	if (!ctx.autodw || gdbConnect(false))        /* and try to connect (if autodw) */
 	  gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                          /* current thread is always 1 */
@@ -1187,7 +1214,7 @@ boolean powerCycle(boolean verbose)
 
   dw.enable(false);
   setSysState(PWRCYC_STATE);
-  while (retry < 30) {
+  while (retry < 20) {
     //DEBPR(F("retry=")); DEBLN(retry);
     if (retry%3 == 0) { // try to power-cycle
       //DEBLN(F("Power cycle!"));
@@ -1252,6 +1279,10 @@ void gdbSetFuses(Fuses fuse)
   boolean offline = targetOffline();
   int res; 
 
+  if (!ctx.autodw && !offline) {
+    gdbDebugMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
+    gdbSendReply("E01");
+  }
   setSysState(NOTCONN_STATE);
   res = targetSetFuses(fuse);
   if (res < 0) {
@@ -1272,7 +1303,7 @@ void gdbSetFuses(Fuses fuse)
   case CkARc:
   case CkExt:
   case CkXtal:
-  case CkSlow:
+  case CkSlow: gdbDebugMessagePSTR(PSTR("Oscillator changed"),-1); break;
   case Erase: gdbDebugMessagePSTR(PSTR("Chip erased"),-1); break;
   default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
   }
@@ -1294,6 +1325,11 @@ void gdbGetFuses(boolean ckdiv, boolean noreply)
   Fuses CkSource, CkDiv;
   boolean offline = targetOffline();
   int res; 
+
+  if (!ctx.autodw && !offline) {
+    gdbDebugMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
+    gdbSendReply("E01");
+  }
 
   setSysState(NOTCONN_STATE);
   res = targetGetClockFuses(CkSource, CkDiv);
@@ -3399,46 +3435,58 @@ void disableSpiPins (void) {
   pinMode(TMISO, INPUT); // should be input in any case
 }
 
-byte ispTransfer (byte val) {
+byte ispTransfer (byte val, boolean slower) {
   measureRam();
   for (byte ii = 0; ii < 8; ++ii) {
     if (ctx.levelshifting) {
-      pinMode(TMOSI,  (val & 0x80) ? INPUT : OUTPUT);
-      pinMode(TODSCK, INPUT);
+      // pinMode(TMOSI,  (val & 0x80) ? INPUT : OUTPUT);
+      if (val & 0x80) *tmosimode &= ~tmosimask; else  *tmosimode |= tmosimask;
+      // pinMode(TODSCK, INPUT);
+      *todsckmode &= ~todsckmask;
     } else {
-      digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
-      digitalWrite(TSCK, HIGH);
+      // digitalWrite(TMOSI, (val & 0x80) ? HIGH : LOW);
+      if (val & 0x80) *tmosiout |= tmosimask; else  *tmosiout &= ~tmosimask;
+      // digitalWrite(TSCK, HIGH);
+      *tsckout |= tsckmask;
     }
-    if (ctx.ispspeed != NORMAL_ISP) {
-      if (ctx.ispspeed == SLOW_ISP) _delay_us(15); // meaning 50 us == 20 kHz (OK for 128 kHz clock)
-      else _delay_us(600); // meaning 1200 us == 830 Hz (OK for 4 kHz clock)
-    }
-    val = (val << 1) + digitalRead(TMISO);
+    ispDelay(slower);
+    // val = (val << 1) + digitalRead(TMISO);
+    val = (val << 1) + (*tmisoin & tmisomask ? 1 : 0);
     if (ctx.levelshifting) {
-      pinMode(TODSCK, OUTPUT);
+      // pinMode(TODSCK, OUTPUT);
+      *todsckmode |= todsckmask;
     } else {
-      digitalWrite(TSCK, LOW);
+      // digitalWrite(TSCK, LOW);
+      *tsckout &= ~tsckmask;
     }
-    if (ctx.ispspeed != NORMAL_ISP) {
-      if (ctx.ispspeed == SLOW_ISP) _delay_us(15); 
-      else _delay_us(600); 
-    }
+    ispDelay(slower);
   }
   return val;
 }
 
-inline void ispDelay(void) {
+inline void ispDelay(boolean slower) {
+  if (slower) {
+    if (ctx.ispspeed == NORMAL_ISP) _delay_us(0.5); // meaning 7 us = 140 kHz (OK for 1 MHz clock)
+    else if (ctx.ispspeed == SLOW_ISP) _delay_us(20); // meaning 50 us == 20 kHz (OK for 128 kHz clock)
+    else _delay_us(700); // meaning 1400 us == 714 Hz (OK for 4 kHz clock)
+  } else {
+    if (ctx.ispspeed != NORMAL_ISP) {
+      if (ctx.ispspeed == SLOW_ISP) _delay_us(15); 
+      else _delay_us(600); // 
+    }
+  }
 }
+  
 
 byte ispSend (byte c1, byte c2, byte c3, byte c4, boolean last) {
   byte res;
-  ispTransfer(c1);
-  ispTransfer(c2);
-  res = ispTransfer(c3);
+  ispTransfer(c1, last);
+  ispTransfer(c2, last);
+  res = ispTransfer(c3, last);
   if (last)
-    res = ispTransfer(c4);
+    res = ispTransfer(c4, last);
   else
-    ispTransfer(c4);
+    ispTransfer(c4, last);
   return res;
 }
 

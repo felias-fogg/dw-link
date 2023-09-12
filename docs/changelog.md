@@ -1,5 +1,12 @@
 # Changelog for dw-link
 
+## Version 3.4.0 (12-Sep-2023)
+
+* ISP has been accelerated to (140 kHz, 20 kHz, 700 Hz).
+* Changed power-cycle timeout to 20 seconds, which coincides with the timeout by GDB when establishing a connection.
+* Use the TXODEBUG pin now to signal that auto DW switching should be disabled (of course, only, when not debugging)
+* initSession is now always called, when a connection is made, since the notion of detaching and attaching again is not meaningful
+
 ## Version 3.3.0 (11-Sep-2023)
 
 * Adaptive ISP clock (50 kHz, 20kHz, 0.8 kHz), where the latter can be used for 4 kHz CPU clocks, i.e., when an ULP 32 kHz clock is used and CKDIV8 is programmed. 
@@ -8,7 +15,7 @@
   * calibration works down to 12 bps (see Version 1.1.12),
   * for bit delay times we now also take into account a prescaler of 256, which should mean that we can go down to 10 bps. 
     * This feature needs to be tested, perhaps using a 32 kHz crystal or external oscillator in order to avoid the potential bricking problem with SMD MCUs
-* The power-cycle times have been reduced from 1700 ms to 500 ms, when it is done automatically; since the break time has been expanded from 120 to 400 ms, the gain is 'only' 920 ms.
+* The power-cycle time has been reduced from 1700 ms to 500 ms, when it is done automatically; since the break time has been expanded from 120 to 400 ms, the gain is 'only' 920 ms.
 
 
 
@@ -103,7 +110,7 @@ extra_script in the platform.ini file
 * fixed `vRun` which now needs to enable debugWIRE, because the GDB command `run` sends a `vKill` first
 * removed `extra_scripts.py` because we do not need that anymore
 * introduced a new compile-time constant `NOAUTODWOFF`, which when 1 disables the feature of disabling debugWIRE when leaving the debugger
-* Also added HIGHSPEEDDW, which is off by default, i.i., 125 kbps is the the highest we permit
+* Also added HIGHSPEEDDW, which is off by default, i.e., 125 kbps is the the highest we permit
 
 ## Version 2.1.4 (16-Aug-23)
 

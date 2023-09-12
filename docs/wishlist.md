@@ -1,10 +1,6 @@
 # Wish list for dw-link
 
-* do power-cycling non-blocking, i.e., respond to packets of the GDB in order not to timeout
-
-* optimize ispTransfer so that higher ISP rates are possible (currently, 50 kHz is max)
-
-* use the DEBTX (if not defined) as a sensing pin to disable automatic DWEN programming, i.e., you have to use mo dw +/- by yourself.
+* maybe have a variable length break, dependent on the speed of ISP?
 
 * implement semi-hosting
 
@@ -23,9 +19,13 @@
 
 #### List of tasks done:
 
-* Important (3.1.0): When trying to debug the boarduino at 5V with the probe shield, the feedback
+* use the DEBTX (if not defined) as a sensing pin to disable automatic DWEN programming, i.e., you have to use mo dw +/- by yourself.
+
+* optimize ispTransfer so that higher ISP rates are possible (currently, 50 kHz is max)
+
+* important (3.1.0): When trying to debug the boarduino at 5V with the probe shield, the feedback
   is: `Wrong Wiring`. It works flawlessly with a lot of other boards (ATtiny,
-  UNO, ...), with other shields, with 5V, you name it --> turned out to be that the boarduino had a particularly strong pull-down resistor. That is, the cure is to use 1K pull-ups on the SPI lines!
+  UNO, ...), with other shields, with 5V, you name it --> turned out to be that the boarduino had a particularly strong pull-down resistor. That is, the cure is to use 1K or stringer pull-ups on the SPI lines!
 
 * `monitor clock` command that displays the current clock setting --
   well, redesigned all monitor commands! 
