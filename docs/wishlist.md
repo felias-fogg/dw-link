@@ -1,5 +1,9 @@
 # Wish list for dw-link
 
+* rewrite compile-time conditionals so that they do not show up as errors in PIO
+
+* reorganize BP management: have a list of stored and a list of new BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!
+
 * maybe have a variable length break, dependent on the speed of ISP?
 
 * implement semi-hosting
@@ -38,9 +42,9 @@
 * Adding response in dw-link to one special byte in order to be able to identify the debug serial port
 * writing Python function for identifying debug port
 
-* Erasing MCU when lock bits are set
-* write hook to set UPLOAD\_PORT and DEBUG\_PORT in extra\_script. Well, we do nt set the vars, but set the bytes inline
-* Explaining how to recover UNO (SOldering + Bootloader burning) in Manual
+* Erasing MCU automatically when lock bits are set
+* write hook to set UPLOAD\_PORT and DEBUG\_PORT in extra\_script. 
+* Explaining how to recover UNO (soldering + Bootloader burning) in Manual
 * remove part about lock bits in Manual
 * remove automatic speed recognition
 * delete the fancy control stuff in dw-link

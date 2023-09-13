@@ -54,7 +54,7 @@
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
 // #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
-#define FREERAM  1         // measure free ram
+// #define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
 // #define UNITDW 1           // enable debugWIRE unit tests
 // #define UNITTG 1           // enable target unit tests

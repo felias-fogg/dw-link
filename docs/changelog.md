@@ -1,15 +1,20 @@
 # Changelog for dw-link
 
-## Version 3.5.0
+## Version 3.5.1 (13-Sep-2023)
+
+* RAM measurement has been disabled. 
+
+## Version 3.5.0 (13-Sep-2023)
 
 * Changed minimal initial bps for DW line from 10 to 5 in expectUCalibrate
 * Changed timeout from 100000 to 300000 in expectBreakAndU
 * Changed timeout in calibrate (in dwSerial) to 700 ms
 * Testing with low baud rates on the DW line uncovered an interesting bug: It can happen that when calibrating, we wait too long in the write method for the end of the stop bit (caused by rounding errors in computing the bit delay times). Waiting long enough is usually the right thing to do (we do not want to write too fast!). However, in cases we have to re-calibrate, one cannot employ the usual method that the ICF interrupt will capture an early falling edge (and then reads the incoming character). In short: We need a way to tell the write method to finish sometimes already before the end of the stop bit! 
 * New protected member in SingleWireSerial: `_finshSendingEarly` 
-* Use now sendCmd in class dwSerial instead of sendCommand as a function in dw-link
+* Use now sendCmd in class dwSerial instead of the sendCommand function in dw-link
 * sendCmd has a new optional last parameter, which when true, will finish early; default is false
-* In all cases, when a response or a break is expected, we now finish early, and the cases that led to problems are now OK.
+* In all cases, when a response or a break is expected, we now finish early, and the cases that led to problems are now OK
+* Calibration and all works now down to 3 kHz MCU clock. Amazing! But completely useless.
 * Changed MAXBREAK from 33 to 25 (meaning 80 additional free bytes!) because otherwise we had only 10 bytes of free memory when TXODEBUG was active, which actually led to a crash! I never ever used 32 breakpoints and even 25 are probably too many.
 
 ## Version 3.4.0 (12-Sep-2023)
