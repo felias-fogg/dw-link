@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.4.0"
+#define VERSION "3.5.0"
 
 // some constants, you may want to change
 #ifndef PROGBPS
@@ -52,9 +52,9 @@
 // these should stay undefined for the ordinary user
 // #define CONSTDWSPEED 1     // constant communication speed with target
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
-#define TXODEBUG 1         // allow debug output over TXOnly line
+// #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
-// #define FREERAM  1         // measure free ram
+#define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
 // #define UNITDW 1           // enable debugWIRE unit tests
 // #define UNITTG 1           // enable target unit tests
@@ -94,7 +94,7 @@
 #define MAXBUF 160 // input buffer for GDB communication (enough for initial packet in gdb 12.1)
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
-#define MAXBREAK 33 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
+#define MAXBREAK 25 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
 
 // communication bit rates 
 #define SPEEDHIGH     300000UL // maximum communication speed limit for DW

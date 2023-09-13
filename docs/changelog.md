@@ -1,6 +1,6 @@
 # Changelog for dw-link
 
-## Version 3.4.1
+## Version 3.5.0
 
 * Changed minimal initial bps for DW line from 10 to 5 in expectUCalibrate
 * Changed timeout from 100000 to 300000 in expectBreakAndU
@@ -10,6 +10,7 @@
 * Use now sendCmd in class dwSerial instead of sendCommand as a function in dw-link
 * sendCmd has a new optional last parameter, which when true, will finish early; default is false
 * In all cases, when a response or a break is expected, we now finish early, and the cases that led to problems are now OK.
+* Changed MAXBREAK from 33 to 25 (meaning 80 additional free bytes!) because otherwise we had only 10 bytes of free memory when TXODEBUG was active, which actually led to a crash! I never ever used 32 breakpoints and even 25 are probably too many.
 
 ## Version 3.4.0 (12-Sep-2023)
 
