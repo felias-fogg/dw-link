@@ -28,8 +28,7 @@ class dwSerial : public SingleWireSerial
   dwSerial(void);
   unsigned long calibrate(void);
   void sendBreak();
-  size_t sendCmd(const uint8_t  *buf, uint8_t len);
-  size_t write(const uint8_t  *buf, uint8_t len);
+  size_t sendCmd(const uint8_t  *buf, uint8_t len, bool fastReturn = false);
   void enable(bool);
 };
 

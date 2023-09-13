@@ -42,7 +42,7 @@
 class SingleWireSerial : public Stream
 {
 protected:
-  // only 1 object possible, so everything is static
+  bool _finishSendingEarly = false;
   static bool _twoWire;
   static bool _waitBeforeSending;
   static bool _buffer_overflow;

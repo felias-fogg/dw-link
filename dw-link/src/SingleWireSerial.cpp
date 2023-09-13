@@ -538,12 +538,13 @@ size_t SingleWireSerial::write(uint8_t data)
     while (!(TIFR & _BV(OCFA)));
     OCPORT |= _BV(OCBIT); // make output again high for stop bit
   }
+  if (_finishSendingEarly) OCRA = _bitDelay >> 1; // wait only half the stop bit (needed when a response might come early)
   TIFR |= _BV(OCFA); // clear overflow flag
 
   SREG = oldSREG; // enable interrupts again
   setRxIntMsk(true); //enable input capture input interrupts again
 
-  while (!(TIFR & _BV(OCFA))); // wait for stop bit to finish
+  while (!(TIFR & _BV(OCFA))); // wait for stop bit (or half stop bit) to finish
   DebugPulse(0x01);
   return 1;
 }

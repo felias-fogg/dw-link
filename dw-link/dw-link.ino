@@ -52,7 +52,7 @@
 // these should stay undefined for the ordinary user
 // #define CONSTDWSPEED 1     // constant communication speed with target
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
-// #define TXODEBUG 1         // allow debug output over TXOnly line
+#define TXODEBUG 1         // allow debug output over TXOnly line
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
 // #define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
@@ -632,7 +632,7 @@ void initSession(void)
   targetInitRegisters();
   mcu.name = (const char *)unknown;
 #if TXODEBUG
-  ctx.autodw = true;
+  ctx.autodw = false;
 #else
   pinMode(AUTODWSENSE, INPUT_PULLUP);
   ctx.autodw = digitalRead(AUTODWSENSE);
@@ -761,97 +761,97 @@ void gdbParsePacket(const byte *buff)
   DEBPR(F("gdb packet: ")); DEBLN((char)*buff);
   if (!flashidle) {
     if (*buff != 'X' && *buff != 'M')
-      targetFlushFlashProg();                        /* finalize flash programming before doing something else */
+      targetFlushFlashProg();                         /* finalize flash programming before doing something else */
   } else {
     if (*buff == 'X' || *buff == 'M')
-      gdbUpdateBreakpoints(true);                    /* remove all BREAKS before writing into flash */
+      gdbUpdateBreakpoints(true);                     /* remove all BREAKS before writing into flash */
   }
   switch (*buff) {
-  case '?':                                          /* last signal */
+  case '?':                                           /* last signal */
     gdbSendSignal(lastsignal);
     break;
-  case '!':                                          /* Set to extended mode, always OK */
+  case '!':                                           /* Set to extended mode, always OK */
     gdbSendReply("OK");
     break;
-  case 'H':                                          /* Set thread, always OK */
+  case 'H':                                           /* Set thread, always OK */
     gdbSendReply("OK");
     break;
-  case 'T':                                          /* Is thread alive, always OK */
+  case 'T':                                           /* Is thread alive, always OK */
     gdbSendReply("OK");
     break;
-  case 'g':                                          /* read registers */
+  case 'g':                                           /* read registers */
     gdbReadRegisters();
     break;
-  case 'G':                                          /* write registers */
+  case 'G':                                           /* write registers */
     gdbWriteRegisters(buff + 1);
     break;
-  case 'm':                                          /* read memory */
+  case 'm':                                           /* read memory */
     gdbReadMemory(buff + 1);
     break;
-  case 'M':                                          /* write memory */
+  case 'M':                                           /* write memory */
     gdbWriteMemory(buff + 1, false);
     break;
-  case 'X':                                          /* write memory from binary data */
+  case 'X':                                           /* write memory from binary data */
     gdbWriteMemory(buff + 1, true); 
     break;
-  case 'D':                                          /* detach from target */
-    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
+  case 'D':                                           /* detach from target */
+    gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    if (!ctx.autodw || gdbStop(false))               /* disable DW mode */
-      gdbSendReply("OK");                            /* and signal that everything is OK */
+    if (!ctx.autodw || gdbStop(false))                /* disable DW mode */
+      gdbSendReply("OK");                             /* and signal that everything is OK */
     break;
-  case 'c':                                          /* continue */
-  case 'C':                                          /* continue with signal - just ignore signal! */
-    s = gdbContinue();                               /* start execution on target at current PC */
-    if (s) gdbSendState(s);                          /* if s != 0, it is a signal notifying an error */
-                                                     /* otherwise the target is now executing */
+  case 'c':                                           /* continue */
+  case 'C':                                           /* continue with signal - just ignore signal! */
+    s = gdbContinue();                                /* start execution on target at current PC */
+    if (s) gdbSendState(s);                           /* if s != 0, it is a signal notifying an error */
+                                                      /* otherwise the target is now executing */
     break;
   case 'k':
-    gdbUpdateBreakpoints(true);                      /* remove BREAKS in memory before exit */
-    if (ctx.autodw) gdbStop(false);                  /* stop DW mode */
+    gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
+    if (ctx.autodw) gdbStop(false);                   /* stop DW mode */
     break;
-  case 's':                                          /* single step */
-  case 'S':                                          /* step with signal - just ignore signal */
-    gdbSendState(gdbStep());                         /* do only one step and report reason why stopped */
+  case 's':                                           /* single step */
+  case 'S':                                           /* step with signal - just ignore signal */
+    gdbSendState(gdbStep());                          /* do only one step and report reason why stopped */
     break;              
-  case 'z':                                          /* remove break/watch point */
-  case 'Z':                                          /* insert break/watch point */
+  case 'z':                                           /* remove break/watch point */
+  case 'Z':                                           /* insert break/watch point */
     gdbHandleBreakpointCommand(buf);
     break;
   case 'v':                                          
-    if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) { /* Run command */
+    if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {/* Run command */
       if (targetOffline() && !ctx.autodw) {
 	gdbSendReply("E01");
-      } else if (gdbConnect(false)) {               /* re-enable DW mode, reset MCU, and clear PC */
+      } else if (gdbConnect(false)) {                 /* re-enable DW mode, reset MCU, and clear PC */
 	setSysState(CONN_STATE);
-	gdbSendState(SIGTRAP);                             /* trap signal */
+	gdbSendState(SIGTRAP);                        /* trap signal */
       } else {
 	gdbSendReply("E02");
       }
     } else
       if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
-	gdbUpdateBreakpoints(true);                    /* remove BREAKS in memory before exit */
-	if (!ctx.autodw || gdbStop(false))             /* stop DW mode (if autodw) */
-	  gdbSendReply("OK");                          /* and signal that everything is OK */
+	gdbUpdateBreakpoints(true);                   /* remove BREAKS in memory before exit */
+	if (!ctx.autodw || gdbStop(false))            /* stop DW mode (if autodw) */
+	  gdbSendReply("OK");                         /* and signal that everything is OK */
       } else {
 	gdbSendReply("");                             /* not supported */
       }
     break;
-  case 'q':                                          /* query requests */
-    if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0)/* monitor command */
+  case 'q':                                           /* query requests */
+    if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0) /* monitor command */
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
-      initSession();                                 /* always init all vars when gdb connects */
-	if (!ctx.autodw || gdbConnect(false))        /* and try to connect (if autodw) */
+      initSession();                                  /* always init all vars when gdb connects */
+	if (!ctx.autodw || gdbConnect(false))         /* and try to connect (if autodw) */
 	  gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
-      gdbSendReply("QC01");                          /* current thread is always 1 */
+      gdbSendReply("QC01");                           /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
-      gdbSendReply("m01");                           /* always 1 thread*/
+      gdbSendReply("m01");                            /* always 1 thread*/
     else if (memcmp_P(buf, (void *)PSTR("qsThreadInfo"), 12) == 0)
-      gdbSendReply("l");                             /* send end of list */
+      gdbSendReply("l");                              /* send end of list */
     /* ioreg query does not work!
     else if (memcmp_P(buf, (void *)PSTR("qRavr.io_reg"), 12) == 0) 
       if (mcu.rambase == 0x100) gdbSendReply("e0");
@@ -2273,7 +2273,7 @@ boolean targetDWConnect(void)
   unsigned int sig;
 
   if (doBreak()) {
-    //DEBLN(F("targetConnect: doBreak done"));
+    DEBLN(F("targetConnect: doBreak done"));
     sig = DWgetChipId();
     if (mcu.sig == 0) setMcuAttr(sig);
     return true;
@@ -2353,7 +2353,7 @@ int targetSetFuses(Fuses fuse)
   if (fuse == CkSlow && mcu.slowosc == 0xFF) return -5; // this chip cannot run with 128 kHz
   if (fuse == CkARc && mcu.arosc == 0xFF) return -6;
   if (doBreak()) {
-    sendCommand((const byte[]) {0x06}, 1); // leave debugWIRE mode
+    dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
   } 
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2387,7 +2387,7 @@ int targetGetClockFuses(Fuses &CkSource, Fuses &CkDiv)
   unsigned int sig;
   measureRam();
   if (doBreak()) {
-    sendCommand((const byte[]) {0x06}, 1); // leave debugWIRE mode
+    dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
   }
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2669,13 +2669,13 @@ void targetContinue(void)
 
   // DEBPR(F("Continue at (byte adress) "));  DEBLNF(ctx.wpc*2,HEX);
   if (hwbp != 0xFFFF) {
-    sendCommand((const byte []) { 0x61 }, 1);
+    dw.sendCmd((const byte []) { 0x61 }, 1);
     DWsetWBp(hwbp);
   } else {
-    sendCommand((const byte []) { 0x60 }, 1);
+    dw.sendCmd((const byte []) { 0x60 }, 1);
   }
   DWsetWPc(ctx.wpc);
-  sendCommand((const byte []) { 0x30 }, 1);
+  dw.sendCmd((const byte []) { 0x30 }, 1, true); // return during stop bit so that nothing surprises us
 }
 
 // make a single step
@@ -2686,23 +2686,15 @@ void targetStep(void)
   // DEBPR(F("Single step at (byte address):")); DEBLNF(ctx.wpc*2,HEX);
   // _delay_ms(5);
   byte cmd[] = {0x60, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
-  sendCommand(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd), true); // return before last bit is sent
 }
 
 // reset the MCU
 boolean targetReset(void)
 {
-  unsigned long timeout = 100000;
+  dw.sendCmd((const byte[]) {0x07}, 1, true); // eturn before last bit is sent so that we catch the break
   
-  sendCommand((const byte[]) {0x07}, 1);
-  // dw.begin(ctx.bps*2); // could be that communication speed is higher after reset!
-  _delay_us(10);
-  while (digitalRead(DWLINE) && timeout) timeout--;
-  _delay_us(1);
-  
-  ctx.bps = 0; // set to zero in order to force new speed after reset
-  //  if (expectBreakAndU()) {
-  if (expectUCalibrate()) {
+  if (expectBreakAndU()) {
     DEBLN(F("RESET successful"));
     return true;
   } else {
@@ -2802,7 +2794,7 @@ boolean expectUCalibrate(void) {
   blockIRQ();
   newbps = dw.calibrate(); // expect 0x55 and calibrate
   DEBPR(F("Rsync (1): ")); DEBLN(newbps);
-  if (newbps < 10) {
+  if (newbps < 5) {
     ctx.bps = 0;
     unblockIRQ();
     return false; // too slow
@@ -2822,7 +2814,7 @@ boolean expectUCalibrate(void) {
   ctx.bps = dw.calibrate(); // calibrate again
   unblockIRQ();
   DEBPR(F("Rsync (2): ")); DEBLN(ctx.bps);
-  if (ctx.bps < 100) {
+  if (ctx.bps < 70) {
     DEBLN(F("Second calibration too slow!"));
     return false; // too slow
   }
@@ -2836,7 +2828,7 @@ boolean expectUCalibrate(void) {
 // expect a break followed by 0x55 from the target and (re-)calibrate
 boolean expectBreakAndU(void)
 {
-  unsigned long timeout = 100000; // roughly 100-200 msec
+  unsigned long timeout = 300000; // roughly 300-600 msec
   byte cc;
   
   // wait first for a zero byte
@@ -2852,15 +2844,6 @@ boolean expectBreakAndU(void)
   return expectUCalibrate();
 }
 
-
-// send a command
-void sendCommand(const uint8_t *buf, uint8_t len)
-{
-  measureRam();
-
-  Serial.flush(); // wait until everything has been written in order to avoid interrupts
-  dw.write(buf, len);
-}
 
 // wait for response and store in buf
 unsigned int getResponse (unsigned int expected) {
@@ -2904,7 +2887,7 @@ unsigned int getWordResponse (byte cmd) {
 
   DWflushInput();
   blockIRQ();
-  sendCommand(cmdstr, 1);
+  dw.sendCmd(cmdstr, 1, true); // better stop early so that we are not surprised by the response
   response = getResponse(&tmp[0], 2);
   unblockIRQ();
   if (response != 2) reportFatalError(DW_TIMEOUT_FATAL,true);
@@ -2916,7 +2899,9 @@ void DWsetSpeed(byte spix)
 {
   byte speedcmdstr[1] = { pgm_read_byte(&speedcmd[spix]) };
   DEBPR(F("Send speed cmd: ")); DEBLNF(speedcmdstr[0], HEX);
-  sendCommand(speedcmdstr, 1);
+  dw.sendCmd(speedcmdstr, 1, true); // here the early return from writing is strictly necessary!
+                                        // returning already after half a stop bit is instrumental
+                                        // in capturing the 'U' response for the calibration
 }
 
 //  The functions used to read read and write registers, SRAM and flash memory use "in reg,addr" and "out addr,reg" instructions 
@@ -2967,8 +2952,8 @@ void DWwriteRegisters(byte *regs)
 		   0xC2, 0x05,                          // write registers
 		   0x20 };                              // go
   measureRam();
-  sendCommand(wrRegs,  sizeof(wrRegs));
-  sendCommand(regs, 32);
+  dw.sendCmd(wrRegs,  sizeof(wrRegs));
+  dw.sendCmd(regs, 32);
 }
 
 // Set register <reg> by building and executing an "in <reg>,DWDR" instruction via the CMD_SET_INSTR register
@@ -2978,7 +2963,7 @@ void DWwriteRegister (byte reg, byte val) {
                   val};                                                    // Write value to register via DWDR
   measureRam();
 
-  sendCommand(wrReg,  sizeof(wrReg));
+  dw.sendCmd(wrReg,  sizeof(wrReg));
 }
 
 // Read all registers
@@ -2991,9 +2976,9 @@ void DWreadRegisters (byte *regs)
 		   0xC2, 0x01};                  // read registers
   measureRam();
   DWflushInput();
-  sendCommand(rdRegs,  sizeof(rdRegs));
+  dw.sendCmd(rdRegs,  sizeof(rdRegs));
   blockIRQ();
-  sendCommand((const byte[]) {0x20}, 1);         // Go
+  dw.sendCmd((const byte[]) {0x20}, 1, true);         // Go
   response = getResponse(regs, 32);
   unblockIRQ();
   if (response != 32) reportFatalError(DW_READREG_FATAL,true);
@@ -3007,9 +2992,9 @@ byte DWreadRegister (byte reg) {
                   0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg)}; // Build "out DWDR, reg" instruction
   measureRam();
   DWflushInput();
-  sendCommand(rdReg,  sizeof(rdReg));
+  dw.sendCmd(rdReg,  sizeof(rdReg));
   blockIRQ();
-  sendCommand((const byte[]) {0x23}, 1);                                // Go
+  dw.sendCmd((const byte[]) {0x23}, 1, true);                                // Go
   response = getResponse(&res,1);
   unblockIRQ();
   if (response != 1) reportFatalError(DW_READREG_FATAL,true);
@@ -3031,7 +3016,7 @@ void DWwriteSramByte (unsigned int addr, byte val) {
                    val};
   measureRam();
   DWflushInput();
-  sendCommand(wrSram, sizeof(wrSram));
+  dw.sendCmd(wrSram, sizeof(wrSram));
 }
 
 // Write one byte to IO register (via R0)
@@ -3044,7 +3029,7 @@ void DWwriteIOreg (byte ioreg, byte val)
 		    0x23};
   measureRam();
   DWflushInput();
-  sendCommand(wrIOreg, sizeof(wrIOreg));
+  dw.sendCmd(wrIOreg, sizeof(wrIOreg));
 }
 
 // Read one byte from SRAM address space using an SRAM-based value for <addr>, not an I/O address
@@ -3066,9 +3051,9 @@ byte DWreadSramByte (unsigned int addr) {
                    0xC2, 0x00};                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
   measureRam();
   DWflushInput();
-  sendCommand(rdSram, sizeof(rdSram));
+  dw.sendCmd(rdSram, sizeof(rdSram));
   blockIRQ();
-  sendCommand((const byte[]) {0x20}, 1);                              // Go
+  dw.sendCmd((const byte[]) {0x20}, 1, true);                              // Go
   response = getResponse(&res,1);
   unblockIRQ();
   if (response != 1) reportFatalError(SRAM_READ_FATAL,true);
@@ -3087,9 +3072,9 @@ byte DWreadIOreg (byte ioreg)
 		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0)};  // Build "out DWDR, 0" instruction
   measureRam();
   DWflushInput();
-  sendCommand(rdIOreg, sizeof(rdIOreg));
+  dw.sendCmd(rdIOreg, sizeof(rdIOreg));
   blockIRQ();
-  sendCommand((const byte[]) {0x23}, 1);                            // Go
+  dw.sendCmd((const byte[]) {0x23}, 1, true);                            // Go
   response = getResponse(&res,1);
   unblockIRQ();
   if (response != 1) reportFatalError(DW_READIOREG_FATAL,true);
@@ -3113,9 +3098,9 @@ void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   measureRam();
   
   DWflushInput();
-  sendCommand(rdSram, sizeof(rdSram));
+  dw.sendCmd(rdSram, sizeof(rdSram));
   blockIRQ();
-  sendCommand((const byte[]) {0x20}, 1);                            // Go
+  dw.sendCmd((const byte[]) {0x20}, 1, true);                            // Go
   rsp = getResponse(mem, len);
   unblockIRQ();
   if (rsp != len) reportFatalError(SRAM_READ_FATAL,true);
@@ -3139,13 +3124,13 @@ byte DWreadEepromByte (unsigned int addr) {
   measureRam();
   
   DWflushInput();
-  sendCommand(setRegs, sizeof(setRegs));
+  dw.sendCmd(setRegs, sizeof(setRegs));
   blockIRQ();
-  sendCommand((const byte[]){0x64},1);                                  // Set up for single step using loaded instruction
+  dw.sendCmd((const byte[]){0x64},1);                                  // Set up for single step using loaded instruction
   if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
-    sendCommand(doReadH, sizeof(doReadH));
-  sendCommand(doRead, sizeof(doRead));                                  // set rest of control regs and query
-  sendCommand((const byte[]) {0x23}, 1);                                // Go
+    dw.sendCmd(doReadH, sizeof(doReadH));
+  dw.sendCmd(doRead, sizeof(doRead));                                  // set rest of control regs and query
+  dw.sendCmd((const byte[]) {0x23}, 1, true);                                // Go
   response = getResponse(&retval,1);
   unblockIRQ();
   if (response != 1) reportFatalError(EEPROM_READ_FATAL,true);
@@ -3168,10 +3153,10 @@ void DWwriteEepromByte (unsigned int addr, byte val) {
                     0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,      // out EECR,r28   EECR = 04 (EEPROM Master Program Enable)
                     0xD2, outHigh(mcu.eecr, 29), outLow(mcu.eecr, 29), 0x23};     // out EECR,r29   EECR = 02 (EEPROM Program Enable)
   measureRam();
-  sendCommand(setRegs, sizeof(setRegs));
+  dw.sendCmd(setRegs, sizeof(setRegs));
   if (mcu.eearh)                                                                  // if there is a high byte EEAR reg, set it
-    sendCommand(doWriteH, sizeof(doWriteH));
-  sendCommand(doWrite, sizeof(doWrite));
+    dw.sendCmd(doWriteH, sizeof(doWriteH));
+  dw.sendCmd(doWrite, sizeof(doWrite));
   _delay_ms(5);                                                                   // allow EEPROM write to complete
 }
 
@@ -3191,9 +3176,9 @@ void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
 		    0xC2, 0x02};                                        // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
   measureRam();
   DWflushInput();
-  sendCommand(rdFlash, sizeof(rdFlash));
+  dw.sendCmd(rdFlash, sizeof(rdFlash));
   blockIRQ();
-  sendCommand((const byte[]) {0x20}, 1);                                // Go
+  dw.sendCmd((const byte[]) {0x20}, 1, true);                                // Go
   rsp = getResponse(mem, len);                                          // Read len bytes
   unblockIRQ();
   if (rsp != len) reportFatalError(FLASH_READ_FATAL,true);
@@ -3217,8 +3202,8 @@ void DWeraseFlashPage(unsigned int addr) {
     DWwriteRegister(31, addr >> 8  ); // load Z reg with addr high
     DWwriteRegister(29, 0x03); // PGERS value for SPMCSR
     if (mcu.bootaddr) DWsetWPc(mcu.bootaddr); // so that access of all of flash is possible
-    sendCommand(eflash, sizeof(eflash));
-    sendCommand((const byte[]) {0x33}, 1);
+    dw.sendCmd(eflash, sizeof(eflash));
+    dw.sendCmd((const byte[]) {0x33}, 1, true);
     if (expectBreakAndU()) break;
     _delay_us(1600);
     timeout++;
@@ -3250,9 +3235,9 @@ void DWprogramFlashPage(unsigned int addr)
     DWwriteRegister(31, addr >> 8  ); // load Z reg with addr high
     DWwriteRegister(29, 0x05); //  PGWRT value for SPMCSR
     if (mcu.bootaddr) DWsetWPc(mcu.bootaddr); // so that access of all of flash is possible
-    sendCommand(eprog, sizeof(eprog));
+    dw.sendCmd(eprog, sizeof(eprog));
     
-    sendCommand((const byte[]) {0x33}, 1);
+    dw.sendCmd((const byte[]) {0x33}, 1, true);
     succ = expectBreakAndU(); // wait for feedback
   
     if (mcu.bootaddr && succ) { // no bootloader
@@ -3295,7 +3280,7 @@ void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
     DWwriteRegister(0, mem[ix++]);               // load next word
     DWwriteRegister(1, mem[ix++]);
     if (mcu.bootaddr) DWsetWPc(mcu.bootaddr);
-    sendCommand(eload, sizeof(eload));
+    dw.sendCmd(eload, sizeof(eload));
   }
   DEBLN(F("...done"));
 }
@@ -3322,7 +3307,7 @@ void DWreenableRWW(void)
     }
     DWsetWPc(mcu.bootaddr);
     DWwriteRegister(29, 0x11); //  RWWSRE value for SPMCSR
-    sendCommand(errw, sizeof(errw));
+    dw.sendCmd(errw, sizeof(errw));
   }
 }
 
@@ -3334,7 +3319,7 @@ byte DWreadSPMCSR(void)
 		0x23 };             // execute
   measureRam();
   DWflushInput();
-  sendCommand(sc, sizeof(sc));
+  dw.sendCmd(sc, sizeof(sc));
   return DWreadRegister(30);
 }
 
@@ -3361,13 +3346,13 @@ unsigned int DWgetChipId () {
 void DWsetWPc (unsigned int wpcreg) {
   DEBPR(F("Set WPCReg=")); DEBLNF(wpcreg,HEX);
   byte cmd[] = {0xD0, (byte)((wpcreg >> 8)+mcu.stuckat1byte), (byte)(wpcreg & 0xFF)};
-  sendCommand(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
 }
 
 // set hardware breakpoint at word address
 void DWsetWBp (unsigned int wbp) {
   byte cmd[] = {0xD1, (byte)((wbp >> 8)+mcu.stuckat1byte), (byte)(wbp & 0xFF)};
-  sendCommand(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
 }
 
 // execute an instruction offline (can be 2-byte or 4-byte)
@@ -3378,7 +3363,7 @@ void DWexecOffline(unsigned int opcode)
 
   //DEBPR(F("Offline exec: "));
   DEBLNF(opcode,HEX);
-  sendCommand(cmd, sizeof(cmd));
+  dw.sendCmd(cmd, sizeof(cmd));
 }
 
 byte DWflushInput(void)

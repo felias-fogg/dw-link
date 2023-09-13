@@ -31,17 +31,17 @@ void dwSerial::sendBreak(void)
 }
 
 
-size_t dwSerial::sendCmd(const uint8_t *loc, uint8_t len) {
-  return write(loc, len);
-} 
 
-size_t dwSerial::write(const uint8_t *loc, uint8_t len)
+size_t dwSerial::sendCmd(const uint8_t *loc, uint8_t len, bool fastReturn)
 {
-  for (byte i=0; i < len; i++)
+  Serial.flush(); // wait until everything has been written to the regular serial line in order to avoid interrupts
+  for (byte i=0; i < len; i++) {
+    if (i == len-1 && fastReturn) SingleWireSerial::_finishSendingEarly = true;
     SingleWireSerial::write(loc[i]);
+  }
+  SingleWireSerial::_finishSendingEarly = false;
   return len;
 }
-
 
 void dwSerial::enable(bool active)
 {
@@ -51,11 +51,14 @@ void dwSerial::enable(bool active)
 
 unsigned long dwSerial::calibrate()
 {
-  unsigned long timeout = 300000UL; // long means roughly 240 ms
+  unsigned long timeout = 900000UL; // means roughly 800 ms
   unsigned long bps, eightbits = 0;
   byte edges;
   byte saveSREG;
 
+  DDRC = 1;
+  PORTC |= 1;
+  PORTC &= ~1;
   saveSREG = SREG;
   cli();
   enable(false);
@@ -65,9 +68,13 @@ unsigned long dwSerial::calibrate()
   TIFR |= _BV(ICF);
   TIFR |= _BV(TOV);
   
+  PORTC |= 1;
+  PORTC &= ~1;
   while ((TIFR & _BV(ICF)) == 0  && timeout) { // wait for first falling edge
     timeout--;
   }
+  PORTC |= 1;
+  PORTC &= ~1;
   TCNT = 0; // reset timer so that we do not have to worry about TOV
             // we probably start 12 cycles late because of the reset
   if (timeout == 0) {

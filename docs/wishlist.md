@@ -19,7 +19,7 @@
 
 #### List of tasks done:
 
-* use the DEBTX (if not defined) as a sensing pin to disable automatic DWEN programming, i.e., you have to use mo dw +/- by yourself.
+* use DEBTX pin (if TXODEBUG is not defined) as a sensing pin to disable automatic DWEN programming, i.e., you have to use mo dw +/- by yourself.
 
 * optimize ispTransfer so that higher ISP rates are possible (currently, 50 kHz is max)
 
