@@ -1,5 +1,11 @@
 # Changelog for dw-link
 
+## Version 3.5.2 (15-Sep-2023)
+
+* Only cosmetic changes:
+  * Compiled it with PlatformIO in order to catch violations of the C++ standard
+  * Dealt with spurious warnings of double defintions
+
 ## Version 3.5.1 (13-Sep-2023)
 
 * RAM measurement has been disabled. 

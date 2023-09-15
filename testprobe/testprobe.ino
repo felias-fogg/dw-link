@@ -1,5 +1,5 @@
 // tests a dw-link probe
-#define VERSION "1.1.0"
+#define VERSION "1.2.1"
 
 // pins
 const byte IVSUP = 2;
@@ -20,6 +20,12 @@ void setup()
   Serial.println(F("\nTesting dw-link-probe " VERSION));
   pinMode(SYSLED, OUTPUT);
   pinMode(TMISO, OUTPUT);
+  // initially switch the two SPI lines to GND in order to discharge any stry capacitance
+  pinMode(TARMOSI, OUTPUT);
+  pinMode(TARSCK, OUTPUT);
+  delay(100);
+  pinMode(TARMOSI,INPUT);
+  pinMode(TARSCK,INPUT);
   printHelp();
 }
 
@@ -195,7 +201,7 @@ int getLevel(byte pin)
 int getDisLev(byte pin) {
   int level =  (analogRead(pin)*10)/2;
 
-  if (level < 500) return 0;
+  if (level < 1000) return 0;
   else if (level > 3000 && level < 3700) return 3;
   else if (level > 4500) return 5;
   else return -1;

@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.5.0"
+#define VERSION "3.5.2"
 
 // some constants, you may want to change
 #ifndef PROGBPS
@@ -102,6 +102,7 @@
 #if HIGHSPEED
 #define SPEEDLIMIT SPEEDHIGH
 #else
+#undef SPEEDLIMIT
 #define SPEEDLIMIT SPEEDLOW
 #endif
 
@@ -447,9 +448,6 @@ long timeoutcnt = 0; // counter for DW read timeouts
 long flashcnt = 0; // number of flash writes 
 #if FREERAM
 int freeram = 2048; // minimal amount of free memory (only if enabled)
-#define measureRam() freeRamMin()
-#else
-#define measureRam()
 #endif
 
 // communcation interface to target
@@ -869,7 +867,7 @@ void gdbParsePacket(const byte *buff)
       
 
 // parse a monitor command and execute the appropriate actions
-void gdbParseMonitorPacket(const byte *buf)
+void gdbParseMonitorPacket(byte *buf)
 {
    [[maybe_unused]] int para = 0;
    char cmdbuf[40];
@@ -3734,12 +3732,14 @@ void convBufferHex2Ascii(char *outbuf, const byte *buf, int maxlen)
   outbuf[min(clen/2,maxlen-1)] = '\0';
 }
 
-#if FREERAM
-void freeRamMin(void)
+
+void measureRam(void)
 {
+#if FREERAM 
   int f = freeRam();
   // DEBPR(F("RAM: ")); DEBLN(f);
   freeram = min(f,freeram);
+#endif
 }
 
 int freeRam(void)
@@ -3756,7 +3756,7 @@ int freeRam(void)
     free_memory = (int) &stack_here - (int) __brkval; 
   return (free_memory);
 }
-#endif
+
 
 /*****************************************************************************************************/
 /******************************************** Unit tests *********************************************/
@@ -4295,7 +4295,8 @@ int targetTests(int &num) {
   ctx.wpc = 0xde; // rcall instruction
   targetRestoreRegisters();
   targetStep(); // one step leads to Break+0x55
-  if (!expectBreakAndU()) succ = false;  targetSaveRegisters();
+  if (!expectBreakAndU()) succ = false;  
+  targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xe4);
   gdbDebugMessagePSTR(PSTR("Test targetContinue/targetBreak: "), testnum++);
   succ = true;

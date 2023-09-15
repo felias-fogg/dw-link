@@ -1,5 +1,10 @@
 # Wish list for dw-link
 
+* try integration of tool into IDE 2.0 again
+
+* debug tiny13 problem, perhaps by reverting back to the version in
+  2022, when it seemed to work
+
 * rewrite compile-time conditionals so that they do not show up as errors in PIO
 
 * reorganize BP management: have a list of stored and a list of new BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!
