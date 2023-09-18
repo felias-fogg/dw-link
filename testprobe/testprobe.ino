@@ -20,10 +20,12 @@ void setup()
   Serial.println(F("\nTesting dw-link-probe " VERSION));
   pinMode(SYSLED, OUTPUT);
   pinMode(TMISO, OUTPUT);
-  // initially switch the two SPI lines to GND in order to discharge any stry capacitance
+  // initially switch the two SPI lines and the RESET line to GND in order to discharge any stray capacitance
   pinMode(TARMOSI, OUTPUT);
   pinMode(TARSCK, OUTPUT);
+  pinMode(DWLINE, OUTPUT);
   delay(100);
+  pinMode(DWLINE, INPUT);
   pinMode(TARMOSI,INPUT);
   pinMode(TARSCK,INPUT);
   printHelp();

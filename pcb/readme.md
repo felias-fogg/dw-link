@@ -10,7 +10,7 @@ The current design of the *dw-link probe* is more ambitious, but far from an ind
 * reasonable loads on the SPI lines, e.g., an LED and a 1 kΩ series resistor (but no stronger resistor),
 * no capactive load on the RESET line of the target,
 * no loads higher than a 10 kΩ resistance on the RESET line,
-* minimum target MCU clock frequency of 16 kHz.
+* minimum target MCU clock frequency of 4 kHz.
 
 If these constraints are met, the dw-link probe should work.  Otherwise, one might encounter strange behavior and/or error messages. 
 
