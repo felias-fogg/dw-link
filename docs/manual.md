@@ -626,15 +626,13 @@ The basic adapter is quite limited. It can only supply 20 mA to the target board
 * unidirectional (conditional) level-shifters on the ISP lines, and
 * high-impedance status for the two output signals MOSI and SCK when ISP is inactive.
 
-Such a board does not need to be very complex. The electronic design is minimalistic. It uses just two MOS-FETs, one LED, one voltage regulator, and some passive components. We need to (conditionally) level-shift the RESET line in a bidirectional manner and the SPI lines  unidirectionally.  One needs to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former  case, no level shifting is done at all, relying on the fact that the  input pins of the hardware debugger recognize a logical one already at  3.0 V. For the RESET line, which is open drain, we rely on the same  fact. This means that this hardware debugger cannot deal with systems  that use a supply voltage with less than 3 V, though.
+Such a board does not need to be very complex. The electronic design is minimalistic. It uses just three MOS-FETs, one LED, one voltage regulator, and some passive components. We need to (conditionally) level-shift the RESET line in a bidirectional manner and the SPI lines  unidirectionally.  One needs to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former  case, no level shifting is done at all, relying on the fact that the  input pins of the hardware debugger recognize a logical one already at  3.0 V. For the RESET line, which is open drain, we rely on the same  fact. This means that this hardware debugger cannot deal with systems  that use a supply voltage with less than 3 V, though.
 
 For down shifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because a  number of possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors which guarantee that the signal level is  above 3V on the SCK line, when we supply the board with 5V. These  pull-ups will be disabled when no ISP programming is active, giving full control of the two lines to the target system. The schematic looks as  follows.
 
-![KiCad-Schematic](pics/dw-link-probe-V3.0-sch.png)
+![KiCad-Schematic](pics/dw-link-probe-V3.1-sch.png)
 
-The pin mapping is a bit different from the basic design described above. It is controlled by pin D5, which is tight to ground in order to signal that the more complex pin mapping is used. The additional pins are all in italics.
-
- 
+The pin mapping is a bit different from the basic design described above. It is controlled by pin D5, which is tied to ground in order to signal that the more complex pin mapping is used. The additional pins are all in italics.
 
 | Arduino pin | ISP pin  | Function                                                     |
 | ----------- | -------- | ------------------------------------------------------------ |
@@ -660,15 +658,13 @@ And here is the breadboard prototype, which works beautifully.
 
 I have turned that into a PCB, which you can buy [at Tindie](https://www.tindie.com/products/31798/).
 
-![board](../pcb/board.png)
-
 Before you start, you have to set three jumpers. Then you are all set and can start debugging. 
 
 Label | Left | Middle | Right 
 --- | --- | --- | --- 
 **Supply** | **5 V** are supplied to the target | **extern**: target needs its own supply and power cycling has to be done manually | **3.3 V** are supplied to the target 
-**Pullup** | There is **no** pull-up resistor connected | &nbsp; | A **10kΩ** pull-up resistor is connected to the RESET line of the target 
-**Auto_DW** | Atomatic transitions to and from debugWIRE mode is **off** |  | Atomatic transitions to and from debugWIRE mode is **on** 
+**Pullup** | There is **no** pull-up resistor connected to RESET | &nbsp; | A **10 kΩ** pull-up resistor is connected to the RESET line of the target 
+**Auto_DW** | Atomatic transitions to and from debugWIRE mode is **off** |  | Automatic transitions to and from debugWIRE mode is **on** 
 
 <a name="section8"></a>
 
@@ -1052,3 +1048,4 @@ Initial version
 * Disabling automatic mode switching (Section 2)
 * Lowest frequency is now 4kHz (Section 8.7)
 * Number of breakpoints reduced from 33 to 25 because of stability problems (when debugging was on)
+* New dw-link probe

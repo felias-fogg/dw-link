@@ -14,5 +14,5 @@ The current design of the *dw-link probe* is more ambitious, but far from an ind
 
 If these constraints are met, the dw-link probe should work.  Otherwise, one might encounter strange behavior and/or error messages. 
 
-The current version (V3.0) of the dw-link probe (an Arduino UNO shield) uses mainly THT components, which should make it easy to assemble it using [these instructions](assembly.md). The two SMD components, two MOS-FETs, can also be hand soldered to the PCB since the solder pads are extra large. 
+The current version (V3.1) of the dw-link probe (an Arduino UNO shield) uses mainly THT components, which should make it easy to assemble it using [these instructions](assembly.md). The three SMD components can also be hand soldered to the PCB since the solder pads are extra large. 
 

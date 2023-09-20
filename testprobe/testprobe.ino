@@ -1,9 +1,11 @@
 // tests a dw-link probe
-#define VERSION "1.2.1"
+#define VERSION "1.5.0"
 
 // pins
 const byte IVSUP = 2;
+const byte AUTODWSENSE = 3;
 const byte TISP = 4;
+const byte SENSEBOARD = 5;
 const byte SYSLED = 7;
 const byte DWLINE = 8;
 const byte TMOSI = 11;
@@ -13,6 +15,10 @@ const byte TARMOSI = A3; // was A3
 const byte TARSCK = A2; // was A4
 const byte TARRES = A5; //was A2
 const byte TARSUP = A4; // was A5
+
+const byte MAXCTRL = 3;
+
+byte ctrls[MAXCTRL] = {  TMOSI, TMISO, TSCK }; 
 
 void setup()
 {
@@ -28,6 +34,8 @@ void setup()
   pinMode(DWLINE, INPUT);
   pinMode(TARMOSI,INPUT);
   pinMode(TARSCK,INPUT);
+  pinMode(SENSEBOARD, INPUT_PULLUP);
+  pinMode(AUTODWSENSE, INPUT_PULLUP);
   printHelp();
 }
 
@@ -163,6 +171,8 @@ void printOutputState()
   Serial.print(F(" mV\nDW(8):         "));
   if (getState(DWLINE) == 'I') Serial.println(digitalRead(DWLINE));
   else Serial.println("?");
+  Serial.print(F("AUTODWSENSE(3):"));
+  Serial.println(digitalRead(AUTODWSENSE));
 }
   
 
@@ -212,6 +222,15 @@ int getDisLev(byte pin) {
 void testSequence(void) {
   int lev;
   Serial.println(F("Starting test sequence ..."));
+  
+  Serial.println(F("  Checking SENSEBOARD ..."));  
+  if (digitalRead(SENSEBOARD) != LOW) {
+    Serial.println(F("     ERROR: SENSEBOARD(5) not tied to ground"));
+    return;
+  } else {
+    Serial.println(F("     OK"));
+  }
+
   // switch off everything
   digitalWrite(SYSLED, LOW);
   deactivate(IVSUP);
@@ -227,6 +246,38 @@ void testSequence(void) {
     Serial.println(F("     ERROR"));
     return;
   }
+  
+  Serial.println(F("  Checking for shortages on SPI lines ..."));
+  for (byte c = 0; c < MAXCTRL; c++)
+    pinMode(ctrls[c], INPUT_PULLUP);
+  for (byte c = 0; c < MAXCTRL; c++) {
+    digitalWrite(ctrls[c], LOW);
+    pinMode(ctrls[c], OUTPUT);
+    delay(2);
+    for (byte d = 0; d < MAXCTRL; d++) {
+      if (c != d) {
+	if (digitalRead(ctrls[d]) == LOW) {
+	  Serial.print(F("     ERROR: apparent shortage between "));
+	  Serial.print(ctrls[c]);
+	  Serial.print(F(" and "));
+	  Serial.print(ctrls[d]);
+	  for (byte c = 0; c < MAXCTRL; c++) {
+	    digitalWrite(ctrls[c], LOW);
+	    pinMode(ctrls[c], INPUT);
+	  }
+	  return;
+	}
+      }
+    }
+    pinMode(ctrls[c], INPUT_PULLUP);
+  }
+  for (byte c = 0; c < MAXCTRL; c++) {
+    digitalWrite(ctrls[c], LOW);
+    pinMode(ctrls[c], INPUT);
+  }
+  Serial.println(F("     OK"));
+
+  
   Serial.println(F("  Checking supply ..."));
   activate(IVSUP);
   delay(600);
