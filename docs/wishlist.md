@@ -1,11 +1,26 @@
 # Wish list for dw-link
 
+* write/design setup for UNO debugging with connected USB cable
+
+* write a short debug description for PIO
+
+* produce short youtube video to promote dw-link probe
+
+* use "blink modes" in order to highlight embedded programming, perhaps in a video?
+
+* try to use seer GUI again
+
+* clean up Gede interface
+
+  * no multiple main breaks oints
+  * reloading files in GUI when reloading files
+
+* Implement SCK500v2 protocol
+
 * try integration of tool into IDE 2.0 again
 
 * debug tiny13 problem, perhaps by reverting back to the version in
   2022, when it seemed to work
-
-* rewrite compile-time conditionals so that they do not show up as errors in PIO
 
 * reorganize BP management: have a list of stored and a list of new BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!
 
@@ -27,6 +42,8 @@
 
 
 #### List of tasks done:
+
+* rewrite compile-time conditionals so that they do not show up as errors in PIO
 
 * use DEBTX pin (if TXODEBUG is not defined) as a sensing pin to disable automatic DWEN programming, i.e., you have to use mo dw +/- by yourself.
 

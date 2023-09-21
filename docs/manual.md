@@ -229,9 +229,9 @@ ATtiny pin# | Arduino UNO pin | component
 
 <a name="section452"></a>
 
-#### 4.5.2 Debugging an UNO
+#### 4.2.2 Debugging an UNO
 
-If instead of an ATtiny85, you want to debug an UNO board, everything said above applies here as well. The Fritzing sketch below shows you the connections. Here, the series resistor for the system LED is soldered to the LED cathode so that we do not need a breadboard at all. 
+If instead of an ATtiny85, you want to debug an UNO board, everything said above applies here as well. The Fritzing sketch below shows you the connections. Here, the series resistor for the system LED is soldered to the LED cathode so that we do not need a breadboard at all. The hardware debugger needs a USB connection to your host, but the target should not be connected by a USB cable to the host! Otherwise the automatic power-cycling will not work (but see below).
 
 Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))! When you first establish a connection with the UNO as a target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared.
 
@@ -243,9 +243,17 @@ When after a debugging session you want to restore the target so that it behaves
 2. Reestablish the `RESET EN` connection by putting a solder blob on the connection.
 3. Burn the bootloader into the UNO again. This means that you need to select the `Arduino UNO` again as the target board in the `Tools` menu, select `AVR ISP` as the `Programmer` , and choose `Burn Bootloader` from the `Tools` menu. As mentioned in Section 1, since version 2.2.0, the hardware debugger can also act as programmer!
 
-We are now good to go and 'only' need to install the additional debugging software on the host. Before we do that, let us have a look, in which states the hardware debugger can be and how it signals that using the system LED.
+<a name="section423"></a>
+
+#### 4.2.3 Debugging an UNO that needs a serial connection to the host
+
+If you want to debug an Arduino UNO that needs a serial connection to the host, special considerations are necessary. You may just plug in a USB cable into the target and open up a terminal connection to the target, using e.g., cu, screen, PuTTY, HTerm or any other program that can establish a serial connection. The disadvantage is that now automatic power-cycling does not work any longer. So, when the system LED signals that you should power-cycle (0.1 sec flash every second), you need to disconnect and reconnect the USB-cable to the target.
+
+A more elegant solution is to use a USB-to-serial converter and plug the TX, RX, and GND connections into the appropriate sockets on the target. Or you can use a [USB power blocker](https://spacehuhn.store/products/usb-power-blocker), something you can also find on Amazon under the name [PortaPow USB Power Blocker](https://www.amazon.de/PortaPow-USB-Power-Blocker/dp/B094FYL9QT/). Such a blocker cuts off the power line so that automatic power-cycling can work its magic.
 
 ### 4.3 States of the hardware debugger
+
+We are now good to go and 'only' need to install the additional debugging software on the host. Before we do that, let us have a look, in which states the hardware debugger can be and how it signals that using the system LED.
 
 There are five states the debugger can be in and each is signaled by a different blink pattern of the system LED:
 
@@ -632,7 +640,7 @@ For down shifting, we use the output pins of the hardware debugger in an open dr
 
 ![KiCad-Schematic](pics/dw-link-probe-V3.1-sch.png)
 
-The pin mapping is a bit different from the basic design described above. It is controlled by pin D5, which is tied to ground in order to signal that the more complex pin mapping is used. The additional pins are all in italics.
+The pin mapping is a bit different from the basic design described above. The change from the basic mapping is controlled by pin D5, which is tied to ground in order to signal that the more complex pin mapping is used. The additional pins are all in italics.
 
 | Arduino pin | ISP pin  | Function                                                     |
 | ----------- | -------- | ------------------------------------------------------------ |
@@ -652,11 +660,11 @@ The pin mapping is a bit different from the basic design described above. It is 
 
 
 
-And here is the breadboard prototype, which works beautifully.
+And here is the early breadboard prototype, which worked beautifully. It contains a bug, though. Can you spot it?
 
 ![V2-prototype](pics/dw-probe-V3.jpg)
 
-I have turned that into a PCB, which you can buy [at Tindie](https://www.tindie.com/products/31798/).
+I have turned the modified prototype into a PCB, which you can buy [at Tindie](https://www.tindie.com/products/31798/).
 
 Before you start, you have to set three jumpers. Then you are all set and can start debugging. 
 
@@ -1049,3 +1057,4 @@ Initial version
 * Lowest frequency is now 4kHz (Section 8.7)
 * Number of breakpoints reduced from 33 to 25 because of stability problems (when debugging was on)
 * New dw-link probe
+* Debugging UNO with an active serial connection to the host

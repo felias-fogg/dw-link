@@ -1,14 +1,14 @@
 // This is an example sketch to demonstrate embedded debugging
+
 // It is a modified blink sketch. It has four different modes:
 // off, on, slow blinking, fast blinking. You can cycle through these
-// modes by pressing a button, which is read using an interrupt.
-// Parallel to that, we prcess an ASCII input stream inverting the case of each
+// modes by pressing a button, which is recognized using an interrupt.
+// Parallel to that, we process an ASCII input stream inverting the case of each
 // character before sending it out.
-//
-// In order to keep external components
-// at minimum, we use the builtin LED and a single button.
-// The blinking is implemented by using the "Timer/Counter0 Compare Match A"
-// interrupt.
+
+// In order to keep external components at a minimum, we use the builtin LED
+// and a single button.  The blinking is implemented by using the
+// "Timer/Counter0 Compare Match A" interrupt.
 
 #include <ctype.h>
 
@@ -16,11 +16,11 @@
 #define BUTTON 2
 #define BUTTONGND 4
 
-byte counter = 0;                   // the counter for blinking, it counts ms
-byte mode = 0;                      // the mode of the b linker
-unsigned long lastpress = 0;        // when was button pressed last?
+volatile byte counter = 0;           // the counter for blinking, it counts ms
+volatile byte mode = 0;              // the mode of the b linker
+volatile unsigned long lastpress = 0;// when was button pressed last?
 
-const byte debounce_ms = 100;       // the debounce time in ms
+const byte debounce_ms = 100;        // the debounce time in ms
 
 void setup() {
   Serial.begin(19200);
@@ -38,9 +38,8 @@ void loop() {
 
   if (Serial.available()) {
     c = Serial.read();
-    if (isupper(c)) Serial.print(tolower(c));
-    else Serial.println(toupper(c));
-
+    if (isupper(c)) Serial.write(tolower(c));
+    else Serial.write(toupper(c));
   }
 }
 
