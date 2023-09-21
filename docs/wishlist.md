@@ -1,7 +1,5 @@
 # Wish list for dw-link
 
-* write/design setup for UNO debugging with connected USB cable
-
 * write a short debug description for PIO
 
 * produce short youtube video to promote dw-link probe
@@ -42,6 +40,8 @@
 
 
 #### List of tasks done:
+
+* write/design setup for UNO debugging with connected USB cable
 
 * rewrite compile-time conditionals so that they do not show up as errors in PIO
 

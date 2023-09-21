@@ -2,6 +2,18 @@
 #
 # Discover dw-link and then redirect data from a TCP/IP connection to the serial port and vice versa.
 # Based on Chris Liechti's tcp_serial_redirct script
+#
+# Version 1.2.0 (21-Sep-2023)
+# - does not call gede with the (now obsolete) --no-run option; thze -g option still works, though
+#
+# Version 1.1.0
+# - special option for calling gede with the --no-run option
+#
+# Version 1.0.0
+# - first working version
+#
+
+VERSION = "1.2.0"
 
 import sys
 import socket
@@ -44,13 +56,13 @@ if __name__ == '__main__':
     import  argparse
 
     # parse arguments
-    parser = argparse.ArgumentParser(description='TCP/IP server for dw-link adapter')
+    parser = argparse.ArgumentParser(description='TCP/IP server for dw-link adapter (Version ' + VERSION + ')')
     parser.add_argument('-p', '--port',  type=int, default=2000, dest='port',
                             help='local port on machine (default 2000)')
     parser.add_argument('-s', '--start',  dest='prg', 
                             help='start specified program')
     parser.add_argument('-g', '--gede',  action="store_true",
-                            help='start gede with "--no-run" option')
+                            help='start gede')
     args=parser.parse_args()
 
     # discover adapter
@@ -79,7 +91,7 @@ if __name__ == '__main__':
     serial_worker.start()
 
     if args.gede:
-        args.prg = "gede --no-run"
+        args.prg = "gede"
 
     if args.prg:
         cmd = shlex.split(args.prg)
