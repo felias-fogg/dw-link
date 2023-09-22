@@ -472,11 +472,11 @@ All of the commands marked with (*) reset the MCU.
 
 ### 5.7 A graphical user interface: *Gede*
 
-If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *Gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. There was a slight hiccup with the old version of avr-gdb that is the standard version in Debian, but that was also solved. Unfortunately, Windows is not supported. However, you could use [*WSL2*](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux) to run Gede, avr-gdb, dw-server.py and the Arduiono IDE. Connecting to a serial port could then be done by using [*usb-ip*](https://github.com/dorssel/usbipd-win). 
+If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Unfortunately, Windows is not supported. However, you could use [*WSL2*](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux) to run Gede, avr-gdb, dw-server.py and the Arduiono IDE. Connecting to a serial port could then be done by using [*usb-ip*](https://github.com/dorssel/usbipd-win). 
 
-Making a long story short, you can download the modified source from https://gede.dexar.se/ and build it according to the instructions in the readme file.
+Making a long story short, you can download the source from https://gede.dexar.se/ and build it according to the instructions in the readme file. It is straight-forward and easy.
 
-The `dw-server` directory of the dw-link directory contains a Python script called `dw-server.py`, which you should also copy to `/usr/local/bin`. 
+The `dw-server` directory of the dw-link directory contains a Python script called `dw-server.py`, which you should copy to `/usr/local/bin`. 
 
 Open now a terminal window, `cd` into the folder that contains the ELF file, and type
 
@@ -488,9 +488,9 @@ The script will try to discover a dw-link adapter connected to a serial line. Af
 
 ![gede-start](pics/gede-start.png)
 
-`Project dir` and `Program` are specific to your debugging session. The rest should be copied as it is shown. And with clicking on OK, you start a debugging session.
+`Project dir` and `Program` are specific to your debugging session. The rest should be copied as it is shown. And with clicking on OK, you start a debugging session. Well, the startup takes a while because the debugger always loads the object file into memory.
 
- Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. An additional command has been added to the interface that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. The GUI looks as shown in the next figure.
+The GUI looks as shown in the next figure. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using it.
 
 ![gede](pics/gede.png)
 
@@ -809,17 +809,21 @@ I have encountered situations [when it was impossible to get the right informati
 
 ## 9 Trouble shooting
 
+#### Problem: When using dw-link as an ISP programmer it seems to be unresponsive.
+
+It could be that the target is still in debugWIRE mode. Start a debugging session and end it regularly, then it is guaranteed that the MCU is back to normal and programming should be possible, provided you have chosen the right programmer STK500v1 (in Arduino speak `Arduino as ISP` or `AVR ISP`). This problem will vanish in future versions of dw-link.
+
 #### Problem: It is impossible to upload the dw-link firmware to the UNO board
 
 Maybe, the dw-link probe shield or the auto-reset disabling capacitor is still plugged into the UNO board? Remove, and try gain.
 
 #### Problem: After debugging, the chip is unresponsive, i.e., does not respond anymore to ISP programming or bootloader upload
 
-There are many possible causes. 
+There are many possible causes:
 
-The DWEN fuse is still programmed, i.e., the MCU is still in debugWIRE mode. In this case, it may help to enter and leave the debugger again, provided that there are not any [problems with the RESET line](#worstcase). It may also be helpful to issue the command `monitor dwire -`. 
+* The DWEN fuse is still programmed, i.e., the MCU is still in debugWIRE mode. In this case, it may help to enter and leave the debugger again, provided that there are not any [problems with the RESET line](#worstcase). It may also be helpful to issue the command `monitor dwire -`. 
 
-Another fuse has been programmed by accident. In particular, there are the `monitor` commands that change the clock source. If an external clock or an XTAL has been chosen, then you can recover the chip only by providing such an external clock or XTAL and then use either ISP programming or connect again to dw-link. 
+* Another fuse has been programmed by accident. In particular, there are the `monitor` commands that change the clock source. If an external clock or an XTAL has been chosen, then you can recover the chip only by providing such an external clock or XTAL and then use either ISP programming or connect again to dw-link. 
 
 If nothing helps, then [high-voltage programming](#worstcase) might still be a last resort.
 
