@@ -809,10 +809,6 @@ I have encountered situations [when it was impossible to get the right informati
 
 ## 9 Trouble shooting
 
-#### Problem: When using dw-link as an ISP programmer it seems to be unresponsive.
-
-It could be that the target is still in debugWIRE mode. Start a debugging session and end it regularly, then it is guaranteed that the MCU is back to normal and programming should be possible, provided you have chosen the right programmer STK500v1 (in Arduino speak `Arduino as ISP` or `AVR ISP`). This problem will vanish in future versions of dw-link.
-
 #### Problem: It is impossible to upload the dw-link firmware to the UNO board
 
 Maybe, the dw-link probe shield or the auto-reset disabling capacitor is still plugged into the UNO board? Remove, and try gain.

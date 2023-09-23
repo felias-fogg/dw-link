@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.5.2"
+#define VERSION "3.5.3"
 
 // some constants, you may want to change
 #ifndef PROGBPS
@@ -46,7 +46,6 @@
 //#define HOSTBPS 230400UL    // works with UNOs, but not with Nanos
 #endif
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
-// #define NOAUTODWOFF 1      // do not automatically leave debugWIRE mode
 // #define HIGHSPEEDDW 1      // allow for DW speed up to 250 kbps
 
 // these should stay undefined for the ordinary user
@@ -796,7 +795,7 @@ void gdbParsePacket(const byte *buff)
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    if (!ctx.autodw || gdbStop(false))                /* disable DW mode */
+    if (gdbStop(false))                               /* disable DW mode */
       gdbSendReply("OK");                             /* and signal that everything is OK */
     break;
   case 'c':                                           /* continue */
@@ -807,7 +806,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'k':
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
-    if (ctx.autodw) gdbStop(false);                   /* stop DW mode */
+    gdbStop(false);                                   /* stop DW mode */
     break;
   case 's':                                           /* single step */
   case 'S':                                           /* step with signal - just ignore signal */
@@ -819,9 +818,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {/* Run command */
-      if (targetOffline() && !ctx.autodw) {
-	gdbSendReply("E01");
-      } else if (gdbConnect(false)) {                 /* re-enable DW mode, reset MCU, and clear PC */
+      if (gdbConnect(false)) {                        /* re-enable DW mode, reset MCU, and clear PC */
 	setSysState(CONN_STATE);
 	gdbSendState(SIGTRAP);                        /* trap signal */
       } else {
@@ -830,7 +827,7 @@ void gdbParsePacket(const byte *buff)
     } else
       if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
 	gdbUpdateBreakpoints(true);                   /* remove BREAKS in memory before exit */
-	if (!ctx.autodw || gdbStop(false))            /* stop DW mode (if autodw) */
+	if (gdbStop(false))                           /* stop DW mode (if autodw) */
 	  gdbSendReply("OK");                         /* and signal that everything is OK */
       } else {
 	gdbSendReply("");                             /* not supported */
@@ -842,8 +839,8 @@ void gdbParsePacket(const byte *buff)
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
       initSession();                                  /* always init all vars when gdb connects */
-	if (!ctx.autodw || gdbConnect(false))         /* and try to connect (if autodw) */
-	  gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
+      if (!ctx.autodw || gdbConnect(false))           /* and try to connect (if autodw) */
+	gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                           /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
@@ -900,7 +897,7 @@ void gdbParseMonitorPacket(byte *buf)
     }
     break;
   case MORESET:
-    if (gdbReset()) gdbSendReply("OK");
+    if (gdbReset()) gdbReplyMessagePSTR(PSTR("MCU has been reset"), -1);
     else gdbSendReply("E05");
     break;
   case MOCKDIV:
@@ -1060,6 +1057,7 @@ boolean gdbConnect(boolean verbose)
       gdbReportConnected();
     }
     gdbCleanupBreakpointTable();
+    targetReset(); 
     targetInitRegisters();
     return true;
   }
@@ -1079,7 +1077,6 @@ boolean gdbConnect(boolean verbose)
   DEBLN(conncode);
   if (fatalerror == NO_FATAL) fatalerror = -conncode;
   setSysState(ERROR_STATE);
-  if (conncode < 0) dw.enable(false); // otherwise if DWLINE has no pullup, the program goes astray!
   flushInput();
   targetInitRegisters();
   return false;
@@ -1089,10 +1086,7 @@ boolean gdbConnect(boolean verbose)
 // try to disable the debugWIRE interface on the target system
 boolean gdbStop(boolean verbose)
 {
-#if NOAUTODWOFF
-  if (!verbose) return true; // no silent exits from DW mode
-#endif
-  if (targetStop()) {
+  if (targetStop(verbose)) {
     setSysState(NOTCONN_STATE);
     if (verbose) {
       gdbReportConnected();
@@ -1210,7 +1204,6 @@ boolean powerCycle(boolean verbose)
   int retry = 0;
   byte b;
 
-  dw.enable(false);
   setSysState(PWRCYC_STATE);
   while (retry < 20) {
     //DEBPR(F("retry=")); DEBLN(retry);
@@ -1234,7 +1227,6 @@ boolean powerCycle(boolean verbose)
     }
     //_delay_ms(1000);
     _delay_ms(200);
-    dw.enable(true);
     if (targetDWConnect()) {
       setSysState(CONN_STATE);
       return true;
@@ -1280,6 +1272,7 @@ void gdbSetFuses(Fuses fuse)
   if (!ctx.autodw && !offline) {
     gdbDebugMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
     gdbSendReply("E01");
+    return;
   }
   setSysState(NOTCONN_STATE);
   res = targetSetFuses(fuse);
@@ -1327,6 +1320,7 @@ void gdbGetFuses(boolean ckdiv, boolean noreply)
   if (!ctx.autodw && !offline) {
     gdbDebugMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
     gdbSendReply("E01");
+    return;
   }
 
   setSysState(NOTCONN_STATE);
@@ -2323,10 +2317,13 @@ int targetISPConnect(void)
 
 
 // disable debugWIRE mode
-boolean targetStop(void)
+boolean targetStop(boolean always)
 {
-  int ret = targetSetFuses(DWEN);
-  leaveProgramMode();
+  int ret = 1;
+  if (always || ctx.autodw) {
+    ret = targetSetFuses(DWEN);
+    leaveProgramMode();
+  }
   dw.end();
   return (ret == 1);
 }
@@ -2690,7 +2687,7 @@ void targetStep(void)
 // reset the MCU
 boolean targetReset(void)
 {
-  dw.sendCmd((const byte[]) {0x07}, 1, true); // eturn before last bit is sent so that we catch the break
+  dw.sendCmd((const byte[]) {0x07}, 1, true); // return before last bit is sent so that we catch the break
   
   if (expectBreakAndU()) {
     DEBLN(F("RESET successful"));
@@ -3479,7 +3476,6 @@ boolean enterProgramMode (void)
   byte timeout = 6;
 
   //DEBLN(F("Entering progmode"));
-  dw.enable(false);
   ctx.ispspeed = NORMAL_ISP;
   do {
     if (timeout < 5) ctx.ispspeed = SLOW_ISP;
@@ -3510,7 +3506,6 @@ void leaveProgramMode(void)
   disableSpiPins();
   _delay_ms(10);
   pinMode(DWLINE, INPUT); // allow MCU to run or to communicate via debugWIRE
-  dw.enable(true);
 }
   
 
@@ -4737,8 +4732,20 @@ void avrisp (void) {
       
     case 0x50:                                  // 'P' - 0x50 Enter Program Mode
       if (!pmode) {
-	if (enterProgramMode()) 
+	DEBLN(F("enter PM"));
+	if (enterProgramMode()) {
+	  DEBLN(F("SUCCESS!"));
 	  pmode = 1;
+	} else {
+	  DEBLN(F("No prog state"));
+	  if (targetSetFuses(DWEN) == 1) {
+	    DEBLN(F("DW off"));
+	    pmode = 1;
+	  } else {
+	    DEBLN(F("DW still on"));
+	    leaveProgramMode();
+	  }
+	}
       }
       if (pmode) {
 	empty_reply();

@@ -1,5 +1,16 @@
 # Changelog for dw-link
 
+## Version 3.5.3 
+
+* ISP programmer: disabling debugWIRE mode when switching into programming mode after 'P' record.
+* The above change did not work initially because the IC interrupt was still active and blocked apparently everything else. For this reason:
+  * all dw.enable(true) and dw.enable(false) statements were deleted
+  * in dwSerial, the enable(true) statements were deleted. 
+
+* Now the only place, where the IC interrupt is enabled is the begin method in SingleWireSerial and it is disabled in the end method in SingleWireSerial as well as in the sendBreak and calibrate methods in dwSerial. This appears to be the right way of dealing with this interrupt.
+* When autodw is off, everything is done the same way when gdbStop is called, but inside targetStop, the DW stop command is not sent and the DWEN fuse is not cleared. 
+* Fixed: in gdbG/SetFuses, we now immediately return after an error message caused by autodw-off. Before that, accidentally DW mode was switched off. Interestingly, this led only sometimes to a problem. 
+
 ## Version 3.5.2 (15-Sep-2023)
 
 * Only cosmetic changes:

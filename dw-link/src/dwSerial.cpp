@@ -27,7 +27,6 @@ void dwSerial::sendBreak(void)
   ICDDR |= _BV(ICBIT); // switch pin to output (which is always low)
   _delay_ms(400); // enough for 30 bps
   ICDDR &= ~_BV(ICBIT); // and switch it back to being an input
-  enable(true);
 }
 
 
@@ -109,7 +108,6 @@ unsigned long dwSerial::calibrate()
   eightbits = eightbits + ICR + 12; // 12 because of the late state of the counter
   SREG = saveSREG;
   bps = (F_CPU*8/eightbits);
-  enable(true);
   return bps;
 }
 
