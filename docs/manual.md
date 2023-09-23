@@ -474,7 +474,7 @@ All of the commands marked with (*) reset the MCU.
 
 If you believe that GDB is too much typing, then you are probably the type of programmer who wants a graphical user interface. As it turns out, it is not completely trivial to come up with a solution that is easy to install and easy to work with. Recently, I stumbled over *gede*, which appears to be just the right solution. It has been designed for Linux, but after a few small changes it also works under macOS. Unfortunately, Windows is not supported. However, you could use [*WSL2*](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux) to run Gede, avr-gdb, dw-server.py and the Arduiono IDE. Connecting to a serial port could then be done by using [*usb-ip*](https://github.com/dorssel/usbipd-win). 
 
-Making a long story short, you can download the source from https://gede.dexar.se/ and build it according to the instructions in the readme file. It is straight-forward and easy.
+Making a long story short, you can download the source from my [fork of gede](https://github.com/felias-fogg/gede) and build it according to the instructions in the readme file. It is straight-forward and easy.
 
 The `dw-server` directory of the dw-link directory contains a Python script called `dw-server.py`, which you should copy to `/usr/local/bin`. 
 

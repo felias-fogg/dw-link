@@ -39,7 +39,7 @@ void loop() {
   if (Serial.available()) {
     c = Serial.read();
     if (isupper(c)) Serial.write(tolower(c));
-    else Serial.write(toupper(c));
+    else if (islower(c)) Serial.write(toupper(c));
   }
 }
 
@@ -50,7 +50,7 @@ void readButton() {
   mode = (mode+1) % 4;               // go to next mode
 }
 
-ISR(TIMER0_COMPA_vect) {              // timer ISR
+ISR(TIMER_COMPA_vect) {              // timer ISR
   counter++;                          // advance counter
   if (mode == 0)
     digitalWrite(LEDPIN, 0);          // in mode 0, switch LED off
