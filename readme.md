@@ -14,18 +14,18 @@ The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and imp
 
 Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new version will not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, to single-step, and to inspect and set variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
 
-Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart.md) in order find out whether it works for you.
+Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart.md) in order find out whether it works for you. If you like it and want to make part of your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/).
 
-If you are interested in the background and ongoing development of dw-link, visit my [blog](https://arduino-craft-corner.de/). In particular, the blogs tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be of interest to you.
+The background and ongoing development of dw-link is a topic on my [blog](https://arduino-craft-corner.de/). In particular, the blog posts tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be of interest to you.
 
 This repository contains the following directories:
 
 * [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger
 * [**docs**](docs/): Contains the documentation, in particular the [manual](docs/manual.md)
 * [**dw-server**](dw-server/): Contains the Python script dw-server.py, which discovers the serial line dw-link is connected to and provides a serial-to-TCP/IP bridge
-* [**examples**](examples/): Contains a tiny Arduino sketch and a PlatformIO project
+* [**examples**](examples/): Contains two Arduino sketches and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
-* [**pcb**](pcb/): Contains design data (KiCad) for the optional adapter board, which you can buy at [Tindie](https://www.tindie.com/products/31798/) 
+* [**pcb**](pcb/): Contains design data (KiCad) for the optional adapter board
 * [**core-mods**](core-mods/): Contains all the modifications to the core files necessary to support the generation of debug-friendly object files
 * [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as C program to generate the lists.
 
