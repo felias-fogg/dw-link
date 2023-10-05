@@ -187,8 +187,7 @@ Usually, it should not be necessary to change a compile-time constant in dw-link
 | --------------- | ---------------------- | ------------------------------------------------------------ |
 | __VERSION__     | current version number | Current version number of dw-link; should not be changed, except when one generates a new version |
 | **HOSTBPS**     | 115200                 | Communication speed for host interface                       |
-| **HIGHSPEEDDW** | 0                      | If 1, the speed limit of debugWIRE communication is 300 kbps, otherwise it is 150kbps |
-| **NOAUTODWOFF** | 0                      | If 1, disables the feature that debugWIRE mode is automatically disabled when leaving the debugger (makes startup of consecutive sessions a bit faster) |
+| **HIGHSPEEDDW** | 0                      | If 1, the speed limit of debugWIRE communication is initially 300 kbps, otherwise it is 150kbps |
 | __STUCKAT1PC__  | 0                      | If this value is set to 1, then dw-link will accept connections to targets that have program counters with stuck-at-one bits; one can then use the debugger, but GDB can get confused at many points, e.g., when single-stepping or when trying to produce a stack backtrace. |
 
 <a name="section42"></a>
@@ -459,7 +458,7 @@ Finally, there are commands that control the settings of the debugger and the MC
 | monitor reset                      | resets the MCU (*)                                           |
 | monitor ckdiv [1\|8]               | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*) |
 | monitor oscillator [r\|a\|x\|e\|s] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., or **s**low osc. (128 kHz); without argument, it reports the fuse setting (*) |
-| monitor breakpoint [h\|s]          | set number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 33, when also **s**oftware breakpoints are permitted; without argument it reports setting |
+| monitor breakpoint [h\|s]          | set number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25, when also **s**oftware breakpoints are permitted; without argument it reports setting |
 | monitor speed [l\|h]               | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
 | monitor singlestep [s\|u]          | Sets single stepping to **s**afe (no interrupts) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
 | monitor lasterror                  | print error number of last fatal error                       |
@@ -579,7 +578,7 @@ debug_server = dw-server.py
       -p 3333
 ```
 
-Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this alternate INI file (by renaming it `platform.ini`), provided the Python module *PySerial* is installed and the `dw-server.py` script (which you find in the `dw-server` folder) is stored in an executable path, i.e., in /usr/local/bin on a *nix machine. 
+Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this alternate INI file (by renaming it to `platform.ini`), provided the Python module *PySerial* is installed and the `dw-server.py` script (which you find in the `dw-server` folder) is stored in an executable path, i.e., in /usr/local/bin on a *nix machine. 
 
 When creating new projects, you can take this project folder as a blue print and modify and extend `platformio.ini` according to your needs. You can find an extensive description of how to do that in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
@@ -668,7 +667,7 @@ And here is the early breadboard prototype, which worked beautifully. It contain
 
 I have turned the modified prototype into a PCB, which you can buy [at Tindie](https://www.tindie.com/products/31798/).
 
-Before you start, you have to set three jumpers. Then you are all set and can start debugging. 
+Before you start, you have to configure three jumpers. Then you are all set and can start debugging. 
 
 Label | Left | Middle | Right 
 --- | --- | --- | --- 
@@ -758,14 +757,14 @@ When you activate *sleep mode*, the power consumed by the MCU is supposed to go 
 
 ### 8.7 MCU operations interfering with debugWIRE
 
-There are a few situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) mentions the following:
+There are a few situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/pr/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-1/index.html?GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F) contains the following:
 
 * The PRSPI bit in the power-saving register should not be set
 * Breakpoints should not be set at the last address of flash memory
 * Do not single step over a SLEEP instruction
 * Do not insert breakpoints immediately after an LPM instruction and do not single-step LPM code
 
-Since the debugWIRE communication hardware uses the SPI machinery, it is obvious that one should not disable it by setting the power-saving bits. Otherwise the communication will not work any longer. The latter three situations may lead to problems stopping at the breakpoint or executing the instructions, respectively.
+Setting the `PRSPI` bit can disable the clock for the debugWIRE line and should be avoided for this reason. The latter three situations may lead to problems stopping at the breakpoint or executing the instructions, respectively.
 
 The list of known issues mentions also the following four potential problems:
 
@@ -789,7 +788,7 @@ When running under the debugger, the program will be stopped in the same way as 
 
 Some debugWIRE MCUs appear to have program counters in which some unused bits are stuck at one. ATmega48s and ATmega88s (without the A-suffix), which I have sitting on my bench,  have their PC bits 11 and 12 or only PC bit 12 always stuck at one. In other words the PC has at least the value 0x1800 or 0x1000, respectively (note that the AVR program counter addresses words, not bytes!). The hardware debugger can deal with it, but GDB gets confused when trying to perform a stack backtrace. It gets also confused when trying to step over a function call or tries to finalize a function call. For these reasons, debugging these MCUs does not make much sense and dw-link rejects these MCUs with an error message when one tries to connect to one of those (see also [this blog entry](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/)). 
 
- The only reasonable way to deal with this problem is to use a different MCU, one with an A, PA, or PB suffix. If you really need to debug this particular MCU and are aware of the problems and limitations, you can recompile the sketch with the compile time constant `STUCKAT1PC` set to 1.
+The only reasonable way to deal with this problem is to use a different MCU, one with an A, PA, or PB suffix. If you really need to debug this particular MCU and are aware of the problems and limitations, you can recompile the sketch with the compile time constant `STUCKAT1PC` set to 1.
 
 ### 8.10 The start of the debugger takes two seconds
 
@@ -803,7 +802,7 @@ The standard setting of the Arduino IDE and CLI is to optimize for space, which 
 
 I have encountered situations [when it was impossible to get the right information about C++ objects](https://arduino-craft-corner.de/index.php/2021/12/15/link-time-optimization-and-debugging-of-object-oriented-programs-on-avr-mcus/). This can be avoided by disabling *link-time optimization* (LTO). Choose `Debug (no LTO)` in this case. Finally, if there are still discrepancies between what you expect and what the debugger delivers, you can try `Debug (no LTO, no comp. optim.)`, which effectively switches off any optimization (corresponding to **-O0 -fno-lto**).
 
- In PlatformIO, you can set the options for generating the debug binary in the `platform.ini` file.
+In PlatformIO, you can set the options for generating the debug binary in the `platform.ini` file.
 
 <a name="trouble"></a>
 
@@ -825,7 +824,7 @@ If nothing helps, then [high-voltage programming](#worstcase) might still be a l
 
 #### Problem: After changing optimization options, the binary is still too large/very small
 
-You switched optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this is not longer an option. You need to look at where the files are compiled and stored and delete them manually.
+You switched optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this is not longer an option. You need to look at where the files are compiled are stored and delete them manually.
 
 #### Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*
 
@@ -837,7 +836,7 @@ One other common problem is that the debug environment is not the first environm
 
 The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino uses by default 115200 baud, but you can recompile dw-link with a changed value of `HOSTBPS`, e.g., using 230400. If GDB is told something differently, either as the argument to the `-b` option when starting avr-gdb or as an argument to the GDB command `set serial baud ...`, you should change that. If you did not specify the bitrate at all, GDB uses its default speed of 9600, which will not work!
 
-My experience is that 230400 bps works only with UNO boards. The Arduino Nano cannot  communicate at that speed, though.
+My experience is that 230400 bps works only with UNO boards. The Arduino Nano cannot  communicate at that speed.
 
 A further (unlikely) reason for a failure in connecting to the host might be that a different communication format was chosen (parity, two stop bits, ...). 
 
@@ -845,7 +844,7 @@ A further (unlikely) reason for a failure in connecting to the host might be tha
 
 Depending on the concrete error message, the problem fix varies.
 
-- *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor a debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)).
+- *Cannot connect: Check wiring*: The debugger can neither establish an ISP nor a debugWIRE connection. Check wiring. It could also be a problem with the RESET line (see [Section 3.3](#section33)). If this is not the reason, disconnect everything and put it together again.
 - *Cannot connect: Unsupported MCU*: This MCU is not supported by dw-link. It most probably has no debugWIRE connectivity. 
 - *Cannot connect: PC with stuck-at-one bits*: dw-link tried to connect to an MCU with stuck-at-one bits in the program counter (see [Section 8.9](#section89)). These MCUs cannot be debugged with GDB. 
 - *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!
@@ -871,7 +870,7 @@ The reason is most probably that the communication connection to the target syst
 
 #### Problem: The debugger responses are very sluggish   
 
-One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU clock/8 or clock/16, the communication speed could be 8kbps. If the CKDIV8 fuse is programmed, it could even be only 1kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)). 
+One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU usually clock/8, the debugWIRE communication speed could be 16kbps. If the CKDIV8 fuse is programmed, it could even be only 2kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 8.2](#section82)). 
 
 #### Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted* 
 
@@ -897,6 +896,10 @@ Check the instruction by using the command `x/i $pc`. If the BREAK instruction i
 
 If you simply want to continue, you can set the PC to another value, e.g., one that is higher by two or four. Do that by using the command `set $pc=...`. 
 
+#### Problem: After requesting to stop at a function, the debugger displays a completely different file, where the execution will stop
+
+This is a GDB problem. It can happen when a function call is inlined at the beginning of the function one intends to stop at. While the place where execution will stop looks crazy (e.g., HardwareSerial.h at line 121), the execution stops indeed at the beginning of the specified function (in this case at the beginning of setup).
+
 #### Problem: The debugger does not stop at the line a breakpoint was set
 
 Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, **-Og** is the recommended optimization option, which applies optimizations in a debug-friendly way. This is also the default for PlatformIO. In the Arduino IDE, you have to select the `Debug` option. You can also disable all possible optimizations (choose `Debug (no comp. optim.)` in the Arduino IDE).
@@ -905,13 +908,17 @@ Not all source lines generate machine code so that it is sometimes impossible to
 
 The debugger starts execution, but it never stops at a breakpoint it should stop, single-stepping does not lead to the expected results, etc. I have seen three possible reasons for that (apart from a programming error that you are hunting).
 
-Often, I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably do that by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
+Often, I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably force a hardware reset by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. 
 
 Second, you may have specified a board/MCU different from your actual target. This happens quite easily with PlatformIO when you work with different targets. In this case, some things appear to work, but others do not work at all. 
 
 Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen **-Og** (or **-O0**), then single-stepping may not work as expected and/or you may not be able to assign values to local variables. If objects are not printed the right way, then you may consider disabling LTO (by using the compiler option **-fno-lto**). Have a look into the [Section about compiler optimization flags](#section811).
 
 So, before blaming the debugger, check for the three possible causes.
+
+#### Problem: After a reset (external, power-up, or WDT) of the target, it behaves strangely
+
+One would expect that the target would start execution at 0x000 after a reset. However, if the fuse `BOOTRST` is set (i.e., when the target has a boot loader), then the execution is started at the beginning of the boot loader area. 
 
 #### Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command
 
@@ -1060,3 +1067,4 @@ Initial version
 * Number of breakpoints reduced from 33 to 25 because of stability problems (when debugging was on)
 * New dw-link probe
 * Debugging UNO with an active serial connection to the host
+* Added problem that stopping at a function might display the location of the inlined function
