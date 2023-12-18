@@ -27,7 +27,7 @@ The kit contains the following parts. They are all THT, except for Q1, Q2, and Q
 | IOH1, IOL1                   | Pin Header (1x8)                                       | 2      |
 | POWER1, AD1                  | Pin Header (1x6)                                       | 2      |
 
-When assembling the kit, just follow what is specified in the table. Start from the top and go down. In case, you do not know  the color codes for resistors by heart, try this [online calculator](https://www.allaboutcircuits.com/tools/resistor-color-code-calculator/). 
+When assembling the kit, just follow what is specified in the table. Start from the top and go down. In case, you do not know the color codes for resistors by heart, try this [online calculator](https://www.allaboutcircuits.com/tools/resistor-color-code-calculator/). 
 
 For the capacitors C1 and C3 and the LED, watch out for the polarity, which should be matched with the symbols on the PCB. Bipolar capacitors have the negative connection marked and the negative connection has usually a shorter lead. The other lead should go into the hole marked with '+'.  Similarly, also LEDs have a long and a short lead, where the short one marks the cathode. This one should go into the hole marked with a square.
 
@@ -35,7 +35,7 @@ Q1, Q2, Q3, and U1 should all be soldered with the marking pointing upwards.
 
 When soldering the shield connectors to the board, it is a good idea to do that when the plugs are inserted into the sockets of the Arduino UNO. 
 
-If you have never soldered SMD parts before: It is not rocket science. You need to put a blob of solder on one pad, take the SMD part with a pair of tweezers, and solder the part to the pad with a solder blob on it. Afterwards solder the remaining legs to the respective pads. Finally, check with a magnifying glass that all connections have been made. There are numerous tutorials about SMD hand-soldering out there. The [HowTo](https://josepheoff.github.io/posts/howtosolder-11soldersmdpassive) by JRE is very detailed and easy to follow. Here are three photos to illustrate how to solder the MOS-FETs step by step.
+If you have never soldered SMD parts before: It is not rocket science. You need to put a blob of solder on one pad, take the SMD part with a pair of tweezers, and solder the part to the pad with a solder blob on it. Afterward, solder the remaining legs to the respective pads. Finally, check with a magnifying glass that all connections have been made. There are numerous tutorials about SMD hand-soldering out there. The [HowTo](https://josepheoff.github.io/posts/howtosolder-11soldersmdpassive) by JRE is very detailed and easy to follow. Here are three photos to illustrate how to solder the MOS-FETs step by step.
 
 ![SMD soldering](../docs/pics/SMD-soldering.png)
 
