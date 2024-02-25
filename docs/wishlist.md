@@ -1,19 +1,34 @@
 # Wish list for dw-link
 
+##### List of unsolved issues:
+
+* When trying to debug the UNO board clone with the problematic Atmega16U2 that I have, a lot of strange things happen:
+  * With the real UNO board, we cannot even execute the target remote command.
+    * dw-link, seems to hang, the LA does not show any activity on the serial lines
+    * the get remote debug reports that the packages are sent but nothing is replied
+    * even when connecting to another board and resetting, this state continues
+    * only disconnecting the USB line and reconnecting resets the connection between the UNO and the host
+  * Works much better with the SEEEduino 4.2, however here it can happen:
+    * the target MCU is only halfway into dW mode, i.e., neither ISP works nor do we get an 'U' after a break.
+  * With the AZdelivery board
+    * I have seen problem in uploading the firmware
+    * I also saw the same problem as with the real UNO and I also saw a restart for no good reason.
+    * So, this is probably not a good start at all.
+  * The UNO compatible board by AZdelivery did not work at all.
+  * In summary, I do not recommend to use AZdelivery UNO compatible boards
+* Perhaps, this is just a problem with this board. However, it would still be nice to know why these things can happen at all. I currently do not have the slightest idea.
+
+##### List of tasks to work on:
+
 * write a short debug description for PIO
 
 * produce short youtube video to promote dw-link probe
 
-* use "blink modes" in order to highlight embedded programming, perhaps in a video?
+* use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video?
 
 * try to use seer GUI again
 
-* clean up Gede interface
-
-  * no multiple main breaks oints
-  * reloading files in GUI when reloading files
-
-* Implement SCK500v2 protocol
+* Implement STK500v2 protocol
 
 * try integration of tool into IDE 2.0 again
 
@@ -37,9 +52,13 @@
 
   
 
+##### List of tasks done:
 
+* clean up Gede interface
 
-#### List of tasks done:
+  * no multiple main breaks oints
+
+  * reloading files in GUI when reloading files
 
 * write/design setup for UNO debugging with connected USB cable
 

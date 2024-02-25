@@ -14,11 +14,10 @@
 
 #define LEDPIN LED_BUILTIN
 #define BUTTON 2
-#define BUTTONGND 4
 
-volatile byte counter = 0;           // the counter for blinking, it counts ms
-volatile byte mode = 0;              // the mode of the b linker
-volatile unsigned long lastpress = 0;// when was button pressed last?
+byte counter = 0;                    // the counter for blinking, it counts ms
+volatile byte mode = 0;              // the mode of the blinker
+unsigned long lastpress = 0;         // when was button pressed last?
 
 const byte debounce_ms = 100;        // the debounce time in ms
 
@@ -26,7 +25,6 @@ void setup() {
   Serial.begin(19200);
   Serial.println(F("\nblinkmode V1.0.0"));
   pinMode(LEDPIN, OUTPUT);           // initialize LEDPIN 
-  pinMode(BUTTONGND, OUTPUT);        // make neighboring pin GND for the button
   pinMode(BUTTON, OUTPUT);           // initialize button
   TIMSK0 |= _BV(OCIE0A);             // enable Timer0 Compare Match A interrupt
   OCR0A = 0x80;                      // set interrupt time between two millis interrupts
@@ -38,8 +36,12 @@ void loop() {
 
   if (Serial.available()) {
     c = Serial.read();
-    if (isupper(c)) Serial.write(tolower(c));
-    else if (islower(c)) Serial.write(toupper(c));
+    if (isupper(c)) {
+      c = tolower(c);
+    } else if (islower(c)) {
+      c = toupper(c);
+    }
+    Serial.print(c);
   }
 }
 

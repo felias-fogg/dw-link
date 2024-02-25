@@ -35,9 +35,10 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.5.3"
+#define VERSION "3.5.4"
 
 // some constants, you may want to change
+// --------------------------------------
 #ifndef PROGBPS
 #define PROGBPS 19200         // ISP programmer communication speed
 #endif
@@ -48,10 +49,11 @@
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
 // #define HIGHSPEEDDW 1      // allow for DW speed up to 250 kbps
 
-// these should stay undefined for the ordinary user
+// these constants should stay undefined for the ordinary user
+// -----------------------------------------------------------
+// #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define CONSTDWSPEED 1     // constant communication speed with target
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
-// #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
 // #define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
@@ -157,6 +159,10 @@
 
 // instruction codes
 const unsigned int BREAKCODE = 0x9598;
+
+// some dw commands
+const byte DW_STOP_CMD = 0x06;
+const byte DW_RESET_CMD = 0x07;
 
 // some GDB variables
 struct breakpoint
@@ -395,7 +401,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
   {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   at90pwm161}, // untested
 
   {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   at90pwm216316}, // untested
-  {0,      0,  0,  0, 0,  0,     0,  0, 0,      0,    0,    0,    0,    0,    0,   0, 0},
+  {0,      0,  0,  0, 0,  0,     0,  0, 0,      0,    0,    0,    0,    0,    0,   0, 0, NULL},
 };
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
@@ -472,7 +478,7 @@ DEBDECLARE();
 
 /****************** Interrupt routines *********************/
 
-// catch undefined/unwantd irqs: should not happen at all
+// catch undefined/unwanted irqs: should not happen at all
 ISR(BADISR_vect)
 {
   reportFatalError(BAD_INTERRUPT_FATAL, false);
@@ -1020,7 +1026,7 @@ inline void gdbHelp(void) {
   gdbSendReply("OK");
 }
 
-// "monitor dwire [+|-]"
+// "monitor dwire [+|-]" or "target remote"
 // try to enable debugWIRE
 // this might imply that the user has to power-cycle the target system
 boolean gdbConnect(boolean verbose)
@@ -1208,14 +1214,14 @@ boolean powerCycle(boolean verbose)
   while (retry < 20) {
     //DEBPR(F("retry=")); DEBLN(retry);
     if (retry%3 == 0) { // try to power-cycle
-      //DEBLN(F("Power cycle!"));
+      DEBLN(F("Power cycle!"));
       power(false); // cutoff power to target
       //_delay_ms(500);
       _delay_ms(200);
       power(true); // power target again
       //_delay_ms(200); // wait for target to startup
       _delay_ms(100);
-      //DEBLN(F("Power cycling done!"));	
+      DEBLN(F("Power cycling done!"));	
     }
     if ((retry++)%3 == 0 && retry >= 3) {
       do {
@@ -1226,7 +1232,7 @@ boolean powerCycle(boolean verbose)
       } while (b == '-');
     }
     //_delay_ms(1000);
-    _delay_ms(200);
+    _delay_ms(400);
     if (targetDWConnect()) {
       setSysState(CONN_STATE);
       return true;
@@ -1237,7 +1243,7 @@ boolean powerCycle(boolean verbose)
 
 void power(boolean on)
 {
-  //DEBPR(F("Power: ")); DEBLN(on);
+  DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
     pinMode(VSUP, OUTPUT);
     digitalWrite(VSUP, HIGH);
@@ -2348,7 +2354,7 @@ int targetSetFuses(Fuses fuse)
   if (fuse == CkSlow && mcu.slowosc == 0xFF) return -5; // this chip cannot run with 128 kHz
   if (fuse == CkARc && mcu.arosc == 0xFF) return -6;
   if (doBreak()) {
-    dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
+    dw.sendCmd((const byte[]) {DW_STOP_CMD}, 1); // leave debugWIRE mode
   } 
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2687,7 +2693,7 @@ void targetStep(void)
 // reset the MCU
 boolean targetReset(void)
 {
-  dw.sendCmd((const byte[]) {0x07}, 1, true); // return before last bit is sent so that we catch the break
+  dw.sendCmd((const byte[]) {DW_RESET_CMD}, 1, true); // return before last bit is sent so that we catch the break
   
   if (expectBreakAndU()) {
     DEBLN(F("RESET successful"));
@@ -3739,7 +3745,7 @@ void measureRam(void)
 
 int freeRam(void)
 {
- extern unsigned int __heap_start;
+  extern unsigned int __heap_start;
   extern void *__brkval;
 
   int free_memory;

@@ -1,6 +1,13 @@
 # Changelog for dw-link
 
-## Version 3.5.3 
+## Version 3.5.4 
+
+- A few cosmetic changes in comments 
+- Adding the constants `DW_STOP_CMD` and `DW_RESET_CMD`
+- Changing wait time before trying to connect to target from 200 to 400 in powerCycle
+- 
+
+## Version 3.5.3 (23-Sep-2023)
 
 * ISP programmer: disabling debugWIRE mode when switching into programming mode after 'P' record.
 * The above change did not work initially because the IC interrupt was still active and blocked apparently everything else. For this reason:

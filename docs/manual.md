@@ -639,7 +639,7 @@ The basic adapter is quite limited. It can only supply 20 mA to the target board
 
 Such a board does not need to be very complex. The electronic design is minimalistic. It uses just three MOS-FETs, one LED, one voltage regulator, and some passive components. We need to (conditionally) level-shift the RESET line in a bidirectional manner and the SPI lines unidirectionally.  One needs to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, no level shifting is done at all, relying on the fact that the input pins of the hardware debugger recognize a logical one already at  3.0 V. For the RESET line, which is open drain, we rely on the same fact. This means that this hardware debugger cannot deal with systems that use a supply voltage of less than 3 V, though.
 
-For downshifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because some possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors which guarantee that the signal level is above 3V on the SCK line, when we supply the board with 5V. These pull-ups will be disabled when no ISP programming is active, giving full control of the two lines to the target system. The schematic looks as follows.
+For downshifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because some possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors that guarantee that the signal level is above 3V on the SCK line, when we supply the board with 5V. These pull-ups will be disabled when no ISP programming is active, giving the target system full control of the two lines. The schematic looks as follows (thanks to **[gwideman](https://github.com/gwideman)** for the reworked schematic).
 
 ![KiCad-Schematic](../pcb/schematic.png)
 
@@ -675,7 +675,7 @@ Label | Left | Middle | Right
 --- | --- | --- | --- 
 **Supply** | **5 V** are supplied to the target | **extern**: target needs its own supply and power cycling has to be done manually | **3.3 V** are supplied to the target 
 **Pullup** | There is **no** pull-up resistor connected to RESET | &nbsp; | A **10 kΩ** pull-up resistor is connected to the RESET line of the target 
-**Auto_DW** | Atomatic transitions to and from debugWIRE mode is **off** |  | Automatic transitions to and from debugWIRE mode is **on** 
+**Auto_DW** | Atomatic transitions to and from debugWIRE mode is **off** |  | Automatic transitions to and from debugWIRE mode is **on**. This is the default and *recommended* mode! 
 
 <a name="section8"></a>
 
@@ -841,6 +841,10 @@ The serial connection to the hardware debugger could not be established. The mos
 My experience is that 230400 bps works only with UNO boards. The Arduino Nano cannot communicate at that speed.
 
 A further (unlikely) reason for a failure in connecting to the host might be that a different communication format was chosen (parity, two stop bits, ...). 
+
+#### Problem: When connecting to the target using the *target remote* command, you do not get an error message, but the system LED is still off and there is apparently no connection
+
+This happens when you select the `AutoDW-off` jumper option on the dw-link board. In this case, you have to initiaite the connection with the `monitor dwire +` command. And in the end before you disconnect you should switch back into normal mode with  `monitor dwire -`. Usually, you wantg to have the jumper in the `on` position.
 
 #### Problem: In response to the `monitor dwire +` command, you get the error message *Cannot connect: ...*
 
