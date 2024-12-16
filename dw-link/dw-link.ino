@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.5.4"
+#define VERSION "3.5.5"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -90,9 +90,11 @@
 #endif
 #include "src/debug.h" // some (meta-)debug macros
 
+// convert an integer literal into its hex string representation (without the 0x prefix)
 // some size restrictions
 
-#define MAXBUF 160 // input buffer for GDB communication (enough for initial packet in gdb 12.1)
+#define MAXBUF 144 // input buffer for GDB communication, initial packet is longer, but will be mostly ignored
+#define MAXBUFHEXSTR "90"  // hex representation string of MAXBUF 
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
 #define MAXBREAK 25 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
@@ -703,8 +705,8 @@ void gdbHandleCmd(void)
   case '$':
     buffill = 0;
     for (pkt_checksum = 0, b = gdbReadByte();
-	 b != '#' && buffill < MAXBUF; b = gdbReadByte()) {
-      buf[buffill++] = b;
+	 b != '#' ; b = gdbReadByte()) {
+      if (buffill < MAXBUF) buf[buffill++] = b;
       pkt_checksum += b;
     }
     buf[buffill] = 0;
@@ -846,7 +848,7 @@ void gdbParsePacket(const byte *buff)
       //DEBLN(F("qSupported"));
       initSession();                                  /* always init all vars when gdb connects */
       if (!ctx.autodw || gdbConnect(false))           /* and try to connect (if autodw) */
-	gdbSendPSTR((const char *)PSTR("PacketSize=90")); 
+	gdbSendPSTR((const char *)PSTR("PacketSize=" MAXBUFHEXSTR)); /* needs to be given in hexadecimal! */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                           /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)

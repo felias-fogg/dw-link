@@ -8,7 +8,7 @@ The kit contains the following parts. They are all THT, except for Q1, Q2, and Q
 
 | ID                           | Value                                                  | Number |
 | ---------------------------- | ------------------------------------------------------ | ------ |
-| PCB                          | dw-link probe V3.0                                     | 1      |
+| PCB                          | dw-link probe V3.1                                     | 1      |
 | Q1, Q2, Q3                   | IRLML6402 (or any other logic-level P-Channel MOS-FET) | 3      |
 | R1                           | 1 kΩ (brown, black, red)                               | 1      |
 | R2, R5, R6                   | 10 kΩ (brown, black, orange)                           | 3      |

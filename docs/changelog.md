@@ -1,11 +1,17 @@
 # Changelog for dw-link
 
+## Version 3.5.5 (15-Dec-2024)
+
+- Fixed: gdbHandleCMD now reads all packet characters and replies with ACK regardless of how long the packet is. The part that does not fit into the buffer is simply ignored. This works well with the initial qSupported package. Later packages will respect the PacketSize feature.
+- Fixed: GDB interprets the parameter given with the PacketSize feature as a hexadecimal number. This is now being taken care of by an explicit definition of MAXBUFHEXSTR.
+- Changed MAXBUF from 160 to 175, because GDB 15.2 uses 173 chars in
+  its initial package. Perhaps, we have to do something more drastic in order to be able to accomodate additions to this initial package.
+
 ## Version 3.5.4 
 
 - A few cosmetic changes in comments 
 - Adding the constants `DW_STOP_CMD` and `DW_RESET_CMD`
 - Changing wait time before trying to connect to target from 200 to 400 in powerCycle
-- 
 
 ## Version 3.5.3 (23-Sep-2023)
 
