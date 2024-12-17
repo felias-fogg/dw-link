@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 #
 # Discover dw-link and then redirect data from a TCP/IP connection to the serial port and vice versa.
-# Based on Chris Liechti's tcp_serial_redirect script
+# Based on Chris Liechti's tcp_serial_redirct script
 #
-# Version 1.2.1 (15-Dec-2024)
-# - cosmetic changes
+# Version 1.2.1 (17-Dec-2024)
+# - under Linux, we have to send the ENQ twice before we get an answer, I have no idea why
 #
-# Version 1.2.0 (21-Sep-2023)
-# - does not call gede with the (now obsolete) --no-run option; the -g option still works, though
+# Version 1.2.0 (21-sep-2023)
+# - does not call gede with the (now obsolete) --no-run option; thze -g option still works, though
 #
 # Version 1.1.0
 # - special option for calling gede with the --no-run option
@@ -41,15 +41,19 @@ class SerialToNet(serial.threaded.Protocol):
 
 # discovers the dw-link adapter, if present
 def discover():
-    for delay in (0, 2):
+    for delay in (0.1, 2):
         for s in serial.tools.list_ports.comports(True):
             try:
-                for sp in (115200, 230400):
+                for sp in (115200, ):
                     with serial.Serial(s.device, sp, timeout=0.1, write_timeout=0.1, exclusive=True) as ser:
                         time.sleep(delay)
                         ser.write(b'\x05') # send ENQ
-                        if ser.read(7) == b'dw-link': # if we get this response, it must be an dw-link adapter
-                            ser.close()
+                        resp = ser.read(7) # under Linux, the first response might be empty
+                        if resp == b'':
+                            time.sleep(0.1)
+                            ser.write(b'\x05') # try again sending ENQ                        
+                            resp = ser.read(7) # now it should be the right response!
+                        if resp == b'dw-link': # if we get this response, it must be an dw-link adapter
                             return (sp, s.device)
             except:
                 pass

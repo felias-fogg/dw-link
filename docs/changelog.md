@@ -1,5 +1,10 @@
 # Changelog for dw-link
 
+## Version 3.5.6 (17-Dec-2024)
+
+- Fixed: In the monitor help command output, it is now correctly stated that there are only 25 breakpoints (instead of 32).
+- Fixed: In dw-server.py, the discovery process for the dw-link probe is now more robust. On my Ubuntu, it happened that after disconnecting from a serial line, the first input after reconnecting got lost. For this reason, now two ENQ characters are sent in succession, if one is not enough.
+
 ## Version 3.5.5 (15-Dec-2024)
 
 - Fixed: gdbHandleCMD now reads all packet characters and replies with ACK regardless of how long the packet is. The part that does not fit into the buffer is simply ignored. This works well with the initial qSupported package. Later packages will respect the PacketSize feature.

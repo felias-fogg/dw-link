@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.5.5"
+#define VERSION "3.5.6"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -1013,7 +1013,7 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]      - program (8) or unprogram (1) CK8DIV (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
   gdbDebugMessagePSTR(PSTR("                         - use RC/alt RC/XTAL/ext/slow osc. (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s] - allow 1 (h) or 32 (s) breakpoints"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s] - allow 1 (h) or 25 (s) breakpoints"), -1);
   gdbDebugMessagePSTR(PSTR("monitor singlestep [s|u] - disallow (s) or allow (u) IRQs while single-stepping"), -1);
 #if HIGHSPEED
   gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps) (def.) or l (150kbps)"), -1);
