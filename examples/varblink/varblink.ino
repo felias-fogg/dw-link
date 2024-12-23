@@ -11,9 +11,9 @@ void setup() {
 void loop() {
   int i=digitalRead(1)+20;
   digitalWrite(LED, HIGH);  
-  delay(1000);              
+  delay(1000);       
+  thisByte++;       
   digitalWrite(LED, LOW);              
-  thisByte++;
   thisByte = thisByte + i;
   delay(100+thisByte);
 }

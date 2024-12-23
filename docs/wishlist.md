@@ -2,6 +2,8 @@
 
 ##### List of unsolved issues:
 
+- Write a section on how to restore an UNO after debugging
+
 * When trying to debug the UNO board clone with the problematic Atmega16U2 that I have, a lot of strange things happen:
   * With the real UNO board, we cannot even execute the target remote command.
     * dw-link, seems to hang, the LA does not show any activity on the serial lines

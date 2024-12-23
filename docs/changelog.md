@@ -1,5 +1,17 @@
 # Changelog for dw-link
 
+## Version 4.0.0
+
+- Added: Debugging in Arduino IDE 2 is now supported. This affects
+  mainly dw-server.py, the auxiliary scripts producing the board
+  definition files, and the packing of tools. However, there are also
+  a few changes in dw-link
+- Changed: In gdbConnect, connection failures are transmitted using an
+  O-record (with a ***-prefix), even if we have verbose=false. The transmission will be
+  captured by dw-server and displayed in the right window
+- Added: All fatal error messages transmitted using an O-record are
+  prefixed with "***" so that dw-server can capture and display this message
+
 ## Version 3.5.6 (17-Dec-2024)
 
 - Fixed: In the monitor help command output, it is now correctly stated that there are only 25 breakpoints (instead of 32).

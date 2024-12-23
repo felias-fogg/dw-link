@@ -61,7 +61,7 @@
 // #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
 // #define NOMONITORHELP 1    // disable monitor help function
-// #define NOISPPROG 1        // disable ISP programmer
+#define NOISPPROG 1        // disable ISP programmer
 
 #if UNITALL == 1
 #undef  UNITDW
@@ -561,12 +561,14 @@ int main(void) {
   
   // loop
   while (1) {
+#if (!NOISPPROG)
     if (ctx.state == NOTCONN_STATE) { // check whether there is an ISP programmer
       if (UCSR0A & _BV(FE0))  // frame error -> break, meaning programming!
 	ISPprogramming(false);
       else if (Serial.peek() == '0') // sign on from ISP programmer using HOSTBPS
 	ISPprogramming(true);
     }
+#endif
     monitorSystemLoadState();
     if (Serial.available()) {
       gdbHandleCmd();
@@ -1069,14 +1071,12 @@ boolean gdbConnect(boolean verbose)
     targetInitRegisters();
     return true;
   }
-  if (verbose) {
-    switch (conncode) {
-    case -1: gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1); break;
-    case -2: gdbDebugMessagePSTR(PSTR("Cannot connect: Unsupported MCU"),-1); break;
-    case -3: gdbDebugMessagePSTR(PSTR("Cannot connect: Lock bits are set"),-1); break;
-    case -4: gdbDebugMessagePSTR(PSTR("Cannot connect: PC with stuck-at-one bits"),-1); break;
-    default: gdbDebugMessagePSTR(PSTR("Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
-    }
+  switch (conncode) {
+  case -1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Check wiring"),-1); break;
+  case -2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU"),-1); break;
+  case -3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits are set"),-1); break;
+  case -4: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits"),-1); break;
+  default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
   }
   if (verbose) {
     gdbReportConnected();
@@ -1304,7 +1304,7 @@ void gdbSetFuses(Fuses fuse)
   case CkXtal:
   case CkSlow: gdbDebugMessagePSTR(PSTR("Oscillator changed"),-1); break;
   case Erase: gdbDebugMessagePSTR(PSTR("Chip erased"),-1); break;
-  default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("Fatal Error: Wrong fuse!"),-1); break;
+  default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("***Fatal Error: Wrong fuse!"),-1); break;
   }
   if (!offline) gdbDebugMessagePSTR(PSTR("Reconnecting ..."),-1);
   _delay_ms(200);

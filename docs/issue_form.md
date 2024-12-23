@@ -2,7 +2,7 @@
 
 **Short description:** (e.g., Debugger did not stop at breakpoint)
 
-**Detailed error description:** (a detailed description how to provoke the error)
+**Detailed error description:** (a detailed description of the expected behavior and the observed behavior and how to provoke this)
 
 **Target system:** (e.g., ATtiny24, 8 MHz, 5V or Pro Mini, 328, 3.3V)
 
@@ -20,6 +20,6 @@
 
 **Arduino sketch:** (either put here or provide URL, where to download)
 
-**GDB log:**  (produce a log with `set trace-commands on`, `set debug remote 1` , and  `set logging on`)
+**GDB log:**  (produce a log with `set trace-commands on`, `set debug remote 1` , and  `set logging on`, maybe by setting these in the `.gdbinit` file in the home directory)
 
 **Additional Information:** (anything else that could be helpful in locating the error)

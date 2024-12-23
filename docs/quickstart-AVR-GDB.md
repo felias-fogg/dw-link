@@ -1,32 +1,34 @@
-# dw-link
-
-# Quick-start Guide
+# Quick-start Guide for AVR-GDB Debugging
 
 Turn your Arduino UNO into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps (+ 1 optional step). Takes less than one hour. 
+
+This tutorial explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](quickstart-Arduino-IDE2).
 
 ## What you need
 
 * Computer running Windows, macOS, or Linux (the *host*)
 * Arduino UNO (will become the *hardware debugger*)
-* ATtiny85 (or any other classic ATtiny or ATmegaX8 as the *target*)
-* Breadboard
-* 11 Jumper wires (male-to-male)
-* 2 LEDs
-* 3 Resistors (10 kΩ, 220Ω, 220Ω)
-* 2 Capacitors (100 nF, 10 µF)
 * USB cable 
+* ATtiny85 (or any other classic ATtiny or ATmegaX8) as the *target*
+* In order to connect the hardware debugger to the target, you need either:
+  * the [dw-link probe shield](https://www.tindie.com/products/31798/) and an ISP cable, or
+  * a breadboard together with
+    * 11 Jumper wires (male-to-male)
+    * 2 LEDs
+    * 3 Resistors (10 kΩ, 220Ω, 220Ω)
+    * 2 Capacitors (100 nF, 10 µF)
 
 
 
 ## Step 1: Install Arduino IDE
 
-You probably already have installed the Arduino IDE. If not, download and install it from https://arduino.cc. It does not matter whether it is the IDE 1 or 2. However, it should be an IDE with  version >= 1.8.13. 
+You probably already have installed the Arduino IDE. If not, download and install it from https://arduino.cc. It does not matter whether it is the IDE 1 or 2. However, it should be an IDE with version >= 1.8.13. 
 
 **Check:** Start IDE and check the `About Arduino`  entry under the `Arduino` or `Help` menu for the version number.
 
 ## Step 2: Install new board definition files
 
-Open the `Preference` dialog of the Arduino IDE and paste the following two `Board Manager URLs` into the list:
+Open the `Preference` dialog of the Arduino IDE and paste the following two URLs into the list of  `Additional boards manager URLs`:
 
 	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
 ```
@@ -36,7 +38,7 @@ https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 Close the `Preference` dialog with `OK`. Now we want to install the two cores `ATTinyCore` and `MiniCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type first `MiniCore` and install the most recent version (or upgrade to the most recent one). 
+* In the search field, type MiniCore first. Then, install the most recent version (or upgrade to the most recent one). 
 * Afterwards, do the same with `ATTinyCore`.
 
 **Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Flags: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
@@ -53,20 +55,28 @@ Download the dw-link firmware into a place inside the *Arduino sketchbook*. This
 
 In order to install the firmware, 
 
-* first make sure that the auto-reset feature of the UNO is not disabled, e.g., by a shield or a capacitor plugged into the UNO board,
+* first, make sure that the auto-reset feature of the UNO is not disabled, e.g., by a shield or a capacitor plugged into the UNO board,
 * then connect the Arduino UNO to your computer with a USB cable,
 * open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`, 
-* select the right `Port` in the `Tools` menu, 
+* select the correct `Port` in the `Tools` menu, 
 * and load the dw-link sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw-link.ino`. 
-* Finally, compile and download the sketch to the UNO by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now a hardware debugger (but needs a bit of additional hardware).
+* Finally, compile and download the sketch to the UNO by either pressing the right arrow button or by typing CTRL-U or ⌘U. The UNO now acts as a hardware debugger (but needs a bit of additional hardware).
 
-**Check:** Open the `Serial Monitor` (under `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
+**Check:** Open the `Serial Monitor` (under the `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
 
-## Step 4: Install *avr-gdb* on host computer
+## Step 4: Install *avr-gdb* on the host computer
+
+The installation of the board definition files will (most likely) lead to the download of the GDB debugger in the tools section of the respective package. You should be able to copy it to a place in your `PATH`, e.g., `/usr/local/bin`.
+
+- **On a Mac:** `~/Library/Arduino15/packages/MiniCore/tools/dw-link-tools/XXX/avr-gdb`
+- **Under Linux**: `~/.arduino15/packages/MiniCore/tools/dw-link-tools/XXX/avr-gdb`
+- **Under Windows:**  `C:\Users\\{username}\AppData\Local\Arduino15\packages\MiniCore\tools\dw-link-tools\XXX\avr-gdb.exe`
+
+If the file is not there, you can install it from other sources, as described below. 
 
 ##### On a Mac: 
 
-You need to install the package manager *Homebrew* first, if you have not done so yet. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, by typing the following line into a shell:
+If you have not done so, you must install the package manager Homebrew first. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, by typing the following line into a shell:
 
 ```
 brew tap osx-cross/avr && brew install avr-gdb
@@ -74,7 +84,7 @@ brew tap osx-cross/avr && brew install avr-gdb
 
 ##### Under Linux:
 
-You can install avr-gdb with the appropriate packet manager. For Debian/Ubuntu that looks as follows (note that the package is indeed named gdb-avr):
+You can install avr-gdb using the appropriate packet manager. For Debian/Ubuntu, that looks as follows (note that the package is indeed named gdb-avr):
 
 ```
 sudo apt-get install gdb-avr 
@@ -82,15 +92,15 @@ sudo apt-get install gdb-avr
 
 ##### Under Windows:
 
-The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gdb` to some place, e.g. `C:\Progam Files\bin\` . Afterwards, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then add `C:\Progam Files\bin` to the `PATH` environment variable.
+The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gdb` to some place, e.g., `C:\Progam Files\bin\` . Afterward, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then add `C:\Progam Files\bin` to the `PATH` environment variable.
 
-**Check:** Open a terminal window and type `avr-gdb`. This should start up the debugger. You can quit the debugger with the command `quit`.
+**Check:** Open a terminal window and type `avr-gdb`. This should start the debugger, which you can quit by typing `quit`.
 
 ## Step 5: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to physically alter the board (cut a solder bridge). How to set up an UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
 
-When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable. If this is not the case, then you need to set up the hardware on a breadboard and use 6 wires to connect the ATtiny to your UNO turned hardware debugger. 
+When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable. If this is not the case, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO, turned into a hardware debugger. 
 
 ![ATtiny85-debug](pics/debug-attiny85-LED-onboard.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
 
@@ -208,7 +218,7 @@ A prerequisite for using Gede is that we make sure that *PySerial* is installed.
 pip3 install pyserial
 ```
 
-Now you need to build Gede from [my forked Gede repository](https://github.com/felias-fogg/gede). Just download the latest release and follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-x.y.z/dw-server` to `/user/local/bin` (of course, using `sudo`).
+Now you need to build Gede from [the Gede repository](https://github.com/jhn98032/gede). Just download the latest release and follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-x.y.z/dw-server` to `/user/local/bin` (of course, using `sudo`).
 
 **Check**: Open a terminal window and type `gede`. This should bring up a window, which you can kill. Typing `dw-server.py` should give you the output `--- No dw-link adapter discovered ---`, when no adapter is present, or `Waiting for connection on 2000`. Stop the script with `CTRL-C`.
 
@@ -222,22 +232,23 @@ The `dw-server.py` script will discover the serial port of the hardware debugger
 
 ![gede](pics/gede-start.png)
 
-`Project dir` and `Program` are specific to your debugging session. The former is the directory Gede was started in, the latter is the location of the ELF file. The rest should be copied as it is shown. And with clicking on `OK`, you start a debugging session. Johan Henriksson, the author of the GUI, has written up two [short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) about using the GUI. I won't add anything here.
+`Project dir` and `Program` are specific to your debugging session. The former is the directory Gede was started in, and the latter is the location of the ELF file. The rest should be copied as it is shown. With clicking on `OK`, you start a debugging session. Johan Henriksson, the author of Gede, has written [two short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) on using the GUI. I won't add anything here.
 
-Gede has now an additional command (arrow pointing down) that re-downloads the binary to the target. This means that after a small change to the program, you do not have to fire the thing up again, but you simply reload the modified ELF file. 
+
 
 ![gede](pics/gede.png)
 
 ## What can go wrong?
 
-If something does not work as advertised, it is very often a simple wiring problem. The next possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the right permissions, the PATH variable is not right, or one has installed the wrong board manager files. When some strange error messages show up, it may also be an indication that some component has not been installed. Google for the error message! Often there are hints how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf), which may be helpful. 
+If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf), which may be helpful. 
 
-The most annoying problem is that after a debugging session, an MCU might not be responsive anymore. The reason can be that the RESET line, which during debugging is used as a communication line, has not been reenabled. While a regular exit of the debugger restores the RESET line, it can happen that the debugger is terminated without restoring the RESET line. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`. 
+The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been reenabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`.  If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
-If you think that you have found a bug, please consider posting it on [issues](https://github.com/felias-fogg/dw-link/issues) and consider filling out the [issue form](issue_form.md) before.
+If you think you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues) and fill out the [issue form](issue_form.md) before.
 
 ## After debugging has finished
 
-So what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `AVR ISP` or `Arduino as ISP`.
+If you want to have a more durable debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 7, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie.
 
-If you want to have a more durable debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 7, or you buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie.
+So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called `AVR ISP` or `Arduino as ISP`.
+
