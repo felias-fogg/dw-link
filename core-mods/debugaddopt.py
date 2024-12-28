@@ -118,8 +118,6 @@ else:
 
 file.write("# Debugger configuration (general options)\n")
 file.write("# ----------------------------------------\n")
-file.write("# EXPERIMENTAL feature:\n")
-file.write("#  - this is alpha and may be subject to change without notice\n")
 file.write("debug.executable={build.path}/{build.project_name}.elf\n")
 file.write("debug.toolchain=gcc\n")
 file.write("debug.toolchain.path={runtime.tools.dw-link-tools.path}\n")
@@ -127,9 +125,16 @@ file.write("\n")
 file.write("debug.server=openocd\n")
 file.write("debug.server.openocd.path={debug.toolchain.path}/dw-server\n")
 file.write("#doesn't matter, but should be specified so that cortex-debug is happy\n")
-file.write("debug.server.openocd.scripts_dir={debug.toolchain.path}/\n")
-file.write("#doesn't matter, but should be specified so that cortex-debug is happy\n")
-file.write("debug.server.openocd.script={debug.toolchain.path}/dw-server\n")
+file.write("debug.server.openocd.script=doesnotmatter\n")
+file.write("debug.cortex-debug.custom.gdbPath={debug.toolchain.path}/avr-gdb\n")
+file.write("debug.cortex-debug.custom.objdumpPath={runtime.tools.avr-gcc.path}/avr-objdump\n")
+file.write("debug.cortex-debug.custom.serverArgs.0=-s");
+file.write("debug.cortex-debug.custom.serverArgs.1=noop");
+file.write("debug.cortex-debug.custom.serverArgs.2=-p");
+file.write("debug.cortex-debug.custom.serverArgs.3=50000");
+file.write("debug.cortex-debug.custom.postLaunchCommands.0=monitor mcu {build.mcu}");
+file.write("debug.cortex-debug.custom.postLaunchCommands.1=break setup");
+
 
 print("Platform file successfully modified")
 

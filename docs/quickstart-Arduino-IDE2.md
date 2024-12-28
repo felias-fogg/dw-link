@@ -25,7 +25,7 @@ If you want to debug your classic AVR chips without using Arduino IDE 2, consult
 
 You probably already have installed the Arduino IDE 2. If not, download and install it from https://arduino.cc. 
 
-**Check:** Start IDE and check the `About Arduino` entry under the `Arduino` or `Help` menu for the version number.
+**Check:** Start IDE and check the `About Arduino` entry under the `Arduino` or `Help` menu for the version number. It should be >= 2.3.0.
 
 ## Step 2: Install new board definition files
 
@@ -46,7 +46,7 @@ Close the `Preference` dialog with `OK`. Now, we want to install the two cores, 
 
 ## Step 3: Install *dw-link* firmware
 
-Download the dw-link firmware into a place inside the *Arduino sketchbook*. This means, you should 
+Download the dw-link firmware. This means you should 
 
 * open the webpage https://github.com/felias-fogg/dw-link, 
 * click on `Latest` in the field **Releases**,
@@ -112,10 +112,9 @@ Note that state 2 (power-cycling) will be skipped in our configuration, where th
 - In the `Sketch` menu, select `Optimize for Debugging`.
 - Compile the code by clicking on the `Verify` button in the upper left corner.  
 - Open the debug panes by clicking the debug symbol (bug with triangle) in the left sidebar. 
-- Now, you can set breakpoints by left-clicking the left of the line numbers of the source code file. 
 - Click the debug symbol in the top row to start debugging. This will start the debugger and the debug server. The activities are logged in the `Debug Console` and the `gdb-server` console in the bottom right part of the window. 
-- After the debugger and debug-server have been started, the debugger will start executing the program on the target. Execution will either stop at a breakpoint or, if no breakpoint has been set, you must stop execution by clicking the Pause button in the debug row (upper left in the window).
-- Now, you are in business and can set breakpoints, inspect and change values, and examine different stack frames. To terminate your debugging session, click the red box in the debug row.
+- After the debugger and debug-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the `setup` function.
+- Now, you are in business and can set breakpoints, continue executing, stop the program asynchronously, inspect and change values, and examine different stack frames. To terminate your debugging session, click the red box in the debug row.
 
 ## What can go wrong?
 

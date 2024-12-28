@@ -7,10 +7,21 @@
   definition files, and the packing of tools. However, there are also
   a few changes in dw-link
 - Changed: In gdbConnect, connection failures are transmitted using an
-  O-record (with a ***-prefix), even if we have verbose=false. The transmission will be
-  captured by dw-server and displayed in the right window
+  O-record, even if we have verbose=false. The transmission will be
+  captured by dw-server and displayed in the right window in the Arduino IDE 2
 - Added: All fatal error messages transmitted using an O-record are
-  prefixed with "***" so that dw-server can capture and display this message
+  prefixed with "***" so that dw-server can capture and display the
+  message
+- Changed: Removed 'A' suffix from board names in MCU names
+- Changed: In gdbDetermineMonitorCommand, instead of determining the
+  option char, the index of the frist non-blank char after the monitor
+  command is dertermined and returned.
+- Changed: In gdbParseMonitorPacket, we switch now on cmdbuf[mooptix]
+  instead of moopt.
+- Added: New monitor command mcu that checks whether the mcu
+  type given in the command matches. If not, then a fatal error is
+  raised.
+  
 
 ## Version 3.5.6 (17-Dec-2024)
 

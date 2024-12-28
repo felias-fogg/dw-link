@@ -26,6 +26,7 @@
 // 
 // You can run it on an UNO, a Nano, or a Pro Mini.
 // For the UNO, I designed a shield with different voltage levels and
+
 // level shifters, which I plan to sell on Tindie.
 //
 // I thought that the sketch should also work with the Leonardo-like boards
@@ -35,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "3.5.6"
+#define VERSION "4.0.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -61,7 +62,7 @@
 // #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
 // #define NOMONITORHELP 1    // disable monitor help function
-#define NOISPPROG 1        // disable ISP programmer
+// #define NOISPPROG 1        // disable ISP programmer
 
 #if UNITALL == 1
 #undef  UNITDW
@@ -125,7 +126,8 @@
 #define CONNERR_UNSUPPORTED_MCU 2 // connection error: MCU not supported
 #define CONNERR_LOCK_BITS 3 // connection error: lock bits are set
 #define CONNERR_STUCKAT1_PC 4 // connection error: MCU has PC with stuck-at-one bits
-#define CONNERR_UNKNOWN 5 // unknown connection error
+#define CONNERR_WRONG_MCU 5 // wrong MCU (detected by monitor mcu command)
+#define CONNERR_UNKNOWN 6 // unknown connection error
 #define NO_FREE_SLOT_FATAL 101 // no free slot in BP structure
 #define PACKET_LEN_FATAL 102 // packet length too large
 #define WRONG_MEM_FATAL 103 // wrong memory type
@@ -253,14 +255,14 @@ const char attiny828[] PROGMEM = "ATtiny828";
 const char attiny48[] PROGMEM = "ATtiny48";
 const char attiny88[] PROGMEM = "ATtiny88";
 const char attiny1634[] PROGMEM = "ATtiny1634";
-const char atmega48a[] PROGMEM = "ATmega48A";
-const char atmega48pa[] PROGMEM = "ATmega48PA";
+const char atmega48a[] PROGMEM = "ATmega48";
+const char atmega48pa[] PROGMEM = "ATmega48P";
 const char atmega48pb[] PROGMEM = "ATmega48PB";
-const char atmega88a[] PROGMEM = "ATmega88A";
-const char atmega88pa[] PROGMEM = "ATmega88PA";
+const char atmega88a[] PROGMEM = "ATmega88";
+const char atmega88pa[] PROGMEM = "ATmega88P";
 const char atmega88pb[] PROGMEM = "ATmega88PB";
-const char atmega168a[] PROGMEM = "ATmega168A";
-const char atmega168pa[] PROGMEM = "ATmega168PA";
+const char atmega168a[] PROGMEM = "ATmega168";
+const char atmega168pa[] PROGMEM = "ATmega168P";
 const char atmega168pb[] PROGMEM = "ATmega168PB";
 const char atmega328[] PROGMEM = "ATmega328";
 const char atmega328p[] PROGMEM = "ATmega328P";
@@ -339,7 +341,7 @@ struct mcu_info_type {
 // untested ones are marked 
 const mcu_info_type mcu_info[] PROGMEM = {
 // sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh rcosc arosc extosc xtosc slosc plus name
-//{0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x09, 0x08, 0xFF, 0x0B, 0,   attiny13},
+//  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x09, 0x08, 0xFF, 0x0B, 0,   attiny13},
 
   {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0,   attiny2313},
   {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0,   attiny4313},
@@ -427,6 +429,7 @@ const char molasterror[] PROGMEM = "lasterror";
 const char motimeouts[] PROGMEM = "timeouts";
 const char moram[] PROGMEM = "ramusage";
 const char motest[] PROGMEM = "test";
+const char momcu[] PROGMEM = "mcu";
 
 // command index
 #define MOHELP 0
@@ -443,12 +446,13 @@ const char motest[] PROGMEM = "test";
 #define MOTIMEOUTS 11
 #define MORAM 12
 #define MOTEST 13
-#define NUMMONCMDS 14
+#define MOMCU 14
+#define NUMMONCMDS 15
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
   mohelp, moversion, modwire, moreset, mockdiv, moosc, mobreak, mospeed, mosinglestep,
-  moflashcount, molasterror, motimeouts, moram, motest }; 
+  moflashcount, molasterror, motimeouts, moram, motest, momcu }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -879,14 +883,14 @@ void gdbParseMonitorPacket(byte *buf)
    [[maybe_unused]] int para = 0;
    char cmdbuf[40];
    int mocmd = -1;
-   char moopt = '\0';
+   int mooptix;
 
   measureRam();
 
   gdbUpdateBreakpoints(true);  // update breakpoints in memory before any monitor ops
 
   convBufferHex2Ascii(cmdbuf, buf, 40); // convert to ASCII string
-  mocmd = gdbDetermineMonitorCommand(cmdbuf, moopt); // get command number and option char
+  mocmd = gdbDetermineMonitorCommand(cmdbuf, mooptix); // get command number and option char
   if (strlen(cmdbuf) == 0) mocmd = MOHELP;
   
   switch(mocmd) {
@@ -898,8 +902,11 @@ void gdbParseMonitorPacket(byte *buf)
   case MOVERSION:
     gdbVersion();
     break;
+  case MOMCU:
+    gdbCheckMcu(&cmdbuf[mooptix]);
+    break;
   case MODWIRE:
-    switch (moopt) {
+    switch (cmdbuf[mooptix]) {
     case '+': gdbConnect(true); break;
     case '-': gdbStop(true); break;
     case '\0': gdbReportConnected(); break;
@@ -911,7 +918,7 @@ void gdbParseMonitorPacket(byte *buf)
     else gdbSendReply("E05");
     break;
   case MOCKDIV:
-    switch (moopt) {
+    switch (cmdbuf[mooptix]) {
     case '1': gdbSetFuses(CkDiv1); break;
     case '8': gdbSetFuses(CkDiv8); break;
     case '\0': gdbGetFuses(true, false); break;
@@ -919,7 +926,7 @@ void gdbParseMonitorPacket(byte *buf)
     }
     break;
   case MOOSC:
-    switch (moopt) {
+    switch (cmdbuf[mooptix]) {
     case 'r': gdbSetFuses(CkRc); break;
     case 'a': gdbSetFuses(CkARc); break;
     case 'x': gdbSetFuses(CkXtal); break;
@@ -930,7 +937,7 @@ void gdbParseMonitorPacket(byte *buf)
     }
     break;
   case MOBREAK:
-    switch (moopt) {
+    switch (cmdbuf[mooptix]) {
     case 'h': gdbSetMaxBPs(1); break;
     case 's': gdbSetMaxBPs(MAXBREAK); break;
     case '4': gdbSetMaxBPs(4); break;
@@ -938,14 +945,14 @@ void gdbParseMonitorPacket(byte *buf)
     default: gdbSendReply("E09"); break;
     }
     break;
-  case MOSPEED: gdbSpeed(moopt); break;
-  case MOSINGLESTEP: gdbSteppingMode(moopt); break;
+  case MOSPEED: gdbSpeed(cmdbuf[mooptix]); break;
+  case MOSINGLESTEP: gdbSteppingMode(cmdbuf[mooptix]); break;
   case MOFLASHCOUNT: gdbReportFlashCount(); break;
   case MOLASTERROR: gdbReportLastError(); break;
   case MOTIMEOUTS: gdbTimeoutCounter(); break;
   case MORAM: gdbReportRamUsage(); break;
   case MOTEST:
-    switch (moopt) {
+    switch (cmdbuf[mooptix]) {
 #if UNITALL
     case 'a': alltests(); break;
 #endif
@@ -967,8 +974,8 @@ void gdbParseMonitorPacket(byte *buf)
   }
 }
 
-// determine command and option for monitor command given in 'line'
-int gdbDetermineMonitorCommand(char *line, char &option)
+// determine command and start index of option for monitor command given in 'line'
+int gdbDetermineMonitorCommand(char *line, int &optionix)
 {
   unsigned int ix;
   int cmdix;
@@ -993,13 +1000,16 @@ int gdbDetermineMonitorCommand(char *line, char &option)
     }
   }
   if (--cmdix >= NUMMONCMDS) return -1;
-  option = '\0';
+  optionix = strlen(line);
   succ = false;
   for (ix=0; ix<strlen(line)+1; ix++) {
-    if (line[ix] == '\0') return cmdix;
-    else if (line[ix] == ' ') succ = true;
+    if (line[ix] == '\0') {
+      optionix = ix;
+      return cmdix;
+    } else if (line[ix] == ' ')
+      succ = true;
     else if (succ && line[ix] != ' ') {
-      option = line[ix];
+      optionix = ix;
       return cmdix;
     }
   }
@@ -1028,6 +1038,27 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("Commands given without arguments report status"), -1);
   gdbDebugMessagePSTR(PSTR("All commands with (*) lead to a reset of the target"), -1);
   gdbSendReply("OK");
+}
+
+// "monitor mcu <mcu name>"
+// check whether specified name fits with actual mcu
+void gdbCheckMcu(const char * moarg)
+{
+  if (targetOffline()) { // target not connected
+    gdbReplyMessagePSTR(PSTR("Target no connected"), -1);
+    return;
+  } else {
+    if (strlen(moarg) == 0 ||
+	(strcasecmp_P(moarg, mcu.name) == 0) ||
+	(strcasecmp_P(moarg,PSTR("atmega328")) == 0 && mcu.sig == 0x950F)) {
+      gdbReplyMessagePSTR(Connected, -2);
+    } else {
+      gdbDebugMessagePSTR(PSTR("***MCU type does not match"), -1);
+      setSysState(ERROR_STATE);
+      fatalerror = CONNERR_WRONG_MCU;
+      gdbReplyMessagePSTR(Connected, -2);
+    }
+  }
 }
 
 // "monitor dwire [+|-]" or "target remote"
@@ -2179,7 +2210,10 @@ void gdbSendState(byte signo)
     gdbDebugMessagePSTR(PSTR("Illegal instruction"),-1);
     break;
   case SIGABRT:
-    gdbDebugMessagePSTR(PSTR("***Fatal internal debugger error: "),fatalerror);
+    if (fatalerror < 100)  
+      gdbDebugMessagePSTR(PSTR("***Fatal debugger error: "),fatalerror);
+    else
+      gdbDebugMessagePSTR(PSTR("***Fatal internal debugger error: "),fatalerror);
     setSysState(ERROR_STATE);
     break;
   }
@@ -4614,7 +4648,7 @@ int           pmode = 0;
 unsigned int  here;           // Address for reading and writing, set by 'U' command
 unsigned long  hMask;          // Pagesize mask for 'here" address
 
-void ISPprogramming(boolean fast) {
+void ISPprogramming(__attribute__((unused)) boolean fast) {
 #if (!NOISPPROG)
   setSysState(PROG_STATE);
   if (!fast) {

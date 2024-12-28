@@ -3,6 +3,19 @@
 # Discover dw-link and then redirect data from a TCP/IP connection to the serial port and vice versa.
 # Based on Chris Liechti's tcp_serial_redirct script
 #
+# Version 1.3.0 (27-Dec-2024)
+# - Removed: the cortex-debug hack
+# - Added: Partial argument parsing and a special case for the -s option: 'noop',
+#   which can be used to override earlier -s options in the argument line
+# - With these two changes and the four additional lines below in the platform file,
+#   we can now handle the call of the openocd server without any hacks 
+#    debug.cortex-debug.custom.serverArgs.0=-s
+#    debug.cortex-debug.custom.serverArgs.1=noop
+#    debug.cortex-debug.custom.serverArgs.2=-p
+#    debug.cortex-debug.custom.serverArgs.3=50000
+# - Added: error handling for the case that a port is already in use
+# - Added: opening the serial line in 'exclusive mode' so that it cannot be "stolen"
+#
 # Version 1.2.4 (22-Dec-2024)
 # - New option -V gives version number
 # - Now uses the gdb_port value when cortex-debug calls the script
@@ -30,7 +43,7 @@
 # - first working version
 #
 
-VERSION = "1.2.4"
+VERSION = "1.3.0"
 
 import sys
 import socket
@@ -39,7 +52,7 @@ import serial.threaded
 import time
 import serial.tools.list_ports
 import shutil, shlex, subprocess
-import  argparse
+import argparse
 
 
 class SerialToNet(serial.threaded.Protocol):
@@ -62,7 +75,7 @@ class SerialToNet(serial.threaded.Protocol):
                             message = self.convert_gdb_message()
                         else:
                             message = ""
-                        if verbose:
+                        if args.verbose:
                             sys.stdout.write("repl: {}\n".format(self.last))
                             if message:
                                 sys.stdout.write("dw-link message: {}\n".format(message))
@@ -79,15 +92,15 @@ class SerialToNet(serial.threaded.Protocol):
         return bv.decode('utf-8')
     
 # discovers the dw-link adapter, if present
-def discover(verbose):
+def discover():
     for delay in (0.2, 2):
         for s in serial.tools.list_ports.comports(True):
-            if verbose:
+            if args.verbose:
                 sys.stdout.write("Device: {}\n".format(s.device))
                 sys.stdout.flush()
             if s.device == "/dev/cu.Bluetooth-Incoming-Port":
                 continue
-            if verbose:
+            if args.verbose:
                 sys.stdout.write("Check:{}\n".format(s.device))
                 sys.stdout.flush()
             try:
@@ -108,45 +121,26 @@ def discover(verbose):
 
 if __name__ == '__main__':
 
-    # before parsing the argument, check whether we should "emulate" an openocd server
-    if any("cortex-debug" in arg for arg in sys.argv): # called by cortex-debug -> pretend to be an openocd server
-        prg = ""
-        gede = False
-        cortex = True
-        verbose = False
-        portargs = [arg for arg in sys.argv if "gdb_port" in arg]
-        if len(portargs) == 0:
-            sys.stderr.write('No port argument given\n')
-            sys.exit(1)
-        else:
-            port = int(portargs[0][9:])
-    else:
-        # parse arguments
-        cortex = False
-        parser = argparse.ArgumentParser(description='TCP/IP server for dw-link adapter (Version ' + VERSION + ')')
-        parser.add_argument('-p', '--port',  type=int, default=2000, dest='port',
-                                help='local port on machine (default 2000)')
-        parser.add_argument('-s', '--start',  dest='prg', 
-                                help='start specified program')
-        parser.add_argument('-g', '--gede',  action="store_true",
-                                help='start gede')
-        parser.add_argument('-v', '--verbose', action="store_true",
-                                help="log all communcation")
-        parser.add_argument('-V', '--version', action="store_true",
-                                help="print version number and exit immediately")
-        args=parser.parse_args()
-        port = args.port
-        prg = args.prg
-        gede = args.gede
-        verbose = args.verbose
+    parser = argparse.ArgumentParser(description='TCP/IP server for dw-link adapter (Version ' + VERSION + ')')
+    parser.add_argument('-p', '--port',  type=int, default=2000, dest='port',
+                            help='local port on machine (default 2000)')
+    parser.add_argument('-s', '--start',  dest='prg', 
+                            help='start specified program')
+    parser.add_argument('-g', '--gede',  action="store_true",
+                            help='start gede')
+    parser.add_argument('-v', '--verbose', action="store_true",
+                            help="log all communcation")
+    parser.add_argument('-V', '--version', action="store_true",
+                            help="print version number and exit immediately")
+    args, unknown = parser.parse_known_args()
 
-        if args.version:
-            sys.stdout.write("{}\n".format(VERSION))
-            sys.stdout.flush()
-            sys.exit(0)
+    if args.version:
+        sys.stdout.write("{}\n".format(VERSION))
+        sys.stdout.flush()
+        sys.exit(0)
         
     # discover adapter
-    speed, device = discover(verbose)
+    speed, device = discover()
     if speed == None or device == None:
         sys.stderr.write('--- No dw-link adapter discovered ---\n')
         sys.exit(1)
@@ -159,6 +153,7 @@ if __name__ == '__main__':
     ser.stopbits = 1
     ser.rtscts = False
     ser.xonxoff = False
+    ser.exclusive = True
 
     try:
         ser.open()
@@ -170,22 +165,27 @@ if __name__ == '__main__':
     serial_worker = serial.threaded.ReaderThread(ser, ser_to_net)
     serial_worker.start()
 
-    if gede:
-        prg = "gede"
-
-    if prg:
-        cmd = shlex.split(prg)
-        cmd[0] = shutil.which(cmd[0])
-        subprc = subprocess.Popen(cmd)
+    if args.gede:
+        args.prg = "gede"
 
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(('', port))
-    srv.listen(1)
+    try:
+        srv.bind(('', args.port))
+        srv.listen(1)
+    except OSError as error:
+        sys.stderr.write("OSError: " + error.strerror +"\n\r");
+        sys.exit(3)
+        
+    if args.prg and args.prg != "noop":
+        cmd = shlex.split(args.prg)
+        cmd[0] = shutil.which(cmd[0])
+        subprc = subprocess.Popen(cmd)
+
     try:
         while True:
-            sys.stdout.write("\n\rDw-link ready on {}, waiting for GDB connection.\r\n".format(device))
-            sys.stdout.write("Info : Listening on port {} for gdb connection\n\r".format(port))
+            sys.stdout.write("\n\rdw-link ({}) connected to {}.\r\n".format(VERSION,device))
+            sys.stdout.write("Info : Listening on port {} for gdb connection\n\r".format(args.port))
             sys.stdout.flush()
             
             client_socket, addr = srv.accept()
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                         if not data:
                             break
                         ser.write(data)                 # get a bunch of bytes and send them
-                        if verbose:
+                        if args.verbose:
                             sys.stdout.write("send: {}\n".format(data))
                             sys.stdout.flush()
                     except socket.error as msg:

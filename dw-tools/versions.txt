@@ -1,0 +1,15 @@
+aarch-linux-gnu
+avr-gdb: 10.1.90
+dw-server: created under Ubuntu 22.04 / Python 3.10.12 / Pyserial 3.5
+
+x86_64-apple-darwin:
+avr-gdb: 7.8
+dw-server: created under macOS 14.2 / Python 3.10.1 / Pyserial 3.5
+
+x86_64_linux-gnu:
+avr-gdb: 10.2
+dw-server: created under Ubuntu 20.4 / Python 3.8.10 / Pyserial 3.5
+
+i686-mingw32:
+avr-gdb: 10.2
+dw-server: created under Windows11 / Python 

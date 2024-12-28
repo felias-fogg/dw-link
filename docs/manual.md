@@ -304,11 +304,13 @@ You start by first verifying the sketch (which will also compile it) and then by
 
 ![ide0](/Users/nebel/Documents/GitHub/dw-link/docs/pics/ide0.png)
 
-Since starting the debugger will also begin the program's execution on the target, setting a first breakpoint at the start of the setup function is a good idea. After that, one can click the debug button in the upper row to start the debug process, as shown in the following picture.
+After that, one can click the debug button in the upper row to start the debug process, as shown in the following picture.
 
 ![ide1](/Users/nebel/Documents/GitHub/dw-link/docs/pics/ide1.png) 
 
-The debugger starts, and eventually, execution is stopped in line 8 (because line 7 does not contain any executable code). The yellow triangle signifies this. Now is a good time to familiarize oneself with the window's layout. On the right side, there is the source code. Below that, there is a console window, and to the left, we have the debug panes.
+The debugger starts, and eventually, execution is stopped in line 8 at an initial internal breakpoint, indicated by the yellow triangle left of line 8 in the following screenshot. It might take a while before we reach that point because the debugger also loads the program. 
+
+Now is a good time to familiarize yourself with the window's layout. The source code is on the right side. Below that is a console window, and to the left are the debug panes. If you want to set a breakpoint, you can do that by clicking to the left of the line numbers. Such breakpoints are displayed as red dots as the one left of line 12.
 
 ![ide2](/Users/nebel/Documents/GitHub/dw-link/docs/pics/ide2.png)
 
@@ -324,11 +326,19 @@ Pane A contains the debug controls. From left to right:
 
 Pane B shows the active threads, but there is just one in our case. Pane C displays the call stack starting from the bottom, i.e., the current frame is the topmost. Pane D displays variable values. Unfortunately, global variables are not shown. Pane E can be populated with watch expressions. This can be used to display relevant global variables. Finally, in pane F, the active breakpoints are listed. The panes below that are useless in our case.
 
+Some more information about debugging can be found in the [debugging tutorial](https://piolabs.com/blog/insights/debugging-introduction.html) for the PlatformIO IDE. Although it was written for PlatoformIO, it also applies to the Arduino IDE 2 to a large extent. 
+
+### 5.4 Some "Pro" Tips
+
+Global variables are, for some reason, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value.
+
+If you select the Debug Console, you can type GDB commands (see Section 6.6) in the bottom line. This can be useful for changing the value of global variables, which cannot be accessed otherwise. 
+
 <a name="section6"></a>
 
 ## 6. Arduino IDE and avr-gdb
 
-If you are not comfortable using Arduino IDE 2, a more minimalistic approach might be better. The GNU Debugger GDB provides console-based interactions and can be easily configured to work with dw-link. You only have to install the avr-gdb debugger and the appropriate board manager files. Note that this works only with Arduino IDE versions at least 1.8.13. 
+A more minimalistic approach might be better if you are uncomfortable using Arduino IDE 2. The GNU Debugger GDB provides console-based interactions and can be easily configured to work with dw-link. You only must install the avr-gdb debugger and the appropriate board manager files. Note that this works only with Arduino IDE versions at least 1.8.13. 
 
 ### 6.1 Installing board manager files
 
@@ -366,7 +376,7 @@ If the avr-gdb version is not there, all of the versions are incompatible with y
   sudo apt-get install gdb-avr 
   ```
 
-* Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or Zak's Electronic Blog\~\*](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb. You have to copy `avr-gdb.exe` (which you find in the `bin` folder) to some place (e.g., to C:\ProgramFiles\bin) and set the `PATH` variable to point to this folder. Afterward, you can execute the debugger by simply typing `avr-gdb.exe` into a terminal window (e.g. Windows Powershell).
+* Windows: You can download the AVR-toolchain from the [Microchip website](https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm) or [Zak's Electronic Blog](https://blog.zakkemble.net/avr-gcc-builds/). This includes avr-gdb. You have to copy `avr-gdb.exe` (which you find in the `bin` folder) to some place (e.g., to C:\ProgramFiles\bin) and set the `PATH` variable to point to this folder. Afterward, you can execute the debugger by simply typing `avr-gdb.exe` into a terminal window (e.g. Windows Powershell).
 
 ### 6.3 Compiling the sketch
 
@@ -461,7 +471,7 @@ Quit anyway? (y or n) y
 
 ### 6.5 Disabling debugWIRE mode explicitly
 
-Exiting GDB should disable debugWIRE mode. However, if something went wrong or you killed the debug session, the ATtiny MCU might still be in debugWIRE mode and the RESET pin cannot be used to reset the chip and you cannot use ISP programming. In this case, you can explicitly disable debugWIRE, as shown below. 
+Exiting GDB should disable debugWIRE mode. However, if something went wrong, you set the [`AutoDW` jumper](#jumper) to `off`, or you killed the debug session, the ATtiny MCU might still be in debugWIRE mode, the RESET pin cannot be used to reset the chip, and you cannot use ISP programming. In this case, you can explicitly disable debugWIRE, as shown below. 
 
 ```
 > avr-gdb
@@ -477,6 +487,8 @@ debugWIRE is now disabled
 (gdb) quit
 >
 ```
+<a name="#section66"></a>
+
 ### 6.6 GDB commands
 
 In the example session above, we saw several relevant commands already. If you really want to debug using GDB, you need to know a few more commands, though. Let me just give a brief overview of the most relevant commands (anything between square brackets can be omitted, a vertical bar separates alternative forms, and arguments are in italics). For the most common commands, it is enough to just type the first character (shown in boldface). In general, you only have to type as many characters as are necessary to make the command unambiguous. You also find a good reference card and a very extensive manual on the [GDB website](https://sourceware.org/gdb/current/onlinedocs/). I also recommend these [tips on using GDB](https://interrupt.memfault.com/blog/advanced-gdb) by [Jay Carlson](https://jaycarlson.net/). 
@@ -486,7 +498,7 @@ command | action
 **h**elp [*command*] | get help on a specific command
 **s**tep [*number*] | single step statement, descending into functions (step in), *number* times 
 **n**ext [*number*] | single step statement without descending into functions (step over)
-finish | finish current function and return from call (step out)
+finish | finish the current function and return from call (step out) 
 **c**ontinue [*number*] | continue from current position and stop after *number* breakpoints have been hit. 
 **r**un | reset MCU and restart program at address 0x0000
 **b**reak *function* \| [*file*:]*number* | set breakpoint at beginning of *function* or at line *number* in *file* 
@@ -734,6 +746,8 @@ And here is the early breadboard prototype, which worked beautifully. It contain
 I have turned the modified prototype into an Arduino Shield, which you can buy [at Tindie](https://www.tindie.com/products/31798/) as a kit. With that, the hardware setup is straightforward. Just plug in an ISP cable, and you can start debugging.
 
 ![dw-link probe](/Users/nebel/Documents/GitHub/dw-link/docs/pics/dw-probe.jpg)
+
+<a name="jumper"></a>
 
 Before you start, you have to configure three jumpers. Then you are all set.
 
@@ -1021,7 +1035,8 @@ Error #  | Meaning
 2 | Connection error: MCU type is not supported
 3 | Connection error: Lock bits are set 
 4 | Connection error: MCU has PC with stuck-at-one bits 
-5 | Unknown connection error
+5 | MCU type does not match 
+6 | Unknown connection error 
 101 | No free slot in breakpoint table
 102 | Packet length too large
 103 | Wrong memory type
@@ -1146,3 +1161,4 @@ Initial version
 #### V 4.0
 
 * Integration of Arduino IDE 2
+* New fatal error: Wrong MCU type (caused by monitor mcu command)
