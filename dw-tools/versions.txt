@@ -1,15 +1,106 @@
-aarch-linux-gnu
-avr-gdb: 10.1.90
+aarch64-linux-gnu
 dw-server: created under Ubuntu 22.04 / Python 3.10.12 / Pyserial 3.5
+avr-gdb: 10.1.90
+   configure --host=arm-linux-gnueabihf --target=avr
+             --with-auto-load-dir=$debugdir:$datadir/auto-load
+             --with-auto-load-safe-path=$debugdir:$datadir/auto-load
+             --with-expat
+             --with-gdb-datadir=/usr/share/gdb (relocatable)
+             --with-jit-reader-dir=/usr/lib/gdb (relocatable)
+             --without-libunwind-ia64
+             --without-lzma
+             --without-babeltrace
+             --without-intel-pt
+             --without-mpfr
+             --without-xxhash
+             --without-python
+             --without-python-libdir
+             --without-debuginfod
+             --without-guile
+             --disable-source-highlight
+             --with-separate-debug-dir=/usr/lib/debug (relocatable)
 
-x86_64-apple-darwin:
-avr-gdb: 7.8
-dw-server: created under macOS 14.2 / Python 3.10.1 / Pyserial 3.5
+
+arm-linux-gnu
+dw-server: created under Debian 11 (Raspian bullseye) / Python 3.9.2 / Pyserial 3.5b0
+avr-gdb: 10.1.90
+   configure --host=arm-linux-gnueabihf --target=avr
+             --with-auto-load-dir=$debugdir:$datadir/auto-load
+             --with-auto-load-safe-path=$debugdir:$datadir/auto-load
+             --with-expat
+             --with-gdb-datadir=/usr/share/gdb (relocatable)
+             --with-jit-reader-dir=/usr/lib/gdb (relocatable)
+             --without-libunwind-ia64
+             --without-lzma
+             --without-babeltrace
+             --without-intel-pt
+             --without-mpfr
+             --without-xxhash
+             --without-python
+             --without-python-libdir
+             --without-debuginfod
+             --without-guile
+             --disable-source-highlight
+             --with-separate-debug-dir=/usr/lib/debug (relocatable)
+
+
 
 x86_64_linux-gnu:
-avr-gdb: 10.2
 dw-server: created under Ubuntu 20.4 / Python 3.8.10 / Pyserial 3.5
+avr-gdb: 8.1.0
+   configure --host=arm-linux-gnueabihf --target=avr
+             --with-auto-load-dir=$debugdir:$datadir/auto-load
+             --with-auto-load-safe-path=$debugdir:$datadir/auto-load
+             --with-expat
+             --with-gdb-datadir=/usr/share/gdb (relocatable)
+             --with-jit-reader-dir=/usr/lib/gdb (relocatable)
+             --without-libunwind-ia64
+             --without-lzma
+             --without-babeltrace
+             --without-intel-pt
+             --without-mpfr
+             --without-xxhash
+             --without-python
+             --without-python-libdir
+             --without-debuginfod
+             --without-guile
+             --disable-source-highlight
+             --with-separate-debug-dir=/usr/lib/debug (relocatable)
+
+x86_64-apple-darwin:
+dw-server: created under macOS 14.2 / Python 3.10.1 / Pyserial 3.5
+avr-gdb: 7.8
+   configure --host=x86_64-apple-darwin17.0.0 --target=avr
+             --with-auto-load-dir=:${prefix}/share/auto-load
+             --with-auto-load-safe-path=:${prefix}/share/auto-load
+             --with-expat
+             --with-gdb-datadir=/Volumes/build_disk/jenkins_mcu/workspace/avr8-gnu-toolchain-osx/avr8-gnu-toolchain-darwin_x86_64/share/gdb (relocatable)
+             --with-jit-reader-dir=/Volumes/build_disk/jenkins_mcu/workspace/avr8-gnu-toolchain-osx/avr8-gnu-toolchain-darwin_x86_64/lib/gdb (relocatable)
+             --without-libunwind-ia64
+             --with-lzma
+             --without-guile
+             --with-separate-debug-dir=/Volumes/build_disk/jenkins_mcu/workspace/avr8-gnu-toolchain-osx/avr8-gnu-toolchain-darwin_x86_64/lib/debug (relocatable)
+             --with-zlib
+             --without-babeltrace
 
 i686-mingw32:
+dw-server: created under Windows11 / Python 3.13.1 / Pyserial 3.5
 avr-gdb: 10.2
-dw-server: created under Windows11 / Python 
+   configure --host=i686-w64-mingw32 --target=avr
+             --with-auto-load-dir=$debugdir:$datadir/auto-load
+             --with-auto-load-safe-path=$debugdir:$datadir/auto-load
+             --without-expat
+             --with-gdb-datadir=/omgwtfbbq/avr-gcc-11.1.0-x86-windows/share/gdb (relocatable)
+             --with-jit-reader-dir=/omgwtfbbq/avr-gcc-11.1.0-x86-windows/lib/gdb (relocatable)
+             --without-libunwind-ia64
+             --without-lzma
+             --without-babeltrace
+             --without-intel-pt
+             --without-mpfr
+             --without-xxhash
+             --without-python
+             --without-python-libdir
+             --without-debuginfod
+             --without-guile
+             --disable-source-highlight
+             --with-separate-debug-dir=/omgwtfbbq/avr-gcc-11.1.0-x86-windows/lib/debug (relocatable)
