@@ -39,12 +39,12 @@ https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 Close the `Preference` dialog with `OK`. Now, we want to install the two cores, `ATTinyCore` and `MiniCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type `MiniCore` and install the most recent version (or upgrade to the most recent one). 
+* In the search field, type `MiniCore` and install the most recent version (or upgrade to the most recent one), which has a `+debug-2.X` suffix.
 * Afterward, do the same with `ATTinyCore`.
 
 **Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Flags: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
-## Step 3: Install *dw-link* firmware
+## Step 3: Install *dw-link* firmware on a UNO
 
 Download the dw-link firmware. This means you should 
 
@@ -73,7 +73,7 @@ When you are the proud owner of a [dw-link probe](https://www.tindie.com/product
 
 ![pics/dw-probe.jpg](pics/dw-probe.jpg)
 
-If this is not the case, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO turned hardware debugger. 
+If not, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO turned hardware debugger. 
 
 ![ATtiny85-debug](pics/debug-attiny85-LED-onboard.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
 

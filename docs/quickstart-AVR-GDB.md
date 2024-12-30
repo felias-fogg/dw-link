@@ -38,7 +38,7 @@ https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 Close the `Preference` dialog with `OK`. Now we want to install the two cores `ATTinyCore` and `MiniCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type MiniCore first. Then, install the most recent version (or upgrade to the most recent one). 
+* In the search field, type MiniCore first. Then, install the most recent version (or upgrade to the most recent one) with a `+debug-2.X` suffix in its version number.
 * Afterwards, do the same with `ATTinyCore`.
 
 **Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Flags: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
@@ -100,7 +100,11 @@ The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolc
 
 This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
 
-When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable. If this is not the case, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO, turned into a hardware debugger. 
+When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable, as shown below.
+
+![pics/dw-probe.jpg](pics/dw-probe.jpg)
+
+If this is not the case, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO, turned into a hardware debugger. 
 
 ![ATtiny85-debug](pics/debug-attiny85-LED-onboard.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
 
@@ -194,14 +198,15 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **b *num*** - puts a breakpoint at line *num* in current file
 - **i b** - list breakpoints
 - **d *num*** - deletes breakpoint number *num*
-- **c** - continues running the program until the next breakpoint or stop by CTRL-C
+- **c** - continues running the program until the next breakpoint or stop by `CTRL-C`
 - **s** - runs the next line of the program
-- **s *num*** - Run the next *num* lines of the program
+- **s *num*** - run the next *num* lines of the program
 - **n** - like s, but it does not step into functions
 - **monitor reset** - resets MCUs and sets program counter to 0
 - **bt** - print the call stack
 - **p *var*** - prints the current value of the variable *var*
-- **q** - Quits gdb
+- **set variable** ***var*=*expr*** - sets *var* to new value *expr*
+- **q** - quits gdb
 - `CTRL-C` while the programming is running stops the execution asynchronously
 
 There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of `monitor` commands, which are specific to the dw-link debugger, can be found in Section 5.6 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
