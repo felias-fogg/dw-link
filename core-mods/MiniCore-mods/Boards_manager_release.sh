@@ -86,13 +86,18 @@ jq -r                                   \
     {
       "packager": "MiniCore",
       "name": "avrdude",
-      "version": "7.1-arduino.1"
+      "version": "8.0-arduino.1"
     },
     {
       "packager": "arduino",
       "name": "arduinoOTA",
       "version": "1.3.0"
-    }
+    },
+    {
+      "packager": "MiniCore",
+      "name": "dw-link-tools",
+      "version": "1.3.0"
+    }   
   ]
 }' "package_${REALAUTHOR}_${REPOSITORY}_index.json.tmp" > "package_${REALAUTHOR}_${REPOSITORY}_index.json"
 

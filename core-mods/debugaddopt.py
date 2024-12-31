@@ -62,7 +62,7 @@ alllines = file.readlines()
 file.close()
 
 if "#################### DEBUG FLAG HANDLING ####################\n" in alllines:
-    print("Board file already contains debug flag handling")
+    print("boards.txt already contains debug flag handling")
     exit(1)
 
 os.rename(filnam, filnam + ".backup")
@@ -72,9 +72,9 @@ file = open(filnam, "w")
 file.writelines(alllines + newlines)
 file.close()
 if len(newlines) == 0:
-    print("*** No boards found, no lines added")
+    print("*** No boards.txt found, no lines added")
 else:
-    print("Boards file successfully modified")
+    print("boards.txt successfully modified")
 
 filnam = "platform.txt"
 
@@ -86,7 +86,7 @@ alllines = file.readlines()
 file.close()
 
 if "# EXPERIMENTAL feature: optimization flags\n" in alllines:
-    print("Platform file already contains debug optimization flags\n")
+    print("platform.txt already contains debug optimization flags\n")
     exit(2)
 
 os.rename(filnam, filnam + ".backup")
@@ -100,8 +100,7 @@ for line in alllines:
     file.write(line)
     if "# ---------------" in line and "# AVR compile variables" in lastline:
         file.write("\n")
-        file.write("# EXPERIMENTAL feature: optimization flags\n")
-        file.write("#  - this is alpha and may be subject to change without notice\n")
+        file.write("# optimization flags for debugging\n")
         file.write("compiler.optimization_flags=-Os\n")
         file.write("compiler.optimization_flags.release=-Os\n")
         file.write("compiler.optimization_flags.debug=-Og -g3\n")
@@ -128,15 +127,15 @@ file.write("#doesn't matter, but should be specified so that cortex-debug is hap
 file.write("debug.server.openocd.script=doesnotmatter\n")
 file.write("debug.cortex-debug.custom.gdbPath={debug.toolchain.path}/avr-gdb\n")
 file.write("debug.cortex-debug.custom.objdumpPath={runtime.tools.avr-gcc.path}/avr-objdump\n")
-file.write("debug.cortex-debug.custom.serverArgs.0=-s");
-file.write("debug.cortex-debug.custom.serverArgs.1=noop");
-file.write("debug.cortex-debug.custom.serverArgs.2=-p");
-file.write("debug.cortex-debug.custom.serverArgs.3=50000");
-file.write("debug.cortex-debug.custom.postLaunchCommands.0=monitor mcu {build.mcu}");
-file.write("debug.cortex-debug.custom.postLaunchCommands.1=break setup");
+file.write("debug.cortex-debug.custom.serverArgs.0=-s\n");
+file.write("debug.cortex-debug.custom.serverArgs.1=noop\n");
+file.write("debug.cortex-debug.custom.serverArgs.2=-p\n");
+file.write("debug.cortex-debug.custom.serverArgs.3=50000\n");
+file.write("debug.cortex-debug.custom.postLaunchCommands.0=monitor mcu {build.mcu}\n");
+file.write("debug.cortex-debug.custom.postLaunchCommands.1=break setup\n");
 
 
-print("Platform file successfully modified")
+print("platform.txt successfully modified")
 
 file.close()
 
