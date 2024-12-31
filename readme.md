@@ -18,7 +18,7 @@ The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and imp
 
 Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new IDE 2.X did not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, single-step, and inspect and set variables. And since version 4.0.0, this can all be done in the Arduino IDE 2.
 
-Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart.md) to see if it works for you. If you like it and want to incorporate it into your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/).
+Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart-Arduino-IDE2.md) to see if it works for you. If you like it and want to incorporate it into your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/).
 
 The background and ongoing development of dw-link are topics on my [blog](https://arduino-craft-corner.de/). In particular, the blog posts tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be of interest to you.
 
