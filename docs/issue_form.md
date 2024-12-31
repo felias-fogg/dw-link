@@ -8,11 +8,11 @@
 
 **Debugger board:** (e.g., Uno or Nano)
 
-**Adapter board**: (e.g., none or V1.0)
+**Probe shield**: (e.g., none or V1.0, V3.1)
 
 **Arduino IDE version:** (e.g., IDE 1.8.13)
 
-**Compiler optimization level:** (e.g. -O0 -fno-lto)
+**Compiler optimization level:** (e.g. -O0 -fno-lto, optimize for debugging)
 
 **Development OS:** (e.g. macOS 11.6)
 

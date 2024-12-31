@@ -8,7 +8,7 @@
 
 
 
-# <center>Now supporting Arduino IDE 2</center>
+# Now supporting Arduino IDE 2!
 
 ![cover](docs/pics/uno-debug2.png)
 
@@ -29,7 +29,8 @@ This repository contains the following directories:
 * [**dw-server**](dw-server/): Contains the Python script dw-server.py, which discovers the serial line dw-link is connected to and provides a serial-to-TCP/IP bridge
 * [**examples**](examples/): Contains two Arduino sketches and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
-* [**pcb**](pcb/): Contains design data (KiCad) for the optional adapter board
+* [**pcb**](pcb/): Contains design data (KiCad) for the optional dw-link probe
+* [**testprobe**](testprobe/): Contains a sketch to be used to run tests on freshly assembled dw-link probe
 * [**core-mods**](core-mods/): Contains all the modifications to the core files necessary to support the generation of debug-friendly object files
 * [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as C program to generate the lists.
 
