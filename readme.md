@@ -8,7 +8,7 @@
 
 
 
-# Now supporting Arduino IDE 2!
+### Now supporting Arduino IDE 2!
 
 ![cover](docs/pics/uno-debug2.png)
 
