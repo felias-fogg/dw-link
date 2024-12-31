@@ -6,17 +6,21 @@
 ![Hit Counter](https://visitor-badge.laobi.icu/badge?page_id=felias-fogg_dw-link)
 [![Build Status](https://github.com/felias-fogg/dw-link/workflows/Build/badge.svg)](https://github.com/felias-fogg/dw-link/actions)
 
+
+
+# <center>Now supporting Arduino IDE 2</center>
+
 ![cover](docs/pics/uno-debug2.png)
 
-This is an Arduino sketch that turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well.
+This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well.
 
-The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program running on the target hardware (e.g. an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
+The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
-Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new version will not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, to single-step, and to inspect and set variables. Hopefully, this will make debugging much more enjoyable and will save you a lot of valuable time.
+Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new IDE 2.X did not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, single-step, and inspect and set variables. And since version 4.0.0, this can all be done in the Arduino IDE 2.
 
-Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart.md) in order find out whether it works for you. If you like it and want to make part of your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/).
+Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart.md) to see if it works for you. If you like it and want to incorporate it into your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/).
 
-The background and ongoing development of dw-link is a topic on my [blog](https://arduino-craft-corner.de/). In particular, the blog posts tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be of interest to you.
+The background and ongoing development of dw-link are topics on my [blog](https://arduino-craft-corner.de/). In particular, the blog posts tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be of interest to you.
 
 This repository contains the following directories:
 

@@ -35,6 +35,8 @@ Open the `Preference` dialog of the Arduino IDE and paste the following two URLs
 https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 ```
 
+And you need to delete the MiniCore-URL hosted by  MCUDude if you already have that in your URL list.
+
 Close the `Preference` dialog with `OK`. Now we want to install the two cores `ATTinyCore` and `MiniCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 

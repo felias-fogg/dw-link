@@ -96,7 +96,12 @@ jq -r                                   \
       "packager": "ATTinyCore",
       "name": "micronucleus",
       "version": "2.5-azd1b"
-    }
+    },
+    {
+      "packager": "ATTinyCore",
+      "name": "dw-link-tools",
+      "version": "1.3.0"
+    }   
   ]
 }' "package_${REALAUTHOR}_${REPOSITORY}_index.json.tmp" > "package_${REALAUTHOR}_${REPOSITORY}_index.json"
 

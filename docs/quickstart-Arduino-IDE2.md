@@ -36,6 +36,8 @@ Open the `Preference` dialog of the Arduino IDE and paste the following two `Boa
 https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 ```
 
+And you need to delete the MiniCore-URL hosted by  MCUDude if you already have that in your URL list.
+
 Close the `Preference` dialog with `OK`. Now, we want to install the two cores, `ATTinyCore` and `MiniCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
@@ -51,7 +53,7 @@ Download the dw-link firmware. This means you should
 * open the webpage https://github.com/felias-fogg/dw-link, 
 * click on `Latest` in the field **Releases**,
 * choose either `zip` or `tar.gz`,
-* copy the archive to a place in the Arduino sketchbook, 
+* download it to someplace on your hard disk, 
 * extract the firmware using `unzip` or `tar -xvzf`. 
 
 In order to install the firmware, 
@@ -122,7 +124,7 @@ First, you might be unable to start debugging because the debug button is greyed
 
 Second, the debug-server might terminate early. In this case, you should see an error message in the `gdb-server` console. 
 
-If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md), which may be helpful. 
+If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When strange error messages appear, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md), which may be helpful. 
 
 The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`. If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
