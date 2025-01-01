@@ -285,11 +285,11 @@ We need to install two new cores, which are forks of [MiniCore](https://github.c
 Open the `Preference` dialog of the Arduino IDE and paste the following two URLs into the list of `Additional boards manager URLs`:
 
 ```
-https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_plus_Debug_index.json
 ```
 
 ```
-https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
 ```
 
 Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install MiniCore and ATTinyCore, choosing the most recent version with a `+debug` postfix. Note that the packages include tools that are incompatible with older OS versions. In particular, 32-bit host systems are not supported. If you have such a system, you only can use the approach described in Sections 6 and 7.
@@ -345,11 +345,11 @@ A more minimalistic approach might be better if you are uncomfortable using Ardu
 In order to be able to debug the MCUs mentioned in the Introduction, you need to install 3rd party cores. For the classic ATtiny family, this is [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore/blob/master/Installation.md) and for the ATmegaX8 family (including the Arduino UNO), it is [MiniCore](https://github.com/MCUdude/MiniCore). To be able to generate object files that are debug-friendly, you need to install my fork of the board manager files. You first have to add URLs under the `Additional Boards Manager URLs` in the `Preference` menu:
 
 - ```
-  https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+  https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_plus_Debug_index.json
   ```
 
 - ```
-  https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+  https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
   ```
 
 After that, you can download and install the board using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools`-->`Board`. Currently, choose the versions that have a `+debug` suffix in their version number! I hope the capability of generating debug-friendly binaries will be incorporated in future versions of these board manager files, in which case you can rely on the regular board manager files by MCUdude and SpenceKonde.
@@ -1033,7 +1033,7 @@ Error #  | Meaning
 --:|---
 1 | Connection error: No response to ISP and debugWIRE communication; check wiring
 2 | Connection error: MCU type is not supported
-3 | Connection error: Lock bits are set 
+3 | Connection error: Lock bits or BOOTRST could not be cleared 
 4 | Connection error: MCU has PC with stuck-at-one bits 
 5 | MCU type does not match 
 6 | Unknown connection error 
@@ -1162,3 +1162,5 @@ Initial version
 
 * Integration of Arduino IDE 2
 * New fatal error: Wrong MCU type (caused by monitor mcu command)
+* Renamed fatal error 3
+* The *boards manager URLs* have changed: a suffix `_plus_Debug` has been added to the core name.

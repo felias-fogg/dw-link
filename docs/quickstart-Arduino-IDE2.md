@@ -31,12 +31,10 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 
 Open the `Preference` dialog of the Arduino IDE and paste the following two `Board Manager URLs` into the list:
 
-	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_plus_Debug_index.json
 ```
-https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
 ```
-
-And you need to delete the MiniCore-URL hosted by  MCUDude if you already have that in your URL list.
 
 Close the `Preference` dialog with `OK`. Now, we want to install the two cores, `ATTinyCore` and `MiniCore`. 
 

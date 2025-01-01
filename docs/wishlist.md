@@ -22,17 +22,11 @@
 
 ##### List of tasks to work on:
 
-* write a short debug description for PIO
-
 * produce short youtube video to promote dw-link probe
 
 * use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video?
 
-* try to use seer GUI again
-
 * Implement STK500v2 protocol
-
-* try integration of tool into IDE 2.0 again
 
 * debug tiny13 problem, perhaps by reverting back to the version in
   2022, when it seemed to work
@@ -42,8 +36,6 @@
 * maybe have a variable length break, dependent on the speed of ISP?
 
 * implement semi-hosting
-
-* integrate into the Arduino VSC plugin
 
 * design case for debugger and print it
 
@@ -56,11 +48,15 @@
 
 ##### List of tasks done:
 
-* clean up Gede interface
+- try integration of tool into IDE 2.0 again
 
-  * no multiple main breaks oints
+- clean up Gede interface
 
-  * reloading files in GUI when reloading files
+* no multiple main breaks oints
+
+* reloading files in GUI when reloading files
+
+- write a short debug description for PIO
 
 * write/design setup for UNO debugging with connected USB cable
 
@@ -93,6 +89,13 @@
 * delete the fancy control stuff in dw-link
 * rewrite part in manual about adapter boards
 * rewrite part in Manual about PlatformIO
+
+
+
+**List of tasks abandoned**:
+
+- try to use seer GUI again
+- integrate into the Arduino VSC plugin
 
 
 

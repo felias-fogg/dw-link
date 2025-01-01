@@ -1,5 +1,16 @@
 # Changelog for dw-link
 
+## Version 4.0.1
+- Fixed: missing declarations in dw-link.h
+- Added: new enum type FuseByte
+- Changed: first parameter in ispProgramFuse is now of type FuseByte
+  instead a boolean
+- Changed: code in ispProgramFuse, which now more straightforward and
+  allows to change the extended fuse as well
+- Added: bootloader reset vector is disabled when chip is erased for
+  M328/168/88 in targetISPConnect
+- The naming scheme for boards manager URLs was changed by suffixing the core name with "\_plus\_Debug". Having names different from the original ones guarantees that the modified revisions will be shown when installing the package. This needs to be reflected in the documentation.
+
 ## Version 4.0.0
 
 - Added: Debugging in Arduino IDE 2 is now supported. This affects

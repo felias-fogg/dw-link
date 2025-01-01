@@ -3,6 +3,7 @@
 AUTHOR=felias-fogg  # Github username
 REALAUTHOR=drazzy.com   # Real author name
 REPOSITORY=ATTinyCore # Github repo name
+SUFFIX=_plus_Debug # suffix for index file
 
 DWTOOLS_VERSION="1.3.0"
 
@@ -63,7 +64,7 @@ printf "File4: ${FILE4}, Size: ${SIZE4}, SHA256: ${SHASUM4}, URL4: ${URL4}\n"
 #printf "File5: ${FILE5}, Size: ${SIZE5}, SHA256: ${SHASUM5}, URL5: ${URL5}\n"
 printf "File6: ${FILE6}, Size: ${SIZE6}, SHA256: ${SHASUM6}, URL6: ${URL6}\n"
 
-cp "package_${REALAUTHOR}_${REPOSITORY}_index.json" "package_${REALAUTHOR}_${REPOSITORY}_index.json.tmp"
+cp "package_${REALAUTHOR}_${REPOSITORY}${SUFFIX}_index.json" "package_${REALAUTHOR}_${REPOSITORY}${SUFFIX}_index.json.tmp"
 
 ### NOTE: OS platform 5 needs to be added!
 
@@ -140,7 +141,7 @@ jq -r                                  \
       "url": $url6
     }
   ]
-}' "package_${REALAUTHOR}_${REPOSITORY}_index.json.tmp" > "package_${REALAUTHOR}_${REPOSITORY}_index.json"
+}' "package_${REALAUTHOR}_${REPOSITORY}${SUFFIX}_index.json.tmp" > "package_${REALAUTHOR}_${REPOSITORY}${SUFFIX}_index.json"
 
 rm $FILE1
 rm $FILE2
@@ -148,4 +149,4 @@ rm $FILE3
 rm $FILE4
 #rm $FILE5
 rm $FILE6
-rm "package_${REALAUTHOR}_${REPOSITORY}_index.json.tmp"
+rm "package_${REALAUTHOR}_${REPOSITORY}${SUFFIX}_index.json.tmp"

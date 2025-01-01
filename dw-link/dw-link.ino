@@ -414,6 +414,8 @@ unsigned long speedlimit = SPEEDLIMIT;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkARc, CkXtal, CkExt, CkSlow, Erase, DWEN, UnknownFuse };
 
+enum FuseByte { LowFuse, HighFuse, ExtendedFuse };
+
 // monitor command names
 const char mohelp[] PROGMEM = "help";
 const char moversion[] PROGMEM = "version";
@@ -629,7 +631,7 @@ void monitorSystemLoadState(void) {
 // init all global vars when the debugger connects
 void initSession(void)
 {
-  //DEBLN(F("initSession"));
+  DEBLN(F("initSession"));
   flashidle = true;
   ctx.safestep = true;
   bpcnt = 0;
@@ -2326,6 +2328,7 @@ int targetISPConnect(void)
 {
   unsigned int sig;
   int result = 0;
+  boolean succ;
   
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2340,11 +2343,23 @@ int targetISPConnect(void)
     enterProgramMode();
     if (ispLocked()) 
       result = -3;
-    else
-      result = 0;
+    else { // here we disable the bootloader-vector fuse BOOTRST if set
+           // ATmega88/168: Ext. Fuse, Bit 0
+           // ATmega328: High Fuse, Bit 0
+      succ = true;
+      if (sig == 0x930A || sig == 0x930F || sig == 0x9316 || sig == 0x9406 || sig == 0x940B || sig == 0x9415) {
+	// ATmega88 or 168: BOOTRST is in bit 0 of the extended fuse byte
+	succ = ispProgramFuse(ExtendedFuse, 1, 1);
+      } else if (sig == 0x9514 || sig == 0x950F || sig == 0x9516) {
+	// ATmega328: BOOTRST is bit 0 of high fuse byte
+	succ = ispProgramFuse(HighFuse, 1, 1);
+      }
+      if (succ) result = 0;
+      else result = -3;
+    }
   }
   if (result == 0) {
-    if (ispProgramFuse(true, mcu.dwenfuse, 0)) { // set DWEN fuse and powercycle later
+    if (ispProgramFuse(HighFuse, mcu.dwenfuse, 0)) { // set DWEN fuse and powercycle later
       result = 0;
     } else {
       result = -1;
@@ -2404,15 +2419,15 @@ int targetSetFuses(Fuses fuse)
   }
   // now we are in ISP mode and know what processor we are dealing with
   switch (fuse) {
-  case CkDiv1: succ = ispProgramFuse(false, mcu.ckdiv8, mcu.ckdiv8); break;
-  case CkDiv8: succ = ispProgramFuse(false, mcu.ckdiv8, 0); break;
-  case CkRc:   succ = ispProgramFuse(false, (mcu.ckmsk|mcu.sutmsk), mcu.rcosc); break;
-  case CkARc:  succ = ispProgramFuse(false, (mcu.ckmsk|mcu.sutmsk), mcu.arosc); break;
-  case CkExt:  succ = ispProgramFuse(false, (mcu.ckmsk|mcu.sutmsk), mcu.extosc); break;
-  case CkXtal: succ = ispProgramFuse(false, (mcu.ckmsk|mcu.sutmsk), mcu.xtalosc); break;
-  case CkSlow: succ = ispProgramFuse(false, (mcu.ckmsk|mcu.sutmsk), mcu.slowosc); break;
+  case CkDiv1: succ = ispProgramFuse(LowFuse, mcu.ckdiv8, mcu.ckdiv8); break;
+  case CkDiv8: succ = ispProgramFuse(LowFuse, mcu.ckdiv8, 0); break;
+  case CkRc:   succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.rcosc); break;
+  case CkARc:  succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.arosc); break;
+  case CkExt:  succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.extosc); break;
+  case CkXtal: succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.xtalosc); break;
+  case CkSlow: succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.slowosc); break;
   case Erase:  succ = ispEraseFlash(); break;
-  case DWEN:   succ = ispProgramFuse(true, mcu.dwenfuse, mcu.dwenfuse); break;
+  case DWEN:   succ = ispProgramFuse(HighFuse, mcu.dwenfuse, mcu.dwenfuse); break;
   default: succ = false;
   }
   return (succ ? 1 : -3);
@@ -3573,9 +3588,8 @@ byte ispReadFuse(boolean high)
 }
 
 // program fuse and/or high fuse
-boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
+boolean ispProgramFuse(FuseByte fuse, byte fusemsk, byte fuseval)
 {
-  byte newfuse;
   byte lowfuse, highfuse, extfuse;
   boolean succ = true;
 
@@ -3583,15 +3597,11 @@ boolean ispProgramFuse(boolean high, byte fusemsk, byte fuseval)
   highfuse = ispSend(0x58, 0x08, 0x00, 0x00, true);
   extfuse = ispSend(0x50, 0x08, 0x00, 0x00, true);
 
-  if (high) newfuse = highfuse;
-  else newfuse = lowfuse;
-
-  //DEBPR(F("Old ")); if (high) DEBPR(F("high ")); DEBPR(F("fuse: ")); DEBLNF(newfuse,HEX);
-  newfuse = (newfuse & ~fusemsk) | (fuseval & fusemsk);
-  //DEBPR(F("New ")); if (high) DEBPR(F("high ")); DEBPR(F("fuse: ")); DEBLNF(newfuse,HEX);
-
-  if (high) highfuse = newfuse;
-  else lowfuse = newfuse;
+  switch (fuse) {
+  case LowFuse: lowfuse = (lowfuse & ~fusemsk) | (fuseval & fusemsk); break;
+  case HighFuse: highfuse = (highfuse & ~fusemsk) | (fuseval & fusemsk); break;
+  case ExtendedFuse: extfuse = (extfuse & ~fusemsk) | (fuseval & fusemsk); break;
+  }
 
   ispSend(0xAC, 0xA0, 0x00, lowfuse, true);
   _delay_ms(15);
