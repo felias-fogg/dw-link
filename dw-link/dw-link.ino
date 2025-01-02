@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.0.0"
+#define VERSION "4.0.2"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -571,8 +571,10 @@ int main(void) {
     if (ctx.state == NOTCONN_STATE) { // check whether there is an ISP programmer
       if (UCSR0A & _BV(FE0))  // frame error -> break, meaning programming!
 	ISPprogramming(false);
-      else if (Serial.peek() == '0') // sign on from ISP programmer using HOSTBPS
+#if 0 // disable ISP programming at HOSTBPS baud, seems to confuse dw-link sometimes
+      else if (Serial.peek() == '0') // sign on for ISP programmer using HOSTBPS
 	ISPprogramming(true);
+#endif
     }
 #endif
     monitorSystemLoadState();
@@ -811,7 +813,7 @@ void gdbParsePacket(const byte *buff)
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    if (gdbStop(false))                               /* disable DW mode */
+    if (gdbStop(false))                               /* disable DW mode if AutoDW */
       gdbSendReply("OK");                             /* and signal that everything is OK */
     break;
   case 'c':                                           /* continue */
@@ -822,7 +824,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'k':
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
-    gdbStop(false);                                   /* stop DW mode */
+    gdbStop(false);                                   /* stop DW mode if AutoDW */
     break;
   case 's':                                           /* single step */
   case 'S':                                           /* step with signal - just ignore signal */
@@ -855,7 +857,7 @@ void gdbParsePacket(const byte *buff)
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
       initSession();                                  /* always init all vars when gdb connects */
-      if (!ctx.autodw || gdbConnect(false))           /* and try to connect (if autodw) */
+      if (gdbConnect(false))                          /* and try to connect */
 	gdbSendPSTR((const char *)PSTR("PacketSize=" MAXBUFHEXSTR)); /* needs to be given in hexadecimal! */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                           /* current thread is always 1 */
@@ -1123,18 +1125,19 @@ boolean gdbConnect(boolean verbose)
   return false;
 }
 
-// "monitor dwoff" 
+// "monitor dw -" 
 // try to disable the debugWIRE interface on the target system
-boolean gdbStop(boolean verbose)
+// do it only if autodw is true
+boolean gdbStop(boolean always)
 {
-  if (targetStop(verbose)) {
+  if (targetStop(always)) {
     setSysState(NOTCONN_STATE);
-    if (verbose) {
+    if (always) {
       gdbReportConnected();
     }
     return true;
   } else {
-    if (verbose) {
+    if (always) {
       gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
     }
     gdbSendReply("E05");

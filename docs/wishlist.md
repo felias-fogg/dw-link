@@ -2,8 +2,6 @@
 
 ##### List of unsolved issues:
 
-- Write a section on how to restore an UNO after debugging
-
 * When trying to debug the UNO board clone with the problematic Atmega16U2 that I have, a lot of strange things happen:
   * With the real UNO board, we cannot even execute the target remote command.
     * dw-link, seems to hang, the LA does not show any activity on the serial lines
@@ -22,6 +20,8 @@
 
 ##### List of tasks to work on:
 
+* Write a step-by-step explanation on how to restore an UNO after debugging
+
 * produce short youtube video to promote dw-link probe
 
 * use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video?
@@ -31,16 +31,11 @@
 * debug tiny13 problem, perhaps by reverting back to the version in
   2022, when it seemed to work
 
-* reorganize BP management: have a list of stored and a list of new BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!
-
 * maybe have a variable length break, dependent on the speed of ISP?
 
 * implement semi-hosting
 
 * design case for debugger and print it
-
-* a mode where reads & writes are double-checked: "monitor
-  verify/noverify". Could be on or off by default.
 
 * perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
 
@@ -95,7 +90,15 @@
 **List of tasks abandoned**:
 
 - try to use seer GUI again
+
 - integrate into the Arduino VSC plugin
+
+* a mode where reads & writes are double-checked: "monitor verify/noverify". Could be on or off by default.
+
+* reorganize BP management: have a list of stored and a list of new
+  BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!
+
+
 
 
 

@@ -42,7 +42,7 @@ Your development machine, the *host*, is connected to the UNO acting as a *hardw
 
 The physical connection between the hardware debugger and the target, as described in [Section 4.2](#section42), is something that might need some enhancements. Instead of six flying wires, you may want to have a more durable connection. This is covered in [Section 8](#section8). Finally, possible problems and troubleshooting are covered in [Section 9](#section9) and [Section 10](#trouble), respectively.
 
-And what do you with your hardware debugger once you have debugged all your programs and they work flawlessly? Since version 2.2.0, you can use dw-link also as an STK500 v1 ISP programmer. If you connect to dw-link either with 19200 or 115200 bps and start avrdude, then dw-link turns into an ISP programmer.
+And what do you with your hardware debugger once you have debugged all your programs and they work flawlessly? Since version 2.2.0, you can use dw-link also as an STK500 v1 ISP programmer. If you connect to dw-link with 19200 bps and start avrdude, then dw-link becomes an ISP programmer.
 
 ### 1.2 Other debugging approaches for classic ATtinys and ATmegaX8s
 
@@ -80,7 +80,7 @@ With respect to the debugWIRE protocol there are basically three states your MCU
 
 The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwire +``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state will take place when you terminate GDB. It can also be achieved by the GDB command ```monitor dwire -```. If things seem to have not worked out, you can simply reconnect the target to the hardware debugger and issue `monitor dwire -` again.
 
-Since Version 3.4.0, you can disable the automatic switching to and from debugWIRE state by connection pin D3 to ground. On the dw-link probe, you can set a jumper. If the automatism is disabled, only the `monitor wire` commands change the state. 
+Since Version 3.4.0, you can disable the automatic switching from debugWIRE state to normal state by connecting pin D3 to ground. On the dw-link probe, you can set a jumper. If the automatism is disabled, only the `monitor dwire -` command disables the debugWIRE state. 
 
 <!-- mermaid
     stateDiagram
@@ -135,7 +135,7 @@ In general, almost all "classic" ATtiny MCUs and some ATmega MCUs have the debug
 * __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on MCUs marked bold. The untested PB types appear to be very very difficult to get. I excluded the ATtiny13 because it behaved very strangely and I was not able to figure out why. The two ATmegas that are stroked out have program counters with some bits stuck at one (see [Section 9.9](#section99)). For this reason, GDB has problems debugging them and dw-link rejects these MCUs. 
+I have tested the debugger on MCUs marked bold. The untested PB types appear to be very difficult to obtain. I excluded the ATtiny13 because it behaved very strangely, and I could not figure out why. The two ATmegas that are stroked out have program counters with some bits stuck at one (see Section 9.9). For this reason, GDB has problems debugging them, and dw-link rejects these MCUs. 
 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
@@ -159,7 +159,7 @@ If your target system is an Arduino UNO, you have to be aware that there is a ca
 
 <img src="pics/cutconn.jpg" alt="Solder bridge on Uno board" style="zoom:50%;" />
 
-A recovery method is to put a bit of soldering  on the bridge. 
+A recovery method is to put a bit of soldering  on the bridge or to solder pins to it that can be shortened by a jumper.
 
 Other Arduino boards, [such as the Nano, are a bit harder to modify](https://mtech.dk/thomsen/electro/arduino.php). A Pro Mini, on the other hand, can be used without a problem, provided the DTR line of the FTDI connector is not connected. In general, it is a good idea to get hold of a schematic of the board you are going to debug. Then it is easy to find out what is connected to the RESET line, and what needs to be removed. It is probably also a good idea to check the value of the pull-up resistor, if present. 
 
@@ -202,7 +202,7 @@ Usually, it should not be necessary to change a compile-time constant in dw-link
 
 ### 4.2 Setting up the hardware
 
-Before you can start debugging, you have to set up the hardware. I'll use an ATtiny85 on a breadboard as the example target system and a UNO as the example debugger. However, any MCU listed above would do as a target. You have to adapt the steps where I describe the modification of configuration files in [Section 6](#section6) accordingly, though. One could even use an Arduino UNO, provided the modifications described in [Section 3.3](#section33) are done.
+Before you can start debugging, you have to set up the hardware. I'll use an ATtiny85 on a breadboard as the example target system and a UNO as the example debugger. However, any MCU listed above would do as a target. You have to adapt the steps where I describe the modification of configuration files in [Section 6](#section6) accordingly, though. One could even use an Arduino UNO, provided the modifications described in [Section 3.3](#section33) are done. 
 
 #### 4.2.1 Debugging an ATtiny85
 
@@ -236,27 +236,35 @@ ATtiny pin# | Arduino UNO pin | component
 
 <a name="section452"></a>
 
-#### 4.2.2 Debugging an UNO
+#### 4.2.2 Debugging a UNO
 
-If instead of an ATtiny85, you want to debug a UNO board, everything said above applies here as well. The Fritzing sketch below shows you the connections. Here, the series resistor for the system LED is soldered to the LED cathode so that we do not need a breadboard at all. The hardware debugger needs a USB connection to your host, but the target should not be connected by a USB cable to the host! Otherwise, the automatic power-cycling will not work (but see below).
+If you want to debug a UNO board instead of an ATtiny85, everything said above applies. The Fritzing sketch below shows the connections. Here, the series resistor for the system LED is soldered to the LED cathode, so we do not need a breadboard. The hardware debugger needs a USB connection to your host, but the target should not be connected to the host! Otherwise, the automatic power-cycling will not work (but see below). 
 
-Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))! When you first establish a connection with the UNO as a target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared.
+Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3.3](#section33))! When you first establish a connection with the UNO as a target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described below in [Section 4.2.4](#section424).
 
 ![Uno as DUT](pics/Debug-Uno.png)
 
-When after a debugging session you want to restore the target so that it behaves again like an ordinary UNO, you have to execute the following steps:
-
-1. Exit the debugWIRE state as described in [Section 2](#section2). This should have happened automatically when last quitting GDB. However, to make sure the UNO is not in debugWIRE state, you should use the method described in [Section 6.5](#exlpicit1) or [Section 7.4](#explicit2). 
-2. Reestablish the `RESET EN` connection by putting a solder blob on the connection.
-3. Burn the bootloader into the UNO again. This means that you need to select the `Arduino UNO` again as the target board in the `Tools` menu, select `AVR ISP` as the `Programmer` , and choose `Burn Bootloader` from the `Tools` menu. As mentioned in Section 1, since version 2.2.0, the hardware debugger can also act as a programmer!
-
 <a name="section423"></a>
 
-#### 4.2.3 Debugging an UNO that needs a serial connection to the host
+#### 4.2.3 Debugging a UNO that needs a serial connection to the host
 
-If you want to debug an Arduino UNO that needs a serial connection to the host, special considerations are necessary. You may just plug in a USB cable into the target and open up a terminal connection to the target, using e.g., cu, screen, PuTTY, HTerm, or any other program that can establish a serial connection. The disadvantage is that now automatic power-cycling does not work any longer. So, when the system LED signals that you should power-cycle (0.1 sec flash every second), you need to disconnect and reconnect the USB-cable to the target.
+Special considerations are necessary if you want to debug an Arduino UNO that needs a serial connection to the host. You may plug a USB cable into the target, but remember to remove the power supply connection from the hardware debugger to the target.
+
+Now, open up a terminal connection to the target, using, e.g., cu, screen, PuTTY, HTerm, or any other program that can establish a serial connection. The disadvantage is that automatic power-cycling does not work any longer. So, when the system LED signals that you should power-cycle (0.1-second flash every second), you must disconnect and reconnect the USB cable to the target.
 
 A more elegant solution is to use a USB-to-serial converter and plug the TX, RX, and GND connections into the appropriate sockets on the target. Or you can use a [USB power blocker](https://spacehuhn.store/products/usb-power-blocker), something you can also find on Amazon under the name [PortaPow USB Power Blocker](https://www.amazon.de/PortaPow-USB-Power-Blocker/dp/B094FYL9QT/). Such a blocker cuts off the power line so that automatic power-cycling can work its magic.
+
+<a name="section424"></a>
+
+#### 4.2.4 Restoring a UNO to its native state
+
+When after a debugging session you want to restore the target so that it behaves again like an ordinary UNO, you need to do the following:
+
+1. Exit the debugWIRE state as described in [Section 2](#section2). This should have happened automatically when last quitting GDB. However, to make sure the UNO is not in debugWIRE state, you should use the method described in [Section 6.5](#exlpicit1).
+2. Now you have to flash the bootloader again. As mentioned in Section 1, since version 2.2.0, the hardware debugger can also act as a programmer! This means that you leave the whole hardware setup as it was. Select `Arduino UNO` as the target board in the `Tools` menu, select `AVR ISP` as the `Programmer` , and choose `Burn Bootloader` from the `Tools` menu. 
+3. Reestablish the `RESET EN` connection by putting a solder blob on the connection or soldering pins to the connections that can be shortened using a jumper as shown in the next picture. It does not look pretty, but it does its job. After that, your UNO is as good as new.
+
+![restored](pics/pins+jumper.JPG)
 
 ### 4.3 States of the hardware debugger
 
@@ -270,13 +278,17 @@ There are five states the debugger can be in and each is signaled by a different
 * ISP programming (LED is blinking slowly every 0.5 sec), or
 * error, i.e., it is not possible to connect to the target or there is an internal error (LED blinks furiously every 0.1 sec).
 
-If the hardware debugger is in the error state, one should try to find out the reason by typing the command `monitor lasterror`, studying the [error message table](#fatalerror) at the end of the document, finishing the GDB session, resetting the debugger, and restarting everything. If the problem persists, please check the section on [troubleshooting](#trouble).
+If the hardware debugger is in the error state, one should try to find out the reason by typing the command `monitor lasterror`, studying the [error message table](#fatalerror) at the end of the document, finishing the GDB session, resetting the debugger, and restarting everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.
+
+ If the problem persists, please check the section on [troubleshooting](#trouble).
 
 <a name="section5"></a>
 
 ## 5. Arduino IDE 2
 
 Debugging with Arduino IDE 2 is probably the most straightforward approach. You only have to install two board manager files before you can start. 
+
+However, you must keep in mind that you cannot use the `Arduino Uno` selection in the `Tools` menu to debug a UNO board. You have to select the `Atmega328` board instead and select `External 16 MHz` as the clock source.
 
 ### 5.1 Installing board manager files
 
@@ -292,7 +304,7 @@ https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_plus_Debu
 https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
 ```
 
-Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install MiniCore and ATTinyCore, choosing the most recent version with a `+debug` postfix. Note that the packages include tools that are incompatible with older OS versions. In particular, 32-bit host systems are not supported. If you have such a system, you only can use the approach described in Sections 6 and 7.
+Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install MiniCore and ATTinyCore, choosing the most recent version with a `+debug-2.X` postfix. Note that the packages include tools that are incompatible with older OS versions. In particular, 32-bit Linux systems are not supported. If you have such a system, you only can use the approach described in Sections 6 and 7.
 
 ### 5.2. Compiling the sketch
 
@@ -302,17 +314,17 @@ You must load the sketch into the editor and select a board as usual. Before cli
 
 You start by first verifying the sketch (which will also compile it) and then by clicking on the debug button in the right side bar, as shown below.
 
-![ide0](/Users/nebel/Documents/GitHub/dw-link/docs/pics/ide0.png)
+![ide0](pics/ide0.png)
 
 After that, one can click the debug button in the upper row to start the debug process, as shown in the following picture.
 
-![ide1](/Users/nebel/Documents/GitHub/dw-link/docs/pics/ide1.png) 
+![ide1](pics/ide1.png) 
 
 The debugger starts, and eventually, execution is stopped in line 8 at an initial internal breakpoint, indicated by the yellow triangle left of line 8 in the following screenshot. It might take a while before we reach that point because the debugger also loads the program. 
 
 Now is a good time to familiarize yourself with the window's layout. The source code is on the right side. Below that is a console window, and to the left are the debug panes. If you want to set a breakpoint, you can do that by clicking to the left of the line numbers. Such breakpoints are displayed as red dots as the one left of line 12.
 
-![ide2](/Users/nebel/Documents/GitHub/dw-link/docs/pics/ide2.png)
+![ide2](pics/ide2.png)
 
 Pane A contains the debug controls. From left to right:
 
@@ -332,13 +344,17 @@ Some more information about debugging can be found in the [debugging tutorial](h
 
 Global variables are, for some reason, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value.
 
-If you select the Debug Console, you can type GDB commands (see Section 6.6) in the bottom line. This can be useful for changing the value of global variables, which cannot be accessed otherwise. 
+If you select the Debug Console, you can type GDB commands (see [Section 6.6](#section66)) in the bottom line. This can be useful for changing the value of global variables, which cannot be accessed otherwise. 
+
+When powering your target board externally, disconnect the power supply from the hardware debugger to the target. For example, on the dw-link probe, you can set the `power` jumper to the middle position. Further, you should set the `AutoDW` jumper to the `off` position because otherwise, you must power-cycle the target board each time you start a new debug session. This will disable the automatic transition back to the normal state when the debugger is terminated. If you later want to disable debugWIRE mode, you should either set the jumper back to the `on` position and then enter the debugger and leave it again or type `monitor dwire -` in the debugger command line before exiting the debugger.
 
 <a name="section6"></a>
 
 ## 6. Arduino IDE and avr-gdb
 
 A more minimalistic approach might be better if you are uncomfortable using Arduino IDE 2. The GNU Debugger GDB provides console-based interactions and can be easily configured to work with dw-link. You only must install the avr-gdb debugger and the appropriate board manager files. Note that this works only with Arduino IDE versions at least 1.8.13. 
+
+As mentioned above, you must keep in mind that you cannot use the `Arduino Uno` selection in the `Tools` menu to debug a UNO board. You have to select the `Atmega328` board instead and select `External 16 MHz` as the clock source.
 
 ### 6.1 Installing board manager files
 
@@ -352,7 +368,7 @@ In order to be able to debug the MCUs mentioned in the Introduction, you need to
   https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
   ```
 
-After that, you can download and install the board using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools`-->`Board`. Currently, choose the versions that have a `+debug` suffix in their version number! I hope the capability of generating debug-friendly binaries will be incorporated in future versions of these board manager files, in which case you can rely on the regular board manager files by MCUdude and SpenceKonde.
+After that, you can download and install the board using the `Boards Manager`, which you find in the Arduino IDE menu under `Tools`-->`Board`. Currently, choose the versions that have a `+debug-2.X` suffix in their version number! I hope the capability of generating debug-friendly binaries will be incorporated in future versions of these board manager files, in which case you can rely on the regular board manager files by MCUdude and SpenceKonde.
 
 ### 6.2 Installing avr-gdb
 
@@ -487,7 +503,7 @@ debugWIRE is now disabled
 (gdb) quit
 >
 ```
-<a name="#section66"></a>
+<a name="section66"></a>
 
 ### 6.6 GDB commands
 
@@ -534,6 +550,7 @@ Finally, there are commands that control the settings of the debugger and the MC
 | monitor version                    | print version number of firmware                             |
 | monitor dwire [+\|-]               | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
 | monitor reset                      | resets the MCU (*)                                           |
+| monitor mcu [*mcu-name*]           | If no argument is given, the MCU dw-link is connected to is printed. Otherwise, it is checked whether the given *mcu-name* matches the connected MCU and if not, a fatal error (5) is signaled. |
 | monitor ckdiv [1\|8]               | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*) |
 | monitor oscillator [r\|a\|x\|e\|s] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., or **s**low osc. (128 kHz); without argument, it reports the fuse setting (*) |
 | monitor breakpoint [h\|s]          | set number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25, when also **s**oftware breakpoints are permitted; without argument it reports setting |
@@ -573,7 +590,7 @@ The GUI looks as shown in the next figure. Johan Henriksson, the author of the G
 
 <a name="section7"></a>
 
-## 6 PlatformIO IDE
+## 7 PlatformIO IDE
 
 [*PlatformIO*](https://platformio.org/) is an IDE for embedded systems based on PlatformIO Core, which extends Visual Studio Code. It supports many MCUs, particularly almost all AVR MCUs. It is also possible to import Arduino projects, which are converted into ordinary C++ projects. Projects are highly configurable, which means that many parameters can be set for different purposes. However, that makes things a bit more challenging in the beginning. 
 
@@ -649,14 +666,14 @@ There are two ways of switching off the debugWIRE mode. It happens automatically
 
 This is not the place to tell you all about what can be configured in the `platformio.ini` file.  There is one important point, though. PlatformIO debugging will always choose the *default environment* or, if this is not set, the first environment in the config file. 
 
-You may have noticed that there is an alternate INI file `platformio.ini-with-dw-server` in the project folder, where a  `debug_sever` is mentioned:
+You may have noticed the following two lines: 
 
 ```
-debug_server = dw-server.py
-      -p 3333
+debug_port = /dev/cu.usbmodem211101 ;; <-- specify instead of debug_server with correct serial line
+;;debug_server = /usr/local/bin/dw-server.py  -p 3333 ;; <-- specify instead of debug_port
 ```
 
-Instead of communicating directly over the serial line, which implies that one always has to specify the serial device, which sometimes changes, here a debug server is used, which communicates over a TCP/IP connection. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. You can use this alternate INI file (by renaming it to `platform.ini`), provided the Python module *PySerial* is installed and the `dw-server.py` script (which you find in the `dw-server` folder) is stored in an executable path, i.e., in /usr/local/bin on a *nix machine. 
+If the `debug_port` line is commented out and the `debug_server` line is uncommented, a debug server is used instead of communicating directly over the serial line. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. The advantage is that one does not have to determine which serial port the hardware debugger is connected to. This server can be found in the [`dw-server`](../dw-server) folder and needs to be copied to /usr/local/bin or any other location where it can be started.
 
 When creating new projects, you can take this project folder as a blueprint and modify and extend `platformio.ini` according to your needs. You can find an extensive description of how to do that in the [PlatformIO documentation](https://docs.platformio.org/en/stable/projectconf/index.html). A very [readable introduction to debugging](https://piolabs.com/blog/insights/debugging-introduction.html) using PlatformIO has been written by [Valerii Koval](https://www.linkedin.com/in/valeros/). It explains the general ideas and all the many ways how to interact with the PlatformIO GUI. [Part II](https://piolabs.com/blog/insights/debugging-embedded.html) of this introduction covers embedded debugging.
 
@@ -745,7 +762,7 @@ And here is the early breadboard prototype, which worked beautifully. It contain
 
 I have turned the modified prototype into an Arduino Shield, which you can buy [at Tindie](https://www.tindie.com/products/31798/) as a kit. With that, the hardware setup is straightforward. Just plug in an ISP cable, and you can start debugging.
 
-![dw-link probe](/Users/nebel/Documents/GitHub/dw-link/docs/pics/dw-probe.jpg)
+![dw-link probe](pics/dw-probe.jpg)
 
 <a name="jumper"></a>
 
@@ -755,7 +772,7 @@ Label | Left | Middle | Right
 --- | --- | --- | --- 
 **Supply** | **5 V** are supplied to the target | **extern**: target needs its own supply and power cycling has to be done manually | **3.3 V** are supplied to the target 
 **Pullup** | There is **no** pull-up resistor connected to RESET | &nbsp; | A **10 kΩ** pull-up resistor is connected to the RESET line of the target 
-**Auto_DW** | Atomatic transitions to and from debugWIRE mode is **off** |  | Automatic transitions to and from debugWIRE mode is **on**. This is the default and *recommended* mode! 
+**Auto_DW** | Automatic transition from debugWIRE mode to normal mode when leaving the debugger is **off**. |  | Automatic transitions from debugWIRE mode back to normal mode when exiting the debuggere is **on**. This is the default and *recommended* mode. 
 
 <a name="section9"></a>
 
@@ -862,7 +879,9 @@ The first issue is mitigated by dw-link erasing the chip when lock bits are set.
 
 ### 9.8 BREAK instructions in your program
 
-It is possible to put the BREAK instruction, which is used to implement breakpoints, in ones program by using the inline assembly statement `asm("break")`. This does not make any sense since without the debugger, the MCU will stop at this point and will not do anything anymore. Such a BREAK instruction may also be in the program because a previous debugging session was not terminated in a clean way. If such a BREAK is detected, one should issue the `load` command again.
+It is possible to put the BREAK instruction, which is used to implement breakpoints, in ones program by using the inline assembly statement `asm("break")`. This makes no sense since, without the debugger, the MCU will treat this instruction as a NOP. 
+
+Such a BREAK instruction may also be in the program because a previous debugging session was not terminated in a clean way. If such a BREAK is detected, one should issue the `load` command again.
 
 When running under the debugger, the program will be stopped in the same way as if there is a software breakpoint set by the user. However, one cannot continue execution from this point with the `step`, `next`, or `continue` command. Instead, the debugger gets an "illegal instruction" signal. So, one either needs to reload the program code, set the PC to a different value, or restart the debugging session.
 
@@ -905,6 +924,12 @@ There are many possible causes:
 * As mentioned in Section 3.4, it apparently happens that the MCU is stuck halfway when transitioning to debugWIRE state. Then only HV programming can resurrect the chip.
 
 If nothing helps, then [high-voltage programming](#worstcase) might still be a last resort.
+
+#### Problem: It is impossible to connect to the hardware debugger via the serial line
+
+Sometimes, in particular, after serious internal errors or having a capacitive load on the reset line, one can no longer connect to the hardware debugger. When calling `dw-server`, it reports that "no dw-link adapter is found."  And this state persists even after the hardware debugger has been reset. 
+
+The cure is apparently disconnecting everything (USB cable, ICSP cable) and starting over. 
 
 #### Problem: After changing optimization options, the binary is still too large/very small
 
@@ -1164,3 +1189,10 @@ Initial version
 * New fatal error: Wrong MCU type (caused by monitor mcu command)
 * Renamed fatal error 3
 * The *boards manager URLs* have changed: a suffix `_plus_Debug` has been added to the core name.
+* Simplified paltoformIO.ini
+* Corrected statement about the meaning of BREAK when the debugger is not active
+* `monitor mcu` command listed
+* Description of how to use the AutoDW jumper added 
+* Added a section on how to restore an UNO
+* Added a problem section on when the hardware debugger becomes unresponsive
+* Added notes that you cannot debug the UNO, but need to select ATmega328

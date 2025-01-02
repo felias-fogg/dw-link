@@ -1,5 +1,11 @@
 # Changelog for dw-link
 
+## Version 4.0.2
+- Fixed: AutoDW disables now only automatic debugWIRE exit
+- Removed: ISP programming at HOSTBPS baud seems to confuse dw-link,
+  because it somethimes receives a NUL byte when connecting to GDB; so
+  it has been removed.
+
 ## Version 4.0.1
 - Fixed: missing declarations in dw-link.h
 - Added: new enum type FuseByte

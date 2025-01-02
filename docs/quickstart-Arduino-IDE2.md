@@ -51,8 +51,8 @@ Download the dw-link firmware. This means you should
 * open the webpage https://github.com/felias-fogg/dw-link, 
 * click on `Latest` in the field **Releases**,
 * choose either `zip` or `tar.gz`,
-* download it to someplace on your hard disk, 
-* extract the firmware using `unzip` or `tar -xvzf`. 
+* download it to  your hard disk, 
+* extract the firmware from the downloadd archive using `unzip` or `tar -xvzf`. 
 
 In order to install the firmware, 
 
@@ -92,7 +92,7 @@ Here is a table of all connections to check that you have made all the connectio
 | &nbsp;       | RESET           | RESET blocking cap of 10 µF (+)                              |
 | &nbsp;       | D7              | 220 Ω to system (yellow) LED (+)                             |
 
-The system LED gives you information about the internal state of the debugger: 
+The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The system LED gives you information about the internal state of the debugger: 
 
 1. not connected (LED is off),
 2. waiting for power-cycling the target (LED flashes every second for 0.1 sec)

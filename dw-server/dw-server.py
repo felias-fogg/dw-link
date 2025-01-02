@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
     try:
         while True:
-            sys.stdout.write("\n\rdw-link ({}) connected to {}.\r\n".format(VERSION,device))
+            sys.stdout.write("\n\rdw-server ({}) connected to {}.\r\n".format(VERSION,device))
             sys.stdout.write("Info : Listening on port {} for gdb connection\n\r".format(args.port))
             sys.stdout.flush()
             
