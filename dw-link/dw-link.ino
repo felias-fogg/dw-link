@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.0.2"
+#define VERSION "4.0.3"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -83,6 +83,7 @@
 #include <string.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <avr/wdt.h>
 #include <util/delay.h>
 #include "src/dwSerial.h"
 #include "src/SingleWireSerial_config.h"
@@ -485,6 +486,15 @@ DEBDECLARE();
 
 
 /****************** Interrupt routines *********************/
+
+// This guards against reset loops caused by resets
+// is useless under Arduino's bootloader
+void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3"))) __attribute__((used));
+void wdt_init(void)
+{
+  MCUSR = 0;
+  wdt_disable();
+}
 
 // catch undefined/unwanted irqs: should not happen at all
 ISR(BADISR_vect)
@@ -4664,6 +4674,7 @@ unsigned long  hMask;          // Pagesize mask for 'here" address
 void ISPprogramming(__attribute__((unused)) boolean fast) {
 #if (!NOISPPROG)
   setSysState(PROG_STATE);
+  wdt_enable(WDTO_8S); // enable watch dog timmer
   if (!fast) {
     Serial.end();
     Serial.begin(PROGBPS);
@@ -4679,7 +4690,12 @@ void ISPprogramming(__attribute__((unused)) boolean fast) {
 	Serial.begin(HOSTBPS);
       }
       leaveProgramMode();
-      return; // return when finished
+      wdt_disable();
+      if (!fast) {
+	Serial.end();
+	Serial.begin(HOSTBPS);
+	return; // return when finished
+      }
     }
   }
 #endif
@@ -4707,11 +4723,11 @@ void empty_reply (void) {
 
 void breply (byte b) {
   if (CRC_EOP == getch()) {
-    Serial.write(STK_INSYNC);
-    Serial.write(b);
-    Serial.write(STK_OK);
+    Serial.write((char)STK_INSYNC);
+    Serial.write((char)b);
+    Serial.write((char)STK_OK);
   } else {
-    Serial.write(STK_NOSYNC);
+    Serial.write((char)STK_NOSYNC);
   }
 }
 
@@ -4732,11 +4748,11 @@ void avrisp (void) {
       
     case 0x31:                                  // '1' - 0x31 Check if Starterkit Present
       if (getch() == CRC_EOP) {
-        Serial.write(STK_INSYNC);
+        Serial.write((char)STK_INSYNC);
         Serial.print("AVR ISP");
-        Serial.write(STK_OK);
+        Serial.write((char)STK_OK);
       } else {
-        Serial.write(STK_NOSYNC);
+        Serial.write((char)STK_NOSYNC);
       }
       break;
 
@@ -4786,6 +4802,7 @@ void avrisp (void) {
       break;
       
     case 0x50:                                  // 'P' - 0x50 Enter Program Mode
+      wdt_reset();
       if (!pmode) {
 	DEBLN(F("enter PM"));
 	if (enterProgramMode()) {
@@ -4811,6 +4828,7 @@ void avrisp (void) {
       break;
       
     case 0x51:                                  // 'Q' - 0x51 Leave Program Mode
+      if (pmode) wdt_reset();
       // We're about to take the target out of reset so configure SPI pins as input
       leaveProgramMode();
       pmode = 0;
@@ -4819,28 +4837,33 @@ void avrisp (void) {
       break;
 
     case  0x55:                                 // 'U' - 0x55 Load Address (word)
+      if (pmode) wdt_reset();      
       here = getch();
       here += 256 * getch();
       empty_reply();
       break;
 
     case 0x56:                                  // 'V' - 0x56 Universal Command
+      if (pmode) wdt_reset();            
       fill(4);
       breply(ispSend(buf[0], buf[1], buf[2], buf[3], true));
       break;
 
     case 0x60:                                  // '`' - 0x60 Program Flash Memory
+      if (pmode) wdt_reset();      
       getch(); // low addr
       getch(); // high addr
       empty_reply();
       break;
       
     case 0x61:                                  // 'a' - 0x61 Program Data Memory
+      if (pmode) wdt_reset();      
       getch(); // data
       empty_reply();
       break;
 
     case 0x64: {                                // 'd' - 0x64 Program Page (Flash or EEPROM)
+      if (pmode) wdt_reset();      
       result = STK_FAILED;
       length = 256 * getch();
       length += getch();
@@ -4849,7 +4872,7 @@ void avrisp (void) {
       if (memtype == 'F') {
         fill(length);
         if (CRC_EOP == getch()) {
-          Serial.write(STK_INSYNC);
+          Serial.write((char)STK_INSYNC);
           ii = 0;
           page = here & hMask;
           while (ii < length) {
@@ -4862,10 +4885,10 @@ void avrisp (void) {
             here++;
           }
           ispSend(0x4C, (page >> 8) & 0xFF, page & 0xFF, 0, true);      // commit(page);
-          Serial.write(STK_OK);
+          Serial.write((char)STK_OK);
           break;
         } else {
-          Serial.write(STK_NOSYNC);
+          Serial.write((char)STK_NOSYNC);
         }
         break;
       } else if (memtype == 'E') {
@@ -4898,26 +4921,27 @@ void avrisp (void) {
           result = STK_OK;
         }
         if (CRC_EOP == getch()) {
-          Serial.write(STK_INSYNC);
-          Serial.write(result);
+          Serial.write((char)STK_INSYNC);
+          Serial.write((char)result);
         } else {
-          Serial.write(STK_NOSYNC);
+          Serial.write((char)STK_NOSYNC);
         }
         break;
       }
-      Serial.write(STK_FAILED);
+      Serial.write((char)STK_FAILED);
     } break;
 
     case 0x74: {                                // 't' - 0x74 Read Page (Flash or EEPROM)
+      if (pmode) wdt_reset();      
       result = STK_FAILED;
       length = 256 * getch();
       length += getch();
       memtype = getch();
       if (CRC_EOP != getch()) {
-        Serial.write(STK_NOSYNC);
+        Serial.write((char)STK_NOSYNC);
         break;
       }
-      Serial.write(STK_INSYNC);
+      Serial.write((char)STK_INSYNC);
       if (memtype == 'F') {
         for (ii = 0; ii < length; ii += 2) {
           Serial.write(ispSend(0x20 + LOW * 8, (here >> 8) & 0xFF, here & 0xFF, 0, true));   // low
@@ -4934,31 +4958,32 @@ void avrisp (void) {
         }
         result = STK_OK;
       }
-      Serial.write(result);
+      Serial.write((char)result);
     } break;
 
     case 0x75:                                  // 'u' - 0x75 Read Signature Bytes
+      if (pmode) wdt_reset();      
       if (CRC_EOP != getch()) {
         Serial.write(STK_NOSYNC);
         break;
       }
-      Serial.write(STK_INSYNC);
+      Serial.write((char)STK_INSYNC);
       Serial.write(ispSend(0x30, 0x00, 0x00, 0x00, true)); // high
       Serial.write(ispSend(0x30, 0x00, 0x01, 0x00, true)); // middle
       Serial.write(ispSend(0x30, 0x00, 0x02, 0x00, true)); // low
-      Serial.write(STK_OK);
+      Serial.write((char)STK_OK);
       break;
 
     case 0x20:                                  // ' ' - 0x20 CRC_EOP
       // expecting a command, not CRC_EOP, this is how we can get back in sync
-      Serial.write(STK_NOSYNC);
+      Serial.write((char)STK_NOSYNC);
       break;
 
     default:                                    // anything else we will return STK_UNKNOWN
       if (CRC_EOP == getch()) {
-        Serial.write(STK_UNKNOWN);
+        Serial.write((char)STK_UNKNOWN);
       } else {
-        Serial.write(STK_NOSYNC);
+        Serial.write((char)STK_NOSYNC);
       }
   }
 }

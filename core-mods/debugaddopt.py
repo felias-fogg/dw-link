@@ -126,14 +126,14 @@ file.write("debug.server.openocd.path={debug.toolchain.path}/dw-server\n")
 file.write("#doesn't matter, but should be specified so that cortex-debug is happy\n")
 file.write("debug.server.openocd.script=doesnotmatter\n")
 file.write("debug.cortex-debug.custom.gdbPath={debug.toolchain.path}/avr-gdb\n")
-file.write("debug.cortex-debug.custom.objdumpPath={runtime.tools.avr-gcc.path}/avr-objdump\n")
+file.write("debug.cortex-debug.custom.objdumpPath={runtime.tools.avr-gcc.path}/bin/avr-objdump\n")
 file.write("debug.cortex-debug.custom.serverArgs.0=-s\n");
 file.write("debug.cortex-debug.custom.serverArgs.1=noop\n");
 file.write("debug.cortex-debug.custom.serverArgs.2=-p\n");
 file.write("debug.cortex-debug.custom.serverArgs.3=50000\n");
 file.write("debug.cortex-debug.custom.postLaunchCommands.0=monitor mcu {build.mcu}\n");
-file.write("debug.cortex-debug.custom.postLaunchCommands.1=break setup\n");
-
+file.write("debug.cortex-debug.custom.postLaunchCommands.1=tbreak setup\n");
+file.write("debug.cortex-debug.custom.preRestartCommands.0=tbreak setup\n");
 
 print("platform.txt successfully modified")
 

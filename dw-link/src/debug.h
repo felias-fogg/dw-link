@@ -1,7 +1,7 @@
 
 /* Debug macros */
 #if TXODEBUG
-#define DEBDECLARE() TXOnlySerial deb(255)
+#define DEBDECLARE() TXOnlySerial deb(DEBTX)
 #define DEBINIT(p) deb.setTX(p); deb.begin(57600)
 #define DEBPR(str) deb.print(str)
 #define DEBPRF(str,frm) deb.print(str,frm)

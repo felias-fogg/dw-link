@@ -16,3 +16,4 @@ If these constraints are met, the dw-link probe should work.  Otherwise, one mig
 
 The current version (V3.1) of the dw-link probe (an Arduino UNO shield) uses mainly THT components, which should make it easy to assemble it using [these instructions](assembly.md). The three SMD components can also be hand-soldered to the PCB since the solder pads are extra large. 
 
+**Note:** It is advisable to solder an additional 100 µF or more capacitor between 5V and GND. Otherwise, the hardware debugger might brown out when power-cycling the target, and you will need to disconnect and reconnect.

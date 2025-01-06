@@ -1,12 +1,18 @@
 # Changelog for dw-link
 
-## Version 4.0.2
+## Version 4.0.3 (03-Jan-2025)
+
+- ISP programming got a watch dog timer so that after a wrong choice the debugger will recover after 4 seconds
+- autdw is now true by default
+
+## Version 4.0.2 (02-Jan-2025)
+
 - Fixed: AutoDW disables now only automatic debugWIRE exit
 - Removed: ISP programming at HOSTBPS baud seems to confuse dw-link,
   because it somethimes receives a NUL byte when connecting to GDB; so
   it has been removed.
 
-## Version 4.0.1
+## Version 4.0.1 (01-Jan-2025)
 - Fixed: missing declarations in dw-link.h
 - Added: new enum type FuseByte
 - Changed: first parameter in ispProgramFuse is now of type FuseByte
@@ -17,7 +23,7 @@
   M328/168/88 in targetISPConnect
 - The naming scheme for boards manager URLs was changed by suffixing the core name with "\_plus\_Debug". Having names different from the original ones guarantees that the modified revisions will be shown when installing the package. This needs to be reflected in the documentation.
 
-## Version 4.0.0
+## Version 4.0.0 (28-Dec-2024)
 
 - Added: Debugging in Arduino IDE 2 is now supported. This affects
   mainly dw-server.py, the auxiliary scripts producing the board

@@ -4,7 +4,7 @@
 
 **Bernhard Nebel**
 
-**Version 4.0 - December 2024**
+**Version 4.0 - January 2025**
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
 
@@ -80,7 +80,7 @@ With respect to the debugWIRE protocol there are basically three states your MCU
 
 The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you connect to the target by using the `target remote` command or when using the ```monitor dwire +``` command. The system LED will flash in a particular pattern, which signals that you should power-cycle the target. Alternatively, if the target is powered by the hardware debugger, it will power-cycle automatically. The transition from *debugWIRE* state to *normal* state will take place when you terminate GDB. It can also be achieved by the GDB command ```monitor dwire -```. If things seem to have not worked out, you can simply reconnect the target to the hardware debugger and issue `monitor dwire -` again.
 
-Since Version 3.4.0, you can disable the automatic switching from debugWIRE state to normal state by connecting pin D3 to ground. On the dw-link probe, you can set a jumper. If the automatism is disabled, only the `monitor dwire -` command disables the debugWIRE state. 
+Since Version 3.4.0, you can disable the automatic switching from debugWIRE state to normal state by connecting pin D3 to ground. On the dw-link probe, you can set the jumper `AutoDW` to `off`. If the automatism is disabled, only the `monitor dwire -` command disables the debugWIRE state. 
 
 <!-- mermaid
     stateDiagram
@@ -151,9 +151,11 @@ The debugger contains code for supporting all listed MCUs except for the ones st
 
 <a name="section33"></a>
 
-### 3.3 Requirements concerning the RESET line of the target system 
+### 3.3 Requirements concerning the target system 
 
-Since the RESET line of the target system is used as an [open-drain](https://en.wikipedia.org/wiki/Open_collector#MOSFET), [asynchronous](https://en.wikipedia.org/wiki/Asynchronous_communication) [half-duplex](https://en.wikipedia.org/wiki/Duplex_(telecommunications)#HALF-DUPLEX) [serial communication](https://en.wikipedia.org/wiki/Serial_communication) line, one has to make sure that there is no capacitive load on the line when it is used in debugWIRE mode. Further, there should be a pull-up resistor of around 10 kΩ. According to reports of other people, 4.7 kΩ might also work. And the RESET line should, of course,  not be directly connected to Vcc and there should not be any external reset sources on the RESET line.
+If you want to connect the hardware debugger to a power-hungry target board, consider powering it externally. Power-hungry means > 20 mA when you power the target over a data pin or > 200 mA when using the dw-link probe. The target's capacitive load on the supply line could also create a problem because the hardware debuggers's supply voltage can drop significantly when the target board is switched on. Symptoms of the issues are lockups of the hardware debugger and/or the serial line. In this case, one should switch to external power. In this case, you lose the automatic power-cycling feature and need to power-cycle your board manually. 
+
+Another critical point is the RESET line of the target system. Since this line is used as an [open-drain](https://en.wikipedia.org/wiki/Open_collector#MOSFET), [asynchronous](https://en.wikipedia.org/wiki/Asynchronous_communication) [half-duplex](https://en.wikipedia.org/wiki/Duplex_(telecommunications)#HALF-DUPLEX) [serial communication](https://en.wikipedia.org/wiki/Serial_communication) line, one has to make sure that there is no capacitive load on the line when it is used in debugWIRE mode. Further, there should be a pull-up resistor of around 10 kΩ. According to reports of other people, 4.7 kΩ might also work. And the RESET line should, of course,  not be directly connected to Vcc and there should not be any external reset sources on the RESET line.
 
 If your target system is an Arduino UNO, you have to be aware that there is a capacitor between the RESET pin of the ATmega328 and the DTR pin of the serial chip, which implements the auto-reset feature. This is used by the Arduino IDE to issue a reset pulse to start the bootloader. One can disconnect the capacitor by cutting the solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
@@ -244,6 +246,8 @@ Remember to cut the `RESET EN` solder bridge on the target board (see [Section 3
 
 ![Uno as DUT](pics/Debug-Uno.png)
 
+While the above configuration works, the ATmegas are used slightly outside their specifications. The hardware debugger sources roughly 30 mA to the target through pin D9, which is inside the maximum rating, but the voltage drops to 4.0 V, which is outside the specs for running the ATmega at 16 MHz. So, a more stable configuration might be now where the target is sourced from an external power supply.
+
 <a name="section423"></a>
 
 #### 4.2.3 Debugging a UNO that needs a serial connection to the host
@@ -261,8 +265,9 @@ A more elegant solution is to use a USB-to-serial converter and plug the TX, RX,
 When after a debugging session you want to restore the target so that it behaves again like an ordinary UNO, you need to do the following:
 
 1. Exit the debugWIRE state as described in [Section 2](#section2). This should have happened automatically when last quitting GDB. However, to make sure the UNO is not in debugWIRE state, you should use the method described in [Section 6.5](#exlpicit1).
-2. Now you have to flash the bootloader again. As mentioned in Section 1, since version 2.2.0, the hardware debugger can also act as a programmer! This means that you leave the whole hardware setup as it was. Select `Arduino UNO` as the target board in the `Tools` menu, select `AVR ISP` as the `Programmer` , and choose `Burn Bootloader` from the `Tools` menu. 
-3. Reestablish the `RESET EN` connection by putting a solder blob on the connection or soldering pins to the connections that can be shortened using a jumper as shown in the next picture. It does not look pretty, but it does its job. After that, your UNO is as good as new.
+2. Now you have to flash the bootloader again. As mentioned in Section 1, since version 2.2.0, the hardware debugger can also act as a programmer! This means that you leave the whole hardware setup as it was. Well, you should put the Vcc cable to the target into the 5V slot of the hardware debugger/programmer.
+3. Select `Arduino UNO` as the target board in the `Tools` menu, select `AVR ISP` as the `Programmer` , and choose `Burn Bootloader` from the `Tools` menu. 
+4. Reestablish the `RESET EN` connection by putting a solder blob on the connection or soldering pins to the connections that can be shortened using a jumper as shown in the next picture. It does not look pretty, but it does its job. After that, your UNO is as good as new.
 
 ![restored](pics/pins+jumper.JPG)
 
@@ -288,7 +293,7 @@ If the hardware debugger is in the error state, one should try to find out the r
 
 Debugging with Arduino IDE 2 is probably the most straightforward approach. You only have to install two board manager files before you can start. 
 
-However, you must keep in mind that you cannot use the `Arduino Uno` selection in the `Tools` menu to debug a UNO board. You have to select the `Atmega328` board instead and select `External 16 MHz` as the clock source.
+However, you must keep in mind that you cannot use the `Arduino Uno` selection in the `Tools` menu to debug a UNO board. You have to select the `Atmega328` board from the MiniCore package instead and select `External 16 MHz` as the clock source.
 
 ### 5.1 Installing board manager files
 
@@ -304,7 +309,7 @@ https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_plus_Debu
 https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
 ```
 
-Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install MiniCore and ATTinyCore, choosing the most recent version with a `+debug-2.X` postfix. Note that the packages include tools that are incompatible with older OS versions. In particular, 32-bit Linux systems are not supported. If you have such a system, you only can use the approach described in Sections 6 and 7.
+Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install MiniCore and ATTinyCore, choosing the most recent version with a `+debug-2.X` postfix. Note that the packages include tools that are incompatible with older OS versions. In particular, 32-bit Linux systems are not supported. If you have such a system, you can use only the older debug-enabled packages and the approach described in Sections 6 and 7.
 
 ### 5.2. Compiling the sketch
 
@@ -346,7 +351,7 @@ Global variables are, for some reason, not displayed. However, you can set a wat
 
 If you select the Debug Console, you can type GDB commands (see [Section 6.6](#section66)) in the bottom line. This can be useful for changing the value of global variables, which cannot be accessed otherwise. 
 
-When powering your target board externally, disconnect the power supply from the hardware debugger to the target. For example, on the dw-link probe, you can set the `power` jumper to the middle position. Further, you should set the `AutoDW` jumper to the `off` position because otherwise, you must power-cycle the target board each time you start a new debug session. This will disable the automatic transition back to the normal state when the debugger is terminated. If you later want to disable debugWIRE mode, you should either set the jumper back to the `on` position and then enter the debugger and leave it again or type `monitor dwire -` in the debugger command line before exiting the debugger.
+When powering your target board externally, disconnect the power line from the hardware debugger to the target. For example, on the dw-link probe, you can set the `power` jumper to the middle position. Further, you should set the `AutoDW` jumper to the `off` position because otherwise, you must power-cycle the target board each time you start a new debug session. If you are using jumper wires or a modified ICSP cable, you can connect D3 to GND in order to achieve the same. This setting will disable the automatic transition back to the normal state when the debugger is terminated. If you later want to disable debugWIRE mode, you should either set the jumper back to the `on` position and then enter the debugger and leave it again or type `monitor dwire -` in the debugger command line before exiting the debugger.
 
 <a name="section6"></a>
 
@@ -670,7 +675,8 @@ You may have noticed the following two lines:
 
 ```
 debug_port = /dev/cu.usbmodem211101 ;; <-- specify instead of debug_server with correct serial line
-;;debug_server = /usr/local/bin/dw-server.py  -p 3333 ;; <-- specify instead of debug_port
+;;debug_server = /usr/local/bin/dw-server.py  
+                   -p 3333 ;; <-- specify instead of debug_port
 ```
 
 If the `debug_port` line is commented out and the `debug_server` line is uncommented, a debug server is used instead of communicating directly over the serial line. This server discovers the serial line the hardware debugger is connected to and then provides a serial-to-TCP/IP bridge. The advantage is that one does not have to determine which serial port the hardware debugger is connected to. This server can be found in the [`dw-server`](../dw-server) folder and needs to be copied to /usr/local/bin or any other location where it can be started.
@@ -927,9 +933,11 @@ If nothing helps, then [high-voltage programming](#worstcase) might still be a l
 
 #### Problem: It is impossible to connect to the hardware debugger via the serial line
 
-Sometimes, in particular, after serious internal errors or having a capacitive load on the reset line, one can no longer connect to the hardware debugger. When calling `dw-server`, it reports that "no dw-link adapter is found."  And this state persists even after the hardware debugger has been reset. 
+Sometimes, one can no longer connect to the hardware debugger. When calling `dw-server`, it reports that "no dw-link adapter is found." This state persists even after the hardware debugger is reset or the USB cable is disconnected and reconnected.
 
-The cure is apparently disconnecting everything (USB cable, ICSP cable) and starting over. 
+If this happens when the hardware debugger powers the target, this is a sign that the capacitive load of the target may be too high. So, one cure is here to power the target externally and do the power-cycling manually. In this situation, it is also a good idea to disable the automatic return to the normal state when leaving the debugger. Set the `AutoDW` jumper to the `off` position or connect D3 to GND. 
+
+Remember to disable debugWIRE mode in the end by issuing the command `monitor dwire -` before leaving the debugger.
 
 #### Problem: After changing optimization options, the binary is still too large/very small
 
@@ -1196,3 +1204,5 @@ Initial version
 * Added a section on how to restore an UNO
 * Added a problem section on when the hardware debugger becomes unresponsive
 * Added notes that you cannot debug the UNO, but need to select ATmega328
+* Added notes about the target board and potentially using external powering
+* Edited the problem description for locked up hardware debugger/serial line

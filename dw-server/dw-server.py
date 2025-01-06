@@ -3,6 +3,9 @@
 # Discover dw-link and then redirect data from a TCP/IP connection to the serial port and vice versa.
 # Based on Chris Liechti's tcp_serial_redirct script
 #
+# Version 1.3.1 (03-Jan-2025)
+# - Changed: greeting line
+#
 # Version 1.3.0 (27-Dec-2024)
 # - Removed: the cortex-debug hack
 # - Added: Partial argument parsing and a special case for the -s option: 'noop',
@@ -43,7 +46,7 @@
 # - first working version
 #
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 
 import sys
 import socket

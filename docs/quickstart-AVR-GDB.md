@@ -253,7 +253,7 @@ If you think you have found a bug, please post it on [issues](https://github.com
 
 ## After debugging has finished
 
-If you want to have a more durable debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 7, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie.
+If you want to have a more durable debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie.
 
 So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called `AVR ISP` or `Arduino as ISP`.
 
