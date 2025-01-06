@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.0.3"
+#define VERSION "4.0.4"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -581,7 +581,7 @@ int main(void) {
     if (ctx.state == NOTCONN_STATE) { // check whether there is an ISP programmer
       if (UCSR0A & _BV(FE0))  // frame error -> break, meaning programming!
 	ISPprogramming(false);
-#if 0 // disable ISP programming at HOSTBPS baud, seems to confuse dw-link sometimes
+#if 1 // enable ISP programming at HOSTBPS baud, seems to confuse dw-link sometimes
       else if (Serial.peek() == '0') // sign on for ISP programmer using HOSTBPS
 	ISPprogramming(true);
 #endif
@@ -4691,11 +4691,8 @@ void ISPprogramming(__attribute__((unused)) boolean fast) {
       }
       leaveProgramMode();
       wdt_disable();
-      if (!fast) {
-	Serial.end();
-	Serial.begin(HOSTBPS);
-	return; // return when finished
-      }
+      wdt_enable(WDTO_15MS);
+      while (1); //restart
     }
   }
 #endif

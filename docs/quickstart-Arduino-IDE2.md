@@ -130,4 +130,4 @@ If you think you have found a bug, please post it on [issues](https://github.com
 
 ## After debugging has finished
 
-So, what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `AVR ISP` or `Arduino as ISP`.
+So, what do you do with your newly built hardware debugger after everything has been debugged? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `Arduino as ISP` or `Arduino as ISP fast`. In the latter case, the upload speed is 115200 instead of 19200.
