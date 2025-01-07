@@ -1,5 +1,5 @@
 // tests a dw-link probe
-#define VERSION "1.5.0"
+#define VERSION "1.5.1"
 
 // pins
 const byte IVSUP = 2;
@@ -23,7 +23,7 @@ byte ctrls[MAXCTRL] = {  TMOSI, TMISO, TSCK };
 void setup()
 {
   Serial.begin(115200);
-  Serial.println(F("\nTesting dw-link-probe " VERSION));
+  Serial.println(F("\n\nTesting dw-link-probe " VERSION));
   pinMode(SYSLED, OUTPUT);
   pinMode(TMISO, OUTPUT);
   // initially switch the two SPI lines and the RESET line to GND in order to discharge any stray capacitance
@@ -115,7 +115,7 @@ void loop()
       
 void printHelp()
 {
-  Serial.print(F("H/h - print this text\n" \
+  Serial.print(F("\nH/h - print this text\n" \
 		 "!/? - print state of input/output lines\n" \
 		 "L/l - switch LED on/off\n" \
 		 "P/p - switch power supply on/off\n" \
@@ -125,7 +125,9 @@ void printHelp()
 		 "O/o - set MOSI LOW(active)/HIGH(inactive)\n" \
 		 "I/i - set MISO LOW(active)/HIGH(inactive)\n" \
 		 "C/c - set SCK LOW(active)/HIGH(inactive)\n" \
-		 "t   - run a test sequence\n"));
+		 "t   - run a test sequence\n"
+		 "\nSet pullup jumper to 10K\n"
+		 "Set supply jumper to 3.3 or 5 V\n"));
 }
 
 static inline void activate(byte pin)
@@ -213,7 +215,7 @@ int getLevel(byte pin)
 int getDisLev(byte pin) {
   int level =  (analogRead(pin)*10)/2;
 
-  if (level < 1000) return 0;
+  if (level < 1500) return 0;
   else if (level > 3000 && level < 3700) return 3;
   else if (level > 4500) return 5;
   else return -1;

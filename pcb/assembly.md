@@ -32,6 +32,10 @@ When assembling the kit, just follow what is specified in the table. Start from 
 
 For the capacitors C1 and C3 and the LED, watch out for the polarity, which should be matched with the symbols on the PCB. Bipolar capacitors have the negative connection marked, and the negative connection usually has a shorter lead. The other lead should go into the hole marked with '+'.  Note that an **extra bipolar capacitor** not marked on the board needs to be soldered either in parallel to C2 (+ towards the edge, - towards LD1117) or directly to the shield connectors (+ to 5V, - to GND).
 
+![extra cap](bipo.jpeg)
+
+Note that you can use a cap with a much smaller rating than 50 V. 10 V is definitely enough. These caps also have a much smaller size.
+
 Similarly, also LEDs have a long and a short lead, where the short one marks the cathode (-). This one should go into the hole marked with a square.
 
 Q1, Q2, Q3, and U1 should all be soldered with the marking pointing upwards.
