@@ -4,6 +4,8 @@ You can turn your Arduino UNO into a hardware debugger that can be used for embe
 
 If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](quickstart-AVR-GDB.md).
 
+***Windows users:*** Sorry, but the tool *dw-server.exe* appears to be judged as malware and will be deleted by the Windows Defender. I will try to find a workaround!
+
 ## What you need
 
 * Computer running Windows, macOS, or Linux (the *host*)

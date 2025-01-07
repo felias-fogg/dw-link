@@ -4,6 +4,8 @@ You can turn your Arduino UNO into a hardware debugger that can be used for embe
 
 If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](quickstart-AVR-GDB.md).
 
+***Windows users:*** Sorry, but the tool *dw-server.exe* appears to be judged as malware and will be deleted by the Windows Defender. I will try to find a workaround!
+
 ## What you need
 
 * Computer running Windows, macOS, or Linux (the *host*)
@@ -61,7 +63,7 @@ In order to install the firmware,
 * open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`, 
 * select the right `Port` in the `Tools` menu, 
 * and load the dw-link sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw-link.ino`. 
-* Finally, compile and download the sketch to the UNO by either pressing the right arrow button, or by typing `CTRL-U` or `⌘U`. The UNO acts now as a hardware debugger (but needs a bit of additional hardware).
+* Finally, compile and download the sketch to the UNO by pressing the right arrow button or typing CTRL-U or ⌘U. The UNO now acts as a hardware debugger (but needs a bit of additional hardware).
 
 **Check:** Open the `Serial Monitor` (under `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
 
