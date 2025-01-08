@@ -12,7 +12,7 @@
 
 <div style="page-break-after: always"></div>
 
-[TOC]
+[[_TOC_]]
 
 ## 1. Introduction 
 
