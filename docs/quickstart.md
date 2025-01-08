@@ -2,9 +2,7 @@
 
 You can turn your Arduino UNO into a hardware debugger that can be used for embedded debugging of classic AVR chips under [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/). Takes less than one hour. 
 
-If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](quickstart-AVR-GDB.md).
-
-***Windows users:*** Sorry, but the tool *dw-server.exe* appears to be judged as malware and will be deleted by the Windows Defender. I will try to find a workaround!
+If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](https://github.com/felias-fogg/dw-link/blob/master/docs/quickstart-AVR-GDB.md).
 
 ## What you need
 
@@ -51,10 +49,10 @@ Close the `Preference` dialog with `OK`. Now, we want to install the two cores, 
 Download the dw-link firmware. This means you should 
 
 * open the webpage https://github.com/felias-fogg/dw-link, 
-* click on `Latest` in the field **Releases**,
+* click on `Latest` in the field **Releases** (on the left),
 * choose either `zip` or `tar.gz`,
 * download it to  your hard disk, 
-* extract the firmware from the downloadd archive using `unzip` or `tar -xvzf`. 
+* extract the firmware from the downloaded archive using `unzip` or `tar -xvzf`. 
 
 In order to install the firmware, 
 
@@ -69,7 +67,7 @@ In order to install the firmware,
 
 ## Step 4: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
 
 When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny with an ISP connector, the setup is as easy as plugging in an ISP cable, as shown below.
 
@@ -118,6 +116,8 @@ Note that state 2 (power-cycling) will be skipped in our configuration, where th
 - After the debugger and debug-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the `setup` function.
 - Now, you are in business and can set breakpoints, continue executing, stop the program asynchronously, inspect and change values, and examine different stack frames. To terminate your debugging session, click the red box in the debug row.
 
+![debug window](pics/ide3.png)
+
 ## What can go wrong?
 
 First, you might be unable to start debugging because the debug button is greyed out. This happens for all MCUs that the IDE cannot debug. If you think that this is an error, you might need to install the correct board definition files or choose the `Reload Board Data` entry in the `Tools` menu.
@@ -128,7 +128,7 @@ If something does not work as advertised, it is often a simple wiring problem. O
 
 The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`. If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
-If you think you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues) and fill out the [issue form](issue_form.md) before.
+If you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues) and fill out the [issue form](https://github.com/felias-fogg/dw-link/blob/master/docs/issue_form.md) before.
 
 ## After debugging has finished
 

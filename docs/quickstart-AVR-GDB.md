@@ -98,11 +98,11 @@ The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolc
 
 ## Step 5: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
 
 When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable, as shown below.
 
-![pics/dw-probe.jpg](pics/dw-probe.jpg)
+![dw-probe](pics/dw-probe.jpg)
 
 If this is not the case, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO, turned into a hardware debugger. 
 
@@ -209,13 +209,13 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **q** - quits gdb
 - `CTRL-C` while the programming is running stops the execution asynchronously
 
-There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of `monitor` commands, which are specific to the dw-link debugger, can be found in Section 5.6 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf).
+There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of `monitor` commands, which are specific to the dw-link debugger, can be found in Section 5.6 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
 
 You should always end your debugging session with the `quit` command, which will turn off debugging mode on the target chip so that the RESET line could be used again.
 
 ## Step 8 (optional): Install a graphical user interface
 
-If you would like to work with a GUI, then *[Gede](https://gede.dexar.se/)* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host operating system is macOS or Linux. An alternative to Gede is the [PlatformIO](https://platformio.org/) IDE, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) in Section 6, which also works for Windows.
+If you would like to work with a GUI, then *[Gede](https://gede.dexar.se/)* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host operating system is macOS or Linux. An alternative to Gede is the [PlatformIO](https://platformio.org/) IDE, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md) in Section 6, which also works for Windows.
 
 A prerequisite for using Gede is that we make sure that *PySerial* is installed. So type into a terminal:
 
@@ -245,7 +245,7 @@ The `dw-server.py` script will discover the serial port of the hardware debugger
 
 ## What can go wrong?
 
-If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf), which may be helpful. 
+If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md), which may be helpful. 
 
 The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`.  If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
