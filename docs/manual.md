@@ -556,16 +556,16 @@ Finally, there are commands that control the settings of the debugger and the MC
 | monitor dwire [+\|-]               | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
 | monitor reset                      | resets the MCU (*)                                           |
 | monitor mcu [*mcu-name*]           | If no argument is given, the MCU dw-link is connected to is printed. Otherwise, it is checked whether the given *mcu-name* matches the connected MCU and if not, a fatal error (5) is signaled. |
-| monitor ckdiv [1\|8]               | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*) |
-| monitor oscillator [r\|a\|x\|e\|s] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., or **s**low osc. (128 kHz); without argument, it reports the fuse setting (*) |
-| monitor breakpoint [h\|s]          | set number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25, when also **s**oftware breakpoints are permitted; without argument it reports setting |
-| monitor speed [l\|h]               | set communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and limit is printed |
+| monitor ckdiv [1\|8]               | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*+) |
+| monitor oscillator [r\|a\|x\|e\|s] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., or **s**low osc. (128 kHz); without argument, it reports the fuse setting (*+) |
+| monitor breakpoint [h\|s]          | set the number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25, when also **s**oftware breakpoints are permitted; without argument, it reports setting |
+| monitor speed [l\|h]               | set the communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and speed limit is printed |
 | monitor singlestep [s\|u]          | Sets single stepping to **s**afe (no interrupts) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
-| monitor lasterror                  | print error number of last fatal error                       |
-| monitor flashcount                 | reports on how many flash-page write operation have taken place since start |
+| monitor lasterror                  | print error number of the last fatal error                   |
+| monitor flashcount                 | reports on how many flash-page write operations have taken place since the start |
 | monitor timeouts                   | report number of timeouts (should be 0!)                     |
 
-All of the commands marked with (*) reset the MCU.
+All of the commands marked with (*) reset the MCU. The ones marked with (+) need to take the MCU out of the debugWIRE mode and afterwards in again. 
 
 <a name="section67"></a>
 
@@ -1068,8 +1068,9 @@ Error #  | Meaning
 2 | Connection error: MCU type is not supported
 3 | Connection error: Lock bits or BOOTRST could not be cleared 
 4 | Connection error: MCU has PC with stuck-at-one bits 
-5 | MCU type does not match 
-6 | Unknown connection error 
+5 | Connection error: Reset line has a capacitive load 
+6 | MCU type does not match 
+7 | Unknown connection error 
 101 | No free slot in breakpoint table
 102 | Packet length too large
 103 | Wrong memory type
@@ -1197,7 +1198,7 @@ Initial version
 * New fatal error: Wrong MCU type (caused by monitor mcu command)
 * Renamed fatal error 3
 * The *boards manager URLs* have changed: a suffix `_plus_Debug` has been added to the core name.
-* Simplified paltoformIO.ini
+* Simplified platoformio.ini
 * Corrected statement about the meaning of BREAK when the debugger is not active
 * `monitor mcu` command listed
 * Description of how to use the AutoDW jumper added 
@@ -1206,3 +1207,4 @@ Initial version
 * Added notes that you cannot debug the UNO, but need to select ATmega328
 * Added notes about the target board and potentially using external powering
 * Edited the problem description for locked up hardware debugger/serial line
+* New fatal error: capacitive load on the reset line

@@ -1,5 +1,10 @@
 # Changelog for dw-link
 
+## Version 4.0.4
+- Changes in platform.ini files
+- Change: Giving a more informative error message when the stuck-at-1
+  error is diagnosed because of capacitive load on the reset line 
+
 ## Version 4.0.3 (03-Jan-2025)
 
 - ISP programming got a watch dog timer so that after a wrong choice the debugger will recover after 4 seconds

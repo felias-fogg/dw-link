@@ -127,8 +127,9 @@
 #define CONNERR_UNSUPPORTED_MCU 2 // connection error: MCU not supported
 #define CONNERR_LOCK_BITS 3 // connection error: lock bits are set
 #define CONNERR_STUCKAT1_PC 4 // connection error: MCU has PC with stuck-at-one bits
-#define CONNERR_WRONG_MCU 5 // wrong MCU (detected by monitor mcu command)
-#define CONNERR_UNKNOWN 6 // unknown connection error
+#define CONNERR_CAPACITIVE_LOAD 5 // connection error: Reset has a capacitive load
+#define CONNERR_WRONG_MCU 6 // wrong MCU (detected by monitor mcu command)
+#define CONNERR_UNKNOWN 7 // unknown connection error
 #define NO_FREE_SLOT_FATAL 101 // no free slot in BP structure
 #define PACKET_LEN_FATAL 102 // packet length too large
 #define WRONG_MEM_FATAL 103 // wrong memory type
@@ -1099,11 +1100,21 @@ boolean gdbConnect(boolean verbose)
   DEBLN(conncode);
   if (conncode == 1) {
 #if STUCKAT1PC
-    mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
-    //DEBPR(F("stuckat1byte=")); DEBLNF(mcu.stuckat1byte,HEX);
+    if (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
+      mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
+      DEBPR(F("stuckat1byte=")); DEBLNF(mcu.stuckat1byte,HEX);
+    } else {
+      conncode = -5;
+    }
 #else
     mcu.stuckat1byte = 0;
-    if (DWgetWPc(false) > (mcu.flashsz>>1)) conncode = -4;
+    if (DWgetWPc(false) > (mcu.flashsz>>1)) {
+      if  (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
+	conncode = -4;
+      } else {
+	conncode = -5;
+      }
+    }
 #endif
   }
   if (conncode == 1) {
@@ -1121,6 +1132,7 @@ boolean gdbConnect(boolean verbose)
   case -2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU"),-1); break;
   case -3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits are set"),-1); break;
   case -4: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits"),-1); break;
+  case -5: gdbDebugMessagePSTR(PSTR("***Cannot connect: Reset line has a capacitive load"),-1); break;
   default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
   }
   if (verbose) {
