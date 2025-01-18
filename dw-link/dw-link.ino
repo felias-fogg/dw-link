@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.0.4"
+#define VERSION "4.1.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -120,16 +120,17 @@
 #define SIGILL  4     // Illegal instruction
 #define SIGTRAP 5     // Trace trap  - stopped on a breakpoint
 #define SIGABRT 6     // Abort because of some fatal error
-
+#define SIGTERM 15    // Cannot execute because not in dW mode
 // types of fatal errors
 #define NO_FATAL 0
-#define CONNERR_NO_ISP_OR_DW_REPLY 1 // connection error: no ISP or DW reply
-#define CONNERR_UNSUPPORTED_MCU 2 // connection error: MCU not supported
-#define CONNERR_LOCK_BITS 3 // connection error: lock bits are set
-#define CONNERR_STUCKAT1_PC 4 // connection error: MCU has PC with stuck-at-one bits
-#define CONNERR_CAPACITIVE_LOAD 5 // connection error: Reset has a capacitive load
-#define CONNERR_WRONG_MCU 6 // wrong MCU (detected by monitor mcu command)
-#define CONNERR_UNKNOWN 7 // unknown connection error
+#define CONNERR_NO_ISP_REPLY 1 // connection error: no ISP reply
+#define CONNERR_NO_DW_REPLY 2 // connection error: no DW reply
+#define CONNERR_UNSUPPORTED_MCU 3 // connection error: MCU not supported
+#define CONNERR_LOCK_BITS 4 // connection error: lock bits are set
+#define CONNERR_STUCKAT1_PC 5 // connection error: MCU has PC with stuck-at-one bits
+#define CONNERR_CAPACITIVE_LOAD 6 // connection error: capacitive load on reset line
+#define CONNERR_WRONG_MCU 7 // wrong MCU (detected by monitor mcu command)
+#define CONNERR_UNKNOWN 8 // unknown connection error
 #define NO_FREE_SLOT_FATAL 101 // no free slot in BP structure
 #define PACKET_LEN_FATAL 102 // packet length too large
 #define WRONG_MEM_FATAL 103 // wrong memory type
@@ -187,7 +188,7 @@ byte maxbreak = MAXBREAK; // actual number of active breakpoints allowed
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
-enum statetype {NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, CONN_STATE, LOAD_STATE, RUN_STATE, PROG_STATE};
+enum statetype {NOTCONN_STATE, ISPCONN_STATE, PWRCYC_STATE, ERROR_STATE, DWCONN_STATE, LOAD_STATE, RUN_STATE, PROG_STATE};
 
 enum ispspeedtype {SUPER_SLOW_ISP, SLOW_ISP, NORMAL_ISP }; // isp speed: 0.8 kHz, 20 kHz, 50 kHz
 
@@ -196,22 +197,24 @@ struct context {
   unsigned int sp; // stack pointer
   byte sreg;    // status reg
   byte regs[32]; // general purpose regs
-  boolean saved:1; // all of the regs have been saved
-  statetype state:3; // system state
-  boolean levelshifting:1; // true when using dw-probe sitting on an Arduino board
-  boolean autodw:1; // switch DW automatically on and off 
+  boolean saved; // all of the regs have been saved
+  statetype state; // system state
+  boolean levelshifting; // true when using dw-probe sitting on an Arduino board
+  boolean autodw; // switch DW automatically on and off
+  boolean protectdw; // protect dw state (when autodw is off)
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
   ispspeedtype ispspeed;
 } ctx;
 
 // use LED to signal system state
-// LED off = not connected to target system
+// LED off = not connected to target system, ISP connected, or transitional
 // LED flashing every second = power-cycle target in order to enable debugWIRE
-// LED blinking every 1/10 second = could not connect to target board
-// LED constantly on = connected to target 
-const unsigned int ontimes[7] =  {0,  100, 150, 1, 1, 1, 500};
-const unsigned int offtimes[7] = {1, 1000, 150, 0, 0, 0, 500};
+// LED blinking every 1/10 second = fatal error
+// LED constantly on = connected to target
+// LED slow blinking = ISP programming
+const unsigned int ontimes[8] =  {0, 0,  100, 150, 1, 1, 1, 750};
+const unsigned int offtimes[8] = {1, 1,  1000, 150, 0, 0, 0, 750};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 
@@ -229,6 +232,7 @@ const byte TODSCK = 10;
 const byte TMOSI = 11;
 const byte TMISO = 12;
 const byte TSCK = 13;
+const byte SUPANALOG = A4;
 
 byte ledmask, todsckmask, tmosimask, tmisomask, tsckmask;
 volatile byte *ledout, *todsckmode, *tmosiout, *tmosimode, *tmisoin, *tsckout;
@@ -497,6 +501,13 @@ void wdt_init(void)
   wdt_disable();
 }
 
+// software reset
+void dwlrestart(void)
+{
+  wdt_enable(WDTO_15MS);
+  while (1);
+}
+
 // catch undefined/unwanted irqs: should not happen at all
 ISR(BADISR_vect)
 {
@@ -557,6 +568,17 @@ int main(void) {
   init();
   
   // setup
+#if TXODEBUG
+  ctx.autodw = false;
+#else
+  pinMode(AUTODWSENSE, INPUT_PULLUP);
+  ctx.autodw = digitalRead(AUTODWSENSE);
+#endif
+  power(false);
+  _delay_ms(50); // let the power state settle
+  if (ctx.autodw) 
+    if (digitalRead(DWLINE) == HIGH)  // externally powered!
+      ctx.autodw = false;
   pinMode(SENSEBOARD, INPUT_PULLUP);
   ctx.levelshifting = !digitalRead(SENSEBOARD);
   Serial.begin(HOSTBPS);
@@ -567,6 +589,11 @@ int main(void) {
   pinMode(LEDGND, OUTPUT);
   digitalWrite(LEDGND, LOW);
   power(true); // switch target on
+  _delay_ms(50); // let the power state settle
+  if (ctx.autodw) 
+    if (digitalRead(DWLINE) == LOW)  // externally un-powered!
+      ctx.autodw = false;            // so, do it manually
+
 #if SCOPEDEBUG
   pinMode(DEBTX, OUTPUT); //
   digitalWrite(DEBTX, LOW); // PD3 on UNO
@@ -582,10 +609,8 @@ int main(void) {
     if (ctx.state == NOTCONN_STATE) { // check whether there is an ISP programmer
       if (UCSR0A & _BV(FE0))  // frame error -> break, meaning programming!
 	ISPprogramming(false);
-#if 1 // enable ISP programming at HOSTBPS baud, seems to confuse dw-link sometimes
       else if (Serial.peek() == '0') // sign on for ISP programmer using HOSTBPS
 	ISPprogramming(true);
-#endif
     }
 #endif
     monitorSystemLoadState();
@@ -636,7 +661,7 @@ void monitorSystemLoadState(void) {
       if (ctx.bps >= 30000)  // if too slow, wait for next command
                               // instead of asnychronous load
 	targetFlushFlashProg();
-      setSysState(CONN_STATE);
+      setSysState(DWCONN_STATE);
     }
   }
 }
@@ -644,9 +669,11 @@ void monitorSystemLoadState(void) {
 // init all global vars when the debugger connects
 void initSession(void)
 {
+  int supanalog;
   DEBLN(F("initSession"));
   flashidle = true;
   ctx.safestep = true;
+  ctx.protectdw = true;  
   bpcnt = 0;
   bpused = 0;
   hwbp = 0xFFFF;
@@ -657,20 +684,16 @@ void initSession(void)
   setSysState(NOTCONN_STATE);
   targetInitRegisters();
   mcu.name = (const char *)unknown;
-#if TXODEBUG
-  ctx.autodw = false;
-#else
-  pinMode(AUTODWSENSE, INPUT_PULLUP);
-  ctx.autodw = digitalRead(AUTODWSENSE);
-#endif
 }
 
-// report a fatal error and stop everything
-// error will be displayed when trying to execute
-// if checkio is set to true, we will check whether
-// the connection to the target is still there
-// if not, the error is not recorded, but the connection is
+// Report a fatal error and stop everything
+// error will be displayed when trying to execute.
+// If checkio is set to true, we will check whether
+// the connection to the target is still there.
+// If not, the error is not recorded, but the connection is
 // marked as not connected
+// We will mark the error and send a message that should
+// at least be shown in the dw-server window
 void reportFatalError(byte errnum, boolean checkio)
 {
   if (checkio) {
@@ -682,7 +705,12 @@ void reportFatalError(byte errnum, boolean checkio)
     }
   }
   DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
-  if (fatalerror == NO_FATAL) fatalerror = errnum;
+  if (fatalerror == NO_FATAL) {
+    if (errnum >= 100) { // not a connection error
+      gdbDebugMessagePSTR(PSTR("Fatal internal error: "),errnum);
+    }
+    fatalerror = errnum;
+  }
   setSysState(ERROR_STATE);
 }
 
@@ -824,7 +852,7 @@ void gdbParsePacket(const byte *buff)
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    if (gdbStop(false))                               /* disable DW mode if AutoDW */
+    if (gdbStopConnection())                          /* disable DW mode if AutoDW */
       gdbSendReply("OK");                             /* and signal that everything is OK */
     break;
   case 'c':                                           /* continue */
@@ -835,7 +863,7 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'k':
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
-    gdbStop(false);                                   /* stop DW mode if AutoDW */
+    gdbStopConnection();                              /* stop DW mode if AutoDW */
     break;
   case 's':                                           /* single step */
   case 'S':                                           /* step with signal - just ignore signal */
@@ -847,8 +875,8 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {/* Run command */
-      if (gdbConnect(false)) {                        /* re-enable DW mode, reset MCU, and clear PC */
-	setSysState(CONN_STATE);
+      if (gdbStartConnect(false)) {                   /* re-enable DW mode, reset MCU, and clear PC */
+	setSysState(DWCONN_STATE);
 	gdbSendState(SIGTRAP);                        /* trap signal */
       } else {
 	gdbSendReply("E02");
@@ -856,7 +884,7 @@ void gdbParsePacket(const byte *buff)
     } else
       if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
 	gdbUpdateBreakpoints(true);                   /* remove BREAKS in memory before exit */
-	if (gdbStop(false))                           /* stop DW mode (if autodw) */
+	if (gdbStopConnection())                      /* stop DW mode (if autodw) */
 	  gdbSendReply("OK");                         /* and signal that everything is OK */
       } else {
 	gdbSendReply("");                             /* not supported */
@@ -868,7 +896,7 @@ void gdbParsePacket(const byte *buff)
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
       initSession();                                  /* always init all vars when gdb connects */
-      if (gdbConnect(false))                          /* and try to connect */
+      if (gdbStartConnect(true))                      /* and try to connect */
 	gdbSendPSTR((const char *)PSTR("PacketSize=" MAXBUFHEXSTR)); /* needs to be given in hexadecimal! */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                           /* current thread is always 1 */
@@ -922,8 +950,8 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MODWIRE:
     switch (cmdbuf[mooptix]) {
-    case '+': gdbConnect(true); break;
-    case '-': gdbStop(true); break;
+    case '+': gdbConnectDW(); break;
+    case '-': gdbDisconnectDW(); break;
     case '\0': gdbReportConnected(); break;
     default: gdbSendReply("E09"); break;
     }
@@ -1059,8 +1087,8 @@ inline void gdbHelp(void) {
 // check whether specified name fits with actual mcu
 void gdbCheckMcu(const char * moarg)
 {
-  if (targetOffline()) { // target not connected
-    gdbReplyMessagePSTR(PSTR("Target no connected"), -1);
+  if (targetOffline() && ctx.state != ISPCONN_STATE) { // target not connected
+    gdbReplyMessagePSTR(PSTR("Target not connected"), -1);
     return;
   } else {
     if (strlen(moarg) == 0 ||
@@ -1068,103 +1096,115 @@ void gdbCheckMcu(const char * moarg)
 	(strcasecmp_P(moarg,PSTR("atmega328")) == 0 && mcu.sig == 0x950F)) {
       gdbReplyMessagePSTR(Connected, -2);
     } else {
-      gdbDebugMessagePSTR(PSTR("***MCU type does not match"), -1);
-      setSysState(ERROR_STATE);
-      fatalerror = CONNERR_WRONG_MCU;
+      gdbReportConnectionProblem(CONNERR_WRONG_MCU);
       gdbReplyMessagePSTR(Connected, -2);
     }
   }
 }
 
-// "monitor dwire [+|-]" or "target remote"
-// try to enable debugWIRE
-// this might imply that the user has to power-cycle the target system
-boolean gdbConnect(boolean verbose)
+// check for the Stuck-At-1 or cap condition (and report error)
+boolean stuckAtOneOrCap(void)
 {
-  int conncode = -CONNERR_UNKNOWN;
-
-  _delay_ms(100); // allow for startup of MCU initially
-  mcu.sig = 0;
-  if (targetDWConnect()) {
-    conncode = 1;
-  } else {
-    conncode = targetISPConnect();
-    if (conncode == 0) {
-      if (powerCycle(verbose)) 
-	conncode = 1;
-      else
-	conncode = -1;
-    }
-  }
-  DEBPR(F("conncode: "));
-  DEBLN(conncode);
-  if (conncode == 1) {
+  mcu.stuckat1byte = 0;
+  if (DWgetWPc(false) > (mcu.flashsz>>1)) {
 #if STUCKAT1PC
     if (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
       mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
       DEBPR(F("stuckat1byte=")); DEBLNF(mcu.stuckat1byte,HEX);
-    } else {
-      conncode = -5;
+      return false;
     }
 #else
-    mcu.stuckat1byte = 0;
-    if (DWgetWPc(false) > (mcu.flashsz>>1)) {
-      if  (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
-	conncode = -4;
-      } else {
-	conncode = -5;
-      }
+    if  (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
+      gdbReportConnectionProblem(CONNERR_STUCKAT1_PC);
+    } else {
+      gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD);
     }
-#endif
-  }
-  if (conncode == 1) {
-    setSysState(CONN_STATE);
-    if (verbose) {
-      gdbReportConnected();
-    }
-    gdbCleanupBreakpointTable();
-    targetReset(); 
-    targetInitRegisters();
     return true;
   }
-  switch (conncode) {
-  case -1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Check wiring"),-1); break;
-  case -2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU"),-1); break;
-  case -3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits are set"),-1); break;
-  case -4: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits"),-1); break;
-  case -5: gdbDebugMessagePSTR(PSTR("***Cannot connect: Reset line has a capacitive load"),-1); break;
-  default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons"),-1); conncode = -CONNERR_UNKNOWN; break;
-  }
-  if (verbose) {
-    gdbReportConnected();
-  }
-  DEBPR(F("conncode: "));
-  DEBLN(conncode);
-  if (fatalerror == NO_FATAL) fatalerror = -conncode;
-  setSysState(ERROR_STATE);
-  flushInput();
-  targetInitRegisters();
+#endif
   return false;
 }
 
-// "monitor dw -" 
-// try to disable the debugWIRE interface on the target system
-// do it only if autodw is true
-boolean gdbStop(boolean always)
+// setup everything after having entered DW mode
+void setupDW(void)
 {
-  if (targetStop(always)) {
-    setSysState(NOTCONN_STATE);
-    if (always) {
-      gdbReportConnected();
-    }
+  setSysState(DWCONN_STATE);
+  gdbCleanupBreakpointTable();
+  targetReset(); 
+  targetInitRegisters();
+}
+
+// start a connection (target remote ...)
+// if DW mode is active, go directly there
+// otherwise either program DWEN, powercycle, and then enter DW (AutoDW)
+// or simply program DWEN (non-AutoDW)
+boolean gdbStartConnect(boolean initialconnect)
+{
+  int conncode;
+  _delay_ms(100); // allow for startup of MCU initially
+  mcu.sig = 0;
+  if (targetDWConnect()) { // if immediately in DW mode, that is OK!
+    setupDW();
     return true;
-  } else {
-    if (always) {
-      gdbDebugMessagePSTR(PSTR("debugWIRE could NOT be disabled"),-1);
-    }
-    gdbSendReply("E05");
+  }
+  conncode = targetISPConnect();
+  if (conncode < 0) {
+    gdbReportConnectionProblem(conncode == -1 ? CONNERR_NO_ISP_REPLY : -conncode + 1);
     return false;
   }
+  if ((!(ctx.autodw)) && (initialconnect)) {
+    setSysState(ISPCONN_STATE);
+    return true;
+  }
+  if (powerCycle()) {
+    setupDW();
+    return true;
+  } else {
+    flushInput();
+    targetInitRegisters();
+    return false;
+  }
+}
+
+// monitor dwire +
+// go to dW state, being in transitional or normal state 
+boolean gdbConnectDW(void)
+{
+  if (ctx.state != DWCONN_STATE) {
+    gdbStartConnect(false);
+    if (ctx.state == DWCONN_STATE) {
+      targetReset();
+      ctx.protectdw = true;
+    }
+  }
+  gdbReportConnected();
+    
+}
+  
+// Stop connection when leaving the debugger
+boolean gdbStopConnection(void)
+{
+  if (!ctx.autodw  && ctx.state == DWCONN_STATE) {
+    setSysState(ISPCONN_STATE);
+    return true; // leave debugger without leaving dW mode
+  }    
+  targetStop();
+  setSysState(NOTCONN_STATE);
+  return false;
+}
+
+// monitor dwire -
+boolean gdbDisconnectDW(void)
+{
+  if (targetStop()) {
+    setSysState(ISPCONN_STATE);
+    gdbReportConnected();
+    ctx.protectdw = false;
+    return true;
+  }
+  setSysState(NOTCONN_STATE);
+  gdbReportConnected();
+  return false;
 }
 
 void gdbReportConnected(void)
@@ -1173,13 +1213,30 @@ void gdbReportConnected(void)
     gdbReplyMessagePSTR(PSTR("Not connected"),-1);
   } else { 
     gdbDebugMessagePSTR(Connected,-2);
-    if (!targetOffline() || targetDWConnect()) {
-      gdbReset();
+    if (!targetOffline()) {
       gdbReplyMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
     } else {
       gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
     }
   }
+}
+
+// report connection problem using gdbDebugMessage with *** prefix
+// and halt further execution
+void gdbReportConnectionProblem(int errnum)
+{
+  switch (errnum) {
+  case 0: return;
+  case 1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not communicate by ISP; check wiring"),-1); break;
+  case 2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not activate debugWIRE"),-1); break;
+  case 3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU"),-1); break;
+  case 4: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits could not be cleared"),-1); break;
+  case 5: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits"),-1); break;
+  case 6: gdbDebugMessagePSTR(PSTR("***Cannot connect: Reset line has a capacitive load"),-1); break;
+  case 7: gdbDebugMessagePSTR(PSTR("***MCU type does not match"), -1);
+  default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons"),-1);
+  }
+  reportFatalError(errnum, false);
 }
 
 // report last error number
@@ -1262,43 +1319,63 @@ inline void gdbReportRamUsage(void)
 #endif
 }
 
+// perform an automatic power cycle
+boolean autoPowerCycle(void)
+{
+  if (ctx.state == DWCONN_STATE) return true;
+  setSysState(PWRCYC_STATE);
+  power(false);
+  _delay_ms(500);
+  power(true);
+  _delay_ms(100);
+  if (targetDWConnect()) {
+    setSysState(DWCONN_STATE);
+    return true;
+  }
+  return false;
+}
 
-// power-cycle and check periodically whether it is possible
-// to establish a debugWIRE connection, return false when we timeout
-boolean powerCycle(boolean verbose)
+// Ask the user to power-cycle and check whether power has been removed and reestablished.
+// If after roughly one minute, this does not happen, we return with false
+boolean manualPowerCycle(void)
 {
   int retry = 0;
   byte b;
 
+  if (ctx.state == DWCONN_STATE) return true;
   setSysState(PWRCYC_STATE);
-  while (retry < 20) {
-    //DEBPR(F("retry=")); DEBLN(retry);
-    if (retry%3 == 0) { // try to power-cycle
-      DEBLN(F("Power cycle!"));
-      power(false); // cutoff power to target
-      //_delay_ms(500);
-      _delay_ms(200);
-      power(true); // power target again
-      //_delay_ms(200); // wait for target to startup
-      _delay_ms(100);
-      DEBLN(F("Power cycling done!"));	
-    }
-    if ((retry++)%3 == 0 && retry >= 3) {
-      do {
-	if (verbose) {
-	  gdbDebugMessagePSTR(PSTR("Please power-cycle target"),-1);
-	  b = gdbReadByte();
-	} else b ='+';
-      } while (b == '-');
-    }
-    //_delay_ms(1000);
-    _delay_ms(400);
-    if (targetDWConnect()) {
-      setSysState(CONN_STATE);
-      return true;
+  // try first automatic power-cycle
+  if (autoPowerCycle()) return true;
+  while (retry++ < 6000) {
+    _delay_ms(10);
+    if (retry%1000 == 1) 
+      gdbDebugMessagePSTR(PSTR("*** Please power-cycle target ***"),-1);
+    if (digitalRead(DWLINE) == LOW) { // power gone
+      _delay_ms(10);
+      if (digitalRead(DWLINE) == LOW) { // still gone
+	while (digitalRead(DWLINE) == LOW && retry++ < 6000) _delay_ms(10);
+	if (retry >= 6000) {
+	  setSysState(ISPCONN_STATE);
+	  return false;
+	}
+	_delay_ms(300);
+	if (targetDWConnect()) {
+	  setSysState(DWCONN_STATE);
+	  return true;
+	} else {
+	  gdbReportConnectionProblem(CONNERR_NO_DW_REPLY);
+	  return false;
+	}
+      }
     }
   }
+  setSysState(ISPCONN_STATE);
   return false;
+}
+
+boolean powerCycle(void)
+{
+  return manualPowerCycle();
 }
 
 void power(boolean on)
@@ -1320,6 +1397,10 @@ void power(boolean on)
 // issue reset on target
 boolean gdbReset(void)
 {
+  if (ctx.state == ISPCONN_STATE) {
+    gdbDebugMessagePSTR(PSTR("Enable debugWIRE first"), -1);
+    return false;
+  }
   if (targetOffline()) {
     gdbDebugMessagePSTR(PSTR("Target offline: Cannot reset"), -1);
     return false;
@@ -1335,12 +1416,12 @@ void gdbSetFuses(Fuses fuse)
   boolean offline = targetOffline();
   int res; 
 
-  if (!ctx.autodw && !offline) {
-    gdbDebugMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
+  if (!ctx.autodw && ctx.state == DWCONN_STATE) {
+    gdbDebugMessagePSTR(PSTR("Disable debugWIRE first"),-1);
     gdbSendReply("E01");
     return;
   }
-  setSysState(NOTCONN_STATE);
+  if (ctx.state == DWCONN_STATE) setSysState(ISPCONN_STATE);
   res = targetSetFuses(fuse);
   if (res < 0) {
     if (res == -1) gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1);
@@ -1364,14 +1445,15 @@ void gdbSetFuses(Fuses fuse)
   case Erase: gdbDebugMessagePSTR(PSTR("Chip erased"),-1); break;
   default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("***Fatal Error: Wrong fuse!"),-1); break;
   }
-  if (!offline) gdbDebugMessagePSTR(PSTR("Reconnecting ..."),-1);
-  _delay_ms(200);
-  flushInput();
-  if (offline) {
+  if (!offline && ctx.autodw) {
+    gdbDebugMessagePSTR(PSTR("Reconnecting ..."),-1);
+    _delay_ms(200);
+    flushInput();
+  } else {
     gdbSendReply("OK");
     return;
   }
-  if (!gdbConnect(true))
+  if (ctx.autodw && !gdbConnectDW())
     gdbSendReply("E02");
   else 
     gdbSendReply("OK");
@@ -1383,13 +1465,13 @@ void gdbGetFuses(boolean ckdiv, boolean noreply)
   boolean offline = targetOffline();
   int res; 
 
-  if (!ctx.autodw && !offline) {
+  if (!ctx.autodw && ctx.state == DWCONN_STATE) {
     gdbDebugMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
     gdbSendReply("E01");
     return;
   }
 
-  setSysState(NOTCONN_STATE);
+  if (ctx.state == DWCONN_STATE) setSysState(ISPCONN_STATE);
   res = targetGetClockFuses(CkSource, CkDiv);
   if (res < 0) {
     gdbDebugMessagePSTR(PSTR("Cannot access fuses"),-res);
@@ -1413,11 +1495,11 @@ void gdbGetFuses(boolean ckdiv, boolean noreply)
   if (noreply) return;
   _delay_ms(200);
   flushInput();
-  if (offline) {
+  if (offline || !ctx.autodw) {
     gdbSendReply("OK");
     return;
   }
-  if (!gdbConnect(false))
+  if (ctx.autodw && !gdbConnectDW())
     gdbSendReply("E02");
   else 
     gdbSendReply("OK");
@@ -1493,6 +1575,7 @@ byte gdbStep(void)
 
   //DEBLN(F("Start step operation"));
   if (fatalerror) return SIGABRT;
+  if (ctx.state == ISPCONN_STATE) return SIGTERM;
   if (targetOffline()) return SIGHUP;
   getInstruction(opcode, arg);
   if (targetIllegalOpcode(opcode)) {
@@ -1536,6 +1619,7 @@ byte gdbContinue(void)
   byte sig = 0;
   //DEBLN(F("Start continue operation"));
   if (fatalerror) sig = SIGABRT;
+  else if (ctx.state == ISPCONN_STATE) sig = SIGTERM;
   else if (targetOffline()) sig = SIGHUP;
   else {
     gdbUpdateBreakpoints(false);  // update breakpoints in flash memory
@@ -2087,7 +2171,8 @@ int gdbBin2Mem(const byte *buf, byte *mem, int count) {
 boolean targetOffline(void)
 {
   measureRam();
-  if (ctx.state == CONN_STATE || ctx.state == RUN_STATE || ctx.state == LOAD_STATE) return false;
+  if (ctx.state == PWRCYC_STATE || ctx.state == DWCONN_STATE ||
+      ctx.state == RUN_STATE || ctx.state == LOAD_STATE) return false;
   return true;
 }
 
@@ -2227,8 +2312,10 @@ void gdbState2Buf(byte signo)
 void gdbSendState(byte signo)
 {
   targetSaveRegisters();
-  if (!targetOffline()) setSysState(CONN_STATE);
   switch (signo) {
+  case SIGTERM:
+    gdbDebugMessagePSTR(PSTR("Enable debugWIRE first"),-1);
+    break;
   case SIGHUP:
     gdbDebugMessagePSTR(PSTR("Connection to target lost"),-1);
     setSysState(NOTCONN_STATE);
@@ -2344,7 +2431,6 @@ boolean targetDWConnect(void)
 
 // try to establish an ISP connection and program the DWEN fuse
 // if possible, set DWEN fuse
-//   1 if we are in debugWIRE mode and connected 
 //   0 if we need to powercycle
 //   -1 if we cannot connect
 //   -2 if unknown MCU type
@@ -2399,14 +2485,13 @@ int targetISPConnect(void)
 
 
 // disable debugWIRE mode
-boolean targetStop(boolean always)
+boolean targetStop(void)
 {
   int ret = 1;
-  if (always || ctx.autodw) {
-    ret = targetSetFuses(DWEN);
-    leaveProgramMode();
-  }
-  dw.end();
+  if (!ctx.autodw && ctx.protectdw) // if no autodw mode and we have not explicitly switch off dw
+    return true;                    // the protext dw mode
+  ret = targetSetFuses(DWEN);
+  leaveProgramMode();
   return (ret == 1);
 }
 
@@ -3433,6 +3518,7 @@ void DWsetWBp (unsigned int wbp) {
 }
 
 // execute an instruction offline (can be 2-byte or 4-byte)
+// if 4-byte, the trailing 2 bytes are taken from flash!!!
 void DWexecOffline(unsigned int opcode)
 {
   byte cmd[] = {0xD2, (byte) (opcode >> 8), (byte) (opcode&0xFF), 0x23};
@@ -4170,7 +4256,7 @@ int gdbTests(int &num) {
   targetSaveRegisters();
   failed += testResult(succ && ctx.wpc == 0xe6);
   
-  setSysState(CONN_STATE);
+  setSysState(DWCONN_STATE);
   if (num >= 1) {
     num = testnum;
     return failed;
@@ -4202,7 +4288,7 @@ int targetTests(int &num) {
   gdbDebugMessagePSTR(PSTR("targetWriteFlashPage: "), testnum++);
   const int flashaddr = 0x80;
   fatalerror = NO_FATAL;
-  setSysState(CONN_STATE);
+  setSysState(DWCONN_STATE);
   DWeraseFlashPage(flashaddr);
   DWreenableRWW();
   validpg = false;
@@ -4214,33 +4300,33 @@ int targetTests(int &num) {
 
   // write same page again (since cache is valid, should not happen)
   gdbDebugMessagePSTR(PSTR("targetWriteFlashPage (check vaildpg): "), testnum++);
-  fatalerror = NO_FATAL; setSysState(CONN_STATE);
+  fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   targetWriteFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
   
   // write same page again (cache valid flag cleared), but since contents is tha same, do not write
   gdbDebugMessagePSTR(PSTR("targetWriteFlashPage (check contents): "), testnum++);
-  fatalerror = NO_FATAL; setSysState(CONN_STATE);
+  fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   validpg = false;
   targetWriteFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
 
   // try to write a cache page at an address that is not at a page boundary -> fatal error
   gdbDebugMessagePSTR(PSTR("targetWriteFlashPage (addr error): "), testnum++);
-  fatalerror = NO_FATAL; setSysState(CONN_STATE);
+  fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   targetWriteFlashPage(flashaddr+2);
   failed += testResult(fatalerror != NO_FATAL && lastflashcnt == flashcnt);
 
   // read page (should be done from cache)
   gdbDebugMessagePSTR(PSTR("targetReadFlashPage (from cache): "), testnum++);
-  fatalerror = NO_FATAL; setSysState(CONN_STATE);
+  fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   page[0] = 0x11; // mark first cell in order to see whether things get reloaded
   targetReadFlashPage(flashaddr);
   failed += testResult(fatalerror == NO_FATAL && page[0] == 0x11);
 
   // read page (force cache to be invalid and read from flash)
   gdbDebugMessagePSTR(PSTR("targetReadFlashPage: "), testnum++);
-  fatalerror = NO_FATAL; setSysState(CONN_STATE);
+  fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   for (i=0; i < mcu.targetpgsz; i++) page[i] = 0;
   validpg = false;
   succ = true;
@@ -4703,8 +4789,7 @@ void ISPprogramming(__attribute__((unused)) boolean fast) {
       }
       leaveProgramMode();
       wdt_disable();
-      wdt_enable(WDTO_15MS);
-      while (1); //restart
+      dwlrestart();
     }
   }
 #endif
@@ -4914,7 +4999,7 @@ void avrisp (void) {
             for (ii = 0; ii < EECHUNK; ii++) {
               addr = start + ii;
               ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true);
-              delay(45);
+              _delay_ms(45);
             }
             start += EECHUNK;
             remaining -= EECHUNK;
@@ -4925,7 +5010,7 @@ void avrisp (void) {
           for (ii = 0; ii < remaining; ii++) {
             addr = start + ii;
             ispSend(0xC0, (addr >> 8) & 0xFF, addr & 0xFF, buf[ii], true);
-            delay(45);
+            _delay_ms(45);
           }
           result = STK_OK;
         }

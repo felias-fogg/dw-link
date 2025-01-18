@@ -82,5 +82,28 @@
 
 
 
+**New control regime for entering/leaving DW**
 
+**AutoDW**: Entering and leaving DW mode is something the user can be ignorant about. Works only if the target system is powered by the debugger.
 
+**Non-AutoDW**: At some points, the user is asked to power-cycle the system. After debugging, the user has to restore the original state.
+
+Possible states are: **N**ormal, **T**ransitional, **D**ebugWIRE
+
+- `target remote ...` gdbStartConnect
+  - AutoDW: N|T|D -> D
+  - Non-AutoDW: D -> D, N|T -> T
+
+- `quit` gdbStopConnect
+  - AutoDW: D|T|N -> N
+  - Non-AutoDW: D -> D, T|N -> N
+
+- `monitor dwire +` gdbConnectDW
+  - AutoDW: N|T|D -> D
+  - Non-AutoDW: N|T -> PC -> D, D -> D
+
+- `monitor dwire -` gdbDisconnectDW 
+  - AutoDW: D|T|N -> N
+  - Non-AutoDW: D -> T, T -> T, N -> N
+
+In the end, I noticed that quit did not work as expected, because sometimes the quit is called more than once! So, I added extra control-variables to take of that. 

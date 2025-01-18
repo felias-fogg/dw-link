@@ -98,7 +98,7 @@ The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolc
 
 ## Step 5: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.5.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.2.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
 
 When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable, as shown below.
 

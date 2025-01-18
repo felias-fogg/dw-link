@@ -1,6 +1,24 @@
 # Changelog for dw-link
 
-## Version 4.0.4
+## Version 4.1.0
+- Change: New state ISPCONN\_STATE. Former CONN\_STATE becomes DWCONN_STATE
+- Change: autoDW is now sensed by checking the logic level of the DW line in the beginning. It should be low at the start and high after we powered up the board. If this is not the case, autoDW is cleared.
+- Change: Two connnection routines / two disconnect routines
+- Change: Giving error message when requesting anything if not DWCONN\_STATE
+- Change: Giving error message when trying to change any fuses in not
+  AutoDW mode, when DW is active
+- Change: requesting power-cycle in "monitor dw +" with timeout
+- Added: New signal SIGTERM, which is raised when in ISPCONN_STATE and
+  any debugger actions should be done
+- Added new ctx-field protectdw. This is initially true, will be set
+  by monitor dw + and cleared by monitor dw -. If !ctx.autodw &&
+  ctx.protectdw, then targetStop will not clear DW mode. This became
+  necessary because it can be the case that on terminating a debug
+  session the gdbStopConnection can be called more then once :-(, and then the simple automata model does not work anymore.
+- Added `debug.cortex-debug.custom.preLaunchCommands.0=monitor dwire
+  +` in platform.txt (so that the user does not have to bother to switch on DW-mode). 
+
+## Version 4.0.4 (16-Jan-2025)
 - Changes in platform.ini files
 - Change: Giving a more informative error message when the stuck-at-1
   error is diagnosed because of capacitive load on the reset line 
