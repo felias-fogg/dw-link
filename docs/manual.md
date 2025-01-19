@@ -12,93 +12,109 @@
 
 <div style="page-break-after: always"></div>
 
-  * [1. Introduction](#1-introduction)
-    + [1.1 Enter the wonderful world of debugging in a few easy steps](#11-enter-the-wonderful-world-of-debugging-in-a-few-easy-steps)
-    + [1.2 Other debugging approaches for classic ATtinys and ATmegaX8s](#12-other-debugging-approaches-for-classic-attinys-and-atmegax8s)
-    + [Warning](#warning)
-  * [2. The debugWIRE interface](#2-the-debugwire-interface)
-  * [3. Hardware requirements](#3-hardware-requirements)
-    + [3.1 The hardware debugger](#31-the-hardware-debugger)
-    + [3.2 MCUs with debugWIRE interface](#32-mcus-with-debugwire-interface)
-    + [3.3 Requirements concerning the target system](#33-requirements-concerning-the-target-system)
-    + [3.4 Worst-case scenario](#34-worst-case-scenario)
-  * [4. Installation of firmware and hardware setup](#4-installation-of-firmware-and-hardware-setup)
-    + [4.1 Firmware installation](#41-firmware-installation)
-    + [4.2 Setting up the hardware](#42-setting-up-the-hardware)
-      - [4.2.1 Debugging an ATtiny85](#421-debugging-an-attiny85)
-      - [4.2.2 Debugging a UNO](#422-debugging-a-uno)
-      - [4.2.3 Debugging a UNO that needs a serial connection to the host](#423-debugging-a-uno-that-needs-a-serial-connection-to-the-host)
-      - [4.2.4 Restoring a UNO to its native state](#424-restoring-a-uno-to-its-native-state)
-    + [4.3 States of the hardware debugger](#43-states-of-the-hardware-debugger)
-  * [5. Arduino IDE 2](#5-arduino-ide-2)
-    + [5.1 Installing board manager files](#51-installing-board-manager-files)
-    + [5.2. Compiling the sketch](#52-compiling-the-sketch)
-    + [5.3. Debugging](#53-debugging)
-    + [5.4 Some "Pro" Tips](#54-some--pro--tips)
-  * [6. Arduino IDE and avr-gdb](#6-arduino-ide-and-avr-gdb)
-    + [6.1 Installing board manager files](#61-installing-board-manager-files)
-    + [6.2 Installing avr-gdb](#62-installing-avr-gdb)
-    + [6.3 Compiling the sketch](#63-compiling-the-sketch)
-    + [6.4 Example session with avr-gdb](#64-example-session-with-avr-gdb)
-    + [6.5 Disabling debugWIRE mode explicitly](#65-disabling-debugwire-mode-explicitly)
-    + [6.6 GDB commands](#66-gdb-commands)
-    + [6.7 A graphical user interface: *Gede*](#67-a-graphical-user-interface---gede-)
-  * [7 PlatformIO IDE](#7-platformio-ide)
-    + [7.1 Installing PlatformIO](#71-installing-platformio)
-    + [7.2 Open an existing project](#72-open-an-existing-project)
-    + [7.2 Adapting the `platformio.ini` file](#72-adapting-the--platformioini--file)
-    + [7.3 Debugging with PlatformIO](#73-debugging-with-platformio)
-    + [7.4 Disabling debugWIRE mode](#74-disabling-debugwire-mode)
-    + [7.5 Configuring `platformio.ini`](#75-configuring--platformioini-)
-  * [8. A "real" hardware debugger](#8-a--real--hardware-debugger)
-    + [8.1 The basic solution](#81-the-basic-solution)
-    + [8.2 A simple shield](#82-a-simple-shield)
-    + [8.3 Adapter with level-shifters and switchable power supply: *dw-link probe*](#83-adapter-with-level-shifters-and-switchable-power-supply---dw-link-probe-)
-  * [9. Problems and shortcomings](#9-problems-and-shortcomings)
-    + [9.1 Flash memory wear](#91-flash-memory-wear)
-    + [9.2 Slow responses when loading or single-stepping](#92-slow-responses-when-loading-or-single-stepping)
-    + [9.3 Program execution is very slow when conditional breakpoints are present](#93-program-execution-is-very-slow-when-conditional-breakpoints-are-present)
-    + [9.4 Single-stepping and interrupt handling clash](#94-single-stepping-and-interrupt-handling-clash)
-    + [9.5 Limited number of breakpoints](#95-limited-number-of-breakpoints)
-    + [9.6 Power saving is not operational](#96-power-saving-is-not-operational)
-    + [9.7 MCU operations interfering with debugWIRE](#97-mcu-operations-interfering-with-debugwire)
-    + [9.8 BREAK instructions in your program](#98-break-instructions-in-your-program)
-    + [9.9 Some MCUs have stuck-at-one bits in the program counter](#99-some-mcus-have-stuck-at-one-bits-in-the-program-counter)
-    + [9.10 The start of the debugger takes two seconds](#910-the-start-of-the-debugger-takes-two-seconds)
-    + [9.11 Code optimization reorganizes code and makes it impossible to stop at a particular source line or to inspect or change values of local variables](#911-code-optimization-reorganizes-code-and-makes-it-impossible-to-stop-at-a-particular-source-line-or-to-inspect-or-change-values-of-local-variables)
-  * [10. Troubleshooting](#10-troubleshooting)
-    + [10.1 Problems while preparing the setup](#101-problems-while-preparing-the-setup)
-      - [Problem: It is impossible to upload the dw-link firmware to the UNO board](#problem--it-is-impossible-to-upload-the-dw-link-firmware-to-the-uno-board)
-    + [10.2 Connection problems](#102-connection-problems)
-      - [Problem: It is impossible to connect to the hardware debugger via the serial line](#problem--it-is-impossible-to-connect-to-the-hardware-debugger-via-the-serial-line)
-      - [Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*](#problem--when-connecting-to-the-target-using-the--target-remote--command--it-takes-a-long-time-and-then-you-get-the-message--remote-replied-unexpectedly-to--vmustreplyempty---timeout-)
-      - [Problem: When connecting to the target using the *target remote* command, you do not get an error message, but the system LED is still off and there is apparently no connection](#problem--when-connecting-to-the-target-using-the--target-remote--command--you-do-not-get-an-error-message--but-the-system-led-is-still-off-and-there-is-apparently-no-connection)
-      - [Problem: In response to the `monitor dwire +` command or when initally connecting, you get the error message *Cannot connect: ...*](#problem--in-response-to-the--monitor-dwire----command-or-when-initally-connecting--you-get-the-error-message--cannot-connect---)
-      - [Problem: You receive the message *Protocol error with Rcmd*](#problem--you-receive-the-message--protocol-error-with-rcmd-)
-    + [10.3 Problems while debugging](#103-problems-while-debugging)
-      - [Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and/or the system LED is off](#problem--you-get-the-message--connection-to-target-lost---the-program-receives-a--sighup--signal-when-you-try-to-start-execution--and-or-the-system-led-is-off)
-      - [Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*](#problem--when-stopping-the-program-with-ctrl-c--or-with-the-stop-button---you-get-the-message--cannot-remove-breakpoints-because-program-is-no-longer-writable-)
-      - [Problem: When trying to start execution with the `run` command, GDB stops with an internal error](#problem--when-trying-to-start-execution-with-the--run--command--gdb-stops-with-an-internal-error)
-      - [Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted*](#problem--the-debugger-does-not-start-execution-when-you-request--single-stepping--or--execution--and-you-get-the-warning--cannot-insert-breakpoint--command-aborted-)
-      - [Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location](#problem--when-single-stepping-with--next--or--step----you-receive-the-message--warning--cannot-insert-breakpoint-0--and-the-program-is-stopped-at-a-strange-location)
-      - [Problem: The debugger does not start execution when you request *single-stepping* or *execution*, you get the message *illegal instruction*, and the program receives a `SIGILL` signal](#problem--the-debugger-does-not-start-execution-when-you-request--single-stepping--or--execution---you-get-the-message--illegal-instruction---and-the-program-receives-a--sigill--signal)
-    + [10.4 Strange behavior of the debugger](#104-strange-behavior-of-the-debugger)
-      - [Problem: After changing optimization options, the binary is still too large/very small](#problem--after-changing-optimization-options--the-binary-is-still-too-large-very-small)
-      - [Problem: The debugger responses are very sluggish](#problem--the-debugger-responses-are-very-sluggish)
-      - [Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised](#problem--while-single-stepping--time-seems-to-be-frozen--ie--the-timers-do-not-advance-and-no-timer-interrupt-is-raised)
-      - [Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030](#problem--when-single-stepping-with--next--or--step----the-program-ends-up-at-the-start-of-flash-memory--eg--0x0030)
-      - [Problem: After requesting to stop at a function, the debugger displays a completely different file, where the execution will stop](#problem--after-requesting-to-stop-at-a-function--the-debugger-displays-a-completely-different-file--where-the-execution-will-stop)
-      - [Problem: The debugger does not stop at the line a breakpoint was set](#problem--the-debugger-does-not-stop-at-the-line-a-breakpoint-was-set)
-      - [Problem: The debugger does things that appear to be strange](#problem--the-debugger-does-things-that-appear-to-be-strange)
-      - [Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command](#problem--you-have-set-the-value-of-a-local-variable-using-the--set-var--var---value---command--but-the-value-is-still-unchanged-when-you-inspect-the-variable-using-the--print--command)
-    + [10.5 Problems with with GUI/IDE](#105-problems-with-with-gui-ide)
-      - [Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*](#problem--when-starting-the-debug-session-in-platformio--you-get-the-message--pioinit-xx--error-in-sourced-command-file-)
-    + [10.6 Problems after debugging](#106-problems-after-debugging)
-      - [Problem: After debugging, the chip is unresponsive, i.e., does not respond anymore to ISP programming or bootloader upload](#problem--after-debugging--the-chip-is-unresponsive--ie--does-not-respond-anymore-to-isp-programming-or-bootloader-upload)
-    + [10.7 Internal and fatal debugger errors](#107-internal-and-fatal-debugger-errors)
-      - [Problem: The system LED blinks furiously and/or the program receives an `ABORT` signal when trying to start execution](#problem--the-system-led-blinks-furiously-and-or-the-program-receives-an--abort--signal-when-trying-to-start-execution)
-  * [Acknowledgements](#acknowledgements)
-  * [Revision history](#revision-history)
+- [1. Introduction](#1-introduction)
+  * [1.1 Enter the wonderful world of debugging in a few easy steps](#11-enter-the-wonderful-world-of-debugging-in-a-few-easy-steps)
+  * [1.2 Other debugging approaches for classic ATtinys and ATmegaX8s](#12-other-debugging-approaches-for-classic-attinys-and-atmegax8s)
+  * [Warning](#warning)
+- [2. The debugWIRE interface](#2-the-debugwire-interface)
+- [3. Hardware requirements](#3-hardware-requirements)
+  * [3.1 Power supply: External or by hardware debugger?](#31-power-supply--external-or-by-hardware-debugger-)
+  * [3.2 The hardware debugger](#32-the-hardware-debugger)
+  * [3.3 MCUs with debugWIRE interface](#33-mcus-with-debugwire-interface)
+  * [3.4 Requirements concerning the target system](#34-requirements-concerning-the-target-system)
+  * [3.5 Worst-case scenario](#35-worst-case-scenario)
+- [4. Installation of firmware and hardware setup](#4-installation-of-firmware-and-hardware-setup)
+  * [4.1 Firmware installation](#41-firmware-installation)
+  * [4.2 Setting up the hardware](#42-setting-up-the-hardware)
+    + [4.2.1 Debugging an ATtiny85](#421-debugging-an-attiny85)
+    + [4.2.2 Debugging a UNO](#422-debugging-a-uno)
+    + [4.2.3 Debugging a UNO that needs a serial connection to the host](#423-debugging-a-uno-that-needs-a-serial-connection-to-the-host)
+    + [4.2.4 Restoring a UNO to its native state](#424-restoring-a-uno-to-its-native-state)
+  * [4.3 States of the hardware debugger](#43-states-of-the-hardware-debugger)
+- [5. Arduino IDE 2](#5-arduino-ide-2)
+  * [5.1 Installing board manager files](#51-installing-board-manager-files)
+  * [5.2. Compiling the sketch](#52-compiling-the-sketch)
+  * [5.3. Debugging](#53-debugging)
+  * [5.4 Some "Pro" Tips](#54-some--pro--tips)
+- [6. Arduino IDE and avr-gdb](#6-arduino-ide-and-avr-gdb)
+  * [6.1 Installing board manager files](#61-installing-board-manager-files)
+  * [6.2 Installing avr-gdb](#62-installing-avr-gdb)
+  * [6.3 Compiling the sketch](#63-compiling-the-sketch)
+  * [6.4 Example session with avr-gdb](#64-example-session-with-avr-gdb)
+  * [6.5 Disabling debugWIRE mode explicitly](#65-disabling-debugwire-mode-explicitly)
+  * [6.6 GDB commands](#66-gdb-commands)
+  * [6.7 A graphical user interface: *Gede*](#67-a-graphical-user-interface---gede-)
+- [7 PlatformIO IDE](#7-platformio-ide)
+  * [7.1 Installing PlatformIO](#71-installing-platformio)
+  * [7.2 Open an existing project](#72-open-an-existing-project)
+  * [7.2 Adapting the `platformio.ini` file](#72-adapting-the--platformioini--file)
+  * [7.3 Debugging with PlatformIO](#73-debugging-with-platformio)
+  * [7.4 Disabling debugWIRE mode](#74-disabling-debugwire-mode)
+  * [7.5 Configuring `platformio.ini`](#75-configuring--platformioini-)
+- [8. A "real" hardware debugger](#8-a--real--hardware-debugger)
+  * [8.1 The basic solution](#81-the-basic-solution)
+  * [8.2 A simple shield](#82-a-simple-shield)
+  * [8.3 Adapter with level-shifters and switchable power supply: *dw-link probe*](#83-adapter-with-level-shifters-and-switchable-power-supply---dw-link-probe-)
+- [9. Problems and shortcomings](#9-problems-and-shortcomings)
+  * [9.1 Flash memory wear](#91-flash-memory-wear)
+  * [9.2 Slow responses when loading or single-stepping](#92-slow-responses-when-loading-or-single-stepping)
+  * [9.3 Program execution is very slow when conditional breakpoints are present](#93-program-execution-is-very-slow-when-conditional-breakpoints-are-present)
+  * [9.4 Single-stepping and interrupt handling clash](#94-single-stepping-and-interrupt-handling-clash)
+  * [9.5 Limited number of breakpoints](#95-limited-number-of-breakpoints)
+  * [9.6 Power saving is not operational](#96-power-saving-is-not-operational)
+  * [9.7 MCU operations interfering with debugWIRE](#97-mcu-operations-interfering-with-debugwire)
+  * [9.8 BREAK instructions in your program](#98-break-instructions-in-your-program)
+  * [9.9 Some MCUs have stuck-at-one bits in the program counter](#99-some-mcus-have-stuck-at-one-bits-in-the-program-counter)
+  * [9.10 The start of the debugger takes two seconds](#910-the-start-of-the-debugger-takes-two-seconds)
+  * [9.11 Code optimization reorganizes code and makes it impossible to stop at a particular source line or to inspect or change values of local variables](#911-code-optimization-reorganizes-code-and-makes-it-impossible-to-stop-at-a-particular-source-line-or-to-inspect-or-change-values-of-local-variables)
+- [10. Troubleshooting](#10-troubleshooting)
+  * [10.1 Problems while preparing the setup](#101-problems-while-preparing-the-setup)
+    + [Problem: It is impossible to upload the dw-link firmware to the UNO board](#problem--it-is-impossible-to-upload-the-dw-link-firmware-to-the-uno-board)
+  * [10.2 Connection problems](#102-connection-problems)
+    + [Problem: It is impossible to connect to the hardware debugger via the serial line](#problem--it-is-impossible-to-connect-to-the-hardware-debugger-via-the-serial-line)
+    + [Problem: When connecting to the target using the *target remote* command, it takes a long time and then you get the message *Remote replied unexpectedly to 'vMustReplyEmpty': timeout*](#problem--when-connecting-to-the-target-using-the--target-remote--command--it-takes-a-long-time-and-then-you-get-the-message--remote-replied-unexpectedly-to--vmustreplyempty---timeout-)
+    + [Problem: When connecting to the target using the *target remote* command, you do not get an error message, but the system LED is still off and there is apparently no connection](#problem--when-connecting-to-the-target-using-the--target-remote--command--you-do-not-get-an-error-message--but-the-system-led-is-still-off-and-there-is-apparently-no-connection)
+    + [Problem: In response to the `monitor dwire +` command or when initally connecting, you get the error message *Cannot connect: ...*](#problem--in-response-to-the--monitor-dwire----command-or-when-initally-connecting--you-get-the-error-message--cannot-connect---)
+    + [Problem: You receive the message *Protocol error with Rcmd*](#problem--you-receive-the-message--protocol-error-with-rcmd-)
+  * [10.3 Problems while debugging](#103-problems-while-debugging)
+    + [Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and/or the system LED is off](#problem--you-get-the-message--connection-to-target-lost---the-program-receives-a--sighup--signal-when-you-try-to-start-execution--and-or-the-system-led-is-off)
+    + [Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*](#problem--when-stopping-the-program-with-ctrl-c--or-with-the-stop-button---you-get-the-message--cannot-remove-breakpoints-because-program-is-no-longer-writable-)
+    + [Problem: When trying to start execution with the `run` command, GDB stops with an internal error](#problem--when-trying-to-start-execution-with-the--run--command--gdb-stops-with-an-internal-error)
+    + [Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted*](#problem--the-debugger-does-not-start-execution-when-you-request--single-stepping--or--execution--and-you-get-the-warning--cannot-insert-breakpoint--command-aborted-)
+    + [Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location](#problem--when-single-stepping-with--next--or--step----you-receive-the-message--warning--cannot-insert-breakpoint-0--and-the-program-is-stopped-at-a-strange-location)
+    + [Problem: The debugger does not start execution when you request *single-stepping* or *execution*, you get the message *illegal instruction*, and the program receives a `SIGILL` signal](#problem--the-debugger-does-not-start-execution-when-you-request--single-stepping--or--execution---you-get-the-message--illegal-instruction---and-the-program-receives-a--sigill--signal)
+  * [10.4 Strange behavior of the debugger](#104-strange-behavior-of-the-debugger)
+    + [Problem: After changing optimization options, the binary is still too large/very small](#problem--after-changing-optimization-options--the-binary-is-still-too-large-very-small)
+    + [Problem: The debugger responses are very sluggish](#problem--the-debugger-responses-are-very-sluggish)
+    + [Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised](#problem--while-single-stepping--time-seems-to-be-frozen--ie--the-timers-do-not-advance-and-no-timer-interrupt-is-raised)
+    + [Problem: PWM (analogWrite) does not seem to work when the program is stopped](#problem--pwm--analogwrite--does-not-seem-to-work-when-the-program-is-stopped)
+    + [Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030](#problem--when-single-stepping-with--next--or--step----the-program-ends-up-at-the-start-of-flash-memory--eg--0x0030)
+    + [Problem: After requesting to stop at a function, the debugger displays a completely different file, where the execution will stop](#problem--after-requesting-to-stop-at-a-function--the-debugger-displays-a-completely-different-file--where-the-execution-will-stop)
+    + [Problem: The debugger does not stop at the line a breakpoint was set](#problem--the-debugger-does-not-stop-at-the-line-a-breakpoint-was-set)
+    + [Problem: The debugger does things that appear to be strange](#problem--the-debugger-does-things-that-appear-to-be-strange)
+    + [Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command](#problem--you-have-set-the-value-of-a-local-variable-using-the--set-var--var---value---command--but-the-value-is-still-unchanged-when-you-inspect-the-variable-using-the--print--command)
+  * [10.5 Problems with with GUI/IDE](#105-problems-with-with-gui-ide)
+    + [Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file*](#problem--when-starting-the-debug-session-in-platformio--you-get-the-message--pioinit-xx--error-in-sourced-command-file-)
+  * [10.6 Problems after debugging](#106-problems-after-debugging)
+    + [Problem: After debugging, the chip is unresponsive, i.e., does not respond anymore to ISP programming or bootloader upload](#problem--after-debugging--the-chip-is-unresponsive--ie--does-not-respond-anymore-to-isp-programming-or-bootloader-upload)
+  * [10.7 Internal and fatal debugger errors](#107-internal-and-fatal-debugger-errors)
+    + [Problem: The system LED blinks furiously and/or the program receives an `ABORT` signal when trying to start execution](#problem--the-system-led-blinks-furiously-and-or-the-program-receives-an--abort--signal-when-trying-to-start-execution)
+- [Acknowledgements](#acknowledgements)
+- [Revision history](#revision-history)
+    + [V 1.1](#v-11)
+    + [V 1.2](#v-12)
+    + [V 1.3](#v-13)
+    + [V 1.4](#v-14)
+    + [V 1.5](#v-15)
+    + [V 1.6](#v-16)
+    + [V 1.7](#v-17)
+    + [V 1.8](#v-18)
+    + [V 1.9](#v-19)
+    + [V 1.10](#v-110)
+    + [V 1.11](#v-111)
+    + [V 2.0](#v-20)
+    + [V 3.0](#v-30)
+    + [V 4.0](#v-40)
 
 <small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
 
@@ -132,6 +148,8 @@ The physical connection between the hardware debugger and the target, as describ
 
 And what do you with your hardware debugger once you have debugged all your programs and they work flawlessly? Since version 2.2.0, you can use dw-link also as an STK500 v1 ISP programmer. If you connect to dw-link with 19200 bps and start avrdude, then dw-link becomes an ISP programmer.
 
+<a name="section12">
+
 ### 1.2 Other debugging approaches for classic ATtinys and ATmegaX8s
 
 While dw-link is (unsurprisingly) my preferred open source solution for debugging classic tiny AVRs and ATmegaX8s, there are a number of other possible approaches. 
@@ -144,7 +162,7 @@ Finally, there exists also an Arduino UNO based hardware debugger called [DebugW
 
 There exists an implementation similar to dwire-debug in Pascal called [debugwire-gdb-bridge](https://github.com/ccrause/debugwire-gdb-bridge) that appears to be more complete. In particular, it handles multiple breakpoints. However, I was not able to install it. That is probably based on the fact that my knowledge of Pascal is rusty and I have no experience with the Lazarus IDE. 
 
-I took all of the above ideas (and some of the code) and put it together in order to come up with a cheap debugWIRE hardware debugger supporting GDB's remote serial protocol. Actually, it was a bit more than just throwing the things together. I developed a [new library for single wire serial communication](https://github.com/felias-fogg/SingleWireSerial) that is [much more reliable and robust](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/) than the usually employed SoftwareSerial library. Further, I fixed a few loose ends in the existing implementations, sped up communication and flash programming, supported slow MCU clocks (4 kHz), implemented an [interrupt-safe way of single-stepping](https://hinterm-ziel.de/index.php/2022/01/02/thats-one-small-step-for-a-man-one-giant-leap-for-a-debugger-on-single-stepping-and-interrupts/), and spent a few nights debugging the debugger. Along the way, I also made [a number of interesting discoveries](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/). And I tested the debugger on almost all MCUs supported by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore) and [MiniCore](https://github.com/MCUdude/MiniCore). 
+I took all of the above ideas (and some of the code) and put it together in order to come up with a cheap debugWIRE hardware debugger supporting GDB's remote serial protocol. Actually, it was a bit more than just throwing things together. I developed a [new library for single wire serial communication](https://github.com/felias-fogg/SingleWireSerial) that is [much more reliable and robust](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/) than the usually employed SoftwareSerial library. Further, I fixed a few loose ends in the existing implementations, sped up communication and flash programming, supported slow MCU clocks (4 kHz), implemented an [interrupt-safe way of single-stepping](https://hinterm-ziel.de/index.php/2022/01/02/thats-one-small-step-for-a-man-one-giant-leap-for-a-debugger-on-single-stepping-and-interrupts/), and spent a few nights debugging the debugger. Along the way, I also made [a number of interesting discoveries](https://hinterm-ziel.de/index.php/2021/12/29/surprise-surprise/). And I tested the debugger on almost all MCUs supported by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore) and [MiniCore](https://github.com/MCUdude/MiniCore). 
 
 <font color="red">
 
@@ -657,12 +675,13 @@ Finally, there are commands that control the settings of the debugger and the MC
 | monitor version                    | print version number of firmware                             |
 | monitor dwire [+\|-]               | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
 | monitor reset                      | resets the MCU (*)                                           |
-| monitor mcu [*mcu-name*]           | If no argument is given, the MCU dw-link is connected to is printed. Otherwise, it is checked whether the given *mcu-name* matches the connected MCU and if not, a fatal error (5) is signaled. |
+| monitor runtimes                   | run timers (**+**) or freeze (**-**) (default) when the program is stopped |
+| monitor mcu [*mcu-name*]           | If no argument is given, the MCU dw-link is connected to is printed. Otherwise, it is checked whether the given *mcu-name* matches the connected MCU and if not, a fatal error is signaled and debugging is stopped. |
 | monitor ckdiv [1\|8]               | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*+) |
 | monitor oscillator [r\|a\|x\|e\|s] | set clock source to **r**c osc., **a**lternate rc osc., **x**tal, **e**xternal osc., or **s**low osc. (128 kHz); without argument, it reports the fuse setting (*+) |
-| monitor breakpoint [h\|s]          | set the number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25, when also **s**oftware breakpoints are permitted; without argument, it reports setting |
-| monitor speed [l\|h]               | set the communication speed limit to **l**ow (=150kbps) or to **h**igh (=300kbps); without an argument, the current communication speed and speed limit is printed |
-| monitor singlestep [s\|u]          | Sets single stepping to **s**afe (no interrupts) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
+| monitor breakpoint [h\|s]          | set the number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25 (default), when also **s**oftware breakpoints are permitted; without argument, it reports setting |
+| monitor speed [l\|h]               | set the communication speed limit to **l**ow (=150kbps) (default) or to **h**igh (=300kbps); without an argument, the current communication speed and speed limit is printed |
+| monitor singlestep [s\|u]          | Sets single stepping to **s**afe (no interrupts) (default) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
 | monitor lasterror                  | print error number of the last fatal error                   |
 | monitor flashcount                 | reports on how many flash-page write operations have taken place since the start |
 | monitor timeouts                   | report number of timeouts (should be 0!)                     |
@@ -1053,12 +1072,12 @@ When you are done with debugging, you should switch back to normal mode with `mo
 
 Depending on the concrete error message, the problem fix varies.
 
-- *Cannot connect: Could not communicate by ISP; check wiring*: The debugger can not establish an ISP connection. Check wiring. If this is not the reason, disconnect everything and put it together again. THis helps sometimes.
+- *Cannot connect: Could not communicate by ISP; check wiring*: The debugger can not establish an ISP connection. Check wiring. Maybe you forgot to power the target board? I did that more than once. If this is not the reason, disconnect everything and put it together again. This helps sometimes. Finally, this error could be caused by bricking your MCU having too much capacitive load or a pull-up resistor that is too weak on the RESET line.  
 - *Cannot connect: Could not activate debugWIRE*: An ISP connection was established, but it was not possible to activate debugWIRE. Most probably the MCU is now in a limbo state and can only be resurrected by a HV programmer. The reason is most probably too much capacitive load on the RESET line or a weak pullup resistor on this line.
 - *Cannot connect: Unsupported MCU*: This MCU is not supported by dw-link. It most probably has no debugWIRE on board. 
 - *Cannot connect: Lock bits could not be cleared:* This should not happen at all because it is always possible to clear the lock bits by erasing the entire chip.
 - *Cannot connect: PC with stuck-at-one bits*: dw-link tried to connect to an MCU with stuck-at-one bits in the program counter (see [Section 9.9](#section99)). These MCUs cannot be debugged with GDB. 
-- *Cannot connect: Reset line has a capacitive load*: The message say it all.
+- *Cannot connect: Reset line has a capacitive load*: The message says it all.
 - *MCU type does not match*: The chip connected to the hardware debugger is different from what you announced to the IDE.
 - *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!
 
@@ -1112,6 +1131,10 @@ One reason for that could be that the target is run with a clock less than 1 MHz
 
 This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the `continue` command (or when the `next` command skips over a function call). You can change this behavior by using the command `monitor singlestep u`, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping control is transferred into an interrupt routine.
 
+#### Problem: PWM (analogWrite) does not seem to work when the program is stopped
+
+The reason is that all timers are usually stopped when the program is in a stopped state. However, you can change this behavior using the GDB command `monitor runtimers +`. In this case, the timers are run even when the program is stopped, which means that PWM (aka `analogWrite`) is also still active.
+
 #### Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030
 
 This should only happen when you have used the command `monitor singlestep u` before, which enables interrupts while single-stepping. In this case, an interrupt might have been raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the `continue` command. If you want to avoid this behavior in the future, issue the debugger command `monitor singlestep s`. 
@@ -1138,7 +1161,7 @@ So, before blaming the debugger, check for the three possible causes.
 
 #### Problem: You have set the value of a local variable using the `set var <var>=<value>` command, but the value is still unchanged when you inspect the variable using the `print` command
 
-This appears to happen even when the optimization level is set to **-Og**, but not when you use **-O0**. So, if it is important for you to change the value of local variables, you should use the latter optimization level (see the preceding problem).
+This appears to happen even when the optimization level is set to **-Og**, but not when you use **-O0**. So, if it is important for you to change the value of local variables from the debugger, you should use the latter optimization level (see the preceding problem).
 
 
 
@@ -1227,6 +1250,8 @@ Error #  | Meaning
 
 
 ## Acknowledgements
+
+First, I would like to thank everyone who made the work described here possible by making their work public. Most I mentioned already in [Section 1.2](). In addition, I would like to thank everybody who contributed to dw-link.
 
 The cover picture was designed based on vector graphics by [captainvector at 123RF](https://de.123rf.com/profile_captainvector).
 
@@ -1335,3 +1360,6 @@ Initial version
 * Edited the problem description for locked up hardware debugger/serial line
 * New fatal error: capacitive load on the reset line
 * Introduced subsections in the problem section
+* Added *monitor runtimers*  command in table
+* Added paragraph in problem section how to use *monitor runtimers*
+* New section 3.1 about choosing between external powering and powering using the hardware debugger. 

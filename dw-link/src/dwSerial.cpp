@@ -42,6 +42,18 @@ size_t dwSerial::sendCmd(const uint8_t *loc, uint8_t len, bool fastReturn)
   return len;
 }
 
+size_t dwSerial::sendCmd(uint8_t cmd, bool fastReturn)
+{
+  Serial.flush(); // wait until everything has been written to the regular serial line in order to avoid interrupts
+  SingleWireSerial::_finishSendingEarly = fastReturn;
+  SingleWireSerial::write(cmd);
+  SingleWireSerial::_finishSendingEarly = false;
+  return 1;
+}
+
+
+
+
 void dwSerial::enable(bool active)
 {
   setRxIntMsk(active);

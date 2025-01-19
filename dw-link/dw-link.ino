@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.1.0"
+#define VERSION "4.2.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -95,7 +95,7 @@
 // convert an integer literal into its hex string representation (without the 0x prefix)
 // some size restrictions
 
-#define MAXBUF 144 // input buffer for GDB communication, initial packet is longer, but will be mostly ignored
+#define MAXBUF 164 // input buffer for GDB communication, initial packet is longer, but will be mostly ignored
 #define MAXBUFHEXSTR "90"  // hex representation string of MAXBUF 
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
@@ -202,9 +202,11 @@ struct context {
   boolean levelshifting; // true when using dw-probe sitting on an Arduino board
   boolean autodw; // switch DW automatically on and off
   boolean protectdw; // protect dw state (when autodw is off)
+  byte tmask; // run timers while stopped when tmask = 0xDF, freeze when tmask = 0xFF
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
   ispspeedtype ispspeed;
+  
 } ctx;
 
 // use LED to signal system state
@@ -425,6 +427,7 @@ enum FuseByte { LowFuse, HighFuse, ExtendedFuse };
 // monitor command names
 const char mohelp[] PROGMEM = "help";
 const char moversion[] PROGMEM = "version";
+const char moruntimers[] PROGMEM = "runtimers";
 const char modwire[] PROGMEM = "dwire";
 const char moreset[] PROGMEM = "reset";
 const char mockdiv[] PROGMEM = "ckdiv";
@@ -455,12 +458,13 @@ const char momcu[] PROGMEM = "mcu";
 #define MORAM 12
 #define MOTEST 13
 #define MOMCU 14
-#define NUMMONCMDS 15
+#define MORUNTIMERS 15
+#define NUMMONCMDS 16
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
   mohelp, moversion, modwire, moreset, mockdiv, moosc, mobreak, mospeed, mosinglestep,
-  moflashcount, molasterror, motimeouts, moram, motest, momcu }; 
+  moflashcount, molasterror, motimeouts, moram, motest, momcu, moruntimers }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -673,7 +677,8 @@ void initSession(void)
   DEBLN(F("initSession"));
   flashidle = true;
   ctx.safestep = true;
-  ctx.protectdw = true;  
+  ctx.protectdw = true;
+  ctx.tmask = 0xFF;
   bpcnt = 0;
   bpused = 0;
   hwbp = 0xFFFF;
@@ -945,6 +950,24 @@ void gdbParseMonitorPacket(byte *buf)
   case MOVERSION:
     gdbVersion();
     break;
+  case MORUNTIMERS:
+    switch (cmdbuf[mooptix]) {
+    case '+':
+      ctx.tmask = 0xDF;
+      gdbReplyMessagePSTR(PSTR("Timers will run when stopped"), -1);
+      break;
+    case '-':
+      ctx.tmask = 0xFF;
+      gdbReplyMessagePSTR(PSTR("Timers will be frozen when stopped"), -1);
+      break;
+    case '\0':
+      if (ctx.tmask == 0xDF) gdbReplyMessagePSTR(PSTR("Timers will run when stopped"), -1);
+      else gdbReplyMessagePSTR(PSTR("Timers will be frozen when stopped"), -1);
+      break;
+    default:
+      gdbSendReply("E09"); break;
+    }
+    break;
   case MOMCU:
     gdbCheckMcu(&cmdbuf[mooptix]);
     break;
@@ -1063,17 +1086,18 @@ int gdbDetermineMonitorCommand(char *line, int &optionix)
 inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor help             - help function"), -1);
   gdbDebugMessagePSTR(PSTR("monitor version          - firmware version"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor dwire [+|-]      - connect (+) or disconnect (-) to/from target (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor dwire [+|-]      - enables (+) or disables (-) debugWIRE (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor reset            - reset target (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor runtimers [+|-]  - run timers (+) or freeze (-)(d) when stopped"), -1);  
   gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]      - program (8) or unprogram (1) CK8DIV (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
   gdbDebugMessagePSTR(PSTR("                         - use RC/alt RC/XTAL/ext/slow osc. (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s] - allow 1 (h) or 25 (s) breakpoints"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s] - allow 1 (h) or 25 (s) (def.) breakpoints"), -1);
   gdbDebugMessagePSTR(PSTR("monitor singlestep [s|u] - disallow (s) or allow (u) IRQs while single-stepping"), -1);
 #if HIGHSPEED
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps) (def.) or l (150kbps)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps)(d) or l (150kbps)"), -1);
 #else
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps) or l (150kbps) (def.)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps) or l (150kbps)(d)"), -1);
 #endif  
   gdbDebugMessagePSTR(PSTR("monitor flashcount       - number of flash pages written since start"), -1);
   gdbDebugMessagePSTR(PSTR("monitor timeouts         - number of timeouts"), -1);
@@ -2515,7 +2539,7 @@ int targetSetFuses(Fuses fuse)
   if (fuse == CkSlow && mcu.slowosc == 0xFF) return -5; // this chip cannot run with 128 kHz
   if (fuse == CkARc && mcu.arosc == 0xFF) return -6;
   if (doBreak()) {
-    dw.sendCmd((const byte[]) {DW_STOP_CMD}, 1); // leave debugWIRE mode
+    dw.sendCmd(DW_STOP_CMD); // leave debugWIRE mode
   } 
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2549,7 +2573,7 @@ int targetGetClockFuses(Fuses &CkSource, Fuses &CkDiv)
   unsigned int sig;
   measureRam();
   if (doBreak()) {
-    dw.sendCmd((const byte[]) {0x06}, 1); // leave debugWIRE mode
+    dw.sendCmd(DW_STOP_CMD); // leave debugWIRE mode
   }
   if (!enterProgramMode()) return -1;
   sig = ispGetChipId();
@@ -2831,13 +2855,13 @@ void targetContinue(void)
 
   // DEBPR(F("Continue at (byte adress) "));  DEBLNF(ctx.wpc*2,HEX);
   if (hwbp != 0xFFFF) {
-    dw.sendCmd((const byte []) { 0x61 }, 1);
+    dw.sendCmd(0x61&ctx.tmask);
     DWsetWBp(hwbp);
   } else {
-    dw.sendCmd((const byte []) { 0x60 }, 1);
+    dw.sendCmd(0x60&ctx.tmask);
   }
   DWsetWPc(ctx.wpc);
-  dw.sendCmd((const byte []) { 0x30 }, 1, true); // return during stop bit so that nothing surprises us
+  dw.sendCmd(0x30, true); // return during sending the stop bit so that nothing surprises us
 }
 
 // make a single step
@@ -2847,14 +2871,14 @@ void targetStep(void)
 
   // DEBPR(F("Single step at (byte address):")); DEBLNF(ctx.wpc*2,HEX);
   // _delay_ms(5);
-  byte cmd[] = {0x60, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
+  byte cmd[] = {0x60&ctx.tmask, 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
   dw.sendCmd(cmd, sizeof(cmd), true); // return before last bit is sent
 }
 
 // reset the MCU
 boolean targetReset(void)
 {
-  dw.sendCmd((const byte[]) {DW_RESET_CMD}, 1, true); // return before last bit is sent so that we catch the break
+  dw.sendCmd(DW_RESET_CMD, true); // return before last bit is sent so that we catch the break
   
   if (expectBreakAndU()) {
     DEBLN(F("RESET successful"));
@@ -3108,7 +3132,7 @@ byte inLow  (byte add, byte reg) {
 // Write all registers 
 void DWwriteRegisters(byte *regs)
 {
-  byte wrRegs[] = {0x66,                                // read/write
+  byte wrRegs[] = {0x66&ctx.tmask,                      // read/write
 		   0xD0, mcu.stuckat1byte, 0x00,        // start reg
 		   0xD1, mcu.stuckat1byte, 0x20,        // end reg
 		   0xC2, 0x05,                          // write registers
@@ -3120,7 +3144,7 @@ void DWwriteRegisters(byte *regs)
 
 // Set register <reg> by building and executing an "in <reg>,DWDR" instruction via the CMD_SET_INSTR register
 void DWwriteRegister (byte reg, byte val) {
-  byte wrReg[] = {0x64,                                                    // Set up for single step using loaded instruction
+  byte wrReg[] = {0x64&ctx.tmask,                                          // Set up for single step using loaded instruction
                   0xD2, inHigh(mcu.dwdr, reg), inLow(mcu.dwdr, reg), 0x23, // Build "in reg,DWDR" instruction
                   val};                                                    // Write value to register via DWDR
   measureRam();
@@ -3132,7 +3156,7 @@ void DWwriteRegister (byte reg, byte val) {
 void DWreadRegisters (byte *regs)
 {
   int response;
-  byte rdRegs[] = {0x66,
+  byte rdRegs[] = {0x66&ctx.tmask,
 		   0xD0, mcu.stuckat1byte, 0x00, // start reg
 		   0xD1, mcu.stuckat1byte, 0x20, // end reg
 		   0xC2, 0x01};                  // read registers
@@ -3140,7 +3164,7 @@ void DWreadRegisters (byte *regs)
   DWflushInput();
   dw.sendCmd(rdRegs,  sizeof(rdRegs));
   blockIRQ();
-  dw.sendCmd((const byte[]) {0x20}, 1, true);         // Go
+  dw.sendCmd(0x20, true);         // Go
   response = getResponse(regs, 32);
   unblockIRQ();
   if (response != 32) reportFatalError(DW_READREG_FATAL,true);
@@ -3150,13 +3174,13 @@ void DWreadRegisters (byte *regs)
 byte DWreadRegister (byte reg) {
   int response;
   byte res = 0;
-  byte rdReg[] = {0x64,                                                 // Set up for single step using loaded instruction
+  byte rdReg[] = {0x64&ctx.tmask,                        // Set up for single step using loaded instruction
                   0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg)}; // Build "out DWDR, reg" instruction
   measureRam();
   DWflushInput();
   dw.sendCmd(rdReg,  sizeof(rdReg));
   blockIRQ();
-  dw.sendCmd((const byte[]) {0x23}, 1, true);                                // Go
+  dw.sendCmd(0x23, true);                                            // Go
   response = getResponse(&res,1);
   unblockIRQ();
   if (response != 1) reportFatalError(DW_READREG_FATAL,true);
@@ -3165,7 +3189,7 @@ byte DWreadRegister (byte reg) {
 
 // Write one byte to SRAM address space using an SRAM-based value for <addr>, not an I/O address
 void DWwriteSramByte (unsigned int addr, byte val) {
-  byte wrSram[] = {0x66,                                              // Set up for read/write 
+  byte wrSram[] = {0x66&ctx.tmask,                                    // Set up for read/write 
                    0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
                    0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
@@ -3184,7 +3208,7 @@ void DWwriteSramByte (unsigned int addr, byte val) {
 // Write one byte to IO register (via R0)
 void DWwriteIOreg (byte ioreg, byte val)
 {
-  byte wrIOreg[] = {0x64,                                               // Set up for single step using loaded instruction
+  byte wrIOreg[] = {0x64&ctx.tmask,                                    // Set up for single step using loaded instruction
 		    0xD2, inHigh(mcu.dwdr, 0), inLow(mcu.dwdr, 0), 0x23,    // Build "in reg,DWDR" instruction
 		    val,                                                // load val into r0
 		    0xD2, outHigh(ioreg, 0), outLow(ioreg, 0),          // now store from r0 into ioreg
@@ -3202,7 +3226,7 @@ byte DWreadSramByte (unsigned int addr) {
   DWreadSramBytes(addr, &res, 1);
 #else
   unsigned int response;
-  byte rdSram[] = {0x66,                                              // Set up for read/write 
+  byte rdSram[] = {0x66&ctx.tmask,                                   // Set up for read/write 
                    0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
                    0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
@@ -3215,7 +3239,7 @@ byte DWreadSramByte (unsigned int addr) {
   DWflushInput();
   dw.sendCmd(rdSram, sizeof(rdSram));
   blockIRQ();
-  dw.sendCmd((const byte[]) {0x20}, 1, true);                              // Go
+  dw.sendCmd(0x20,true);                                              // Go
   response = getResponse(&res,1);
   unblockIRQ();
   if (response != 1) reportFatalError(SRAM_READ_FATAL,true);
@@ -3228,7 +3252,7 @@ byte DWreadIOreg (byte ioreg)
 {
   unsigned int response; 
   byte res = 0;
-  byte rdIOreg[] = {0x64,                                              // Set up for single step using loaded instruction
+  byte rdIOreg[] = {0x64&ctx.tmask,                      // Set up for single step using loaded instruction
 		    0xD2, inHigh(ioreg, 0), inLow(ioreg, 0),           // Build "out DWDR, reg" instruction
 		    0x23,
 		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0)};  // Build "out DWDR, 0" instruction
@@ -3236,7 +3260,7 @@ byte DWreadIOreg (byte ioreg)
   DWflushInput();
   dw.sendCmd(rdIOreg, sizeof(rdIOreg));
   blockIRQ();
-  dw.sendCmd((const byte[]) {0x23}, 1, true);                            // Go
+  dw.sendCmd(0x23, true);                                              // Go
   response = getResponse(&res,1);
   unblockIRQ();
   if (response != 1) reportFatalError(DW_READIOREG_FATAL,true);
@@ -3248,7 +3272,7 @@ byte DWreadIOreg (byte ioreg)
 void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   unsigned int len2 = len * 2;
   unsigned int rsp;
-  byte rdSram[] = {0x66,                                            // Set up for read/write using 
+  byte rdSram[] = {0x66&ctx.tmask,                                 // Set up for read/write using 
 		   0xD0, mcu.stuckat1byte, 0x1E,                    // Set Start Reg number (r30)
 		   0xD1, mcu.stuckat1byte, 0x20,                    // Set End Reg number (r31) + 1
 		   0xC2, 0x05,                                      // Set repeating copy to registers via DWDR
@@ -3262,7 +3286,7 @@ void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   DWflushInput();
   dw.sendCmd(rdSram, sizeof(rdSram));
   blockIRQ();
-  dw.sendCmd((const byte[]) {0x20}, 1, true);                            // Go
+  dw.sendCmd(0x20, true);                                            // Go
   rsp = getResponse(mem, len);
   unblockIRQ();
   if (rsp != len) reportFatalError(SRAM_READ_FATAL,true);
@@ -3272,7 +3296,7 @@ void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
 byte DWreadEepromByte (unsigned int addr) {
   unsigned int response;
   byte retval;
-  byte setRegs[] = {0x66,                                                        // Set up for read/write 
+  byte setRegs[] = {0x66&ctx.tmask,                                             // Set up for read/write 
                     0xD0, mcu.stuckat1byte, 0x1C,                                // Set Start Reg number (r28)
                     0xD1, mcu.stuckat1byte, 0x20,                                // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                                  // Set repeating copy to registers via DWDR
@@ -3288,11 +3312,11 @@ byte DWreadEepromByte (unsigned int addr) {
   DWflushInput();
   dw.sendCmd(setRegs, sizeof(setRegs));
   blockIRQ();
-  dw.sendCmd((const byte[]){0x64},1);                                  // Set up for single step using loaded instruction
+  dw.sendCmd(0x64&ctx.tmask);                                // Set up for single step using loaded instruction
   if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
     dw.sendCmd(doReadH, sizeof(doReadH));
-  dw.sendCmd(doRead, sizeof(doRead));                                  // set rest of control regs and query
-  dw.sendCmd((const byte[]) {0x23}, 1, true);                                // Go
+  dw.sendCmd(doRead, sizeof(doRead));                                   // set rest of control regs and query
+  dw.sendCmd(0x23, true);                                               // Go
   response = getResponse(&retval,1);
   unblockIRQ();
   if (response != 1) reportFatalError(EEPROM_READ_FATAL,true);
@@ -3301,7 +3325,7 @@ byte DWreadEepromByte (unsigned int addr) {
 
 //   Write one byte to EEPROM
 void DWwriteEepromByte (unsigned int addr, byte val) {
-  byte setRegs[] = {0x66,                                                         // Set up for read/write 
+  byte setRegs[] = {0x66&ctx.tmask,                                              // Set up for read/write 
                     0xD0, mcu.stuckat1byte, 0x1C,                                 // Set Start Reg number (r30)
                     0xD1, mcu.stuckat1byte, 0x20,                                 // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                                   // Set repeating copy to registers via DWDR
@@ -3327,7 +3351,7 @@ void DWwriteEepromByte (unsigned int addr, byte val) {
 void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int rsp;
   unsigned int lenx2 = len * 2;
-  byte rdFlash[] = {0x66,                                               // Set up for read/write
+  byte rdFlash[] = {0x66&ctx.tmask,                                    // Set up for read/write
 		    0xD0, mcu.stuckat1byte, 0x1E,                       // Set Start Reg number (r30)
 		    0xD1, mcu.stuckat1byte, 0x20,                       // Set End Reg number (r31) + 1
 		    0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
@@ -3340,7 +3364,7 @@ void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   DWflushInput();
   dw.sendCmd(rdFlash, sizeof(rdFlash));
   blockIRQ();
-  dw.sendCmd((const byte[]) {0x20}, 1, true);                                // Go
+  dw.sendCmd(0x20, true);                                               // Go
   rsp = getResponse(mem, len);                                          // Read len bytes
   unblockIRQ();
   if (rsp != len) reportFatalError(FLASH_READ_FATAL,true);
@@ -3349,7 +3373,7 @@ void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
 // erase entire flash page
 void DWeraseFlashPage(unsigned int addr) {
   byte timeout = 0;
-  byte eflash[] = { 0x64, // single stepping
+  byte eflash[] = { 0x64&ctx.tmask, // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		    outLow(0x37, 29), 
@@ -3365,7 +3389,7 @@ void DWeraseFlashPage(unsigned int addr) {
     DWwriteRegister(29, 0x03); // PGERS value for SPMCSR
     if (mcu.bootaddr) DWsetWPc(mcu.bootaddr); // so that access of all of flash is possible
     dw.sendCmd(eflash, sizeof(eflash));
-    dw.sendCmd((const byte[]) {0x33}, 1, true);
+    dw.sendCmd(0x33, true);
     if (expectBreakAndU()) break;
     _delay_us(1600);
     timeout++;
@@ -3380,7 +3404,7 @@ void DWprogramFlashPage(unsigned int addr)
   boolean succ;
   byte timeout = 0;
   unsigned int wait = 10000;
-  byte eprog[] = { 0x64, // single stepping
+  byte eprog[] = { 0x64&ctx.tmask, // single stepping
 		   0xD2, // load into instr reg
 		   outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		   outLow(0x37, 29), 
@@ -3399,7 +3423,7 @@ void DWprogramFlashPage(unsigned int addr)
     if (mcu.bootaddr) DWsetWPc(mcu.bootaddr); // so that access of all of flash is possible
     dw.sendCmd(eprog, sizeof(eprog));
     
-    dw.sendCmd((const byte[]) {0x33}, 1, true);
+    dw.sendCmd(0x33, true);
     succ = expectBreakAndU(); // wait for feedback
   
     if (mcu.bootaddr && succ) { // no bootloader
@@ -3422,7 +3446,7 @@ void DWprogramFlashPage(unsigned int addr)
 // load bytes into temp memory
 void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
 {
-  byte eload[] = { 0x64, 0xD2,
+  byte eload[] = { 0x64&ctx.tmask, 0xD2,
 		   outHigh(0x37, 29),       // Build "out SPMCSR, r29"
 		   outLow(0x37, 29),
 		   0x23,                    // execute
@@ -3450,7 +3474,7 @@ void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
 void DWreenableRWW(void)
 {
   unsigned int wait = 10000;
-  byte errw[] = { 0x64, 0xD2,
+  byte errw[] = { 0x64&ctx.tmask, 0xD2,
 		  outHigh(0x37, 29),       // Build "out SPMCSR, r29"
 		  outLow(0x37, 29),
 		  0x23,                    // execute
@@ -3475,7 +3499,7 @@ void DWreenableRWW(void)
 
 byte DWreadSPMCSR(void)
 {
-  byte sc[] = { 0x64, 0xD2,        // setup for single step and load instr reg 
+  byte sc[] = { 0x64&ctx.tmask, 0xD2,        // setup for single step and load instr reg 
 		inHigh(0x37, 30),  // build "in 30, SPMCSR"
 		inLow(0x37, 30),
 		0x23 };             // execute

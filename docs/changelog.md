@@ -1,6 +1,12 @@
 # Changelog for dw-link
 
-## Version 4.1.0
+## Version 4.2.0
+- Added: new ctx-field runtimers
+- Added: "Run timers" version of all commands.
+- Added: monitor timers +/- (default off)
+- Added: new variant of method sendCmd to dwSerial with only one element.
+
+## Version 4.1.0 (18-Jan-2025)
 - Change: New state ISPCONN\_STATE. Former CONN\_STATE becomes DWCONN_STATE
 - Change: autoDW is now sensed by checking the logic level of the DW line in the beginning. It should be low at the start and high after we powered up the board. If this is not the case, autoDW is cleared.
 - Change: Two connnection routines / two disconnect routines
