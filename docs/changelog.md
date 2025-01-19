@@ -1,6 +1,6 @@
 # Changelog for dw-link
 
-## Version 4.2.0
+## Version 4.2.0 (19-Jan-2025)
 - Added: new ctx-field runtimers
 - Added: "Run timers" version of all commands.
 - Added: monitor timers +/- (default off)
