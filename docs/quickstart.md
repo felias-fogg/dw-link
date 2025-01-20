@@ -44,7 +44,7 @@ Close the `Preference` dialog with `OK`. Now, we want to install the two cores, 
 
 **Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Flags: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
-## Step 3: Install *dw-link* firmware on a UNO
+## Step 3: Install *dw-link* firmware on an UNO
 
 Download the dw-link firmware. This means you should 
 
@@ -67,7 +67,7 @@ In order to install the firmware,
 
 ## Step 4: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up a UNO as a target board is described in Section 4.2.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up an UNO as a target board is described in Section 4.2.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
 
 When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny with an ISP connector, the setup is as easy as plugging in an ISP cable, as shown below.
 
