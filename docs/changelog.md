@@ -1,18 +1,24 @@
 # Changelog for dw-link
 
+## Version 4.3.0 (20.Jan-2025)
+
+- Added: `monitor breakpoint S` (capital S), which makes sure that only software breakpoints are used; this is necessary when you want to stay in a debug session and keep all your breakpoints even when the MCU resets.
+- added new var: `onlysbp` (usually false), which prohibits assigning the hardware breakpoint 
+
 ## Version 4.2.0 (19-Jan-2025)
+
+- Added: `monitor timers +/-` (default off)
 - Added: new ctx-field runtimers
 - Added: "Run timers" version of all commands.
-- Added: monitor timers +/- (default off)
 - Added: new variant of method sendCmd to dwSerial with only one element.
 
 ## Version 4.1.0 (18-Jan-2025)
 - Change: New state ISPCONN\_STATE. Former CONN\_STATE becomes DWCONN_STATE
 - Change: autoDW is now sensed by checking the logic level of the DW line in the beginning. It should be low at the start and high after we powered up the board. If this is not the case, autoDW is cleared.
 - Change: Two connnection routines / two disconnect routines
-- Change: Giving error message when requesting anything if not DWCONN\_STATE
-- Change: Giving error message when trying to change any fuses in not
-  AutoDW mode, when DW is active
+- Change: Giving error message when requesting anything if not in DWCONN\_STATE
+- Change: Giving error message when trying to change any fuses in 
+  non-AutoDW mode, when DW is active
 - Change: requesting power-cycle in "monitor dw +" with timeout
 - Added: New signal SIGTERM, which is raised when in ISPCONN_STATE and
   any debugger actions should be done
@@ -23,6 +29,7 @@
   session the gdbStopConnection can be called more then once :-(, and then the simple automata model does not work anymore.
 - Added `debug.cortex-debug.custom.preLaunchCommands.0=monitor dwire
   +` in platform.txt (so that the user does not have to bother to switch on DW-mode). 
+- Added the monitor dwire + command also to pio-varblink/paltoformio.ini
 
 ## Version 4.0.4 (16-Jan-2025)
 - Changes in platform.ini files

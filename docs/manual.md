@@ -433,7 +433,7 @@ Some more information about debugging can be found in the [debugging tutorial](h
 
 Global variables are, for some reason, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value.
 
-If you select the Debug Console, you can type GDB commands (see [Section 6.6](#section66)) in the bottom line. This can be useful for changing the value of global variables, which cannot be accessed otherwise. Or for disabling debugWIRE mode.
+If you select the Debug Console, you can type GDB commands (see [Section 6.6](#section66)) in the bottom line. This can be useful for changing the value of global variables, which cannot be accessed otherwise. Or for disabling debugWIRE mode. 
 
 When powering your target board externally, you must disconnect the power line from the hardware debugger to the target. For example, on the dw-link probe, you can set the `power` jumper to the middle position. This setting will disable the automatic transition back to the normal state when the debugger is terminated in order to minimize the number of manual power-cycles the user has to perform. You now have to use  the `monitor dwire -`  command before exiting the debugger.
 
@@ -633,21 +633,21 @@ load | load the ELF file into flash memory (should be done every time after the 
 
 Finally, there are commands that control the settings of the debugger and the MCU, which are particular to dw-link. They all start with the keyword `monitor`. You can abbreviate all keywords to 2 characters if this is unambiguous.
 
-| command                   | action                                                       |
-| :------------------------ | ------------------------------------------------------------ |
-| monitor help              | give a help message on monitor commands                      |
-| monitor version           | print version number of firmware                             |
-| monitor dwire [+\|-]      | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
-| monitor reset             | resets the MCU (*)                                           |
-| monitor runtimes          | run timers (**+**) or freeze (**-**) (default) when the program is stopped |
-| monitor mcu [*mcu-name*]  | If no argument is given, the MCU dw-link is connected to is printed. Otherwise, it is checked whether the given *mcu-name* matches the connected MCU and if not, a fatal error is signaled and debugging is stopped. |
-| monitor ckdiv [1\|8]      | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*+) |
-| monitor breakpoint [h\|s] | set the number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25 (default), when also **s**oftware breakpoints are permitted; without argument, it reports setting |
-| monitor speed [l\|h]      | set the communication speed limit to **l**ow (=150kbps) (default) or to **h**igh (=300kbps); without an argument, the current communication speed and speed limit is printed |
-| monitor singlestep [s\|u] | Sets single stepping to **s**afe (no interrupts) (default) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
-| monitor lasterror         | print error number of the last fatal error                   |
-| monitor flashcount        | reports on how many flash-page write operations have taken place since the start |
-| monitor timeouts          | report number of timeouts (should be 0!)                     |
+| command                      | action                                                       |
+| :--------------------------- | ------------------------------------------------------------ |
+| monitor help                 | give a help message on monitor commands                      |
+| monitor version              | print version number of firmware                             |
+| monitor dwire [+\|-]         | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
+| monitor reset                | resets the MCU (*)                                           |
+| monitor runtimes             | run timers (**+**) or freeze (**-**) (default) when the program is stopped |
+| monitor mcu [*mcu-name*]     | If no argument is given, the MCU dw-link is connected to is printed. Otherwise, it is checked whether the given *mcu-name* matches the connected MCU and if not, a fatal error is signaled and debugging is stopped. |
+| monitor ckdiv [1\|8]         | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*+) |
+| monitor breakpoint [h\|s\|S] | set the number of allowed breakpoints to 1, when **h**ardware breakpoint only, or 25 (default), when also **s**oftware breakpoints are permitted; use **S** if *only* software breakpoints should be used; without argument, it reports setting |
+| monitor speed [l\|h]         | set the communication speed limit to **l**ow (=150kbps) (default) or to **h**igh (=300kbps); without an argument, the current communication speed and speed limit is printed |
+| monitor singlestep [s\|u]    | Sets single stepping to **s**afe (no interrupts) (default) or **u**nsafe (interrupts can happen); without an argument, it reports the state |
+| monitor lasterror            | print error number of the last fatal error                   |
+| monitor flashcount           | reports on how many flash-page write operations have taken place since the start |
+| monitor timeouts             | report number of timeouts (should be 0!)                     |
 
 All of the commands marked with (*) reset the MCU. The ones marked with (+) need to take the MCU out of the debugWIRE mode and afterwards in again. 
 
@@ -949,7 +949,7 @@ When you activate *sleep mode*, the power consumed by the MCU is supposed to go 
 
 ### 9.7 MCU operations interfering with debugWIRE
 
-There are a few situations, which might lead to problems. The above mentioned list of [known issues](https://onlinedocs.microchip.com/oxy/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-2/GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F.html) contains the following:
+There are a few situations where MCU operations interfere with the debugWIRE system. The above-mentioned list of [known issues](https://onlinedocs.microchip.com/oxy/GUID-73C92233-8EC5-497C-92C3-D52ED257761E-en-US-2/GUID-A686427B-0B7C-465A-BCFF-F093FD6B7A8F.html) contains the following:
 
 * The PRSPI bit in the power-saving register should not be set
 * Breakpoints should not be set at the last address of flash memory
@@ -958,7 +958,7 @@ There are a few situations, which might lead to problems. The above mentioned li
 
 Setting the `PRSPI` bit can disable the clock for the debugWIRE line and should be avoided for this reason. The latter three situations may lead to problems stopping at the breakpoint or executing the instructions, respectively.
 
-The list of known issues mentions also the following four potential problems:
+The list of known issues mentions also the following five potential problems:
 
 * Be aware that the On-chip Debug system is disabled when any lock bits are set
 * BOD and WDT resets lead to loss of connection 
@@ -968,7 +968,7 @@ The list of known issues mentions also the following four potential problems:
 
 The first issue is mitigated by dw-link erasing the chip when lock bits are set. This is not an industrial-strength solution, but it makes life easier because all UNO boards have their lock bits set initially. So, instead of explaining that the bits have to be cleared, it is just done automatically. 
 
-Concerning resets, I had no problems reconnecting to the target when the target had been stopped asynchronously or by a breakpoint. The only problem was that the target would not stop at the hardware breakpoint after a reset, since the reset will clear this hardware breakpoint. So, if you want to be sure to stop after a reset, place two different breakpoints in the startup routine. 
+Concerning resets, I had no problems reconnecting to the target when the target had been stopped asynchronously or by a breakpoint. The only problem was that the target would not stop at the hardware breakpoint after a reset, since the reset will clear this hardware breakpoint. So, if you want to be sure to stop after a reset, use the command `monitor breakpoint S` (capital S), which forces all breakpoints to be software breakpoints. If you use the watchdog timer to issue a software reset, make sure that right after restarting the MCU, the watchdog timer will be disabled, as mentioned in the [WDT library description](https://www.nongnu.org/avr-libc/user-manual/group__avr__watchdog.html). Otherwise, you run into a WDT-restart loop.
 
 Changing the clock frequency is also not a problem since, at each stop, the debugger re-synchronizes with the target. Further, changing the supply voltage can be done if you have level-shifting hardware in place. It is still not something that is recommended. 
 

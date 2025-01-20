@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.2.0"
+#define VERSION "4.3.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -185,6 +185,7 @@ struct breakpoint
 byte bpcnt;             // number of ACTIVE breakpoints (there may be as many as MAXBREAK used ones from the last execution!)
 byte bpused;            // number of USED breakpoints, which may not all be active
 byte maxbreak = MAXBREAK; // actual number of active breakpoints allowed
+boolean onlysbp = false; // only software breakpoints allowed
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
@@ -206,7 +207,6 @@ struct context {
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
   ispspeedtype ispspeed;
-  
 } ctx;
 
 // use LED to signal system state
@@ -954,15 +954,14 @@ void gdbParseMonitorPacket(byte *buf)
     switch (cmdbuf[mooptix]) {
     case '+':
       ctx.tmask = 0xDF;
-      gdbReplyMessagePSTR(PSTR("Timers will run when stopped"), -1);
+      gdbReportTimers();
       break;
     case '-':
       ctx.tmask = 0xFF;
-      gdbReplyMessagePSTR(PSTR("Timers will be frozen when stopped"), -1);
+      gdbReportTimers();
       break;
     case '\0':
-      if (ctx.tmask == 0xDF) gdbReplyMessagePSTR(PSTR("Timers will run when stopped"), -1);
-      else gdbReplyMessagePSTR(PSTR("Timers will be frozen when stopped"), -1);
+      gdbReportTimers();
       break;
     default:
       gdbSendReply("E09"); break;
@@ -1004,9 +1003,10 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MOBREAK:
     switch (cmdbuf[mooptix]) {
-    case 'h': gdbSetMaxBPs(1); break;
-    case 's': gdbSetMaxBPs(MAXBREAK); break;
-    case '4': gdbSetMaxBPs(4); break;
+    case 'h': gdbSetMaxBPs(1, false); break;
+    case 's': gdbSetMaxBPs(MAXBREAK, false); break;
+    case '4': gdbSetMaxBPs(4, false); break;
+    case 'S': gdbSetMaxBPs(MAXBREAK, true);
     case '\0': gdbGetMaxBPs(); break;
     default: gdbSendReply("E09"); break;
     }
@@ -1090,7 +1090,7 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor reset            - reset target (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor runtimers [+|-]  - run timers (+) or freeze (-)(d) when stopped"), -1);  
   gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]      - program (8) or unprogram (1) CK8DIV (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
+  //gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
   gdbDebugMessagePSTR(PSTR("                         - use RC/alt RC/XTAL/ext/slow osc. (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s] - allow 1 (h) or 25 (s) (def.) breakpoints"), -1);
   gdbDebugMessagePSTR(PSTR("monitor singlestep [s|u] - disallow (s) or allow (u) IRQs while single-stepping"), -1);
@@ -1105,6 +1105,13 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("Commands given without arguments report status"), -1);
   gdbDebugMessagePSTR(PSTR("All commands with (*) lead to a reset of the target"), -1);
   gdbSendReply("OK");
+}
+
+// report whether timers will run when stopped
+void gdpReportTimers(void)
+{
+  if (ctx.tmask == 0xDF) gdbReplyMessagePSTR(PSTR("Timers will run when stopped"), -1);
+  else gdbReplyMessagePSTR(PSTR("Timers will be frozen when stopped"), -1);
 }
 
 // "monitor mcu <mcu name>"
@@ -1313,17 +1320,24 @@ void gdbSpeed(char arg)
 }
 
 
-// "monitor swbp/hwbp/4bp"
-// set maximum number of breakpoints
-inline void gdbSetMaxBPs(byte num)
+// "monitor h|4|s|S"
+// set maximum number of breakpoints and allowed types of breakpoints
+// h = only 1 hardware bp
+// 4 = 4 mixed bp
+// s = 25 mixed bp
+// S = 25 only software bp
+inline void gdbSetMaxBPs(byte num, boolean only)
 {
+  onlysbp = only;
   maxbreak = num;
   gdbGetMaxBPs();
 }
 
 inline void gdbGetMaxBPs(void)
 {
-  gdbReplyMessagePSTR(PSTR("Maximum number of breakpoints: "), maxbreak);
+  if (onlysbp) gdbReplyMessagePSTR(PSTR("Only software breakpoints, maximum: "), maxbreak);
+  else if (maxbreak == 1) gdbReplyMessagePSTR(PSTR("Only hardware breakpoints, maximum: "),maxbreak);
+  else gdbReplyMessagePSTR(PSTR("Software and hardware breakpoints, maximum: "),maxbreak);
 }
 
 // "monitor flashcount"
@@ -1704,21 +1718,26 @@ void gdbUpdateBreakpoints(boolean cleanup)
 
   // find relevant BPs
   for (i=0; i < MAXBREAK*2; i++) {
-    if (bp[i].used) { // only used breakpoints!
-      if (bp[i].active) { // active breakpoint
+    if (bp[i].used) {                       // only used breakpoints!
+      if (onlysbp && bp[i].hw) {            // only software bps are allowed
+	bp[i].hw = false;
+	bp[i].inflash = false;
+	hwbp = 0xFFFF;
+      }
+      if (bp[i].active) {                   // active breakpoint
 	if (!cleanup) {
 	  if (!bp[i].inflash && !bp[i].hw)  // not in flash yet and not a hw bp
-	    relevant[rel++] = bp[i].waddr; // remember to be set
-	} else { // active BP && cleanup
-	  if (bp[i].inflash)              // remove BREAK instruction, but leave it active
+	    relevant[rel++] = bp[i].waddr;  // remember to be set
+	} else {                            // active BP && cleanup
+	  if (bp[i].inflash)                // remove BREAK instruction, but leave it active
 	    relevant[rel++] = bp[i].waddr;
 	}
-      } else { // inactive bp
-	if (bp[i].inflash) { // still in flash 
-	  relevant[rel++] = bp[i].waddr; // remember to be removed
+      } else {                              // inactive bp
+	if (bp[i].inflash) {                // still in flash 
+	  relevant[rel++] = bp[i].waddr;    // remember to be removed
 	} else {
-	  bp[i].used = false; // otherwise free BP already now
-	  if (bp[i].hw) { // if hwbp, then free HWBP
+	  bp[i].used = false;               // otherwise free BP already now
+	  if (bp[i].hw) {                   // if hwbp, then free HWBP
 	    bp[i].hw = false;
 	    hwbp = 0xFFFF;
 	  }
@@ -1874,17 +1893,19 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
       bp[i].waddr = waddr;
       bp[i].active = true;
       bp[i].inflash = false;
-      if (hwbp == 0xFFFF) { // hardware bp unused
-	bp[i].hw = true;
-	hwbp = waddr;
-      } else { // we steal it from other bp since the most recent should be a hwbp
-	j = gdbFindBreakpoint(hwbp);
-	if (j >= 0 && bp[j].hw) {
-	  DEBPR(F("Stealing HWBP from other BP:")); DEBLNF(bp[j].waddr*2,HEX);
-	  bp[j].hw = false;
+      if (!onlysbp) { // if hardware bps are allowed
+	if (hwbp == 0xFFFF) { // hardware bp unused
 	  bp[i].hw = true;
 	  hwbp = waddr;
-	} else reportFatalError(HWBP_ASSIGNMENT_INCONSISTENT_FATAL, false);
+	} else { // we steal it from other bp since the most recent should be a hwbp
+	  j = gdbFindBreakpoint(hwbp);
+	  if (j >= 0 && bp[j].hw) {
+	    DEBPR(F("Stealing HWBP from other BP:")); DEBLNF(bp[j].waddr*2,HEX);
+	    bp[j].hw = false;
+	    bp[i].hw = true;
+	    hwbp = waddr;
+	  } else reportFatalError(HWBP_ASSIGNMENT_INCONSISTENT_FATAL, false);
+	}
       }
       bpcnt++;
       bpused++;
