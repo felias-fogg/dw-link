@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.3.0"
+#define VERSION "4.3.1"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -129,8 +129,9 @@
 #define CONNERR_LOCK_BITS 4 // connection error: lock bits are set
 #define CONNERR_STUCKAT1_PC 5 // connection error: MCU has PC with stuck-at-one bits
 #define CONNERR_CAPACITIVE_LOAD 6 // connection error: capacitive load on reset line
-#define CONNERR_WRONG_MCU 7 // wrong MCU (detected by monitor mcu command)
-#define CONNERR_UNKNOWN 8 // unknown connection error
+#define CONNERR_NO_TARGET_POWER 7 // target has no power
+#define CONNERR_WRONG_MCU 8 // wrong MCU (detected by monitor mcu command)
+#define CONNERR_UNKNOWN 9 // unknown connection error
 #define NO_FREE_SLOT_FATAL 101 // no free slot in BP structure
 #define PACKET_LEN_FATAL 102 // packet length too large
 #define WRONG_MEM_FATAL 103 // wrong memory type
@@ -578,6 +579,7 @@ int main(void) {
   pinMode(AUTODWSENSE, INPUT_PULLUP);
   ctx.autodw = digitalRead(AUTODWSENSE);
 #endif
+  pinMode(DWLINE, INPUT); 
   power(false);
   _delay_ms(50); // let the power state settle
   if (ctx.autodw) 
@@ -594,17 +596,14 @@ int main(void) {
   digitalWrite(LEDGND, LOW);
   power(true); // switch target on
   _delay_ms(50); // let the power state settle
-  if (ctx.autodw) 
-    if (digitalRead(DWLINE) == LOW)  // externally un-powered!
-      ctx.autodw = false;            // so, do it manually
 
 #if SCOPEDEBUG
   pinMode(DEBTX, OUTPUT); //
   digitalWrite(DEBTX, LOW); // PD3 on UNO
 #endif
   initSession(); // initialize all critical global variables
+
   //  DEBLN(F("Now configuereSupply"));
-  pinMode(DWLINE, INPUT); // release RESET in order to allow debugWIRE to start up
   DEBLN(F("Setup done"));
   
   // loop
@@ -1084,31 +1083,33 @@ int gdbDetermineMonitorCommand(char *line, int &optionix)
 
 // help function (w/o unit tests)
 inline void gdbHelp(void) {
-  gdbDebugMessagePSTR(PSTR("monitor help             - help function"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor version          - firmware version"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor dwire [+|-]      - enables (+) or disables (-) debugWIRE (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor reset            - reset target (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor runtimers [+|-]  - run timers (+) or freeze (-)(d) when stopped"), -1);  
-  gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]      - program (8) or unprogram (1) CK8DIV (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor help               - help function"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor version            - firmware version"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor dwire [+|-]        - enables (+) or disables (-) debugWIRE (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor reset              - reset target (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor runtimers [+|-]    - run timers (+) or freeze (-)<d> when stopped"), -1);  
+  gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]        - program (8) or unprogram (1) CK8DIV (*)"), -1);
   //gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
-  gdbDebugMessagePSTR(PSTR("                         - use RC/alt RC/XTAL/ext/slow osc. (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s] - allow 1 (h) or 25 (s) (def.) breakpoints"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor singlestep [s|u] - disallow (s) or allow (u) IRQs while single-stepping"), -1);
+  //gdbDebugMessagePSTR(PSTR("                         - use RC/alt RC/XTAL/ext/slow osc. (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor breakpoint [h|s|S] - allow 1 (h), 25 (s)<d>, or 25 sw only (S)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor singlestep [s|u]   - disallow (s)<d> or allow (u) IRQ in single-stepping"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor mcu [<mcutype>]    - check for MCU type or print current"), -1);
 #if HIGHSPEED
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps)(d) or l (150kbps)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]        - speed limit is h (300kbps)<d> or l (150kbps)"), -1);
 #else
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]      - speed limit is h (300kbps) or l (150kbps)(d)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]        - speed limit is h (300kbps) or l (150kbps)<d>"), -1);
 #endif  
-  gdbDebugMessagePSTR(PSTR("monitor flashcount       - number of flash pages written since start"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor timeouts         - number of timeouts"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor lasterror        - last fatal error"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor flashcount         - number of flash pages written since start"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor timeouts           - number of timeouts"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor lasterror          - last fatal error"), -1);
   gdbDebugMessagePSTR(PSTR("Commands given without arguments report status"), -1);
   gdbDebugMessagePSTR(PSTR("All commands with (*) lead to a reset of the target"), -1);
+  gdbDebugMessagePSTR(PSTR("All options with <d> are default values"), -1);
   gdbSendReply("OK");
 }
 
 // report whether timers will run when stopped
-void gdpReportTimers(void)
+void gdbReportTimers(void)
 {
   if (ctx.tmask == 0xDF) gdbReplyMessagePSTR(PSTR("Timers will run when stopped"), -1);
   else gdbReplyMessagePSTR(PSTR("Timers will be frozen when stopped"), -1);
@@ -1177,6 +1178,10 @@ boolean gdbStartConnect(boolean initialconnect)
   if (targetDWConnect()) { // if immediately in DW mode, that is OK!
     setupDW();
     return true;
+  }
+  if (digitalRead(DWLINE) == LOW) { // externally un-powered!
+    gdbReportConnectionProblem(CONNERR_NO_TARGET_POWER); // Oops, target is not powered up
+    return false;
   }
   conncode = targetISPConnect();
   if (conncode < 0) {
@@ -1258,13 +1263,14 @@ void gdbReportConnectionProblem(int errnum)
 {
   switch (errnum) {
   case 0: return;
-  case 1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not communicate by ISP; check wiring"),-1); break;
-  case 2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not activate debugWIRE"),-1); break;
-  case 3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU"),-1); break;
-  case 4: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits could not be cleared"),-1); break;
-  case 5: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits"),-1); break;
-  case 6: gdbDebugMessagePSTR(PSTR("***Cannot connect: Reset line has a capacitive load"),-1); break;
-  case 7: gdbDebugMessagePSTR(PSTR("***MCU type does not match"), -1);
+  case 1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not communicate by ISP; check wiring***"),-1); break;
+  case 2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not activate debugWIRE***"),-1); break;
+  case 3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU***"),-1); break;
+  case 4: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits could not be cleared***"),-1); break;
+  case 5: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits***"),-1); break;
+  case 6: gdbDebugMessagePSTR(PSTR("***Cannot connect: RESET line has a capacitive load***"),-1); break;
+  case 7: gdbDebugMessagePSTR(PSTR("***Cannot connect: Target not powered or RESET shortened to GND***"),-1); break; 
+  case 8: gdbDebugMessagePSTR(PSTR("***MCU type does not match"), -1);
   default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons"),-1);
   }
   reportFatalError(errnum, false);
@@ -2010,6 +2016,7 @@ void gdbWriteRegisters(const byte *buff)
   do {
     *ptr  = hex2nib(*buff++) << 4;
     *ptr |= hex2nib(*buff++);
+    ptr++; // of course, pointer must be incremented!
   } while (--a > 0);
   
   /* receive SREG as register 32  */

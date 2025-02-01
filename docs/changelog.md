@@ -1,5 +1,14 @@
 # Changelog for dw-link
 
+## Version 4.3.1 (1-Feb-2025)
+
+- Fixed: in gdbWriteRegisters, the variable ptr is now incremented so
+  that changes in register contents really get stored! This fixes the
+  "local variable contents cannot be changed" bug!
+- Added: New connection error type: "Target is not powered or RESET is
+  shortened to GND"
+- Added: 'monitor mcu' in help message
+
 ## Version 4.3.0 (20.Jan-2025)
 
 - Added: `monitor breakpoint S` (capital S), which makes sure that only software breakpoints are used; this is necessary when you want to stay in a debug session and keep all your breakpoints even when the MCU resets.
@@ -7,7 +16,7 @@
 
 ## Version 4.2.0 (19-Jan-2025)
 
-- Added: `monitor timers +/-` (default off)
+- Added: `monitor runtimers +/-` (default off)
 - Added: new ctx-field runtimers
 - Added: "Run timers" version of all commands.
 - Added: new variant of method sendCmd to dwSerial with only one element.

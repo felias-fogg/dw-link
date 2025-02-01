@@ -420,7 +420,7 @@ Pane A contains the debug controls. From left to right:
 - *Reset*ting the device
 - *Continue* execution or *pause*
 - *Step over*: execute one source line
-- *Step into*: execute stepping into the called function
+- *Step into*: execute stepping into the function, if in this line one is called
 - *Step out*: finish the current function and stop where it had been called
 - *Restart*: Same as Reset
 - *Stop*: Terminate debugging
@@ -435,7 +435,7 @@ Global variables are, for some reason, not displayed. However, you can set a wat
 
 If you select the Debug Console, you can type GDB commands (see [Section 6.6](#section66)) in the bottom line. This can be useful for changing the value of global variables, which cannot be accessed otherwise. Or for disabling debugWIRE mode. 
 
-When powering your target board externally, you must disconnect the power line from the hardware debugger to the target. For example, on the dw-link probe, you can set the `power` jumper to the middle position. This setting will disable the automatic transition back to the normal state when the debugger is terminated in order to minimize the number of manual power-cycles the user has to perform. You now have to use  the `monitor dwire -`  command before exiting the debugger.
+When powering your target board externally, you must disconnect the power line from the hardware debugger to the target. For example, on the dw-link probe, you can set the `power` jumper to the middle position. This setting will disable the automatic transition back to the normal state when the debugger is terminated in order to minimize the number of manual power-cycles the user has to perform. You now have to use  the `monitor dwire -`  command before exiting the debugger. Alternatively, you can choose `Burn Bootloader` from the `Tools` menu with dw-link as a programmer (the programmer should then be `Arduino as ISP`).
 
 <a name="section6"></a>
 
@@ -968,7 +968,7 @@ The list of known issues mentions also the following five potential problems:
 
 The first issue is mitigated by dw-link erasing the chip when lock bits are set. This is not an industrial-strength solution, but it makes life easier because all UNO boards have their lock bits set initially. So, instead of explaining that the bits have to be cleared, it is just done automatically. 
 
-Concerning resets, I had no problems reconnecting to the target when the target had been stopped asynchronously or by a breakpoint. The only problem was that the target would not stop at the hardware breakpoint after a reset, since the reset will clear this hardware breakpoint. So, if you want to be sure to stop after a reset, use the command `monitor breakpoint S` (capital S), which forces all breakpoints to be software breakpoints. If you use the watchdog timer to issue a software reset, make sure that right after restarting the MCU, the watchdog timer will be disabled, as mentioned in the [WDT library description](https://www.nongnu.org/avr-libc/user-manual/group__avr__watchdog.html). Otherwise, you run into a WDT-restart loop.
+Concerning resets, I did not experience fundamental problems. The only issue was that the target would not stop at the hardware breakpoint after a reset, since the reset will clear this hardware breakpoint. So, if you want to be sure to stop after a reset, use the command `monitor breakpoint S` (capital S), which forces all breakpoints to be software breakpoints. If you use the watchdog timer to issue a software reset, make sure that right after restarting the MCU, the watchdog timer will be disabled, as mentioned in the [AVR-LibC FAQ](https://avrdudes.github.io/avr-libc/avr-libc-user-manual-2.2.0/FAQ.html#faq_softreset). Otherwise, you run into a WDT-restart loop.
 
 Changing the clock frequency is also not a problem since, at each stop, the debugger re-synchronizes with the target. Further, changing the supply voltage can be done if you have level-shifting hardware in place. It is still not something that is recommended. 
 
@@ -1042,7 +1042,7 @@ When you are done with debugging, you should switch back to normal mode with `mo
 
 Depending on the concrete error message, the problem fix varies.
 
-- *Cannot connect: Could not communicate by ISP; check wiring*: The debugger can not establish an ISP connection. Check wiring. Maybe you forgot to power the target board? I did that more than once. If this is not the reason, disconnect everything and put it together again. This helps sometimes. Finally, this error could be caused by bricking your MCU having too much capacitive load or a pull-up resistor that is too weak on the RESET line.  
+- *Cannot connect: Could not communicate by ISP; check wiring*: The debugger cannot establish an ISP connection. Check wiring. Maybe you forgot to power the target board? I did that more than once. If this is not the reason, disconnect everything and put it together again. This helps sometimes. Finally, this error could be caused by bricking your MCU having too much capacitive load or a pull-up resistor that is too weak on the RESET line.  
 - *Cannot connect: Could not activate debugWIRE*: An ISP connection was established, but it was not possible to activate debugWIRE. Most probably the MCU is now in a limbo state and can only be resurrected by a HV programmer. The reason is most probably too much capacitive load on the RESET line or a weak pullup resistor on this line.
 - *Cannot connect: Unsupported MCU*: This MCU is not supported by dw-link. It most probably has no debugWIRE on board. 
 - *Cannot connect: Lock bits could not be cleared:* This should not happen at all because it is always possible to clear the lock bits by erasing the entire chip.
@@ -1187,9 +1187,10 @@ Error #  | Meaning
 3 | Connection error: MCU type is not supported
 4 | Connection error: Lock bits or BOOTRST could not be cleared 
 5 | Connection error: MCU has PC with stuck-at-one bits 
-6 | Connection error: Reset line has a capacitive load 
-7 | MCU type does not match 
-8 | Unknown connection error 
+6 | Connection error: RESET line has a capacitive load 
+7 | Connection error: Target not powered or RESET shortened to GND
+8 | MCU type does not match 
+9 | Unknown connection error 
 101 | No free slot in breakpoint table
 102 | Packet length too large
 103 | Wrong memory type
