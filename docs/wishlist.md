@@ -2,7 +2,11 @@
 
 ##### List of tasks to work on:
 
-* produce short youtube video to promote dw-link probe
+* Create Python script dw-gdbserver.py that implements a dw server on
+  top of pymcuprog
+
+* Build a V5 version: unified monitor commands and tight integration
+  into te script
 
 * use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video?
 
@@ -22,6 +26,8 @@
   
 
 ##### List of tasks done:
+
+* produce short youtube video to promote dw-link probe
 
 - Write a step-by-step explanation on how to restore an UNO after debugging
 

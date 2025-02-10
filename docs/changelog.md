@@ -1,5 +1,15 @@
 # Changelog for dw-link
 
+## Version 4.4.0 (10-Feb-2025)
+
+- Added: It is checked whether after a 'break' the debugWIRE line is high again after 20 µs. If not, there must be a capacitive load on the line, and we will immediately abort. While this does not catch all problems, it will definitely recognize the UNO's DTR capacitor.
+- Change: When in non-autodw mode, we now either connect directly (if still in debugWIRE mode), or not at all. In the latter case, one has to issue `monitor dw +`. 
+- Change: When in non-autodw mode, only one operation `monitor dw -` per session is possible. This parallels the behavior in dw-gdbserver.
+- Change: The qAttached query is answered with '1', implying that GDB will use 'D' to quit a session.
+- Change: After a detach operation, a software reset is triggered
+- Change: vKill will now only reset the MCU
+- Further internal changes: ISPCONN_STATE has been removed. SIGTERM is also gone; SIGHUP is always used when not connected; ctx.protectdw is gone; there is now cox.dwactivated;
+
 ## Version 4.3.1 (1-Feb-2025)
 
 - Fixed: in gdbWriteRegisters, the variable ptr is now incremented so
@@ -283,7 +293,7 @@ extra_script in the platform.ini file
 
 ## Version 2.1.0 (15-Aug-23)
 
-* Board manager files have been generated an uploaded
+* Board manager files have been generated and uploaded
 * Simplification in the manual
 * `core-mods` contains all the files that I modified in order to generate new board manager files
 *  README.md updated
@@ -542,21 +552,6 @@ enable debugging
    - new monitor command: "monitor version"
    - new default DW speed is now 125k since I had some spurious errors
    - almost all test sketches appear to work wit their debugging
-     scripts in test.py (which is now part of the distribution)
-
-## Version 1.0.9 (20-Dec-21)
-   - set sysstate to 'unconnect' when 'kill' command is executed;
-     necessary because 'quit' just issues a 'kill'; systate is set to
-     connected when 'run' command is used afterwards (which is only
-     accepted when target has been connected)
-   - prepared test scripts for unit tests, blink, flashtest,
-     and fibonacci
-   - included TXOnlySerial into the the libraries in 'src'
-   - tried out importing dw-link into PlatformIO, seems to work after
-     a few changes such as importing TXOnlySerial
-   - new monitor command: "monitor version"
-   - new default DW speed is now 125k since I had some spurious errors
-   - almost all test sketches appear to work wit their debugging
       scripts in test.py (which is now part of the distribution)
 
 ## Version 1.0.8 (11-Dec-21)
@@ -722,8 +717,8 @@ enable debugging
     connected
   - included test sketches
 
+## Version 0.9.9 (14-Nov-21)
 
-Version 0.9.9 (14-Nov-21)
   - new commands: "monitor hwbp" (reducing the number of allowed
     breakpoints to 1) and "monitor swbp" (allowing 32+1 breakpoints) and
     for test purposes: monitor 4bp (3+1 BPs)
@@ -837,7 +832,7 @@ Version 0.9.9 (14-Nov-21)
   - fixed the problem that page writes on the ATmega did not always work (the
     program did not wait long enough, although the code was already there)
   - inserted code to deal with the 4-page erase operations of 1634, 841, 441; new field in the
-    mcu record	and code; the pagesize will be treated as 4 times as large (mcu.targepgsz),
+    mcu record and code; the pagesize will be treated as 4 times as large (mcu.targepgsz),
     and while programming the page, 4 write operations take place
   - put the SingleWireSerial library into the src directory together
     with dwSerial

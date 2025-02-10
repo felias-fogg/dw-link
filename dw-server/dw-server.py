@@ -101,7 +101,7 @@ def discover():
             if args.verbose:
                 sys.stdout.write("Device: {}\n".format(s.device))
                 sys.stdout.flush()
-            if s.device == "/dev/cu.Bluetooth-Incoming-Port":
+            if s.device == "/dev/cu.Bluetooth-Incoming-Port" or s.device == "/dev/cu.debug-console":
                 continue
             if args.verbose:
                 sys.stdout.write("Check:{}\n".format(s.device))

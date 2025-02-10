@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.3.1"
+#define VERSION "4.4.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -44,7 +44,7 @@
 #define PROGBPS 19200         // ISP programmer communication speed
 #endif
 #ifndef HOSTBPS 
-#define HOSTBPS 115200UL      // safe default speed for the host connection
+#define HOSTBPS 115200UL      // safe default speed for the host 
 //#define HOSTBPS 230400UL    // works with UNOs, but not with Nanos
 #endif
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
@@ -120,7 +120,6 @@
 #define SIGILL  4     // Illegal instruction
 #define SIGTRAP 5     // Trace trap  - stopped on a breakpoint
 #define SIGABRT 6     // Abort because of some fatal error
-#define SIGTERM 15    // Cannot execute because not in dW mode
 // types of fatal errors
 #define NO_FATAL 0
 #define CONNERR_NO_ISP_REPLY 1 // connection error: no ISP reply
@@ -190,7 +189,7 @@ boolean onlysbp = false; // only software breakpoints allowed
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
-enum statetype {NOTCONN_STATE, ISPCONN_STATE, PWRCYC_STATE, ERROR_STATE, DWCONN_STATE, LOAD_STATE, RUN_STATE, PROG_STATE};
+enum statetype {NOTCONN_STATE, PWRCYC_STATE, ERROR_STATE, DWCONN_STATE, LOAD_STATE, RUN_STATE, PROG_STATE};
 
 enum ispspeedtype {SUPER_SLOW_ISP, SLOW_ISP, NORMAL_ISP }; // isp speed: 0.8 kHz, 20 kHz, 50 kHz
 
@@ -203,7 +202,7 @@ struct context {
   statetype state; // system state
   boolean levelshifting; // true when using dw-probe sitting on an Arduino board
   boolean autodw; // switch DW automatically on and off
-  boolean protectdw; // protect dw state (when autodw is off)
+  boolean dwactivated; // will be true after dw has been activated once; if then NOTCONN_STATE, you need to leave! 
   byte tmask; // run timers while stopped when tmask = 0xDF, freeze when tmask = 0xFF
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
@@ -216,8 +215,8 @@ struct context {
 // LED blinking every 1/10 second = fatal error
 // LED constantly on = connected to target
 // LED slow blinking = ISP programming
-const unsigned int ontimes[8] =  {0, 0,  100, 150, 1, 1, 1, 750};
-const unsigned int offtimes[8] = {1, 1,  1000, 150, 0, 0, 0, 750};
+const unsigned int ontimes[8] =  {0, 100, 150, 1, 1, 1, 750};
+const unsigned int offtimes[8] = {1, 1000, 150, 0, 0, 0, 750};
 volatile unsigned int ontime; // number of ms on
 volatile unsigned int offtime; // number of ms off
 
@@ -662,7 +661,7 @@ void monitorSystemLoadState(void) {
   if (noinput == 2777) { // roughly 50 msec, based on the fact that one loop is 18 usec
     if (ctx.state == LOAD_STATE) {
       if (ctx.bps >= 30000)  // if too slow, wait for next command
-                              // instead of asnychronous load
+                              // instead of asnychronously finishing load 
 	targetFlushFlashProg();
       setSysState(DWCONN_STATE);
     }
@@ -676,7 +675,7 @@ void initSession(void)
   DEBLN(F("initSession"));
   flashidle = true;
   ctx.safestep = true;
-  ctx.protectdw = true;
+  ctx.dwactivated = false;
   ctx.tmask = 0xFF;
   bpcnt = 0;
   bpused = 0;
@@ -778,6 +777,7 @@ void gdbHandleCmd(void)
 
     /* parse received buffer (and perhaps start executing) */
     gdbParsePacket(buf);
+    buffill = 0; /* This avoids sending a packet that was sent to us when replying to a '-' */
     break;
 			 
   case '-':  /* NACK, repeat previous reply */
@@ -856,18 +856,17 @@ void gdbParsePacket(const byte *buff)
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
-    if (gdbStopConnection())                          /* disable DW mode if AutoDW */
-      gdbSendReply("OK");                             /* and signal that everything is OK */
+    gdbStopConnection();                              /* disable DW mode if AutoDW */
+    gdbSendReply("OK");                               /* and signal that everything is OK */
+                                                      /* after that avr-gdb will disconnect */
+    _delay_ms(500);                                   /* wait a bit */
+    dwlrestart();                                     /* fresh restart */
     break;
   case 'c':                                           /* continue */
   case 'C':                                           /* continue with signal - just ignore signal! */
     s = gdbContinue();                                /* start execution on target at current PC */
     if (s) gdbSendState(s);                           /* if s != 0, it is a signal notifying an error */
                                                       /* otherwise the target is now executing */
-    break;
-  case 'k':
-    gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
-    gdbStopConnection();                              /* stop DW mode if AutoDW */
     break;
   case 's':                                           /* single step */
   case 'S':                                           /* step with signal - just ignore signal */
@@ -879,20 +878,14 @@ void gdbParsePacket(const byte *buff)
     break;
   case 'v':                                          
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {/* Run command */
-      if (gdbStartConnect(false)) {                   /* re-enable DW mode, reset MCU, and clear PC */
-	setSysState(DWCONN_STATE);
+	gdbReset();
 	gdbSendState(SIGTRAP);                        /* trap signal */
-      } else {
-	gdbSendReply("E02");
-      }
-    } else
-      if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) {
-	gdbUpdateBreakpoints(true);                   /* remove BREAKS in memory before exit */
-	if (gdbStopConnection())                      /* stop DW mode (if autodw) */
-	  gdbSendReply("OK");                         /* and signal that everything is OK */
-      } else {
-	gdbSendReply("");                             /* not supported */
-      }
+    } else if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) { /* used only in extended-remote: just reset */
+      gdbReset();
+      gdbSendReply("OK");                           /* all OK */
+    } else {
+      gdbSendReply("");                             /* not supported */
+    }
     break;
   case 'q':                                           /* query requests */
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0) /* monitor command */
@@ -900,19 +893,16 @@ void gdbParsePacket(const byte *buff)
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
       //DEBLN(F("qSupported"));
       initSession();                                  /* always init all vars when gdb connects */
-      if (gdbStartConnect(true))                      /* and try to connect */
-	gdbSendPSTR((const char *)PSTR("PacketSize=" MAXBUFHEXSTR)); /* needs to be given in hexadecimal! */
+      gdbStartConnect(true);                          /* and try to connect */
+      gdbSendPSTR((const char *)PSTR("PacketSize=" MAXBUFHEXSTR)); /* needs to be given in hexadecimal! */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                           /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
       gdbSendReply("m01");                            /* always 1 thread*/
     else if (memcmp_P(buf, (void *)PSTR("qsThreadInfo"), 12) == 0)
       gdbSendReply("l");                              /* send end of list */
-    /* ioreg query does not work!
-    else if (memcmp_P(buf, (void *)PSTR("qRavr.io_reg"), 12) == 0) 
-      if (mcu.rambase == 0x100) gdbSendReply("e0");
-      else gdbSendReply("40");
-    */
+    else if (memcmp_P(buf, (void *)PSTR("qAttached"), 9) == 0)
+      gdbSendReply("1");                              /* tell GDB to use detach when quitting */
     else
       gdbSendReply("");  /* not supported */
     break;
@@ -971,7 +961,13 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MODWIRE:
     switch (cmdbuf[mooptix]) {
-    case '+': gdbConnectDW(); break;
+    case '+':
+      if (ctx.state == NOTCONN_STATE && ctx.dwactivated && !(ctx.autodw)) {
+	gdbReplyMessagePSTR(PSTR("Cannot reactivate debugWIRE: Do a restart"),-1);
+      } else {
+	gdbConnectDW();
+      }
+      break;
     case '-': gdbDisconnectDW(); break;
     case '\0': gdbReportConnected(); break;
     default: gdbSendReply("E09"); break;
@@ -979,7 +975,7 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MORESET:
     if (gdbReset()) gdbReplyMessagePSTR(PSTR("MCU has been reset"), -1);
-    else gdbSendReply("E05");
+    else gdbSendReply("E09");
     break;
   case MOCKDIV:
     switch (cmdbuf[mooptix]) {
@@ -1119,7 +1115,7 @@ void gdbReportTimers(void)
 // check whether specified name fits with actual mcu
 void gdbCheckMcu(const char * moarg)
 {
-  if (targetOffline() && ctx.state != ISPCONN_STATE) { // target not connected
+  if (targetOffline()) { // target not connected
     gdbReplyMessagePSTR(PSTR("Target not connected"), -1);
     return;
   } else {
@@ -1164,36 +1160,34 @@ void setupDW(void)
   gdbCleanupBreakpointTable();
   targetReset(); 
   targetInitRegisters();
+  ctx.dwactivated = true; // if we now disconnect, we are done!
 }
 
-// start a connection (target remote ...)
-// if DW mode is active, go directly there
-// otherwise either program DWEN, powercycle, and then enter DW (AutoDW)
-// or simply program DWEN (non-AutoDW)
+// start a connection initially (target remote ...), but then only try DW
+// or through the monitor 'dw +' command, then try everything
 boolean gdbStartConnect(boolean initialconnect)
 {
   int conncode;
   _delay_ms(100); // allow for startup of MCU initially
   mcu.sig = 0;
-  if (targetDWConnect()) { // if immediately in DW mode, that is OK!
-    setupDW();
-    return true;
-  }
   if (digitalRead(DWLINE) == LOW) { // externally un-powered!
     gdbReportConnectionProblem(CONNERR_NO_TARGET_POWER); // Oops, target is not powered up
     return false;
   }
+  if (targetDWConnect()) { // if immediately in DW mode, that is OK!
+    setupDW();
+    return true;
+  }
+  if (fatalerror != NO_FATAL) return false;
+  if (initialconnect && !(ctx.autodw))
+    return true;
   conncode = targetISPConnect();
   if (conncode < 0) {
     gdbReportConnectionProblem(conncode == -1 ? CONNERR_NO_ISP_REPLY : -conncode + 1);
     return false;
   }
-  if ((!(ctx.autodw)) && (initialconnect)) {
-    setSysState(ISPCONN_STATE);
-    return true;
-  }
-  if (powerCycle()) {
-    setupDW();
+  if (powerCycle()) { // power-cycle automatically or manually, then connect
+    setupDW(); // setup everything
     return true;
   } else {
     flushInput();
@@ -1210,7 +1204,6 @@ boolean gdbConnectDW(void)
     gdbStartConnect(false);
     if (ctx.state == DWCONN_STATE) {
       targetReset();
-      ctx.protectdw = true;
     }
   }
   gdbReportConnected();
@@ -1220,8 +1213,8 @@ boolean gdbConnectDW(void)
 // Stop connection when leaving the debugger
 boolean gdbStopConnection(void)
 {
-  if (!ctx.autodw  && ctx.state == DWCONN_STATE) {
-    setSysState(ISPCONN_STATE);
+  if (!ctx.autodw) {
+    setSysState(NOTCONN_STATE);
     return true; // leave debugger without leaving dW mode
   }    
   targetStop();
@@ -1232,21 +1225,16 @@ boolean gdbStopConnection(void)
 // monitor dwire -
 boolean gdbDisconnectDW(void)
 {
-  if (targetStop()) {
-    setSysState(ISPCONN_STATE);
-    gdbReportConnected();
-    ctx.protectdw = false;
-    return true;
-  }
+  boolean succ = targetStop();
   setSysState(NOTCONN_STATE);
   gdbReportConnected();
-  return false;
+  return succ;
 }
 
 void gdbReportConnected(void)
 {
   if (mcu.name == unknown) {
-    gdbReplyMessagePSTR(PSTR("Not connected"),-1);
+    gdbReplyMessagePSTR(PSTR("debugWIRE is not yet enabled"),-1);
   } else { 
     gdbDebugMessagePSTR(Connected,-2);
     if (!targetOffline()) {
@@ -1399,7 +1387,7 @@ boolean manualPowerCycle(void)
       if (digitalRead(DWLINE) == LOW) { // still gone
 	while (digitalRead(DWLINE) == LOW && retry++ < 6000) _delay_ms(10);
 	if (retry >= 6000) {
-	  setSysState(ISPCONN_STATE);
+	  setSysState(NOTCONN_STATE);
 	  return false;
 	}
 	_delay_ms(300);
@@ -1413,7 +1401,7 @@ boolean manualPowerCycle(void)
       }
     }
   }
-  setSysState(ISPCONN_STATE);
+  setSysState(NOTCONN_STATE);
   return false;
 }
 
@@ -1441,7 +1429,7 @@ void power(boolean on)
 // issue reset on target
 boolean gdbReset(void)
 {
-  if (ctx.state == ISPCONN_STATE) {
+  if (ctx.state == NOTCONN_STATE) {
     gdbDebugMessagePSTR(PSTR("Enable debugWIRE first"), -1);
     return false;
   }
@@ -1461,11 +1449,10 @@ void gdbSetFuses(Fuses fuse)
   int res; 
 
   if (!ctx.autodw && ctx.state == DWCONN_STATE) {
-    gdbDebugMessagePSTR(PSTR("Disable debugWIRE first"),-1);
-    gdbSendReply("E01");
+    gdbReplyMessagePSTR(PSTR("Disable debugWIRE first"),-1);
     return;
   }
-  if (ctx.state == DWCONN_STATE) setSysState(ISPCONN_STATE);
+  if (ctx.state == DWCONN_STATE) setSysState(NOTCONN_STATE);
   res = targetSetFuses(fuse);
   if (res < 0) {
     if (res == -1) gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1);
@@ -1510,12 +1497,11 @@ void gdbGetFuses(boolean ckdiv, boolean noreply)
   int res; 
 
   if (!ctx.autodw && ctx.state == DWCONN_STATE) {
-    gdbDebugMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
-    gdbSendReply("E01");
+    gdbReplyMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
     return;
   }
 
-  if (ctx.state == DWCONN_STATE) setSysState(ISPCONN_STATE);
+  if (ctx.state == DWCONN_STATE) setSysState(NOTCONN_STATE);
   res = targetGetClockFuses(CkSource, CkDiv);
   if (res < 0) {
     gdbDebugMessagePSTR(PSTR("Cannot access fuses"),-res);
@@ -1619,7 +1605,6 @@ byte gdbStep(void)
 
   //DEBLN(F("Start step operation"));
   if (fatalerror) return SIGABRT;
-  if (ctx.state == ISPCONN_STATE) return SIGTERM;
   if (targetOffline()) return SIGHUP;
   getInstruction(opcode, arg);
   if (targetIllegalOpcode(opcode)) {
@@ -1663,7 +1648,6 @@ byte gdbContinue(void)
   byte sig = 0;
   //DEBLN(F("Start continue operation"));
   if (fatalerror) sig = SIGABRT;
-  else if (ctx.state == ISPCONN_STATE) sig = SIGTERM;
   else if (targetOffline()) sig = SIGHUP;
   else {
     gdbUpdateBreakpoints(false);  // update breakpoints in flash memory
@@ -2365,9 +2349,6 @@ void gdbSendState(byte signo)
 {
   targetSaveRegisters();
   switch (signo) {
-  case SIGTERM:
-    gdbDebugMessagePSTR(PSTR("Enable debugWIRE first"),-1);
-    break;
   case SIGHUP:
     gdbDebugMessagePSTR(PSTR("Connection to target lost"),-1);
     setSysState(NOTCONN_STATE);
@@ -2540,9 +2521,7 @@ int targetISPConnect(void)
 boolean targetStop(void)
 {
   int ret = 1;
-  if (!ctx.autodw && ctx.protectdw) // if no autodw mode and we have not explicitly switch off dw
-    return true;                    // the protext dw mode
-  ret = targetSetFuses(DWEN);
+  ret = targetSetFuses(DWEN);       // otherwise disable DW mode first
   leaveProgramMode();
   return (ret == 1);
 }
@@ -2589,7 +2568,7 @@ int targetSetFuses(Fuses fuse)
   case CkXtal: succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.xtalosc); break;
   case CkSlow: succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.slowosc); break;
   case Erase:  succ = ispEraseFlash(); break;
-  case DWEN:   succ = ispProgramFuse(HighFuse, mcu.dwenfuse, mcu.dwenfuse); break;
+  case DWEN:   succ = ispProgramFuse(HighFuse, mcu.dwenfuse, mcu.dwenfuse); break; // disable DWEN!
   default: succ = false;
   }
   return (succ ? 1 : -3);
@@ -2988,6 +2967,19 @@ boolean doBreak () {
   _delay_ms(10);
   ctx.bps = 0; // forget about previous connection
   dw.sendBreak(); // send a break
+#if SCOPEDEBUG
+  PORTD|=(1<<PD3);
+  PORTD&=~(1<<PD3);
+#endif
+  _delay_us(20);
+#if SCOPEDEBUG
+  PORTD|=(1<<PD3);
+  PORTD&=~(1<<PD3);
+#endif
+  if (digitalRead(DWLINE) == LOW) { // should be high by now!
+    gdbReportConnectionProblem(6);  // if not, we have a capacitive load on the RESET line
+    return false;
+  }
   if (!expectUCalibrate()) {
     DEBLN(F("No response after break"));
     return false;
