@@ -226,7 +226,7 @@ I have tested the debugger on MCUs marked bold. The untested PB types appear to 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
 * ATmega8U2, ATmega16U2, ATmega32U2
-* ATmega32C1, ATmega64C1, ATmega16M1, ATmega32M1, ATmega64M1
+* ATmega32C1, ATmega64C1, ATmega16M1, ATmega32M1, ATmega64M1, ATmegaHVE2
 * AT90USB82, AT90USB162
 * AT90PWM1, AT90PWM2B, AT90PWM3B
 * AT90PWM81, AT90PWM161
