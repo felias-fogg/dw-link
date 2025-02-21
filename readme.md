@@ -14,7 +14,7 @@
 
 This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well.
 
-The debugger speaks [debugWIRE](https://en.wikipedia.org/wiki/DebugWIRE) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
+The debugger speaks [debugWIRE](https://debugwire.de) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
 Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new IDE 2.X did not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, single-step, and inspect and set variables. And since version 4.0.0, this can all be done in the Arduino IDE 2.
 
