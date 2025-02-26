@@ -226,7 +226,7 @@ I have tested the debugger on MCUs marked bold. The untested PB types appear to 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
 * ATmega8U2, ATmega16U2, ATmega32U2
-* ATmega32C1, ATmega64C1, ATmega16M1, ATmega32M1, ATmega64M1, ATmegaHVE2
+* ATmega32C1, ATmega64C1, ATmega16M1, ATmega32M1, ATmega64M1
 * AT90USB82, AT90USB162
 * AT90PWM1, AT90PWM2B, AT90PWM3B
 * AT90PWM81, AT90PWM161
@@ -647,6 +647,7 @@ Finally, there are commands that control the settings of the debugger and the MC
 | monitor version              | print version number of firmware                             |
 | monitor dwire [+\|-]         | **+** activate debugWIRE; **-** disables debugWIRE; without any argument, it will report MCU type and whether debugWIRE is enabled (*) |
 | monitor reset                | resets the MCU (*)                                           |
+| monitor load [r\|w]          | When loading, either read before write (r) or write only. The first option is faster and reduces flash wear. So, it is the default. |
 | monitor runtimes             | run timers (**+**) or freeze (**-**) (default) when the program is stopped |
 | monitor mcu [*mcu-name*]     | If no argument is given, the MCU dw-link is connected to is printed. Otherwise, it is checked whether the given *mcu-name* matches the connected MCU and if not, a fatal error is signaled and debugging is stopped. |
 | monitor ckdiv [1\|8]         | **1** unprograms the CKDIV8 fuse, **8** programs it; without an argument, the state of the fuse is reported (*+) |

@@ -36,7 +36,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "4.4.0"
+#define VERSION "4.5.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -202,7 +202,8 @@ struct context {
   statetype state; // system state
   boolean levelshifting; // true when using dw-probe sitting on an Arduino board
   boolean autodw; // switch DW automatically on and off
-  boolean dwactivated; // will be true after dw has been activated once; if then NOTCONN_STATE, you need to leave! 
+  boolean dwactivated; // will be true after dw has been activated once; if then NOTCONN_STATE, you need to leave!
+  boolean readbeforewrite; // read before write when loading
   byte tmask; // run timers while stopped when tmask = 0xDF, freeze when tmask = 0xFF
   unsigned long bps; // debugWIRE communication speed
   boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
@@ -441,6 +442,7 @@ const char motimeouts[] PROGMEM = "timeouts";
 const char moram[] PROGMEM = "ramusage";
 const char motest[] PROGMEM = "test";
 const char momcu[] PROGMEM = "mcu";
+const char moload[] PROGMEM = "load";
 
 // command index
 #define MOHELP 0
@@ -459,12 +461,13 @@ const char momcu[] PROGMEM = "mcu";
 #define MOTEST 13
 #define MOMCU 14
 #define MORUNTIMERS 15
-#define NUMMONCMDS 16
+#define MOLOAD 16
+#define NUMMONCMDS 17
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
   mohelp, moversion, modwire, moreset, mockdiv, moosc, mobreak, mospeed, mosinglestep,
-  moflashcount, molasterror, motimeouts, moram, motest, momcu, moruntimers }; 
+  moflashcount, molasterror, motimeouts, moram, motest, momcu, moruntimers, moload }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -674,6 +677,7 @@ void initSession(void)
   int supanalog;
   DEBLN(F("initSession"));
   flashidle = true;
+  ctx.readbeforewrite = true;
   ctx.safestep = true;
   ctx.dwactivated = false;
   ctx.tmask = 0xFF;
@@ -1006,6 +1010,7 @@ void gdbParseMonitorPacket(byte *buf)
     default: gdbSendReply("E09"); break;
     }
     break;
+  case MOLOAD: gdbLoadOption(cmdbuf[mooptix]); break;
   case MOSPEED: gdbSpeed(cmdbuf[mooptix]); break;
   case MOSINGLESTEP: gdbSteppingMode(cmdbuf[mooptix]); break;
   case MOFLASHCOUNT: gdbReportFlashCount(); break;
@@ -1026,11 +1031,11 @@ void gdbParseMonitorPacket(byte *buf)
 #if UNITGDB
     case 'g': gdbTests(para); break;
 #endif
-    default: gdbSendReply("");
+    default: gdbSendReply("E09");
     }
     break;
   default:
-    gdbSendReply("");
+    gdbSendReply("E09");
     break;
   }
 }
@@ -1039,19 +1044,25 @@ void gdbParseMonitorPacket(byte *buf)
 int gdbDetermineMonitorCommand(char *line, int &optionix)
 {
   unsigned int ix;
-  int cmdix;
+  int cmdix, resultcmd = -1;
   boolean succ = false;
   char *checkcmd;
 
   measureRam();
   
-  for (cmdix = 0; cmdix < NUMMONCMDS && !succ; cmdix++) {
+  for (cmdix = 0; cmdix < NUMMONCMDS; cmdix++) {
     checkcmd = (char *)pgm_read_word(&(mocmds[cmdix]));
     for (ix = 0; ix < strlen(line)+1; ix++) {
       if (line[ix] == ' ' || line[ix] == '\0') {
-	if (ix > 1) {
-	  succ = true;
-	  break;
+	if (ix > 0) {
+	  if (resultcmd < 0) {
+	    succ = true;
+	    resultcmd = cmdix;
+	    break;
+	  } else {
+	    succ = false;
+	    break;
+	  }
 	} else {
 	  return -1;
 	}
@@ -1060,21 +1071,21 @@ int gdbDetermineMonitorCommand(char *line, int &optionix)
       }
     }
   }
-  if (--cmdix >= NUMMONCMDS) return -1;
+  if (!succ) return -1; // if not found or ambigious
   optionix = strlen(line);
   succ = false;
   for (ix=0; ix<strlen(line)+1; ix++) {
     if (line[ix] == '\0') {
       optionix = ix;
-      return cmdix;
+      return resultcmd;
     } else if (line[ix] == ' ')
       succ = true;
     else if (succ && line[ix] != ' ') {
       optionix = ix;
-      return cmdix;
+      return resultcmd;
     }
   }
-  return cmdix;
+  return resultcmd;
 }
 
 // help function (w/o unit tests)
@@ -1083,6 +1094,8 @@ inline void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor version            - firmware version"), -1);
   gdbDebugMessagePSTR(PSTR("monitor dwire [+|-]        - enables (+) or disables (-) debugWIRE (*)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor reset              - reset target (*)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor load [readbeforewrite|writeonly]"),-1);
+  gdbDebugMessagePSTR(PSTR("                           - read before write when loading or write only"), -1);
   gdbDebugMessagePSTR(PSTR("monitor runtimers [+|-]    - run timers (+) or freeze (-)<d> when stopped"), -1);  
   gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]        - program (8) or unprogram (1) CK8DIV (*)"), -1);
   //gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
@@ -1285,6 +1298,16 @@ inline void gdbSteppingMode(char arg)
     gdbReplyMessagePSTR(PSTR("Single-stepping is interrupt-free"), -1);
   else
     gdbReplyMessagePSTR(PSTR("Single-stepping is interruptible"), -1);
+}
+
+
+inline void gdbLoadOption(char arg)
+{
+  if (arg != '\0') ctx.readbeforewrite = (arg == 'r');
+  if (ctx.readbeforewrite)
+    gdbReplyMessagePSTR(PSTR("Loading is done by reading flash before writing"), -1);
+  else
+    gdbReplyMessagePSTR(PSTR("Loading is performed by writing only"), -1);
 }
 
 // show version
@@ -2350,7 +2373,7 @@ void gdbSendState(byte signo)
   targetSaveRegisters();
   switch (signo) {
   case SIGHUP:
-    gdbDebugMessagePSTR(PSTR("Connection to target lost"),-1);
+    gdbDebugMessagePSTR(PSTR("No connection to target"),-1);
     setSysState(NOTCONN_STATE);
     break;
   case SIGILL:
@@ -2668,6 +2691,8 @@ void targetReadEeprom(unsigned int addr, byte *mem, unsigned int len)
 void targetWriteFlashPage(unsigned int addr)
 {
   byte subpage;
+  boolean dirty = true;
+
 
   measureRam();
 
@@ -2682,38 +2707,39 @@ void targetWriteFlashPage(unsigned int addr)
     return;
   }
   DWreenableRWW();
-  // read old page contents (maybe from page cache)
-  targetReadFlashPage(addr);
-  // check whether something changed
-  // DEBPR(F("Check for change: "));
-  if (memcmp(newpage, page, mcu.targetpgsz) == 0) {
-    DEBLN(F("page unchanged"));
-    return;
-  }
-  // DEBLN(F("changed"));
+  if (ctx.readbeforewrite) {
+    // read old page contents (maybe from page cache)
+    targetReadFlashPage(addr);
+    // check whether something changed
+    // DEBPR(F("Check for change: "));
+    if (memcmp(newpage, page, mcu.targetpgsz) == 0) {
+      DEBLN(F("page unchanged"));
+      return;
+    }
+    // DEBLN(F("changed"));
 
 #if TXODEBUG
-  DEBLN(F("Changes in flash page:"));
-  for (unsigned int i=0; i<mcu.targetpgsz; i++) {
-    if (page[i] != newpage[i]) {
-      DEBPRF(i+addr, HEX);
-      DEBPR(": ");
-      DEBPRF(newpage[i], HEX);
-      DEBPR(" -> ");
-      DEBPRF(page[i], HEX);
-      DEBLN("");
+    DEBLN(F("Changes in flash page:"));
+    for (unsigned int i=0; i<mcu.targetpgsz; i++) {
+      if (page[i] != newpage[i]) {
+	DEBPRF(i+addr, HEX);
+	DEBPR(": ");
+	DEBPRF(newpage[i], HEX);
+	DEBPR(" -> ");
+	DEBPRF(page[i], HEX);
+	DEBLN("");
+      }
     }
-  }
 #endif
   
-  // check whether we need to erase the page
-  boolean dirty = false;
-  for (byte i=0; i < mcu.targetpgsz; i++) 
-    if (~page[i] & newpage[i]) {
-      dirty = true;
-      break;
-    }
-
+    // check whether we need to erase the page
+    dirty = false;
+    for (byte i=0; i < mcu.targetpgsz; i++) 
+      if (~page[i] & newpage[i]) {
+	dirty = true;
+	break;
+      }
+  }
   validpg = false;
   
   // erase page when dirty
