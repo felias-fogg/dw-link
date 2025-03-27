@@ -12,9 +12,9 @@
 
 ![cover](docs/pics/uno-debug2.png)
 
-This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well. Since version 4.0.0, you can use this debugger in the **Arduino IDE 2** by downloading two additional board manager files.
+This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well. Since version 4.0.0, you can use this debugger in the **Arduino IDE 2** by downloading two additional board manager files. Version 5.0.0 aims to make the user interface similar to [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver). With that, it should not make much of a difference whether you use dw-link or one of Microchip's hardware debuggers to deal with debugWIRE MCUs. 
 
-The debugger speaks [debugWIRE](https://debugwire.de) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means that you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
+The debugger dw-link speaks [debugWIRE](https://debugwire.de) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
 Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new IDE 2.X did not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, single-step, and inspect and set variables. 
 
@@ -32,7 +32,7 @@ This repository contains the following directories:
 * [**pcb**](pcb/): Contains design data (KiCad) for the optional dw-link probe
 * [**testprobe**](testprobe/): Contains a sketch to be used to run tests on freshly assembled dw-link probe
 * [**core-mods**](core-mods/): Contains all the modifications to the core files necessary to support the generation of debug-friendly object files
-* [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as C program to generate the lists.
+* [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as a C program to generate the lists.
 
 Note that the debugger is a beta release and may contain bugs. If you encounter behavior that you think is wrong, try to be as specific as possible so that I can reproduce the behavior. I have prepared an [issue form](docs/issue_form.md) for that purpose. Current issues, known bugs, and limitations are listed in Section 8 of the [manual](docs/manual.md). 
 

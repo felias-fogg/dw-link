@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 typedef  unsigned char byte;
-bool small, illegal;
+bool small, large, all, illegal;
 
 
 bool targetIllegalOpcode(unsigned int opcode)
@@ -66,18 +66,28 @@ bool twoWordInstr(unsigned int opcode) {
 int main(int argc, char *argv[]) {
   unsigned int op;
   if (argc != 3) {
-    printf("Provide two arguments: ill/well and small/large\n");
+    printf("Provide two arguments: ill/well/all and small/large/all\n");
     return 1;
   }
   small = (strcmp(argv[2],"small") == 0);
+  large = (strcmp(argv[2],"large") == 0);
   illegal = (strncmp(argv[1],"ill",3) == 0);
+  all = (strncmp(argv[1],"all",3) == 0) || (strncmp(argv[2],"all",3) == 0);
 
   printf("\t.org 0x0000\n");
-  if (small) printf("\t; for small MCUs\n");
-  else  printf("\t; for larger MCUs\n");
-  if (illegal) printf("\t; all illegal opcodes\n");
-  else printf("\t; all legal opcodes\n");
+  if (all) printf("\t; for all MCUs\n");
+  else {
+    if (small) printf("\t; for small MCUs\n");
+    else  printf("\t; for larger MCUs\n");
+    if (illegal) printf("\t; all illegal opcodes\n");
+    else printf("\t; all legal opcodes\n");
+  }
   for (op=0; op <= 0xFFFF; op++) {
+    if (all) {
+	printf("\t.word 0x%04x\n", op);
+	printf("\t.word 0x0001\n");
+	continue;
+    }      
     if (targetIllegalOpcode(op)) {
       if (illegal) {
 	printf("\t.word 0x%04x\n", op);

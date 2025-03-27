@@ -1,5 +1,22 @@
 # Changelog for dw-link
 
+## Version 5.0.0
+
+- Streamlined to make it similar to the user interface of dw-gdbserver, which means:
+  - The automatic switch to and from debugWIRE state is removed. It must now always be done using `monitor debugwire` [`enable`|`disable`].
+  - The support for using a GPIO as a power supply for the target has been removed. It led very often to a situation where the target and debugger work outside the specification (too much current from the pin and voltage too low). And manual power-cycling is not that problematic if you do not have to do it too often.
+  - Renaming of monitor commands to their counterparts in dw-gdbswerver: `monitor debugwire` instead of `monitor dwire` and  `monitor timer` instead of `monitor runtimers`.
+  - Removal of monitor commands that needed to switch to ISP mode and some others that are now superfluous: `monitor ckdiv`, `monitor oscillator`, `monitor mcu`
+  - The MCU type will now be sent by dw-gdbserver after dw-link responds with 'dw-link' to an ENQ, using an RSP pseudo record: $=attiny85#XX. If the connection is established manually, all MCUs are permitted.
+  - Introduction of a new monitor command `monitor info`, which provides info about the state and error information. With that, the following monitor commands are not needed any longer: `monitor lasterror`, `monitor flashcount`, `monitor timeouts` 
+  - New commands (from dw-gdbserver): `monitor onlyloaded`, `monitor verify`
+  - Error handling similar to dw-gdbserver (same error codes and signals)
+- Removed: cleanup of breakpoints before monitor commands in general. Only monitor debugwire disable needs that.
+- Changed: Only 20 breakpoints are now possible (after 25 before).
+- Added: The required MCU type can now be transferred from the server by a special RSP packet following the response to the ENQ for discovering dw-link adapters. Dw-link will then refuse other MCUs. In a sense, this replaces the `monitor mcu` command.
+- Added: Configuration data for ATmegaXHVx.
+- Fixed: Ctrl-C can now stop a tight single-stepping loop. We added a check in gdbSendBuffer for a waiting ctrl-C. If there is one, sending the packet is suppressed.
+
 ## Version 4.5.0 (26-Feb-2025)
 
 - Added: `monitor load [readbeforewrite|writeonly]` in order to be
