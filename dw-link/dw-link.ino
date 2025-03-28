@@ -26,8 +26,7 @@
 // 
 // You can run it on an UNO, a Nano, or a Pro Mini.
 // For the UNO, I designed a shield with different voltage levels and
-
-// level shifters, which I plan to sell on Tindie.
+// level shifters, whichyou can buy on Tindie.
 //
 // I thought that the sketch should also work with the Leonardo-like boards
 // and with the Mega board. For the former, I got stuck with the flashtest program.
@@ -36,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.0.0-pre1"
+#define VERSION "5.0.0-pre2"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -231,6 +230,7 @@ volatile unsigned int offtime; // number of ms off
 // pins
 const byte IVSUP = 2;
 const byte DEBTX = 3;
+const byte AUTODW = 3; // will be ignored when SCOPEDEBUG or TXODEBUG
 const byte TISP = 4;
 const byte SENSEBOARD = 5;
 const byte LEDGND = 6;
@@ -1142,7 +1142,7 @@ inline void gdbBreakOption(char arg) {
 }
 
 // help function (w/o unit tests)
-inline void gdbHelp(void) {
+void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor help            - help function"), -1);
   gdbDebugMessagePSTR(PSTR("monitor info            - information about target and debugger"), -1);
   gdbDebugMessagePSTR(PSTR("monitor version         - firmware version"), -1);
@@ -1331,7 +1331,7 @@ boolean gdbDisconnectDW(void)
   return succ;
 }
 
-inline void gdbDwireOption(char arg)
+void gdbDwireOption(char arg)
 {
   switch (arg) {
   case 'e':
@@ -1383,7 +1383,7 @@ void gdbReportConnectionProblem(int errnum)
 }
 
 // report last error number
-inline void gdbReportLastError(void)
+void gdbReportLastError(void)
 {
   gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
 }
@@ -1391,7 +1391,7 @@ inline void gdbReportLastError(void)
 
 
 // set stepping mode
-inline void gdbSteppingOption(char arg)
+void gdbSteppingOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 's')
@@ -1410,7 +1410,7 @@ inline void gdbSteppingOption(char arg)
 }
 
 
-inline void gdbLoadOption(char arg)
+void gdbLoadOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 'r')
@@ -1428,7 +1428,7 @@ inline void gdbLoadOption(char arg)
     gdbReplyMessagePSTR(PSTR("Loading is performed by writing only"), -1);
 }
 
-inline void gdbOnlyOption(char arg)
+void gdbOnlyOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 'e')
@@ -1446,7 +1446,7 @@ inline void gdbOnlyOption(char arg)
     gdbReplyMessagePSTR(PSTR("Execution is always allowed"), -1);
 }
 
-inline void gdbVerifyOption(char arg)
+void gdbVerifyOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 'e')
@@ -1466,7 +1466,7 @@ inline void gdbVerifyOption(char arg)
 
 
 
-inline void gdbTimerOption(char arg)
+void gdbTimerOption(char arg)
 {
     switch (arg) {
     case 'r':
@@ -1532,8 +1532,16 @@ inline void gdbGetMaxBPs(void)
 }
 
 // perform an automatic power cycle
+// do this only if autodw is 'on'
 boolean autoPowerCycle(void)
 {
+#if !SCOPEDEBUG && !TXODEBUG
+  pinMode(AUTODW, INPUT_PULLUP);
+  if (digitalRead(AUTODW) == LOW || digitalRead(SENSEBOARD) == HIGH)
+    return(false);
+#else
+  return(false);
+#endif
   power(false);
   _delay_ms(500);
   power(true);
@@ -1923,7 +1931,9 @@ void gdbUpdateBreakpoints(boolean cleanup)
       while (j < i) {
 	DEBPR(F("RELEVANT: ")); DEBLNF(relevant[j]*2,HEX);
 	ix = gdbFindBreakpoint(relevant[j++]);
-	if (ix < 0) reportFatalError(RELEVANT_BP_NOT_PRESENT, false);
+	if (ix < 0) { reportFatalError(RELEVANT_BP_NOT_PRESENT, false);
+	  return;
+	}
 	DEBPR(F("Found BP:")); DEBLN(ix);
 	if (bp[ix].active && !cleanup) { // enabled but not yet in flash && not a cleanup operation
 	  bp[ix].opcode = (newpage[(bp[ix].waddr*2)%mcu.targetpgsz])+

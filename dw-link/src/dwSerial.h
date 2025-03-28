@@ -1,7 +1,6 @@
 /*
  * dwSerial.h -- debugWIRE serial interface (based on SingleWireSerial)
  */
-
 #ifndef dwSerial_h
 #define dwSerial_h
 
@@ -14,6 +13,7 @@
 
 class dwSerial : public SingleWireSerial
 {
+#if 0 // apparently unused
  private:
   struct  {
     uint16_t oneAndAHalfBitDelay;
@@ -21,7 +21,7 @@ class dwSerial : public SingleWireSerial
     uint16_t endOfByte;
     uint8_t setICfalling, setICrising, setCTC;
   } _speedData[2];
-
+#endif
 
  public:
   // public methods
