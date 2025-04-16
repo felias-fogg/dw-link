@@ -2,18 +2,14 @@
 
 ##### List of tasks to work on:
 
-* Create Python script dw-gdbserver.py that implements a dw server on
-  top of pymcuprog
-
-* Build a V5 version: unified monitor commands and tight integration
-  into te script
-
 * use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video?
 
 * Implement STK500v2 protocol
 
 * debug tiny13 problem, perhaps by reverting back to the version in
   2022, when it seemed to work
+
+* debug sleep-crash when single- stepping verhindern
 
 * maybe have a variable length break, dependent on the speed of ISP?
 
@@ -23,9 +19,19 @@
 
 * perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
 
+* range-stepping implementieren. Sollte wohl nicht so schwierig sein.
+
   
 
 ##### List of tasks done:
+
+* Create Python script dw-gdbserver.py that implements a dw server on
+  top of pymcuprog
+
+* Build a V5 version: unified monitor commands and tight integration
+  into the script; power-cycling is now only initiated by monitor debugwire enable
+
+* a mode where writes are double-checked: "monitor verify/noverify". Could be on or off by default.
 
 * produce short youtube video to promote dw-link probe
 
@@ -81,35 +87,8 @@
 
 - integrate into the Arduino VSC plugin
 
-* a mode where reads & writes are double-checked: "monitor verify/noverify". Could be on or off by default.
-
 * reorganize BP management: have a list of stored and a list of new
   BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!
 
 
 
-**New control regime for entering/leaving DW**
-
-**AutoDW**: Entering and leaving DW mode is something the user can be ignorant about. Works only if the target system is powered by the debugger.
-
-**Non-AutoDW**: At some points, the user is asked to power-cycle the system. After debugging, the user has to restore the original state.
-
-Possible states are: **N**ormal, **T**ransitional, **D**ebugWIRE
-
-- `target remote ...` gdbStartConnect
-  - AutoDW: N|T|D -> D
-  - Non-AutoDW: D -> D, N|T -> T
-
-- `quit` gdbStopConnect
-  - AutoDW: D|T|N -> N
-  - Non-AutoDW: D -> D, T|N -> N
-
-- `monitor dwire +` gdbConnectDW
-  - AutoDW: N|T|D -> D
-  - Non-AutoDW: N|T -> PC -> D, D -> D
-
-- `monitor dwire -` gdbDisconnectDW 
-  - AutoDW: D|T|N -> N
-  - Non-AutoDW: D -> T, T -> T, N -> N
-
-In the end, I noticed that quit did not work as expected, because sometimes the quit is called more than once! So, I added extra control-variables to take of that. 

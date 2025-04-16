@@ -1,6 +1,6 @@
 # Quick-start Guide for AVR-GDB Debugging
 
-Turn your Arduino UNO into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps (+ 1 optional step). Takes less than one hour. 
+Turn your Arduino UNO into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. Takes less than one hour. 
 
 This tutorial explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](quickstart-Arduino-IDE2).
 
@@ -20,13 +20,13 @@ This tutorial explains how to use the [GNU Debugger GDB](https://www.sourceware.
 
 
 
-## Step 1: Install Arduino IDE
+## Step 1: Install Arduino IDE 2 or arduino-cli
 
-You probably already have installed the Arduino IDE. If not, download and install it from https://arduino.cc. It does not matter whether it is the IDE 1 or 2. However, it should be an IDE with version >= 1.8.13. 
+You probably already have installed the Arduino IDE 2. If not, download and install it from https://arduino.cc. Alternatively, you can install arduino-cli.
 
 **Check:** Start IDE and check the `About Arduino`  entry under the `Arduino` or `Help` menu for the version number.
 
-## Step 2: Install new board definition files
+## Step 2: Install new board manager files
 
 Open the `Preference` dialog of the Arduino IDE and paste the following two URLs into the list of  `Additional boards manager URLs`:
 
@@ -38,10 +38,10 @@ https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index
 Close the `Preference` dialog with `OK`. Now we want to install the two cores `ATTinyCore` and `MiniCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type MiniCore first. Then, install the most recent version (or upgrade to the most recent one) with a `+debug-2.X` suffix in its version number.
+* In the search field, type MiniCore first. Then, install the most recent version (or upgrade to the most recent one) with a `+debug` suffix in its version number.
 * Afterwards, do the same with `ATTinyCore`.
 
-**Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . Then check whether there is an entry `Debug Compile Flags: "No Debug"` when you click on `Tools` again. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
+**Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
 ## Step 3: Install *dw-link* firmware
 
@@ -106,7 +106,7 @@ When you are the proud owner of a [dw-link probe](https://www.tindie.com/product
 
 If this is not the case, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO, turned into a hardware debugger. 
 
-![ATtiny85-debug](pics/debug-attiny85-LED-onboard.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
+![ATtiny85-debug](pics/attiny85-debug-new.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
 
 Here is a table of all the connections so that you can check that you have made all the connections. 
 
@@ -119,29 +119,29 @@ Here is a table of all the connections so that you can check that you have made 
 | 5 (D0, MOSI) | D11             |                                                              |
 | 6 (D1, MISO) | D12             |                                                              |
 | 7 (D2, SCK)  | D13             |                                                              |
-| 8 (Vcc)      | D9              | 10k resistor, decoupling cap 100 nF                          |
+| 8 (Vcc)      | 5V              | 10k resistor, decoupling cap 100 nF                          |
 | &nbsp;       | RESET           | RESET blocking cap of 10 µF (+)                              |
 | &nbsp;       | D7              | 220 Ω to system (yellow) LED (+)                             |
 
 The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The system LED gives you information about the internal state of the debugger: 
 
-1. not connected (LED is off),
+1. debugWIRE mode disabled (LED is off),
 2. waiting for power-cycling the target (LED flashes every second for 0.1 sec),3.
-3. target is connected (LED is on),
+3. debugWIRE mode enabled (LED is on),
 4. ISP programming (LED is blinking slowly),
 5. error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec).
-
-Note that state 2 (power-cycling) will be skipped in our configuration, where the debugger provides the power supply to the target via a GPIO line and does the power-cycling for you.
 
 **Check:** Go through the table above and check every connection. Wrong wiring can often cause hours of useless software debugging!
 
 ## Step 6: Compiling the Arduino sketch for the target
 
+Either you use the arduino-cli to compile your sketch (and then I assume you know what you are doing), or you use the IDE:
+
 * Load the sketch, you want to debug  (e.g., `dw-link-x.y.z/examples/varblink/varblink.ino`) into the IDE and select `ATtiny25/45/85 (no bootloader)` as the board. 
 * As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). For the `Debug Compile Flags` option choose `Debug`. 
-* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder, where the sketch is located. If you use the IDE 2, then the ELF file can be found in the folder `build/<board-type>/` inside the sketch folder. 
+* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder `build/<board-type>/` inside the sketch folder. 
 
-**Check:** Open terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be there (Arduino IDE 1.X) or in a subdirectory of the `build` folder (Arduino IDE 2.X). 
+**Check:** Open terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be in subdirectory of the `build` folder. 
 
 ## Step 7: Debugging
 
@@ -153,10 +153,10 @@ Open a terminal window and change into the folder where the ELF file resides. Th
 avr-gdb -b 115200 <sketchname>.ino.elf
 ```
 
-where *\<sketchname\>* is the name of the Arduino sketch. This should fire up the avr-gdb debugger. When you now type
+where *\<sketchname\>* is the name of the Arduino sketch. This should fire up the avr-gdb debugger, which will prompt you with `(gdb)`. When you now type 
 
 ```
-target remote <serial-port>
+(gdb) target remote <serial-port>
 ```
 
 where *\<serial-port\>* is the serial port of the UNO, then, after a few seconds, one should get a message similar to the following one
@@ -166,14 +166,33 @@ Remote debugging using <serial-port>
 0x00000000 in __vectors ()  
 ```
 
-and the system LED lights up. If this is the case, we are in business! 
+You are connected to the hardware debugger. Now you need to enable the [debugWIRE](https://debugwire.de) mode:
+
+```
+(gdb) monitor debugWIRE enable
+```
+
+This will bring up the message
+
+```
+*** Please power-cycle target ***
+```
+
+asking you to switch power to the target off and the on again in order to acxtivate debugWIRE mode. If in repsonse to it, the following message appears
+
+```
+Connected to ATmega328P
+debugWIRE is enabled, bps: 125244
+```
+
+and the system LED lights up, then you are in business!
 
 What else could happen?
 
 * If the LED stays dark and you receive the message `/dev/XXXXXXXX: Resource busy`, then some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.
 * If the LED stays dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
 
-* If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type `monitor dwire +`, which should give you the reason. Probably: Wrong wiring. So check the wiring or maybe try a different MCU.
+* If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type `monitor info`, which should give you the reason. Probably: Wrong wiring. So check the wiring or maybe try a different MCU.
 
 Assuming that everything went according to plan, the only thing missing now is that the sketch is loaded into flash memory. But the next command will exactly do this:
 
@@ -209,39 +228,15 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **q** - quits gdb
 - `CTRL-C` while the programming is running stops the execution asynchronously
 
-There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of `monitor` commands, which are specific to the dw-link debugger, can be found in Section 5.6 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
+There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of `monitor` commands, which are specific to the dw-link debugger, can be found in Section 5.5 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
 
-You should always end your debugging session with the `quit` command, which will turn off debugging mode on the target chip so that the RESET line could be used again.
+## 8. After debugging
 
-## Step 8 (optional): Install a graphical user interface
+When you are done with debugging, you probably want to disable the debugWIRE mode again, because in debugWIRE mode you cannot use the RESET line or ISP programming. This can be accomplised by using the command `monitor debugwire disable` before you leave the debugger. 
 
-If you would like to work with a GUI, then *[Gede](https://gede.dexar.se/)* is a possible choice. It is a simple and easy to install GUI for GDB, provided your host operating system is macOS or Linux. An alternative to Gede is the [PlatformIO](https://platformio.org/) IDE, as described in detail in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md) in Section 6, which also works for Windows.
+After debugging, you can still can use dw-link as a programmer (of type `Arduino as ISP`). It is not the fastest one, but if you do not have anything better, it will do its job.
 
-A prerequisite for using Gede is that we make sure that *PySerial* is installed. So type into a terminal:
-
-```
-pip3 install pyserial
-```
-
-Now you need to build Gede from [the Gede repository](https://github.com/jhn98032/gede). Just download the latest release and follow the **build instructions** in the README. After Gede has been installed under `/usr/local/bin`, you need to copy the Python script `dw-server.py` from the folder `dw-link-x.y.z/dw-server` to `/user/local/bin` (of course, using `sudo`).
-
-**Check**: Open a terminal window and type `gede`. This should bring up a window, which you can kill. Typing `dw-server.py` should give you the output `--- No dw-link adapter discovered ---`, when no adapter is present, or `Waiting for connection on 2000`. Stop the script with `CTRL-C`.
-
-In order to start a debugging session, you have to open a terminal window and change into the sketch directory. Now type the following command:
-
-```
-dw-server.py -g
-```
-
-The `dw-server.py` script will discover the serial port of the hardware debugger, if there is any, and start Gede, which will present the following window.
-
-![gede](pics/gede-start.png)
-
-`Project dir` and `Program` are specific to your debugging session. The former is the directory Gede was started in, and the latter is the location of the ELF file. The rest should be copied as it is shown. With clicking on `OK`, you start a debugging session. Johan Henriksson, the author of Gede, has written [two short tutorials](https://gede.dexar.se/pmwiki.php?n=Site.Tutorials) on using the GUI. I won't add anything here.
-
-
-
-![gede](pics/gede.png)
+If you want to have a more durable hardware debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie. These days, the Microchip debugger MPLAP SNAP might be a better deal, however. You can use it together with the Python gdbserver [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver), which I have also authored. 
 
 ## What can go wrong?
 
@@ -250,10 +245,4 @@ If something does not work as advertised, it is often a simple wiring problem. O
 The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`.  If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
 If you think you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues) and fill out the [issue form](issue_form.md) before.
-
-## After debugging has finished
-
-If you want to have a more durable debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie.
-
-So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE,  such a programmer is called `Arduino as ISP` or `Arduino as ISP fast`. In the latter case, the upload speed is 115200 instead of 19200.
 

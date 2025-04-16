@@ -12,21 +12,20 @@
 
 ![cover](docs/pics/uno-debug2.png)
 
-This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well. Since version 4.0.0, you can use this debugger in the **Arduino IDE 2** by downloading two additional board manager files. Version 5.0.0 aims to make the user interface similar to [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver). With that, it should not make much of a difference whether you use dw-link or one of Microchip's hardware debuggers to deal with debugWIRE MCUs. 
+This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well. Since version 4.0.0, you can use this debugger in the **Arduino IDE 2** by downloading two additional board manager files. Version 5.0.0 aims to make the user interface similar to what is offered by [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver). This means you can use most of Microchip's hardware debuggers as a drop-in replacement for dw-link. 
 
 The debugger dw-link speaks [debugWIRE](https://debugwire.de) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
 
-Why is this good news? Arduino IDE 1.X does not support debugging at all. Even the new IDE 2.X did not provide debugging for the small AVR MCUs. With this sketch, you get a tool that allows you to set breakpoints, single-step, and inspect and set variables. 
+Why is this good news? Arduino IDE 1 does not support debugging at all. Even the new IDE 2 did not provide debugging for the small AVR MCUs. With this sketch, you get a tool to set breakpoints, single-step, inspect, and set variables when debugging Arduino sketches in Arduino IDE 2.
 
-Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart-Arduino-IDE2.md) to see if it works for you. If you like it and want to incorporate it into your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/).
+Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart-Arduino-IDE2.md) to see if it works for you. If you like it and want to incorporate it into your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/). Since Microchip's MPLAB SNAP debugger has become incredibly cheap, this may actually be an alternative. You can use it as a drop-in replacement for dw-link.
 
-The background and ongoing development of dw-link are topics on my [blog](https://arduino-craft-corner.de/). In particular, the blog posts tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will be of interest to you.
+The background and ongoing development of dw-link are topics on my [blog](https://arduino-craft-corner.de/). In particular, the blog posts tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will interest you.
 
 This repository contains the following directories:
 
 * [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger
 * [**docs**](docs/): Contains the documentation, in particular the [manual](docs/manual.md)
-* [**dw-server**](dw-server/): Contains the Python script dw-server.py, which discovers the serial line dw-link is connected to and provides a serial-to-TCP/IP bridge
 * [**examples**](examples/): Contains two Arduino sketches and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
 * [**pcb**](pcb/): Contains design data (KiCad) for the optional dw-link probe

@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#define LED 4
+#define LED SCK
 
 byte thisByte = 0;
 void setup() {

@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.0.0-pre2"
+#define VERSION "5.0.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -169,6 +169,7 @@
 
 // instruction codes
 const unsigned int BREAKCODE = 0x9598;
+const unsigned int SLEEPCODE = 0x9588;
 
 // some dw commands
 const byte DW_STOP_CMD = 0x06;
@@ -467,6 +468,8 @@ const char motimers[] PROGMEM = "timers";
 const char mobreak[] PROGMEM = "breakpoint";
 const char mosinglestep[] PROGMEM = "singlestep";
 const char mospeed[] PROGMEM = "speed";
+const char mocache[] PROGMEM = "caching";
+const char morange[] PROGMEM = "rangestepping";
 const char motest[] PROGMEM = "test";
 #if ISPMON
 const char mockdiv[] PROGMEM = "ckdiv";
@@ -494,14 +497,16 @@ const char moamb[] PROGMEM ="";
 #define MOTEST 12
 #define MOCKDIV 13
 #define MOOSC 14
-#define MOUNK 15
-#define MOAMB 16
-#define NUMMONCMDS 17 
+#define MOCACHE 15
+#define MORANGE 16
+#define MOUNK 17
+#define MOAMB 18
+#define NUMMONCMDS 19 
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
   mohelp, moinfo, moversion, modwire, moreset, moload, moonly, moverify, motimers, mobreak, mosinglestep, mospeed, 
-  motest, mockdiv, moosc, mounk, moamb }; 
+  motest, mockdiv, moosc, mocache, morange, mounk, moamb }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -727,7 +732,7 @@ void initSession(void)
 // If not, the error is not recorded, but the connection is
 // marked as not connected
 // We will mark the error and send a message that should
-// at least be shown in the dw-server window
+// at least be shown in the gdb-server window
 void reportFatalError(byte errnum, boolean checkio)
 {
   if (checkio) {
@@ -1005,6 +1010,12 @@ void gdbParseMonitorPacket(byte *buf)
   case MOSPEED:
     gdbSpeed(cmdbuf[mooptix]);
     break;
+  case MOCACHE:
+    gdbReplyMessagePSTR(PSTR("Caching is not implemented"), -1);
+    break;
+  case MORANGE:
+    gdbReplyMessagePSTR(PSTR("Range stepping is not yet implemented"), -1);
+    break;
 #if ISPMON
   case MOCKDIV:
     switch (cmdbuf[mooptix]) {
@@ -1184,10 +1195,13 @@ void gdbInfo(void) {
   gdbDebugMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
 #endif
   gdbDebugMessagePSTR(PSTR("Number of debugWIRE timeouts: "), timeoutcnt);
-  if (fatalerror)
+  if (fatalerror) {
+    if (fatalerror < 100)
+      gdbReportConnectionProblem(fatalerror, true);
     gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
-  else
+    } else {
     gdbReplyMessagePSTR(PSTR("No fatal error has occured"), -1);
+  }
 }
 
 // report whether timers will run when stopped
@@ -1238,9 +1252,9 @@ boolean stuckAtOneOrCap(void)
     }
 #else
     if  (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
-      gdbReportConnectionProblem(CONNERR_STUCKAT1_PC);
+      gdbReportConnectionProblem(CONNERR_STUCKAT1_PC,false);
     } else {
-      gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD);
+      gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD,false);
     }
     return true;
   }
@@ -1266,12 +1280,12 @@ boolean gdbStartConnect(boolean initialconnect)
   _delay_ms(100); // allow for startup of MCU initially
   mcu.sig = 0;
   if (digitalRead(DWLINE) == LOW) { // externally un-powered!
-    gdbReportConnectionProblem(CONNERR_NO_TARGET_POWER); // Oops, target is not powered up
+    gdbReportConnectionProblem(CONNERR_NO_TARGET_POWER,!initialconnect); // Oops, target is not powered up
     return false;
   }
-  if (targetDWConnect()) { // if immediately in DW mode, that is OK!
+  if (targetDWConnect(initialconnect)) { // if immediately in DW mode, that is OK!
     if (!gdbCheckMcu()) {
-      gdbReportConnectionProblem(CONNERR_WRONG_MCU);
+      gdbReportConnectionProblem(CONNERR_WRONG_MCU,!initialconnect);
       return false;
     }
     setupDW();
@@ -1282,7 +1296,7 @@ boolean gdbStartConnect(boolean initialconnect)
     return true;
   conncode = targetISPConnect();
   if (conncode < 0) {
-    gdbReportConnectionProblem(conncode == -1 ? CONNERR_NO_ISP_REPLY : -conncode + 1);
+    gdbReportConnectionProblem(conncode == -1 ? CONNERR_NO_ISP_REPLY : -conncode + 1,!initialconnect);
     return false;
   }
   if (powerCycle()) { // power-cycle automatically or manually, then connect
@@ -1365,19 +1379,21 @@ void gdbReportConnected(void)
 
 // report connection problem using gdbDebugMessage with *** prefix
 // and halt further execution
-void gdbReportConnectionProblem(int errnum)
+void gdbReportConnectionProblem(int errnum, boolean doprint)
 {
-  switch (errnum) {
-  case 0: return;
-  case 1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not communicate by ISP; check wiring***"),-1); break;
-  case 2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not activate debugWIRE***"),-1); break;
-  case 3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU***"),-1); break;
-  case 4: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits could not be cleared***"),-1); break;
-  case 5: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits***"),-1); break;
-  case 6: gdbDebugMessagePSTR(PSTR("***Cannot connect: RESET line has a capacitive load***"),-1); break;
-  case 7: gdbDebugMessagePSTR(PSTR("***Cannot connect: Target not powered or RESET shortened to GND***"),-1); break; 
-  case 8: gdbDebugMessagePSTR(PSTR("***MCU type does not match***"), -1); break;
-  default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons***"),-1); break;
+  if (doprint) {
+    switch (errnum) {
+    case 0: return;
+    case 1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not communicate by ISP; check wiring***"),-1); break;
+    case 2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not activate debugWIRE***"),-1); break;
+    case 3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU***"),-1); break;
+    case 4: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits could not be cleared***"),-1); break;
+    case 5: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits***"),-1); break;
+    case 6: gdbDebugMessagePSTR(PSTR("***Cannot connect: RESET line has a capacitive load***"),-1); break;
+    case 7: gdbDebugMessagePSTR(PSTR("***Cannot connect: Target not powered or RESET shortened to GND***"),-1); break; 
+    case 8: gdbDebugMessagePSTR(PSTR("***MCU type does not match***"), -1); break;
+    default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons***"),-1); break;
+    }
   }
   reportFatalError(errnum, false);
 }
@@ -1505,7 +1521,7 @@ void gdbSpeed(char arg)
     gdbSendReply("");
     return;
   }
-  if (arg) doBreak();
+  if (arg) doBreak(true);
   gdbReplyMessagePSTR(PSTR("Current debugWIRE bitrate: "), ctx.bps);
   return;
 }
@@ -1546,7 +1562,7 @@ boolean autoPowerCycle(void)
   _delay_ms(500);
   power(true);
   _delay_ms(100);
-  if (targetDWConnect()) {
+  if (targetDWConnect(false)) {
     setSysState(DWCONN_STATE);
     return true;
   }
@@ -1572,11 +1588,11 @@ boolean manualPowerCycle(void)
 	  return false;
 	}
 	_delay_ms(300);
-	if (targetDWConnect()) {
+	if (targetDWConnect(false)) {
 	  setSysState(DWCONN_STATE);
 	  return true;
 	} else {
-	  gdbReportConnectionProblem(CONNERR_NO_DW_REPLY);
+	  gdbReportConnectionProblem(CONNERR_NO_DW_REPLY, true);
 	  return false;
 	}
       }
@@ -1782,6 +1798,11 @@ byte gdbStep(void)
     return SIGILL;
   }
 #endif
+  if (opcode == SLEEPCODE) {
+    ctx.wpc++;
+    return sig;
+  }
+  if (opcode == BREAKCODE) return SIGILL;
   if ((bpix >= 0 &&  bp[bpix].inflash) || ctx.safestep) {
 #if OFFEX2WORD == 0
     if (twoWordInstr(opcode)) 
@@ -1817,11 +1838,14 @@ byte gdbStep(void)
 byte gdbContinue(void)
 {
   byte sig = 0;
+  unsigned int opcode, arg;
   //DEBLN(F("Start continue operation"));
   if (fatalerror) sig = SIGABRT;
   else if (ctx.onlyloaded and ctx.notloaded) sig = SIGILL;
   else if (targetOffline()) sig = SIGHUP;
   else {
+    getInstruction(opcode, arg);
+    if (opcode == BREAKCODE) return SIGILL;
     gdbUpdateBreakpoints(false);  // update breakpoints in flash memory
 #if ILLOPDETECT
     if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
@@ -2632,11 +2656,11 @@ void gdbMessage(const char pstr[],long num, boolean oprefix, boolean progmem)
 // try to connect to debugWIRE by issuing a break condition
 // set mcu struct if not already set
 // return true if successful
-boolean targetDWConnect(void)
+boolean targetDWConnect(boolean initialconnect)
 {
   unsigned int sig;
 
-  if (doBreak()) {
+  if (doBreak(!initialconnect)) {
     DEBLN(F("targetConnect: doBreak done"));
     sig = DWgetChipId();
     if (mcu.sig == 0) setMcuAttr(sig);
@@ -2735,7 +2759,7 @@ int targetSetFuses(Fuses fuse)
   if (fuse == CkSlow && mcu.slowosc == 0xFF) return -5; // this chip cannot run with 128 kHz
   if (fuse == CkARc && mcu.arosc == 0xFF) return -6;
 #endif
-  if (doBreak()) {
+  if (doBreak(true)) {
     dw.sendCmd(DW_STOP_CMD); // leave debugWIRE mode
   } 
   if (!enterProgramMode()) return -1;
@@ -2772,7 +2796,7 @@ int targetGetClockFuses(Fuses &CkSource, Fuses &CkDiv)
   byte lowfuse;
   unsigned int sig;
   measureRam();
-  if (doBreak()) {
+  if (doBreak(true)) {
     dw.sendCmd(DW_STOP_CMD); // leave debugWIRE mode
   }
   if (!enterProgramMode()) return -1;
@@ -3164,7 +3188,7 @@ boolean targetIllegalOpcode(unsigned int opcode)
 /****************** debugWIRE specific functions *************/
 
 // send a break on the RESET line, check for response and calibrate 
-boolean doBreak () {
+boolean doBreak (boolean doprinterror = true) {
   measureRam();
 
   DEBLN(F("doBreak"));
@@ -3182,7 +3206,7 @@ boolean doBreak () {
   PORTD&=~(1<<PD3);
 #endif
   if (digitalRead(DWLINE) == LOW) { // should be high by now!
-    gdbReportConnectionProblem(6);  // if not, we have a capacitive load on the RESET line
+    gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD, doprinterror);  // if not, we have a capacitive load on the RESET line
     return false;
   }
   if (!expectUCalibrate()) {

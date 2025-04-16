@@ -2,6 +2,12 @@
 
 ## Version 5.0.0
 
+- Fixed: SLEEP is now interpreted as a NOP when single-stepping in order to avoid "Fatal Error 122 (Timeout reading from the DW line)"
+- Changed: Connection error messages are suppressed when executing the `target remote` command. For this purpose, I added parameters to doBreak, targetDWConnect, and gdbReportConnectionProblems. The error messages will be shown when issuing `monitor debugwire enable` or `monitor info`.
+- Added: Missing function prototypes in dw-link.h.
+
+## Version 5.0.0-pre2 (28-Mar-2025)
+
 - Streamlined to make it similar to the user interface of dw-gdbserver, which means:
   - The automatic switch to and from debugWIRE state is removed. It must now always be done using `monitor debugwire` [`enable`|`disable`].
   - The support for using a GPIO as a power supply for the target has been removed. It led very often to a situation where the target and debugger work outside the specification (too much current from the pin and voltage too low). And manual power-cycling is not that problematic if you do not have to do it too often.
