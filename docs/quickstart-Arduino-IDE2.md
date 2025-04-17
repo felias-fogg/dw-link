@@ -29,18 +29,16 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 
 ## Step 2: Install new board manager files
 
-Open the `Preference` dialog of the Arduino IDE and paste the following two `Board Manager URLs` into the list:
+Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
-	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_plus_Debug_index.json
-```
-https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
-```
-
-Close the `Preference` dialog with `OK`. Now, we want to install the two cores, `ATTinyCore` and `MiniCore`. 
+	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+	https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+	https://felias-fogg.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type `MiniCore` and install the most recent version (or upgrade to the most recent one), which has a `+debug` suffix.
-* Afterward, do the same with `ATTinyCore`.
+* In the search field, type `ATTinyCore` and install the most recent version.
+* Afterward, do the same with `MiniCore` and `MicroCore`.
 
 **Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
@@ -108,11 +106,11 @@ The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The sys
 - Select `ATtiny25/45/85 (no bootloader)` as the board under `Tools` -> `Board` -> `ATTinyCore`.
 - In the `Tools` menu,  choose `1 MHz (internal)` as the `Clock Source`  (assuming that the ATtiny is as it comes from the factory and no fuse has been changed).
 - In the `Sketch` menu, select `Optimize for Debugging`.
-- Compile the code by clicking on the `Verify` button in the upper left corner.  
+- Compile the code by clicking the `Verify` button in the upper left corner.  
 - Open the debug panes by clicking the debug symbol (bug with triangle) in the left sidebar. 
 - Click the debug symbol in the top row to start debugging. This will start the debugger and the debug server. The activities are logged in the `Debug Console` and the `gdb-server` console in the bottom right part of the window. 
 - You will probably be asked to "power-cycle the target." This means that you need to remove power from the target and then reconnect it, activating the debugWIRE mode.
-- After the debugger and debug server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the `setup` function.
+- After the debugger and gdb-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the `setup` function.
 - Now, you are in business and can set breakpoints (clicking left of the line number), continue executing, stop the program asynchronously, inspect and change values, and examine different stack frames. To terminate your debugging session, click the red box in the debug row.
 
 ![debug window](pics/ide2-3.png)
@@ -135,5 +133,5 @@ If you have found a bug, please post it on [issues](https://github.com/felias-fo
 
 So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called `Arduino as ISP` or `Arduino as ISP fast`. In the latter case, the upload speed is 115200 instead of 19200.
 
-If you want to have a more durable hardware debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie. These days, the Microchip debugger MPLAP SNAP might be a better deal, however. You can use it together with the Python gdbserver [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver), which I have also authored. 
+If you want a more durable hardware debugging solution, the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link, and it is able to do much more! 
 

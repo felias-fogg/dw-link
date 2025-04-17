@@ -160,7 +160,7 @@ The most basic setup is to use the UNO board and connect the cables, as shown in
 
 In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family have the debugWIRE interface. Specifically, the following MCUs that are supported by the Arduino standard core,  by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), and/or by [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
 
-* <s>__ATtiny13__</s>
+* __ATtiny13__
 * __ATtiny43U__
 * __ATtiny2313(A)__, __ATtiny4313__
 * __ATtiny24(A)__, __ATtiny44(A)__, __ATtiny84(A)__
@@ -176,7 +176,7 @@ In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family have th
 * __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
-I have tested the debugger on MCUs marked bold. I excluded the ATtiny13 because it behaved very strangely, and I could not figure out why. When I tried out the ATmegas that are stroked out, I noticed that they have program counters with some bits stuck at one (see Section 7.9). For this reason, GDB has problems debugging them. If dw-link discovers stuck-at-one bits, it will report this and refuse to debug such MCUs.
+I have tested the debugger on MCUs marked bold. When I tried out the ATmegas that are stroked out, I noticed that they have program counters with some bits stuck at one (see Section 7.9). For this reason, GDB has problems debugging them. If dw-link discovers stuck-at-one bits, it will report this and refuse to debug such MCUs.
 
 Additionally, there exist a few more exotic MCUs, which also have the debugWIRE interface:
 
@@ -1002,4 +1002,5 @@ Initial version
 - Changed and extended monitor commands in order to make it compatible with dw-gdbserver
 - Thrown out Sections 5 & 7. Will be handeled in dw-gdbserver setup instructions
 - New fatal error 113: *Error verifying flashed page while loading program*
+- ATtiny13 support
 

@@ -28,18 +28,17 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 
 ## Step 2: Install new board manager files
 
-Open the `Preference` dialog of the Arduino IDE and paste the following two URLs into the list of  `Additional boards manager URLs`:
+Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
-	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_plus_Debug_index.json
-```
-https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_plus_Debug_index.json
-```
+	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+	https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+	https://felias-fogg.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
-Close the `Preference` dialog with `OK`. Now we want to install the two cores `ATTinyCore` and `MiniCore`. 
+Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type MiniCore first. Then, install the most recent version (or upgrade to the most recent one) with a `+debug` suffix in its version number.
-* Afterwards, do the same with `ATTinyCore`.
+* In the search field, type `ATTinyCore` and install the most recent version.
+* Afterward, do the same with `MiniCore` and `MicroCore`.
 
 **Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
@@ -236,7 +235,7 @@ When you are done with debugging, you probably want to disable the debugWIRE mod
 
 After debugging, you can still can use dw-link as a programmer (of type `Arduino as ISP`). It is not the fastest one, but if you do not have anything better, it will do its job.
 
-If you want to have a more durable hardware debugging solution, then the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie. These days, the Microchip debugger MPLAP SNAP might be a better deal, however. You can use it together with the Python gdbserver [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver), which I have also authored. 
+If you want a more durable hardware debugging solution, the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link, and it is able to do much more! 
 
 ## What can go wrong?
 

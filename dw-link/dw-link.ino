@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.0.0"
+#define VERSION "5.1.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -370,7 +370,7 @@ const mcu_info_type mcu_info[] PROGMEM = {
 // er4 is 1 iff the erase command erase 4 pages, boot is the (highest) boot sector (word-)address,
 // eecr is eeprom control io-reg, eearh is eeprom adress reg high io-reg, 
 // sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh rcosc arosc extosc xtosc slosc plus name
-//  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x09, 0x08, 0xFF, 0x0B, 0,   attiny13},
+  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x09, 0x08, 0xFF, 0x0B, 0,   attiny13},
 
   {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0,   attiny2313},
   {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0,   attiny4313},

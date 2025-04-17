@@ -1,6 +1,10 @@
 # Changelog for dw-link
 
-## Version 5.0.0
+## Version 5.1.0 (17-Apr-2025)
+
+- Added: ATtiny13 support. 
+
+## Version 5.0.0 (16-Apr-2025)
 
 - Fixed: SLEEP is now interpreted as a NOP when single-stepping in order to avoid "Fatal Error 122 (Timeout reading from the DW line)"
 - Changed: Connection error messages are suppressed when executing the `target remote` command. For this purpose, I added parameters to doBreak, targetDWConnect, and gdbReportConnectionProblems. The error messages will be shown when issuing `monitor debugwire enable` or `monitor info`.
