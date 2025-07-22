@@ -1,5 +1,14 @@
 # Changelog for dw-link
 
+## Version 5.2.0
+
+- Changed: Renamed `monitor test` command to `monitor Livetests`.
+- Changed: I activated one test (target methods) because this is as much as the flash memory allows.
+- Changed: Adapted a number of output strings of the monitor command to make it more similar to dw-gdbserver
+- Removed: The test folder has been removed since these tests are now covered by dw-gdbserver. The tests (and a few more) have been run on a couple of MCUs and different debuggers.
+- Removed: The core-mods folder has been rfemoved. The changes are now all incorporated into the respective cores.
+- Fixed: Handling of continue/step when there are too many breakpoints.
+
 ## Version 5.1.0 (17-Apr-2025)
 
 - Added: ATtiny13 support. 

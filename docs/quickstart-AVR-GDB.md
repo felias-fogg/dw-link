@@ -31,8 +31,8 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
 	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
-	https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
-	https://felias-fogg.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
 Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`. 
 

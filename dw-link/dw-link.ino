@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.1.0"
+#define VERSION "5.2.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -57,7 +57,7 @@
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
 // #define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
-// #define UNITDW 1           // enable debugWIRE unit tests
+#define UNITDW 1           // enable debugWIRE unit tests
 // #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
 // #define NOMONITORHELP 1    // disable monitor help function
@@ -465,12 +465,12 @@ const char moload[] PROGMEM = "load";
 const char moonly[] PROGMEM = "onlyloaded";
 const char moverify[] PROGMEM = "verify";
 const char motimers[] PROGMEM = "timers";
-const char mobreak[] PROGMEM = "breakpoint";
+const char mobreak[] PROGMEM = "breakpoints";
 const char mosinglestep[] PROGMEM = "singlestep";
 const char mospeed[] PROGMEM = "speed";
 const char mocache[] PROGMEM = "caching";
 const char morange[] PROGMEM = "rangestepping";
-const char motest[] PROGMEM = "test";
+const char motest[] PROGMEM = "LiveTests";
 #if ISPMON
 const char mockdiv[] PROGMEM = "ckdiv";
 const char moosc[] PROGMEM = "oscillator";
@@ -547,9 +547,10 @@ void wdt_init(void)
   wdt_disable();
 }
 
-// software reset
+// disconnect and software reset
 void dwlrestart(void)
 {
+  Serial.end();
   wdt_enable(WDTO_15MS);
   while (1);
 }
@@ -621,7 +622,7 @@ int main(void) {
   ctx.levelshifting = !digitalRead(SENSEBOARD);
   Serial.begin(HOSTBPS);
   DEBINIT(DEBTX);
-  DEBLN(F("\ndw-link V" VERSION));
+  DEBLN(F("\ndw-link version " VERSION));
   setupio();
   TIMSK0 = 0; // no millis interrupts
   pinMode(LEDGND, OUTPUT);
@@ -987,7 +988,7 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MORESET:
     if (gdbReset()) gdbReplyMessagePSTR(PSTR("MCU has been reset"), -1);
-    else gdbSendReply("E09");
+    else gdbReplyMessagePSTR(PSTR("Enable debugWIRE first"), -1);
     break;
   case MOLOAD:
     gdbLoadOption(cmdbuf[mooptix]); 
@@ -1038,20 +1039,10 @@ void gdbParseMonitorPacket(byte *buf)
     break;
 #endif
   case MOTEST:
-    switch (cmdbuf[mooptix]) {
-#if UNITALL
-    case 'a': alltests(); break;
-#if UNITDW
-    case 'd': DWtests(para); break;
-#endif
-#if UNITTG
-    case 't': targetTests(para); break;
-#endif
-#if UNITGDB
-    case 'g': gdbTests(para); break;
-#endif
-    default: gdbUnknownOpt();
-#endif
+    if (targetOffline()) {
+      gdbReplyMessagePSTR(PSTR("Enable debugWIRE first"), -1);
+    } else {
+      alltests();
     }
     break;
   case MOUNK:
@@ -1168,9 +1159,9 @@ void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
   gdbDebugMessagePSTR(PSTR("                        - use RC/alt RC/XTAL/ext/slow osc. (*)"), -1);
 #endif
-  gdbDebugMessagePSTR(PSTR("monitor breakpoint [a|h|s]"), -1); 
+  gdbDebugMessagePSTR(PSTR("monitor breakpoints [a|h|s]"), -1); 
   gdbDebugMessagePSTR(PSTR("                        - allow all, only hw, or only sw bps"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor singlestep [s|i]- safe or interrruptible single-stepping"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor singlestep [s|i]- safe or interruptible single-stepping"), -1);
   //gdbDebugMessagePSTR(PSTR("monitor mcu [<mcutype>]    - check for MCU type or print current"), -1);
 #if HIGHSPEED
   gdbDebugMessagePSTR(PSTR("monitor speed [h|l]     - speed limit is h (300kbps) or l (150kbps)"), -1);
@@ -1184,31 +1175,36 @@ void gdbHelp(void) {
 
 // info command
 void gdbInfo(void) {
-  gdbDebugMessagePSTR(PSTR("dw-link V" VERSION), -1);
+  gdbDebugMessagePSTR(PSTR("dw-link version " VERSION), -1);
   gdbDebugMessagePSTR(PSTR("Target: "),-2);
-  if (!targetOffline()) 
+  if (!targetOffline()) {
+    gdbDebugMessagePSTR(PSTR("debugWire is enabled"), -1);
     gdbDebugMessagePSTR(PSTR("debugWIRE bitrate: "), ctx.bps);
-  else
-    gdbDebugMessagePSTR(PSTR("Target is offline"), -1);
+  } else {
+    gdbDebugMessagePSTR(PSTR("debugWire is disabled"), -1);
+  }
   gdbDebugMessagePSTR(PSTR("\nNumber of flash write operations so far: "), flashcnt);
 #if FREERAM
   gdbDebugMessagePSTR(PSTR("Minimal number of free RAM bytes: "), freeram);
 #endif
   gdbDebugMessagePSTR(PSTR("Number of debugWIRE timeouts: "), timeoutcnt);
   if (fatalerror) {
-    if (fatalerror < 100)
+    if (fatalerror < 100) {
       gdbReportConnectionProblem(fatalerror, true);
-    gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
+      gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
     } else {
-    gdbReplyMessagePSTR(PSTR("No fatal error has occured"), -1);
+      gdbReplyMessagePSTR(PSTR("No fatal error has occured"), -1);
+    }
   }
 }
 
 // report whether timers will run when stopped
 void gdbReportTimers(void)
 {
-  if (ctx.tmask == 0xDF) gdbReplyMessagePSTR(PSTR("Timers will run when stopped"), -1);
-  else gdbReplyMessagePSTR(PSTR("Timers will be frozen when stopped"), -1);
+  if (ctx.tmask == 0xDF) 
+    gdbReplyMessagePSTR(PSTR("Timers will run when execution is stopped"), -1);
+  else 
+    gdbReplyMessagePSTR(PSTR("Timers are frozen when execution is stopped"), -1);
 }
 
 // check whether required name fits with actual mcu
@@ -1439,9 +1435,9 @@ void gdbLoadOption(char arg)
     }
   }
   if (ctx.readbeforewrite) 
-    gdbReplyMessagePSTR(PSTR("Loading is done by reading flash before writing"), -1);
+    gdbReplyMessagePSTR(PSTR("Reading before writing when loading"), -1);
   else 
-    gdbReplyMessagePSTR(PSTR("Loading is performed by writing only"), -1);
+    gdbReplyMessagePSTR(PSTR("No reading before writing when loading"), -1);
 }
 
 void gdbOnlyOption(char arg)
@@ -1459,7 +1455,7 @@ void gdbOnlyOption(char arg)
   if (ctx.onlyloaded) 
     gdbReplyMessagePSTR(PSTR("Execution is only possible after a previous load command"), -1);
   else 
-    gdbReplyMessagePSTR(PSTR("Execution is always allowed"), -1);
+    gdbReplyMessagePSTR(PSTR("Execution is always possible"), -1);
 }
 
 void gdbVerifyOption(char arg)
@@ -1475,9 +1471,9 @@ void gdbVerifyOption(char arg)
     }
   }
   if (ctx.verifyload) 
-    gdbReplyMessagePSTR(PSTR("Flash memory is verified after loading"), -1);
+    gdbReplyMessagePSTR(PSTR("Verifying flash after load"), -1);
   else 
-    gdbReplyMessagePSTR(PSTR("Flash memory is not verified after loading"), -1);
+    gdbReplyMessagePSTR(PSTR("Load operations are not verified"), -1);
 }
 
 
@@ -1503,7 +1499,7 @@ void gdbTimerOption(char arg)
 // show version
 inline void gdbVersion(void)
 {
-  gdbReplyMessagePSTR(PSTR("dw-link V" VERSION), -1);
+  gdbReplyMessagePSTR(PSTR("dw-link version " VERSION), -1);
 }
   
 // set DW communication speed
@@ -1544,7 +1540,7 @@ inline void gdbGetMaxBPs(void)
 {
   if (onlysbp) gdbReplyMessagePSTR(PSTR("Only software breakpoints, maximum: "), maxbreak);
   else if (maxbreak == 1) gdbReplyMessagePSTR(PSTR("Only hardware breakpoints, maximum: "),maxbreak);
-  else gdbReplyMessagePSTR(PSTR("Software and hardware breakpoints, maximum: "),maxbreak);
+  else gdbReplyMessagePSTR(PSTR("All breakpoints are allowed, maximum: "),maxbreak);
 }
 
 // perform an automatic power cycle
@@ -1789,8 +1785,15 @@ byte gdbStep(void)
 
   //DEBLN(F("Start step operation"));
   if (fatalerror) return SIGABRT;
+  if (bpcnt == maxbreak) {
+    gdbDebugMessagePSTR(PSTR("Too many active breakpoints"), -1);
+    return SIGABRT;
+  }
   if (targetOffline()) return SIGHUP;
-  if (ctx.onlyloaded and ctx.notloaded) return SIGILL;
+  if (ctx.onlyloaded and ctx.notloaded) {
+    gdbDebugMessagePSTR(PSTR("No program loaded"), -1);
+    return SIGILL;
+  }
   getInstruction(opcode, arg);
 #if ILLOPDETECT
   if (targetIllegalOpcode(opcode)) {
@@ -1841,12 +1844,17 @@ byte gdbContinue(void)
   unsigned int opcode, arg;
   //DEBLN(F("Start continue operation"));
   if (fatalerror) sig = SIGABRT;
-  else if (ctx.onlyloaded and ctx.notloaded) sig = SIGILL;
-  else if (targetOffline()) sig = SIGHUP;
+  else if (ctx.onlyloaded and ctx.notloaded) {
+    sig = SIGILL;
+    gdbDebugMessagePSTR(PSTR("No program loaded"), -1);
+  } else if (targetOffline()) sig = SIGHUP;
   else {
     getInstruction(opcode, arg);
     if (opcode == BREAKCODE) return SIGILL;
-    gdbUpdateBreakpoints(false);  // update breakpoints in flash memory
+    if (!gdbUpdateBreakpoints(false))  { // update breakpoints in flash memory
+      sig = SIGABRT;
+      gdbDebugMessagePSTR(PSTR("Too many active breakpoints"), -1);
+    }
 #if ILLOPDETECT
     if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
       //DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
@@ -1888,7 +1896,7 @@ byte gdbContinue(void)
 // of active breakpoints, because either an exit or a memory write action will
 // follow.
 //
-void gdbUpdateBreakpoints(boolean cleanup)
+boolean gdbUpdateBreakpoints(boolean cleanup)
 {
   int i, j, ix, rel = 0;
   unsigned int relevant[MAXBREAK*2+1]; // word addresses of relevant locations in flash
@@ -1898,13 +1906,15 @@ void gdbUpdateBreakpoints(boolean cleanup)
 
   if (!flashidle) {
     reportFatalError(BREAKPOINT_UPDATE_WHILE_FLASH_PROGRAMMING_FATAL, false);
-    return;
+    return false;
   }
+
+  if (bpcnt > maxbreak) return false;
   
   DEBPR(F("Update Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
   // if there are no used entries, we also can return immediately
   // if the target is not connected, we cannot update breakpoints in any case
-  if (bpused == 0 || targetOffline()) return;
+  if (bpused == 0 || targetOffline()) return true;
 
   // find relevant BPs
   for (i=0; i < MAXBREAK*2; i++) {
@@ -1956,7 +1966,7 @@ void gdbUpdateBreakpoints(boolean cleanup)
 	DEBPR(F("RELEVANT: ")); DEBLNF(relevant[j]*2,HEX);
 	ix = gdbFindBreakpoint(relevant[j++]);
 	if (ix < 0) { reportFatalError(RELEVANT_BP_NOT_PRESENT, false);
-	  return;
+	  return false;
 	}
 	DEBPR(F("Found BP:")); DEBLN(ix);
 	if (bp[ix].active && !cleanup) { // enabled but not yet in flash && not a cleanup operation
@@ -1989,6 +1999,7 @@ void gdbUpdateBreakpoints(boolean cleanup)
   }
   DEBPR(F("After updating Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
   DEBPR(F("HWBP=")); DEBLNF(hwbp*2,HEX);
+  return true;
 }
 
 // sort breakpoints so that they can be changed together when they are on the same page
@@ -2062,12 +2073,6 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
     if (bp[i].active)  // this is a BP set twice, can be ignored!
       return true;
   
-  // if we try to set too many bps, return
-  if (bpcnt == maxbreak) {
-    // DEBLN(F("Too many BPs to be set! Execution will fail!"));
-    return false;
-  }
-
   // if bp is already there, but not active, then activate
   i = gdbFindBreakpoint(waddr);
   if (i >= 0) { // existing bp
@@ -2563,6 +2568,8 @@ void gdbSendState(byte signo)
     gdbDebugMessagePSTR(PSTR("Illegal instruction"),-1);
     break;
   case SIGABRT:
+    if (fatalerror == 0)
+      break;
     if (fatalerror < 100)  
       gdbDebugMessagePSTR(PSTR("***Fatal debugger error: "),fatalerror);
     else
@@ -4207,25 +4214,27 @@ void alltests(void)
     gdbSendReply("E00");
     return;
   }
-  
+#if UNITDW
   failed += DWtests(testnum);
+#endif
+#if UNITTG
   failed += targetTests(testnum);
+#endif
+#if UNITGDB
   failed += gdbTests(testnum);
-
+#endif
   testSummary(failed);
-  gdbSendReply("OK");
 }
 
 // give a summary of the test batch
 void testSummary(int failed)
 {
   if (failed) {
-    gdbDebugMessagePSTR(PSTR("\n****Failed tests:"), failed);
-    gdbSendReply("E00");
+    gdbDebugMessagePSTR(PSTR("\n... some live tests failed:"), failed);
   } else {
-    gdbDebugMessagePSTR(PSTR("\nAll tests succeeded"), -1);
-    gdbSendReply("OK");
+    gdbDebugMessagePSTR(PSTR("\n...live tests successfully finished"), -1);
   }
+  gdbSendReply("OK");
 }
 
 int testResult(boolean succ)

@@ -579,7 +579,7 @@ Sometimes, in particular, when using a clock speed below 1 MHz, responses from t
 
 "Leaving the fuse un-programmed" means that you probably have to change the fuse to be un-programmed using a fuse-programmer, because the fuse is programmed by default.
 
-With an optimal setting, i.e., 250 kbps for the debugWIRE line, loading is done with 1000 bytes/second. It is 5 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed). For the default setting (115200bps to host, 125000bps for debugWIRE), it is 600 bytes/second with new contents and 4 KiB/sec, if the the identical file is loaded.
+With 125 kbps for the debugWIRE line, loading is done with 600 bytes/second. It is 4 KiB/second when the identical file is loaded again (in which case only a comparison with the already loaded file is performed). 
 
 ### 7.3 Program execution is very slow when conditional breakpoints are present
 
@@ -686,7 +686,7 @@ This could indicate that the dw-gdbserver binary is incompatible with one's oper
 
 **Problem: It is impossible to connect to the hardware debugger. In the gdb-server console the message "No hardware debugger discovered" is shown**
 
-On common problem is that the IDE uses the serial line to the debugger for the `Serial Monitor`. Simply close this console. If this does not help, try to choose a different serial port in the `Tools` menu.
+One common problem is that the IDE uses the serial line to the debugger for the `Serial Monitor`. Simply close this console. If this does not help, try to choose a different serial port in the `Tools` menu.
 
 Sometimes, one can no longer connect to the hardware debugger.  Try to disconnect and reconnect the USB cable. Next, you may also want to disconnect and reconnect the target. 
 
@@ -750,11 +750,11 @@ A second reason for such a signal could be that at the position we want to conti
 
 **Problem: After changing optimization options, the binary is still too large/very small**
 
-You switched the optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this is no longer an option. You need to look at where the compiled files are stored and delete them manually.
+You switched the optimization option from **-Og -fno-lto** back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this option is no longer available. You need to locate the compiled files and delete them manually.
 
 **Problem: The debugger responses are very sluggish**   
 
-One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is MCU usually clock/8, the debugWIRE communication speed could be 16kbps. If the CKDIV8 fuse is programmed, it could even be only 2kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 7.2](#section72)). 
+One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is usually clock/8, the debugWIRE communication speed could be 16kbps. If the CKDIV8 fuse is programmed, it could even be only 2kbps. Unprogram CKDIV8 and if possible choose a higher clock frequency  (see [Section 7.2](#section72)). 
 
 **Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised**
 

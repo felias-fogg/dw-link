@@ -1,8 +1,10 @@
-# Quick-start Guide for Debugging with the Arduino IDE 2
+# Quick-start Guide for Debugging with the Arduino IDE 2 Using an Arduino UNO
 
 You can turn your Arduino UNO into a hardware debugger that can be used for embedded debugging of classic AVR chips under [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/). Takes less than one hour. 
 
 If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](https://github.com/felias-fogg/dw-link/blob/master/docs/quickstart-AVR-GDB.md).
+
+If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel ICE, JTAGICE3, you can use it directly to debug classic AVR chips in the Arduino IDE 2 using the [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver) Python script.
 
 ## What you need
 
@@ -23,7 +25,7 @@ If you want to debug your classic AVR chips without using Arduino IDE 2, consult
 
 ## Step 1: Install Arduino IDE 2
 
-You probably already have installed the Arduino IDE 2. If not, download and install it from https://arduino.cc. 
+You probably already have the Arduino IDE 2 installed. If not, download and install it from https://arduino.cc. 
 
 **Check:** Start IDE and check the `About Arduino` entry under the `Arduino` or `Help` menu for the version number. It should be >= 2.3.0.
 
@@ -32,13 +34,13 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
 	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
-	https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
-	https://felias-fogg.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
 * In the search field, type `ATTinyCore` and install the most recent version.
-* Afterward, do the same with `MiniCore` and `MicroCore`.
+* Next, repeat the process with `MiniCore` and `MicroCore`.
 
 **Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 

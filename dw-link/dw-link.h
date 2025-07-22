@@ -51,7 +51,7 @@ boolean twoWordInstr(unsigned int);
 void simTwoWordInstr(unsigned int, unsigned int);
 byte gdbStep();
 byte gdbContinue();
-void gdbUpdateBreakpoints(boolean);
+boolean gdbUpdateBreakpoints(boolean);
 void insertionSort(unsigned int *, int);
 int gdbFindBreakpoint(unsigned int);
 void gdbHandleBreakpointCommand(const byte *);
