@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.2.0"
+#define VERSION "5.2.1"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -62,7 +62,6 @@
 // #define UNITGDB 1          // enable gdb function unit tests
 // #define NOMONITORHELP 1    // disable monitor help function
 // #define NOISPPROG 1        // disable ISP programmer
-// #define ISPMON 1           // enable monitor commands for ISP ops
 // #define ILLOPDETECT 1      // detect illegal opcodes when starting execution
 
 #if UNITALL == 1
@@ -324,11 +323,6 @@ struct {
   unsigned int bootaddr;     // highest address of possible boot section  (0 if no boot support)
   byte         eecr;         // io-reg address of EECR register
   byte         eearh;        // io-reg address of EARL register (0 if none)
-  byte         rcosc;        // fuse pattern for setting RC osc as clock source
-  byte         arosc;        // fuse pattern for setting alternate RC osc as clock source (either slow or PLL)
-  byte         extosc;       // fuse pattern for setting EXTernal osc as clock source
-  byte         xtalosc;      // fuse pattern for setting XTAL osc as clock source
-  byte         slowosc;      // fuse pattern for setting 128 kHz oscillator
   const char*  name;         // pointer to name in PROGMEM
   byte         dwenfuse;     // bit mask for DWEN fuse in high fuse byte
   byte         ckdiv8;       // bit mask for CKDIV8 fuse in low fuse byte
@@ -353,11 +347,6 @@ struct mcu_info_type {
   unsigned int bootaddr;       // highest address of possible boot section  (0 if no boot support)
   byte         eecr;           // address of EECR register
   byte         eearh;          // address of EARL register (0 if none)
-  byte         rcosc;          // fuse pattern for setting RC osc as clock source
-  byte         arosc;          // fuse pattern for setting alternate RC osc as clock source
-  byte         extosc;         // fuse pattern for setting EXTernal osc as clock source
-  byte         xtalosc;        // fuse pattern for setting XTAL osc as clock source
-  byte         slowosc;        // fuse pattern for setting 128 kHz oscillator
   boolean      avreplus;       // AVRe+ architecture
   const char*  name;           // pointer to name in PROGMEM
 };
@@ -369,82 +358,82 @@ const mcu_info_type mcu_info[] PROGMEM = {
 // eep is eep_size/64, flsh is flsh_size/1024, dwdr is io-reg addr of DW reg, pg is flash_page_size/2,
 // er4 is 1 iff the erase command erase 4 pages, boot is the (highest) boot sector (word-)address,
 // eecr is eeprom control io-reg, eearh is eeprom adress reg high io-reg, 
-// sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh rcosc arosc extosc xtosc slosc plus name
-  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0x0A, 0x09, 0x08, 0xFF, 0x0B, 0,   attiny13},
+// sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh  plus name
+  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0,   attiny13},
 
-  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0,   attiny2313},
-  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x24, 0x22, 0x20, 0x3F, 0x26, 0,   attiny4313},
+  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0,   attiny2313},
+  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0,   attiny4313},
 
-  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0x22, 0xFF, 0x20, 0xFF, 0x23, 0,   attiny43},
+  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0,   attiny43},
 
-  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x24, 0,   attiny24},   
-  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x24, 0,   attiny44},
-  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x24, 0,   attiny84},
+  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0,   attiny24},   
+  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny44},
+  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny84},
   
-  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x02, 0xFF, 0x00, 0x0F, 0xFF, 0,   attiny441}, 
-  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0x02, 0xFF, 0x00, 0x0F, 0xFF, 0,   attiny841},
+  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0,   attiny441}, 
+  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0,   attiny841},
   
-  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x23, 0x20, 0x3F, 0x24, 0,   attiny25},
-  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x23, 0x20, 0x3F, 0x24, 0,   attiny45},
-  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0x23, 0x20, 0x3F, 0x24, 0,   attiny85},
+  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0,   attiny25},
+  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny45},
+  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny85},
   
-  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x23, 0,   attiny261},
-  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x23, 0,   attiny461},
-  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x23, 0,   attiny861},
+  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0,   attiny261},
+  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny461},
+  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny861},
   
-  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 0,   attiny87},  
-  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 0,   attiny167},
+  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0,   attiny87},  
+  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0,   attiny167},
 
-  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0xFF, 0xFF, 0,   attiny828},
+  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0,   attiny828},
 
-  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0xFF, 0x23, 0,   attiny48},  
-  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0xFF, 0x23, 0,   attiny88},
+  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0,   attiny48},  
+  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0,   attiny88},
   
-  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0x02, 0xFF, 0x00, 0x0F, 0xFF, 0,   attiny1634},
+  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0,   attiny1634},
   
-  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega48a},
-  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega48pa},
-  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega48pb}, // untested
-  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega88a},
-  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega88pa},
-  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega88pb}, // untested
-  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega168a},
-  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega168pa},
-  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega168pb}, // untested
-  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega328},
-  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega328p},
-  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   atmega328pb},
+  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega48a},
+  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega48pa},
+  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega48pb}, // untested
+  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   atmega88a},
+  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   atmega88pa},
+  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   atmega88pb}, // untested
+  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1,   atmega168a},
+  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1,   atmega168pa},
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1,   atmega168pb}, // untested
+  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega328},
+  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega328p},
+  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega328pb},
   
-  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega8u2},   // untested
-  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega16u2},  // untested
-  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega32u2},  // untested
+  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega8u2},   // untested
+  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1,   atmega16u2},  // untested
+  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1,   atmega32u2},  // untested
 
-  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega16m1},  // untested
-  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega32c1},  // untested
-  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega32m1},  // untested
-  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega64c1},  // untested
-  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   atmega64m1},  // untested
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1,   atmega16m1},  // untested
+  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega32c1},  // untested
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega32m1},  // untested
+  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1,   atmega64c1},  // untested
+  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1,   atmega64m1},  // untested
 
-  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 0x12, 0xFF, 0x10, 0x1F, 0xFF, 1,   at90usb82},   // untested
-  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 0x12, 0xFF, 0x10, 0x1F, 0xFF, 1,   at90usb162},  // untested
+  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 1,   at90usb82},   // untested
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 1,   at90usb162},  // untested
 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   at90pwm1},// untested 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   at90pwm2b},// untested 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   at90pwm3b},// untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   at90pwm1},// untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   at90pwm2b},// untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   at90pwm3b},// untested 
 
-  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   at90pwm81},  // untested
-  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0xFF, 0x20, 0x3F, 0x23, 1,   at90pwm161}, // untested
+  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 1,   at90pwm81},  // untested
+  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1,   at90pwm161}, // untested
 
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   at90pwm216}, // untested
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 0x22, 0xFF, 0x20, 0x3F, 0xFF, 1,   at90pwm316}, // untested
-  {0x9310,  8, 0,  4,  8, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 1,   atmega8hva},  // untested
-  {0x940C,  8, 0,  4, 16, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 1,   atmega16hva},  // untested
-  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 1,   atmega16hvb},  // untested
-  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 1,   atmega32hvb},  // untested
-  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 1,   atmega16hvbrevb},  // untested
-  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 1,   atmega32hvbrevb},  // untested
-  {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 1,   atmega64hve},  // untested
-  { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0,    0,    0,    0,    0,    0,   NULL},
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1,   at90pwm216}, // untested
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1,   at90pwm316}, // untested
+  {0x9310,  8, 0,  4,  8, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1,   atmega8hva},  // untested
+  {0x940C,  8, 0,  4, 16, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1,   atmega16hva},  // untested
+  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1,   atmega16hvb},  // untested
+  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1,   atmega32hvb},  // untested
+  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1,   atmega16hvbrevb},  // untested
+  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1,   atmega32hvbrevb},  // untested
+  {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 1,   atmega64hve},  // untested
+  { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0,   NULL},
 };
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
@@ -471,13 +460,6 @@ const char mospeed[] PROGMEM = "speed";
 const char mocache[] PROGMEM = "caching";
 const char morange[] PROGMEM = "rangestepping";
 const char motest[] PROGMEM = "LiveTests";
-#if ISPMON
-const char mockdiv[] PROGMEM = "ckdiv";
-const char moosc[] PROGMEM = "oscillator";
-#else
-const char mockdiv[] PROGMEM = "";
-const char moosc[] PROGMEM = "";
-#endif
 const char mounk[] PROGMEM ="";
 const char moamb[] PROGMEM ="";
 
@@ -495,18 +477,16 @@ const char moamb[] PROGMEM ="";
 #define MOSINGLESTEP 10
 #define MOSPEED 11
 #define MOTEST 12
-#define MOCKDIV 13
-#define MOOSC 14
-#define MOCACHE 15
-#define MORANGE 16
-#define MOUNK 17
-#define MOAMB 18
-#define NUMMONCMDS 19 
+#define MOCACHE 13
+#define MORANGE 14
+#define MOUNK 15
+#define MOAMB 16
+#define NUMMONCMDS 17
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
   mohelp, moinfo, moversion, modwire, moreset, moload, moonly, moverify, motimers, mobreak, mosinglestep, mospeed, 
-  motest, mockdiv, moosc, mocache, morange, mounk, moamb }; 
+  motest, mocache, morange, mounk, moamb }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -1017,27 +997,6 @@ void gdbParseMonitorPacket(byte *buf)
   case MORANGE:
     gdbReplyMessagePSTR(PSTR("Range stepping is not yet implemented"), -1);
     break;
-#if ISPMON
-  case MOCKDIV:
-    switch (cmdbuf[mooptix]) {
-    case '1': gdbSetFuses(CkDiv1); break;
-    case '8': gdbSetFuses(CkDiv8); break;
-    case '\0': gdbGetFuses(true, false); break;
-    default: gdbUnknownOpt(); break;
-    }
-    break;
-  case MOOSC:
-    switch (cmdbuf[mooptix]) {
-    case 'r': gdbSetFuses(CkRc); break;
-    case 'a': gdbSetFuses(CkARc); break;
-    case 'x': gdbSetFuses(CkXtal); break;
-    case 'e': gdbSetFuses(CkExt); break;
-    case 's': gdbSetFuses(CkSlow); break;
-    case '\0': gdbGetFuses(false,false); break;
-    default: gdbUnknownOpt(); break;
-    }
-    break;
-#endif
   case MOTEST:
     if (targetOffline()) {
       gdbReplyMessagePSTR(PSTR("Enable debugWIRE first"), -1);
@@ -1154,11 +1113,6 @@ void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor verify [e|d]    - verify flash after load(e) or not (d)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor timers [f|r]    - timers freeze or run when stopped"), -1);
   gdbDebugMessagePSTR(PSTR("monitor onlyloaded [e|d]- allow exec only after load (e) or always (d)"), -1);
-#if ISPMON
-  gdbDebugMessagePSTR(PSTR("monitor ckdiv [8|1]     - program (8) or unprogram (1) CK8DIV (*)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor oscillator [r|a|x|e|s|u]"),-1);
-  gdbDebugMessagePSTR(PSTR("                        - use RC/alt RC/XTAL/ext/slow osc. (*)"), -1);
-#endif
   gdbDebugMessagePSTR(PSTR("monitor breakpoints [a|h|s]"), -1); 
   gdbDebugMessagePSTR(PSTR("                        - allow all, only hw, or only sw bps"), -1);
   gdbDebugMessagePSTR(PSTR("monitor singlestep [s|i]- safe or interruptible single-stepping"), -1);
@@ -1636,85 +1590,6 @@ boolean gdbReset(void)
   return true;
 }
 
-#if ISPMON
-// "monitor ck1prescaler/ck8prescaler/rcosc/extosc"
-void gdbSetFuses(Fuses fuse)
-{
-  int res; 
-
-  if (ctx.state == DWCONN_STATE) {
-    gdbReplyMessagePSTR(PSTR("Disable debugWIRE first"),-1);
-    return;
-  }
-  if (ctx.state == DWCONN_STATE) setSysState(NOTCONN_STATE);
-  res = targetSetFuses(fuse);
-  if (res < 0) {
-    if (res == -1) gdbDebugMessagePSTR(PSTR("Cannot connect: Check wiring"),-1);
-    else if (res == -2) gdbDebugMessagePSTR(PSTR("Unsupported MCU"),-1);
-    else if (res == -3) gdbDebugMessagePSTR(PSTR("Fuse programming failed"),-1);
-    else gdbDebugMessagePSTR(PSTR("Clock setting impossible"),-1);
-    flushInput();
-    if (res >= -3) {
-      gdbSendReply("E05");
-      return;
-    }
-  }
-  switch (fuse) {
-  case CkDiv8: 
-  case CkDiv1: gdbGetFuses(true, true); break;
-  case CkRc: 
-  case CkARc:
-  case CkExt:
-  case CkXtal:
-  case CkSlow: gdbDebugMessagePSTR(PSTR("Oscillator changed"),-1); break;
-  case Erase: gdbDebugMessagePSTR(PSTR("Chip erased"),-1); break;
-  default: reportFatalError(WRONG_FUSE_SPEC_FATAL, false); gdbDebugMessagePSTR(PSTR("***Fatal Error: Wrong fuse!"),-1); break;
-  }
-  if (!gdbConnectDW())
-    gdbSendReply("E02");
-  else 
-    gdbSendReply("OK");
-}
-
-void gdbGetFuses(boolean ckdiv, boolean noreply)
-{
-  Fuses CkSource, CkDiv;
-  int res; 
-
-  if (ctx.state == DWCONN_STATE) {
-    gdbReplyMessagePSTR(PSTR("Disable debugWIRE first!"),-1);
-    return;
-  }
-
-  res = targetGetClockFuses(CkSource, CkDiv);
-  if (res < 0) {
-    gdbDebugMessagePSTR(PSTR("Cannot access fuses"),-res);
-    flushInput();
-    gdbSendReply("E05");
-    return;
-  }
-  if (!ckdiv) {
-    switch (CkSource) {
-    case CkRc: gdbDebugMessagePSTR(PSTR("Clock: RC osc."),-1); break;
-    case CkARc: gdbDebugMessagePSTR(PSTR("Clock: alt. RC osc."),-1); break;
-    case CkExt: gdbDebugMessagePSTR(PSTR("Clock: ext."),-1); break;
-    case CkXtal: gdbDebugMessagePSTR(PSTR("Clock: XTAL"),-1); break;
-    case CkSlow: gdbDebugMessagePSTR(PSTR("Clock: 128 kHz osc."),-1); break;
-    default: gdbDebugMessagePSTR(PSTR("Clock: unknown"),-1); break;
-    }
-  } else {
-    if (CkDiv == CkDiv8) gdbDebugMessagePSTR(PSTR("CKDIV8: programmed"),-1);
-    else gdbDebugMessagePSTR(PSTR("CKDIV8: unprogrammed"),-1);
-  }
-  if (noreply) return;
-  _delay_ms(200);
-  flushInput();
-  if (!gdbConnectDW())
-    gdbSendReply("E02");
-  else 
-    gdbSendReply("OK");
-}
-#endif
 
 // retrieve opcode and address at current wpc (regardless of whether it is hidden by break)
 void getInstruction(unsigned int &opcode, unsigned int &addr)
@@ -2761,11 +2636,6 @@ int targetSetFuses(Fuses fuse)
   boolean succ;
 
   measureRam();
-#if ISPMON
-  if (fuse == CkXtal && mcu.xtalosc == 0xFF) return -4; // this chip does not permit an XTAL as the clock source
-  if (fuse == CkSlow && mcu.slowosc == 0xFF) return -5; // this chip cannot run with 128 kHz
-  if (fuse == CkARc && mcu.arosc == 0xFF) return -6;
-#endif
   if (doBreak(true)) {
     dw.sendCmd(DW_STOP_CMD); // leave debugWIRE mode
   } 
@@ -2781,15 +2651,6 @@ int targetSetFuses(Fuses fuse)
   }
   // now we are in ISP mode and know what processor we are dealing with
   switch (fuse) {
-#if ISPMON
-  case CkDiv1: succ = ispProgramFuse(LowFuse, mcu.ckdiv8, mcu.ckdiv8); break;
-  case CkDiv8: succ = ispProgramFuse(LowFuse, mcu.ckdiv8, 0); break;
-  case CkRc:   succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.rcosc); break;
-  case CkARc:  succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.arosc); break;
-  case CkExt:  succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.extosc); break;
-  case CkXtal: succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.xtalosc); break;
-  case CkSlow: succ = ispProgramFuse(LowFuse, (mcu.ckmsk|mcu.sutmsk), mcu.slowosc); break;
-#endif
   case Erase:  succ = ispEraseFlash(); break;
   case DWEN:   succ = ispProgramFuse(HighFuse, mcu.dwenfuse, mcu.dwenfuse); break; // disable DWEN!
   default: succ = false;
@@ -2797,37 +2658,6 @@ int targetSetFuses(Fuses fuse)
   return (succ ? 1 : -3);
 }
 
-#if ISPMON
-int targetGetClockFuses(Fuses &CkSource, Fuses &CkDiv)
-{
-  byte lowfuse;
-  unsigned int sig;
-  measureRam();
-  if (doBreak(true)) {
-    dw.sendCmd(DW_STOP_CMD); // leave debugWIRE mode
-  }
-  if (!enterProgramMode()) return -1;
-  sig = ispGetChipId();
-  if (sig == 0) {
-    leaveProgramMode();
-    return -1;
-  }
-  if (!setMcuAttr(sig)) {
-    leaveProgramMode();
-    return -2;
-  }
-  lowfuse = ispReadFuse(false);
-  if ((mcu.rcosc != 0xFF) && ((mcu.ckmsk&lowfuse) == (mcu.ckmsk&mcu.rcosc))) CkSource = CkRc;
-  else if ((mcu.arosc != 0xFF) && ((mcu.ckmsk&lowfuse) == (mcu.ckmsk&mcu.arosc))) CkSource = CkARc;
-  else if ((mcu.xtalosc !=0xFF) && ((mcu.ckmsk&lowfuse) == (mcu.ckmsk&mcu.xtalosc))) CkSource = CkXtal;
-  else if ((mcu.extosc != 0xFF) && ((mcu.ckmsk&lowfuse) == (mcu.ckmsk&mcu.extosc))) CkSource = CkExt;
-  else if ((mcu.slowosc != 0xFF) && ((mcu.ckmsk&lowfuse) == (mcu.ckmsk&mcu.slowosc))) CkSource = CkSlow;
-  else CkSource = UnknownFuse;
-  if (mcu.ckdiv8&lowfuse) CkDiv = CkDiv1;
-  else CkDiv = CkDiv8;
-  return 1;
-}
-#endif
 
 
 // read one flash page with base address 'addr' into the global 'page' buffer,
@@ -4045,11 +3875,6 @@ boolean setMcuAttr(unsigned int id)
       mcu.bootaddr = pgm_read_word(&mcu_info[ix].bootaddr);
       mcu.eecr =  pgm_read_byte(&mcu_info[ix].eecr);
       mcu.eearh =  pgm_read_byte(&mcu_info[ix].eearh);
-      mcu.rcosc =  pgm_read_byte(&mcu_info[ix].rcosc);
-      mcu.arosc =  pgm_read_byte(&mcu_info[ix].arosc);
-      mcu.extosc =  pgm_read_byte(&mcu_info[ix].extosc);
-      mcu.xtalosc =  pgm_read_byte(&mcu_info[ix].xtalosc);
-      mcu.slowosc =  pgm_read_byte(&mcu_info[ix].slowosc);
       mcu.avreplus = pgm_read_byte(&mcu_info[ix].avreplus);
       mcu.name = (const char *)pgm_read_word(&mcu_info[ix].name);
       // the remaining fields will be derived 
@@ -4088,10 +3913,6 @@ boolean setMcuAttr(unsigned int id)
       DEBPR(F("boo=0x")); DEBLNF(mcu.bootaddr,HEX);
       DEBPR(F("eec=0x")); DEBLNF(mcu.eecr,HEX);
       DEBPR(F("eea=0x")); DEBLNF(mcu.eearh,HEX);
-      DEBPR(F("rco=0x")); DEBLNF(mcu.rcosc,HEX);
-      DEBPR(F("ext=0x")); DEBLNF(mcu.extosc,HEX);
-      DEBPR(F("xto=0x")); DEBLNF(mcu.xtalosc,HEX);
-      DEBPR(F("slo=0x")); DEBLNF(mcu.slowosc,HEX);
       strcpy_P(buf,mcu.name);
       DEBPR(F("nam=")); DEBLN((char*)buf);
       DEBPR(F("ear=0x")); DEBLNF(mcu.eearl,HEX);

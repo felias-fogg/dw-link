@@ -1,5 +1,10 @@
 # Changelog for dw-link
 
+## Not released
+
+- Fixed: Problem when reading the location where the OCD register is located led to a 108 error (SRAM read not completed). This is a deeper problem that has surfaced now with the SVD files. Some registers cannot or should not be read by the debugger. In pyavrgdb I implemented a masked read operation, and I "copied" it here. 
+- Removed: ISPMON code, which was responsible for changing ckdiv and clk fuses. This code had been deactivated before already (5.0.0-pre2). In addition, the fuse codes have been removed from the `mcu_info` table.
+
 ## Version 5.2.0
 
 - Changed: Renamed `monitor test` command to `monitor Livetests`.
