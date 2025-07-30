@@ -1,8 +1,14 @@
 # Changelog for dw-link
 
-## Not released
+## Version 5.2.1
 
 - Fixed: Problem when reading the location where the OCD register is located led to a 108 error (SRAM read not completed). This is a deeper problem that has surfaced now with the SVD files. Some registers cannot or should not be read by the debugger. In pyavrgdb I implemented a masked read operation, and I "copied" it here. 
+- Fixed: When writing to memory below 0x20, then write into the copy of the general registers, which is kept in the debugger memory.
+- Fixed: When reading from addresses below 0x20, read from the in-memory copy of the general registers.
+- Fixed: In `simTwoWordInstr` we now account for the case that the SRAM address is a register address (which is very unlikely and not something a compiler would generate).
+- Fixed: Fatal errors above 100 were not correctly reported in `monitor info` .
+- Fixed: Fatal errors are now also reported through the GDB server.
+- Fixed: There is a difference in the OCD register address between ATtiny2313 and ATtiny2313A, although they have the same MCU signature! If the MCU is specified, we will account for it. If not, we probably have to try out both variants when connecting. Maybe I will work on that later. First, I have to get a sample ATtiny2313A.
 - Removed: ISPMON code, which was responsible for changing ckdiv and clk fuses. This code had been deactivated before already (5.0.0-pre2). In addition, the fuse codes have been removed from the `mcu_info` table.
 
 ## Version 5.2.0

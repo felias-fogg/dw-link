@@ -57,8 +57,8 @@
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
 // #define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
-#define UNITDW 1           // enable debugWIRE unit tests
-// #define UNITTG 1           // enable target unit tests
+// #define UNITDW 1           // enable debugWIRE unit tests
+#define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
 // #define NOMONITORHELP 1    // disable monitor help function
 // #define NOISPPROG 1        // disable ISP programmer
@@ -251,6 +251,7 @@ const char unknown[] PROGMEM ="Unknown";
 const char attiny13[] PROGMEM = "ATtiny13";
 const char attiny43[] PROGMEM = "ATtiny43U";
 const char attiny2313[] PROGMEM = "ATtiny2313";
+const char attiny2313a[] PROGMEM = "ATtiny2313A";
 const char attiny4313[] PROGMEM = "ATtiny4313";
 const char attiny24[] PROGMEM = "ATtiny24";
 const char attiny44[] PROGMEM = "ATtiny44";
@@ -304,7 +305,7 @@ const char atmega16hvb[] PROGMEM = "ATmega16HVB";
 const char atmega16hvbrevb[] PROGMEM = "ATmega16HVBREVB";
 const char atmega32hvb[] PROGMEM = "ATmega32HVB";
 const char atmega32hvbrevb[] PROGMEM = "ATmega32HVBREVB";
-const char atmega64hve[] PROGMEM = "ATmega64HVE2";
+const char atmega64hve2[] PROGMEM = "ATmega64HVE2";
 
 const char Connected[] PROGMEM = "Connected to ";
 
@@ -324,9 +325,8 @@ struct {
   byte         eecr;         // io-reg address of EECR register
   byte         eearh;        // io-reg address of EARL register (0 if none)
   const char*  name;         // pointer to name in PROGMEM
+  const byte*  mask;         // pointer to mask array in PROGMEM
   byte         dwenfuse;     // bit mask for DWEN fuse in high fuse byte
-  byte         ckdiv8;       // bit mask for CKDIV8 fuse in low fuse byte
-  byte         ckmsk;        // bit mask for selecting clock source
   byte         sutmsk;       // bit mask for selecting SUT
   byte         eedr;         // address of EEDR (computed from EECR)
   byte         eearl;        // address of EARL (computed from EECR)
@@ -349,91 +349,117 @@ struct mcu_info_type {
   byte         eearh;          // address of EARL register (0 if none)
   boolean      avreplus;       // AVRe+ architecture
   const char*  name;           // pointer to name in PROGMEM
+  const byte*  mask;       // I/O register mask
 };
+
+const byte t13mask[] PROGMEM =  { 0x4e, 0};
+const byte t2313mask[] PROGMEM = { 0x2c, 0x3f, 0x46, 0x57, 0 };
+const byte t4313mask[] PROGMEM = { 0x2c, 0x46, 0x47, 0x57, 0 };
+const byte tX4mask[] PROGMEM = { 0x42, 0x47, 0};
+const byte tX41mask[] PROGMEM = { 0x42, 0x47, 0x80, 0x90, 0xb0, 0xc8, 0};
+const byte tX5mask[] PROGMEM = { 0x42, 0 };
+const byte tX61mask[] PROGMEM = { 0x40, 0 };
+const byte tX7mask[] PROGMEM = { 0x4e, 0x51, 0xd2, 0 };
+const byte t43mask[] PROGMEM = { 0x47, 0 };
+const byte t828mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0 };
+const byte tX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0 };
+const byte t1634mask[] PROGMEM = { 0x40, 0x4e, 0x73, 0 };
+const byte mX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0 };
+const byte m328pbmsk[] PROGMEM = { 0x4e, 0x51, 0x82, 0x92, 0xa2, 0xae, 0xc6, 0xce, 0 };
+const byte mXu2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0 }; 
+const byte mXy1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xd2, 0 };
+const byte auX2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0 };
+const byte ap1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0 };
+const byte ap81mask[] PROGMEM = { 0x51, 0x56, 0x58, 0 };
+const byte ap161mask[] PROGMEM = { 0x51, 0x56, 0x58, 0x59, 0 };
+const byte apXmask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xab, 0xc6, 0xce, 0 };
+const byte mHVmsk[] PROGMEM = { 0x4e, 0x51, 0 };
+const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
 
 // mcu infos (for all AVR mcus supporting debugWIRE)
 // untested ones are marked 
-const mcu_info_type mcu_info[] PROGMEM = {
+	    const mcu_info_type mcu_info[] PROGMEM = {
 // sig is signature, sram is sram_size/64, low is 1 iff sram starts at 0x60 instead of at 0x100,
 // eep is eep_size/64, flsh is flsh_size/1024, dwdr is io-reg addr of DW reg, pg is flash_page_size/2,
 // er4 is 1 iff the erase command erase 4 pages, boot is the (highest) boot sector (word-)address,
 // eecr is eeprom control io-reg, eearh is eeprom adress reg high io-reg, 
-// sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh  plus name
-  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0,   attiny13},
+// sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh  plus name            mask
+  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny13,      t13mask},
 
-  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0,   attiny2313},
-  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0,   attiny4313},
+  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny2313,  t2313mask},
+  {0x910A,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny2313a, t4313mask},
+  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0, attiny4313,  t4313mask},
 
-  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0,   attiny43},
+  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0, attiny43,      t43mask},
 
-  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0,   attiny24},   
-  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny44},
-  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny84},
+  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0, attiny24,      tX4mask},   
+  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny44,      tX4mask},
+  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny84,      tX4mask},
   
-  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0,   attiny441}, 
-  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0,   attiny841},
+  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0, attiny441,    tX41mask}, 
+  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0, attiny841,    tX41mask},
   
-  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0,   attiny25},
-  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny45},
-  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny85},
+  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0, attiny25,      tX5mask},
+  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny45,      tX5mask},
+  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny85,      tX5mask},
   
-  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0,   attiny261},
-  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny461},
-  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0,   attiny861},
+  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0, attiny261,    tX61mask},
+  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny461,    tX61mask},
+  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny861,    tX61mask},
   
-  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0,   attiny87},  
-  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0,   attiny167},
+  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0, attiny87,      tX7mask},  
+  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0, attiny167,     tX7mask},
 
-  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0,   attiny828},
+  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0, attiny828,    t828mask},
 
-  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0,   attiny48},  
-  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0,   attiny88},
+  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0, attiny48,      tX8mask},  
+  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0, attiny88,      tX8mask},
   
-  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0,   attiny1634},
+  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0, attiny1634,  t1634mask},
   
-  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega48a},
-  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega48pa},
-  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega48pb}, // untested
-  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   atmega88a},
-  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   atmega88pa},
-  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   atmega88pb}, // untested
-  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1,   atmega168a},
-  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1,   atmega168pa},
-  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1,   atmega168pb}, // untested
-  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega328},
-  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega328p},
-  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega328pb},
+  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48a,     mX8mask},
+  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48pa,    mX8mask},
+  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48pb,    mX8mask}, // untested
+  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, atmega88a,     mX8mask},
+  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, atmega88pa,    mX8mask},
+  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, atmega88pb,    mX8mask}, // untested
+  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168a,    mX8mask},
+  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168pa,   mX8mask},
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168pb,   mX8mask}, // untested
+  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328,     mX8mask},
+  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328p,    mX8mask},
+  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328pb, m328pbmsk},
   
-  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1,   atmega8u2},   // untested
-  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1,   atmega16u2},  // untested
-  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1,   atmega32u2},  // untested
+  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega8u2,    mXu2mask}, // untested
+  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, atmega16u2,   mXu2mask}, // untested
+  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, atmega32u2,   mXu2mask}, // untested
 
-  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1,   atmega16m1},  // untested
-  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega32c1},  // untested
-  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1,   atmega32m1},  // untested
-  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1,   atmega64c1},  // untested
-  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1,   atmega64m1},  // untested
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, atmega16m1,   mXy1mask}, // untested
+  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega32c1,   mXy1mask}, // untested
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega32m1,   mXy1mask}, // untested
+  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, atmega64c1,   mXy1mask}, // untested
+  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, atmega64m1,   mXy1mask}, // untested
 
-  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 1,   at90usb82},   // untested
-  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 1,   at90usb162},  // untested
+  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 1, at90usb82,    auX2mask}, // untested
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 1, at90usb162,   auX2mask}, // untested
 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   at90pwm1},// untested 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   at90pwm2b},// untested 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1,   at90pwm3b},// untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm1,      ap1mask}, // untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm2b,     apXmask}, // untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm3b,     apXmask}, // untested 
 
-  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 1,   at90pwm81},  // untested
-  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1,   at90pwm161}, // untested
+  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 1, at90pwm81,    ap81mask}, // untested
+  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, at90pwm161,  ap161mask}, // untested
 
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1,   at90pwm216}, // untested
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1,   at90pwm316}, // untested
-  {0x9310,  8, 0,  4,  8, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1,   atmega8hva},  // untested
-  {0x940C,  8, 0,  4, 16, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1,   atmega16hva},  // untested
-  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1,   atmega16hvb},  // untested
-  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1,   atmega32hvb},  // untested
-  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1,   atmega16hvbrevb},  // untested
-  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1,   atmega32hvbrevb},  // untested
-  {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 1,   atmega64hve},  // untested
-  { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0,   NULL},
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, at90pwm216,    apXmask}, // untested
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, at90pwm316,    apXmask}, // untested
+  {0x9310,  8, 0,  4,  8, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1, atmega8hva,     mHVmsk}, // untested
+  {0x940C,  8, 0,  4, 16, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1, atmega16hva,    mHVmsk}, // untested
+  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, atmega16hvb,    mHVmsk}, // untested
+  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, atmega32hvb,    mHVmsk}, // untested
+  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, atmega16hvbrevb,mHVmsk}, // untested
+  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, atmega32hvbrevb,mHVmsk}, // untested
+  {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 1, atmega64hve2, m64HVmsk}, // untested
+  { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0, NULL,             NULL}, // last mark
 };
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
@@ -727,7 +753,7 @@ void reportFatalError(byte errnum, boolean checkio)
   DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
   if (fatalerror == NO_FATAL) {
     if (errnum >= 100) { // not a connection error
-      gdbDebugMessagePSTR(PSTR("Fatal internal error: "),errnum);
+      gdbDebugMessagePSTR(PSTR("*** Fatal internal error: "),errnum);
     }
     fatalerror = errnum;
   }
@@ -753,8 +779,8 @@ void setSysState(statetype newstate)
     OCR0A = 0x80;
     TIMSK0 |= _BV(OCIE0A);
   }
-  DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
-  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
+  //  DEBPR(F("On-/Offtime: ")); DEBPR(ontime); DEBPR(F(" / ")); DEBLN(offtime);
+  //  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
 
@@ -1145,12 +1171,14 @@ void gdbInfo(void) {
   if (fatalerror) {
     if (fatalerror < 100) {
       gdbReportConnectionProblem(fatalerror, true);
-      gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
     } else {
-      gdbReplyMessagePSTR(PSTR("No fatal error has occured"), -1);
+      gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
     }
+  } else {
+    gdbReplyMessagePSTR(PSTR("No fatal error has occured"), -1);
   }
 }
+
 
 // report whether timers will run when stopped
 void gdbReportTimers(void)
@@ -1169,10 +1197,12 @@ boolean gdbCheckMcu(void)
   int ix = 0;
   if (mcu.sig == 0 || mcu.required[0] == 0)  // if target not determined yet, or not required, skip
     return true;
-  if ((tolower(mcu.required[strlen(mcu.required)-1]) == 'a' &&
-       (tolower(mcu.required[strlen(mcu.required)-2]) == 'p' || isdigit(mcu.required[strlen(mcu.required)-2]))) ||
-      tolower(mcu.required[strlen(mcu.required)-1]) == 'v')
-    mcu.required[strlen(mcu.required)-1] = 0; // remove unessential suffixes
+  if (strcasecmp_P(mcu.required, attiny2313a) != 0) { // the big exception!
+    if ((tolower(mcu.required[strlen(mcu.required)-1]) == 'a' &&
+	 (tolower(mcu.required[strlen(mcu.required)-2]) == 'p' || isdigit(mcu.required[strlen(mcu.required)-2]))) ||
+	tolower(mcu.required[strlen(mcu.required)-1]) == 'v')
+      mcu.required[strlen(mcu.required)-1] = 0; // remove unessential suffixes
+  }
   while ((nameptr = pgm_read_word(&mcu_info[ix].name))) {
     if (strcasecmp_P(mcu.required, (char*)nameptr) == 0) {
       reqsig = pgm_read_word(&mcu_info[ix].sig);
@@ -1563,7 +1593,7 @@ boolean powerCycle(void)
 
 void power(boolean on)
 {
-  DEBPR(F("Power: ")); DEBLN(on);
+  //DEBPR(F("Power: ")); DEBLN(on);
   if (on) {
     pinMode(IVSUP, OUTPUT);
     digitalWrite(IVSUP, LOW);
@@ -1623,7 +1653,10 @@ inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
     byte reg, val;
     if ((opcode & ~0x1F0) == 0x9000) {   // lds 
       reg = (opcode & 0x1F0) >> 4;
-      val = DWreadSramByte(addr);
+      if (addr < 0x20)  // a general register address
+	val = ctx.regs[addr];
+      else
+	val = DWreadSramByte(addr);
       ctx.regs[reg] = val;
       ctx.wpc += 2;
     } else if ((opcode & ~0x1F0) == 0x9200) { // sts 
@@ -1632,7 +1665,10 @@ inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
       //DEBLN(reg);
       //DEBPR(F("addr="));
       //DEBLNF(addr,HEX);
-      DWwriteSramByte(addr,ctx.regs[reg]);
+      if (addr < 0x20)
+	ctx.regs[addr] = ctx.regs[reg];
+      else
+	DWwriteSramByte(addr,ctx.regs[reg]);
       ctx.wpc += 2;
     } else if ((opcode & 0x0FE0E) == 0x940C) { // jmp 
       // since debugWIRE works only on MCUs with a flash address space <= 64 kwords
@@ -2604,7 +2640,7 @@ int targetISPConnect(void)
     }
   }
   leaveProgramMode();
-  DEBPR(F("Programming result: ")); DEBLN(result);
+  //DEBPR(F("Programming result: ")); DEBLN(result);
   return result;
 }
 
@@ -2699,7 +2735,64 @@ void targetReadFlash(unsigned int addr, byte *mem, unsigned int len)
 // read some portion of SRAM into buffer pointed at by *mem
 void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
 {
-  DWreadSramBytes(addr, mem, len);
+  unsigned int offset = 0;
+  unsigned int end = addr + len;
+  const byte *mask = mcu.mask;
+  byte mask_reg = 0;
+  DEBPR(F("targetReadSram start at 0x"));
+  DEBPRF(addr, HEX);
+  DEBPR(F(", length="));
+  DEBLN(len);
+  if (addr > 0xFF) { // if in sram, simply read
+    DEBPR(F("Simple SRAM read starting at 0x"));
+    DEBLNF(addr,HEX);
+    DWreadSramBytes(addr, mem, len);
+    return;
+  }
+  while (addr+offset < 0x20) {
+    DEBPR(F("Reading register 0x"));
+    DEBLNF(addr+offset,HEX);
+    mem[offset] = ctx.regs[addr+offset];
+    offset++;
+  }
+  DEBPR(F("Start masked read at 0x"));
+  DEBLNF(addr+offset, HEX);
+  DEBPR(F("End address is 0x"));
+  DEBLNF(end,HEX);
+  while (mask && (mask_reg = pgm_read_byte(mask++))) {
+    DEBPR(F("Reading until mask register: 0x"));
+    DEBLNF(mask_reg,HEX);
+    DEBPR(F("Current address: 0x"));
+    DEBLNF(addr+offset,HEX);
+    if (mask_reg >= end or addr + offset >= end) {
+      DEBLN(F("We are done here."));
+      break;
+    }
+    if (mask_reg < addr+offset) {
+      DEBLN(F("Mask reg addr too small, skip!"));
+      continue;
+    }
+    if (addr + offset < mask_reg) {
+      DEBPR(F("Reading starts at: 0x"));
+      DEBPRF(addr+offset, HEX);
+      DEBPR(F(", length="));
+      DEBLN(mask_reg - (addr+offset));
+      DWreadSramBytes(addr + offset, &mem[offset], mask_reg - (addr + offset));
+      offset = offset + mask_reg - (addr+offset);
+    }
+    DEBPR(F("Setting value for masked register at 0x"));
+    DEBPRF(addr+offset, HEX);
+    DEBLN(F(" to 0xFF"));
+    mem[offset] = 0xFF;
+    offset = mask_reg + 1 - addr;
+  }
+  DEBPR(F("Done with masked reading. Now from: 0x"));
+  DEBPRF(addr+offset, HEX);
+  DEBPR(F(", length="));
+  DEBLN(len-offset);
+  if (addr + offset < end)
+    DWreadSramBytes(addr+offset, &mem[offset], len-offset);
+  DEBLN(F("Leaving targetSramRead"));
 }
 
 // read some portion of EEPROM
@@ -2744,12 +2837,12 @@ void targetWriteFlashPage(unsigned int addr)
     // check whether something changed
     // DEBPR(F("Check for change: "));
     if (memcmp(newpage, page, mcu.targetpgsz) == 0) {
-      DEBLN(F("page unchanged"));
+      //DEBLN(F("page unchanged"));
       return;
     }
     // DEBLN(F("changed"));
 
-#if TXODEBUG
+#if TXODEBUG && 0
     DEBLN(F("Changes in flash page:"));
     for (unsigned int i=0; i<mcu.targetpgsz; i++) {
       if (page[i] != newpage[i]) {
@@ -2853,9 +2946,17 @@ inline void targetFlushFlashProg(void)
 void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 {
   measureRam();
+  int offset = 0;
 
-  for (unsigned int i=0; i < len; i++) 
-    DWwriteSramByte(addr+i, mem[i]);
+  while (addr+offset < 32 && offset < len) { // if addr points to registers, then write to in-memory copy 
+    ctx.regs[addr+offset] = mem[offset];
+    offset++;
+  }
+
+  while (offset < len) {
+    DWwriteSramByte(addr+offset, mem[offset]);
+    offset++;
+  }
 }
 
 // write EEPROM chunk
@@ -3065,14 +3166,14 @@ boolean expectUCalibrate(void) {
   measureRam();
   blockIRQ();
   newbps = dw.calibrate(); // expect 0x55 and calibrate
-  DEBPR(F("Rsync (1): ")); DEBLN(newbps);
+  //DEBPR(F("Rsync (1): ")); DEBLN(newbps);
   if (newbps < 5) {
     ctx.bps = 0;
     unblockIRQ();
     return false; // too slow
   }
   if ((100*(abs((long)ctx.bps-(long)newbps)))/newbps <= 1)  { // less than 2% deviation -> ignore change
-    DEBLN(F("No change: return"));
+    //DEBLN(F("No change: return"));
     unblockIRQ();
     return true;
   }
@@ -3080,14 +3181,14 @@ boolean expectUCalibrate(void) {
   for (speed = maxspeedexp; speed > 0; speed--) {
     if ((newbps << speed) <= speedlimit) break;
   }
-  DEBPR(F("Set speedexp: ")); DEBLN(speed);
+  //DEBPR(F("Set speedexp: ")); DEBLN(speed);
 #if CONSTDWSPEED == 0
   DWsetSpeed(speed);
   ctx.bps = dw.calibrate(); // calibrate again
   unblockIRQ();
-  DEBPR(F("Rsync (2): ")); DEBLN(ctx.bps);
+  //DEBPR(F("Rsync (2): ")); DEBLN(ctx.bps);
   if (ctx.bps < 70) {
-    DEBLN(F("Second calibration too slow!"));
+    //DEBLN(F("Second calibration too slow!"));
     return false; // too slow
   }
 #else
@@ -3106,11 +3207,11 @@ boolean expectBreakAndU(void)
   // wait first for a zero byte
   while (!dw.available() && timeout != 0) timeout--;
   if (timeout == 0) {
-    DEBLN(F("Timeout in expectBreakAndU"));
+    //DEBLN(F("Timeout in expectBreakAndU"));
     return false;
   }
   if ((cc = dw.read()) != 0) {
-    DEBPR(F("expected 0x00, got: 0x")); DEBLNF(cc,HEX);
+    //DEBPR(F("expected 0x00, got: 0x")); DEBLNF(cc,HEX);
     return false;
   }
   return expectUCalibrate();
@@ -3142,10 +3243,10 @@ unsigned int getResponse (byte *data, unsigned int expected) {
     }
   } while (timeout++ < 20000);
   if (expected > 0) {
-    DEBPR(F("Timeout: received: "));
-    DEBPR(idx);
-    DEBPR(F(" expected: "));
-    DEBLN(expected);
+    //DEBPR(F("Timeout: received: "));
+    //DEBPR(idx);
+    //DEBPR(F(" expected: "));
+    //DEBLN(expected);
   }
   return idx;
 }
@@ -3170,7 +3271,7 @@ unsigned int getWordResponse (byte cmd) {
 void DWsetSpeed(byte spix)
 {
   byte speedcmdstr[1] = { pgm_read_byte(&speedcmd[spix]) };
-  DEBPR(F("Send speed cmd: ")); DEBLNF(speedcmdstr[0], HEX);
+  //DEBPR(F("Send speed cmd: ")); DEBLNF(speedcmdstr[0], HEX);
   dw.sendCmd(speedcmdstr, 1, true); // here the early return from writing is strictly necessary!
                                         // returning already after half a stop bit is instrumental
                                         // in capturing the 'U' response for the calibration
@@ -3466,7 +3567,7 @@ void DWeraseFlashPage(unsigned int addr) {
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8 }; // execute SPM
   measureRam();
-  DEBPR(F("Erase: "));  DEBLNF(addr,HEX);
+  //DEBPR(F("Erase: "));  DEBLNF(addr,HEX);
   
   while (timeout < TIMEOUTMAX) {
     DWflushInput();
@@ -3497,7 +3598,7 @@ void DWprogramFlashPage(unsigned int addr)
 		   0x23,  // execute
 		   0xD2, 0x95 , 0xE8}; // execute SPM
 
-  DEBLN(F("Program flash page ..."));
+  //DEBLN(F("Program flash page ..."));
   measureRam();
   flashcnt++;
   while (timeout < TIMEOUTMAX) {
@@ -3526,7 +3627,7 @@ void DWprogramFlashPage(unsigned int addr)
     timeoutcnt++;
   }
   if (timeout >= TIMEOUTMAX) reportFatalError(FLASH_PROGRAM_FATAL,true);
-  DEBLN(F("...done"));
+  //DEBLN(F("...done"));
 }
 
 // load bytes into temp memory
@@ -3540,7 +3641,7 @@ void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
 		   0xD2, 0x96, 0x32, 0x23, // addiw Z,2
   };
 
-  DEBLN(F("Load flash page ..."));
+  //DEBLN(F("Load flash page ..."));
   measureRam();
 
   DWflushInput();
@@ -3554,7 +3655,7 @@ void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
     if (mcu.bootaddr) DWsetWPc(mcu.bootaddr);
     dw.sendCmd(eload, sizeof(eload));
   }
-  DEBLN(F("...done"));
+  //DEBLN(F("...done"));
 }
 
 void DWreenableRWW(void)
@@ -3616,7 +3717,7 @@ unsigned int DWgetChipId () {
 
 // set PC Reg (word address) - that is set all the bits (including the ones in the stuckat1byte)
 void DWsetWPc (unsigned int wpcreg) {
-  DEBPR(F("Set WPCReg=")); DEBLNF(wpcreg,HEX);
+  //DEBPR(F("Set WPCReg=")); DEBLNF(wpcreg,HEX);
   byte cmd[] = {0xD0, (byte)((wpcreg >> 8)+mcu.stuckat1byte), (byte)(wpcreg & 0xFF)};
   dw.sendCmd(cmd, sizeof(cmd));
 }
@@ -3635,7 +3736,7 @@ void DWexecOffline(unsigned int opcode)
   measureRam();
 
   //DEBPR(F("Offline exec: "));
-  DEBLNF(opcode,HEX);
+  //DEBLNF(opcode,HEX);
   dw.sendCmd(cmd, sizeof(cmd));
 }
 
@@ -3655,7 +3756,7 @@ byte DWflushInput(void)
 
 
 void enableSpiPins (void) {
-  DEBLN(F("Enable SPI ..."));
+  //DEBLN(F("Enable SPI ..."));
   if (ctx.levelshifting) {
     pinMode(TISP, OUTPUT);
     digitalWrite(TISP, LOW); // enable pull-ups
@@ -3663,7 +3764,7 @@ void enableSpiPins (void) {
   }
   pinMode(DWLINE, OUTPUT);
   digitalWrite(DWLINE, LOW);
-  DEBLN(F("RESET low"));
+  //DEBLN(F("RESET low"));
   _delay_us(50);
   if (ctx.levelshifting) {
     pinMode(TODSCK, OUTPUT); // draws SCK low
@@ -3863,7 +3964,7 @@ boolean setMcuAttr(unsigned int id)
 
   while ((sig = pgm_read_word(&mcu_info[ix].sig))) {
     if (sig == id) { // found the right mcu type
-      DEBLN(F("MCU struct:"));
+      //DEBLN(F("MCU struct:"));
       mcu.sig = sig;
       mcu.ramsz = pgm_read_byte(&mcu_info[ix].ramsz_div_64)*64;
       mcu.rambase = (pgm_read_byte(&mcu_info[ix].rambase_low) ? 0x60 : 0x100);
@@ -3877,6 +3978,7 @@ boolean setMcuAttr(unsigned int id)
       mcu.eearh =  pgm_read_byte(&mcu_info[ix].eearh);
       mcu.avreplus = pgm_read_byte(&mcu_info[ix].avreplus);
       mcu.name = (const char *)pgm_read_word(&mcu_info[ix].name);
+      mcu.mask = (const byte *)pgm_read_word(&mcu_info[ix].mask);
       // the remaining fields will be derived 
       mcu.eearl = mcu.eecr + 2;
       mcu.eedr = mcu.eecr + 1;
@@ -3885,20 +3987,10 @@ boolean setMcuAttr(unsigned int id)
       else mcu.targetpgsz = mcu.pagesz;
       // dwen, chmsk, ckdiv8 are identical for almost all MCUs, so we treat the exceptions here
       mcu.dwenfuse = 0x40;
-      mcu.ckmsk = 0x0F;
-      mcu.sutmsk = 0x30;
-      mcu.ckdiv8 = 0x80;
       if (mcu.name == attiny13) {
-	mcu.ckdiv8 = 0x10;
 	mcu.dwenfuse = 0x08;
-	mcu.ckmsk = 0x03;
-	mcu.sutmsk = 0x0C;
       } else if (mcu.name == attiny2313 || mcu.name == attiny4313) {
 	mcu.dwenfuse = 0x80;
-      } else if (mcu.name == attiny828 || mcu.name == attiny48 || mcu.name == attiny88) {
-	mcu.ckmsk = 0x03;
-      } else if (mcu.name == attiny441 || mcu.name == attiny841 || mcu.name == attiny1634) {
-	mcu.sutmsk = 0x10;
       } 
 #if 0
       DEBPR(F("sig=")); DEBLNF(mcu.sig,HEX);
@@ -3919,8 +4011,6 @@ boolean setMcuAttr(unsigned int id)
       DEBPR(F("eed=0x")); DEBLNF(mcu.eedr,HEX);
       DEBPR(F("tps=")); DEBLN(mcu.targetpgsz);
       DEBPR(F("dwe=0x")); DEBLNF(mcu.dwenfuse,HEX);
-      DEBPR(F("ckm=0x")); DEBLNF(mcu.ckmsk,HEX);
-      DEBPR(F("ck8=0x")); DEBLNF(mcu.ckdiv8,HEX);
 #endif
       return true;
     }
