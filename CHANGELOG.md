@@ -1,6 +1,10 @@
 # Changelog for dw-link
 
-## Version 5.2.1
+## Version 5.2.2 (01-Aug-2025)
+
+- Fixed: The fix reported in v5.2.1 concerning the ATtiny2313(A) problem did not work out. I now assume the basic version without A and set the DWDR to 0x1F. After connecting, I test whether the DWDR is really there by executing a read-register command. If this operation fails, we switch to 0x27. This works without a hitch and does not presume prior knowledge of the type of chip used.
+
+## Version 5.2.1 (30-Jul-2025)
 
 - Fixed: Problem when reading the location where the OCD register is located led to a 108 error (SRAM read not completed). This is a deeper problem that has surfaced now with the SVD files. Some registers cannot or should not be read by the debugger. In pyavrgdb I implemented a masked read operation, and I "copied" it here. 
 - Fixed: When writing to memory below 0x20, then write into the copy of the general registers, which is kept in the debugger memory.
@@ -11,7 +15,7 @@
 - Fixed: There is a difference in the OCD register address between ATtiny2313 and ATtiny2313A, although they have the same MCU signature! If the MCU is specified, we will account for it. If not, we probably have to try out both variants when connecting. Maybe I will work on that later. First, I have to get a sample ATtiny2313A.
 - Removed: ISPMON code, which was responsible for changing ckdiv and clk fuses. This code had been deactivated before already (5.0.0-pre2). In addition, the fuse codes have been removed from the `mcu_info` table.
 
-## Version 5.2.0
+## Version 5.2.0 (22-Jul-2025)
 
 - Changed: Renamed `monitor test` command to `monitor Livetests`.
 - Changed: I activated one test (target methods) because this is as much as the flash memory allows.

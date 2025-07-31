@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.2.1"
+#define VERSION "5.2.2"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -1250,10 +1250,20 @@ void setupDW(void)
   targetReset(); 
   targetInitRegisters();
   ctx.dwactivated = true; // if we now disconnect, we are done!
+  // Now fix DWDR address if necessary.
+  // This is a very special case, where the DWDR address
+  // is not uniquely determined by the chip signature.
+  if (mcu.dwdr == 0x1F) { // DWDR address on the ATTiny2313 (and only on that MCU!)
+    if (!DWreadRegister(1, true)) { // read register unsuccessful, must be a different address
+      mcu.dwdr = 0x27;
+      mcu.name = attiny2313a;
+      mcu.mask = t4313mask;
+    }
+  }
 }
 
-// start a connection initially (target remote ...), but then only try DW
-// or through the monitor 'dw +' command, then try everything
+// start a connection initially (target remote ...)  tryinf only DW,
+// or through the monitor 'debugwire enable' command, then try everything
 boolean gdbStartConnect(boolean initialconnect)
 {
   int conncode;
@@ -3358,7 +3368,8 @@ void DWreadRegisters (byte *regs)
 }
 
 // Read register <reg> by building and executing an "out DWDR,<reg>" instruction via the CMD_SET_INSTR register
-byte DWreadRegister (byte reg) {
+// This function is also used to check whether we have the right DWDR address.
+byte DWreadRegister (byte reg, bool checkdwdr=false) {
   int response;
   byte res = 0;
   byte rdReg[] = {(byte)(0x64&ctx.tmask),                               // Set up for single step using loaded instruction
@@ -3370,7 +3381,10 @@ byte DWreadRegister (byte reg) {
   dw.sendCmd(0x23, true);                                            // Go
   response = getResponse(&res,1);
   unblockIRQ();
-  if (response != 1) reportFatalError(DW_READREG_FATAL,true);
+  if (checkdwdr) 
+    return (response == 1);
+  else
+    if (response != 1) reportFatalError(DW_READREG_FATAL,true);
   return res;
 }
 

@@ -116,7 +116,7 @@ byte inLow(byte, byte);
 void DWwriteRegisters(byte *);
 void DWwriteRegister(byte, byte);
 void DWreadRegisters(byte *);
-byte DWreadRegister(byte);
+byte DWreadRegister(byte, bool checkdwdr=false);
 void DWwriteSramByte(unsigned int, byte);
 void DWwriteIOreg(byte, byte);
 byte DWreadSramByte(unsigned int);
