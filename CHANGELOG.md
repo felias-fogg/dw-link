@@ -1,5 +1,9 @@
 # Changelog for dw-link
 
+## Version 5.2.3 (01-Aug-2025)
+- Changed: The default value for an unreadable register is now
+  0x00. This looks better!
+
 ## Version 5.2.2 (01-Aug-2025)
 
 - Fixed: The fix reported in v5.2.1 concerning the ATtiny2313(A) problem did not work out. I now assume the basic version without A and set the DWDR to 0x1F. After connecting, I test whether the DWDR is really there by executing a read-register command. If this operation fails, we switch to 0x27. This works without a hitch and does not presume prior knowledge of the type of chip used.

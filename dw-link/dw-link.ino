@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.2.2"
+#define VERSION "5.2.3"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -2792,8 +2792,8 @@ void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
     }
     DEBPR(F("Setting value for masked register at 0x"));
     DEBPRF(addr+offset, HEX);
-    DEBLN(F(" to 0xFF"));
-    mem[offset] = 0xFF;
+    DEBLN(F(" to 0x00"));
+    mem[offset] = 0x00;
     offset = mask_reg + 1 - addr;
   }
   DEBPR(F("Done with masked reading. Now from: 0x"));
