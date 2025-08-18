@@ -35,7 +35,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.2.3"
+#define VERSION "5.2.4"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -1262,7 +1262,7 @@ void setupDW(void)
   }
 }
 
-// start a connection initially (target remote ...)  tryinf only DW,
+// start a connection initially (target remote ...)  trying only DW,
 // or through the monitor 'debugwire enable' command, then try everything
 boolean gdbStartConnect(boolean initialconnect)
 {
@@ -1278,6 +1278,8 @@ boolean gdbStartConnect(boolean initialconnect)
       gdbReportConnectionProblem(CONNERR_WRONG_MCU,!initialconnect);
       return false;
     }
+    if (stuckAtOneOrCap())
+      return false;
     setupDW();
     return true;
   }
@@ -1290,6 +1292,8 @@ boolean gdbStartConnect(boolean initialconnect)
     return false;
   }
   if (powerCycle()) { // power-cycle automatically or manually, then connect
+    if (stuckAtOneOrCap())
+      return false;
     setupDW(); // setup everything
     return true;
   } else {

@@ -1,6 +1,11 @@
 # Changelog for dw-link
 
+## Version 5.2.4 (18-Aug-2025)
+
+- Fixed: The recognition of stuck-at-1-PC-MCUs got somehow lost and led to strange errors for those MCUs. Now the recognition works again, and dw-link refuses to debug such MCUs.
+
 ## Version 5.2.3 (01-Aug-2025)
+
 - Changed: The default value for an unreadable register is now
   0x00. This looks better!
 
