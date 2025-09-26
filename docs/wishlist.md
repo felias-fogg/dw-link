@@ -6,9 +6,6 @@
 
 * Implement STK500v2 protocol
 
-* debug tiny13 problem, perhaps by reverting back to the version in
-  2022, when it seemed to work
-
 * debug sleep-crash when single- stepping verhindern
 
 * maybe have a variable length break, dependent on the speed of ISP?
@@ -17,13 +14,14 @@
 
 * design case for debugger and print it
 
-* perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
-
 * range-stepping implementieren. Sollte wohl nicht so schwierig sein.
 
   
 
 ##### List of tasks done:
+
+* debug tiny13 problem, perhaps by reverting back to the version in
+  2022, when it seemed to work - was actually the _delay_ms problem
 
 * Create Python script dw-gdbserver.py that implements a dw server on
   top of pymcuprog
@@ -90,5 +88,7 @@
 * reorganize BP management: have a list of stored and a list of new
   BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!
 
+
+* perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
 
 

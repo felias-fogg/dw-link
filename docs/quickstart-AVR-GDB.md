@@ -1,22 +1,22 @@
-# Quick-start Guide for AVR-GDB Debugging
+# Quick-start guide for AVR-GDB debugging
 
-Turn your Arduino UNO into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. Takes less than one hour. 
+Turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. Takes less than one hour. 
 
-This tutorial explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](quickstart-Arduino-IDE2).
+This tutorial explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/).
 
 ## What you need
 
 * Computer running Windows, macOS, or Linux (the *host*)
-* Arduino UNO (will become the *hardware debugger*)
+* Arduino Uno (will become the *hardware debugger*)
 * USB cable 
 * ATtiny85 (or any other classic ATtiny or ATmegaX8) as the *target*
-* In order to connect the hardware debugger to the target, you need either:
-  * the [dw-link probe shield](https://www.tindie.com/products/31798/) and an ISP cable, or
+* In order to connect the hardware debugger to the target, you need:
   * a breadboard together with
-    * 11 Jumper wires (male-to-male)
-    * 2 LEDs
-    * 3 Resistors (10 kΩ, 220Ω, 220Ω)
-    * 2 Capacitors (100 nF, 10 µF)
+  * 11 Jumper wires (male-to-male)
+  * 2 LEDs
+  * 3 Resistors (10 kΩ, 220Ω, 220Ω)
+  * 2 Capacitors (100 nF, 10 µF)
+
 
 
 
@@ -34,7 +34,9 @@ Open the `Preferences` dialog of the Arduino IDE and paste the following `Board 
 	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
-Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`. 
+Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`.
+
+You can also install the three board manager files using arduino-cli.
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
 * In the search field, type `ATTinyCore` and install the most recent version.
@@ -54,12 +56,12 @@ Download the dw-link firmware into a place inside the *Arduino sketchbook*. This
 
 In order to install the firmware, 
 
-* first, make sure that the auto-reset feature of the UNO is not disabled, e.g., by a shield or a capacitor plugged into the UNO board,
-* then connect the Arduino UNO to your computer with a USB cable,
-* open the Arduino IDE and select `Arduino UNO` under `Tools` as the destination `board`, 
+* first, make sure that the auto-reset feature of the Uno is not disabled, e.g., by a shield or a capacitor plugged into the Uno board,
+* then connect the Arduino Uno to your computer with a USB cable,
+* open the Arduino IDE and select `Arduino Uno` under `Tools` as the destination `board`, 
 * select the correct `Port` in the `Tools` menu, 
 * and load the dw-link sketch into the IDE, which is located at `dw-link-x.y.z/dw-link/dw-link.ino`. 
-* Finally, compile and download the sketch to the UNO by either pressing the right arrow button or by typing CTRL-U or ⌘U. The UNO now acts as a hardware debugger (but needs a bit of additional hardware).
+* Finally, compile and download the sketch to the Uno by either pressing the right arrow button or by typing CTRL-U or ⌘U. The Uno now acts as a hardware debugger (but needs a bit of additional hardware).
 
 **Check:** Open the `Serial Monitor` (under the `Tools` menu), choose `115200 baud`,  type  `-`  (minus sign) into the upper line, and send it. The hardware debugger should respond with `$#00`. 
 
@@ -97,19 +99,17 @@ The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolc
 
 ## Step 5: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino UNO board, you need to alter the board physically (cut a solder bridge). How to set up an UNO as a target board is described in Section 4.2.2 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge).How to set up an Uno as a target board is described in the [dw-link manual](https://felias-fogg.github.io/dw-link/installation/#debugging-an-uno).
 
-When you are the proud owner of a [dw-link probe](https://www.tindie.com/products/31798/), and you have a development board for the ATtiny that has an ISP connector, the setup is as easy as plugging in an ISP cable, as shown below.
+You need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your Uno, turned into a hardware debugger. Note that the notch or dot on the ATtiny is oriented towards the left. 
 
-![dw-probe](pics/dw-probe.jpg)
+![ATtiny85-debug](pics/attiny85-debug-new.png)
 
-If this is not the case, you need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your UNO, turned into a hardware debugger. 
-
-![ATtiny85-debug](pics/attiny85-debug-new.png)Note that the notch or dot on the ATtiny is oriented towards the left. 
+Note that the notch or dot on the ATtiny is oriented towards the left. 
 
 Here is a table of all the connections so that you can check that you have made all the connections. 
 
-| ATtiny pin#  | Arduino UNO pin | component                                                    |
+| ATtiny pin#  | Arduino Uno pin | component                                                    |
 | ------------ | --------------- | ------------------------------------------------------------ |
 | 1 (Reset)    | D8              | 10k resistor to Vcc                                          |
 | 2 (D3)       |                 |                                                              |
@@ -137,14 +137,16 @@ The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The sys
 Either you use the arduino-cli to compile your sketch (and then I assume you know what you are doing), or you use the IDE:
 
 * Load the sketch, you want to debug  (e.g., `dw-link-x.y.z/examples/varblink/varblink.ino`) into the IDE and select `ATtiny25/45/85 (no bootloader)` as the board. 
-* As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). For the `Debug Compile Flags` option choose `Debug`. 
-* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder `build/<board-type>/` inside the sketch folder. 
+* As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the `Sketch` menu, you should now activate `Optimize for Debugging.
+* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder `build/<board-type>/` inside the sketch folder.
 
-**Check:** Open terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be in subdirectory of the `build` folder. 
+You can also use arduino-cli to compile the sketch. Make sure to set the compiler option `-Og`, which makes sure that the compiler optimized for debugging (instead of for space).
+
+**Check:** Open terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be in the the sketch folder or in a subdirectory of the `build` folder.
 
 ## Step 7: Debugging
 
-Now, we are ready to debug the sketch on the target chip. Check that the *host*, the computer you are sitting at, is connected to the *hardware debugger*, the UNO, with a USB cable. The hardware debugger should in turn be connected to the *target* chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.
+Now, we are ready to debug the sketch on the target chip. Check that the *host*, the computer you are sitting at, is connected to the *hardware debugger*, the Uno, with a USB cable. The hardware debugger should in turn be connected to the *target* chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.
 
 Open a terminal window and change into the folder where the ELF file resides. Then type
 
@@ -158,7 +160,7 @@ where *\<sketchname\>* is the name of the Arduino sketch. This should fire up th
 (gdb) target remote <serial-port>
 ```
 
-where *\<serial-port\>* is the serial port of the UNO, then, after a few seconds, one should get a message similar to the following one
+where *\<serial-port\>* is the serial port of the Uno, then, after a few seconds, one should get a message similar to the following one
 
 ```
 Remote debugging using <serial-port> 
@@ -227,21 +229,23 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **q** - quits gdb
 - `CTRL-C` while the programming is running stops the execution asynchronously
 
-There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of `monitor` commands, which are specific to the dw-link debugger, can be found in Section 5.5 of the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md).
+There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of [`monitor` commands](https://felias-fogg.github.io/dw-link/debugging/#monitor-commands), which are specific to the dw-link debugger, can be found in the dw-link manual.
 
-## 8. After debugging
+## After debugging
 
 When you are done with debugging, you probably want to disable the debugWIRE mode again, because in debugWIRE mode you cannot use the RESET line or ISP programming. This can be accomplised by using the command `monitor debugwire disable` before you leave the debugger. 
 
 After debugging, you can still can use dw-link as a programmer (of type `Arduino as ISP`). It is not the fastest one, but if you do not have anything better, it will do its job.
 
-If you want a more durable hardware debugging solution, the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.pdf) has some suggestions in Section 8, or you can buy the [dw-link probe](https://www.tindie.com/products/31798/) at Tindie. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link, and it is able to do much more! 
+If you want a more durable hardware debugging solution, there are some [suggestions](better.md) in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link, it costs less than US-$ 15 and it is able to do much more! 
+
 
 ## What can go wrong?
 
-If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a troubleshooting section in the [dw-link manual](https://github.com/felias-fogg/dw-link/blob/master/docs/manual.md), which may be helpful. 
+If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a [troubleshooting section](https://felias-fogg.github.io/dw-link/troubleshooting/) in the dw-link manual, which may be helpful.
 
 The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`.  If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
-If you think you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues) and fill out the [issue form](issue_form.md) before.
+If you think you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues).
+
 

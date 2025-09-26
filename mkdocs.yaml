@@ -1,0 +1,39 @@
+site_name: dw-link
+repo_url: https://github.com/felias-fogg/dw-link
+repo_name: dw-link
+
+theme:
+  name: readthedocs
+  locale: en
+  logo: pics/uno-debug2-small.png
+  include_homepage_in_sidebar: True
+  title: dw-link
+  author: Bernhard Nebel
+  date: 26-Aug-2025
+
+extra_css:
+  - style.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - markdown_include.include:
+        base_path: docs
+
+nav:
+  - Quickstart:
+    - Arduino IDE 2: 'quickstart-Arduino-IDE2.md'
+    - AVR-GDB: 'quickstart-AVR-GDB.md'
+  - Usage:
+    - Background: 'intro.md'
+    - Hardware requirements: 'requirements.md'
+    - Installation: 'installation.md'
+    - Debugging: 'debugging.md'
+    - A better hardware debugger: 'better.md'
+    - Problems: 'problems.md'
+    - Troubleshooting: 'troubleshooting.md'
+  - About:
+    - License: 'license-link.md'
+    - Acknowledgements: 'acknowledgements.md'
+    - Revision history: 'history.md'

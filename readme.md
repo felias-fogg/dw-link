@@ -14,11 +14,11 @@
 
 This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. And since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well. Since version 4.0.0, you can use this debugger in the **Arduino IDE 2** by downloading two additional board manager files. Version 5.0.0 aims to make the user interface similar to what is offered by [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver). This means you can use most of Microchip's hardware debuggers as a drop-in replacement for dw-link. 
 
-The debugger dw-link speaks [debugWIRE](https://debugwire.de) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform independent, i.e., you can use it under macOS, Linux, or Windows.
+The debugger dw-link speaks [debugWIRE](https://debugwire.de) and implements a [gdbServer](https://en.wikipedia.org/wiki/Gdbserver).  This means you can use GDB or any IDE that integrates GDB to debug your program while running on the target hardware (e.g., an ATtiny).  And it is all platform agnostic, i.e., you can use it under macOS, Linux, or Windows.
 
 Why is this good news? Arduino IDE 1 does not support debugging at all. Even the new IDE 2 did not provide debugging for the small AVR MCUs. With this sketch, you get a tool to set breakpoints, single-step, inspect, and set variables when debugging Arduino sketches in Arduino IDE 2.
 
-Do you want to try it? Use the [**Quick-start Guide**](docs/quickstart-Arduino-IDE2.md) to see if it works for you. If you like it and want to incorporate it into your workflow, you can buy the (optional) Uno shield at [Tindie](https://www.tindie.com/products/31798/). Since Microchip's MPLAB SNAP debugger has become incredibly cheap, this may actually be an alternative. You can use it as a drop-in replacement for dw-link.
+Do you want to try it? Use the [**Quick-start Guide**](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/) to see if it works for you. Since Microchip's MPLAB SNAP debugger has become incredibly cheap, this may actually be an alternative to this DIY debugger. You can use SNAP as a drop-in replacement for dw-link.
 
 The background and ongoing development of dw-link are topics on my [blog](https://arduino-craft-corner.de/). In particular, the blog posts tagged with [dw-link](https://arduino-craft-corner.de/index.php/tag/dw-link/) will interest you.
 
@@ -30,10 +30,9 @@ This repository contains the following directories:
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
 * [**pcb**](pcb/): Contains design data (KiCad) for the optional dw-link probe
 * [**testprobe**](testprobe/): Contains a sketch to be used to run tests on freshly assembled dw-link probe
-* [**core-mods**](core-mods/): Contains all the modifications to the core files necessary to support the generation of debug-friendly object files
 * [**opcodes**](opcodes): Contains a list of legal and illegal opcodes for large and small AVRs as well as a C program to generate the lists.
 
-Note that the debugger is a beta release and may contain bugs. If you encounter behavior that you think is wrong, try to be as specific as possible so that I can reproduce the behavior. I have prepared an [issue form](docs/issue_form.md) for that purpose. Current issues, known bugs, and limitations are listed in Section 8 of the [manual](docs/manual.md). 
+Note that the debugger is a beta release and may contain bugs. If you encounter behavior that you think is wrong, report it as an [issue](https://github.com/felias-fogg/dw-link/issues). Try to be as specific as possible so that I can reproduce the behavior. Current issues, known bugs, and limitations are listed the [problem section](https://felias-fogg.github.io/dw-link/problems/) of the [manual](https://felias-fogg.github.io/dw-link/). 
 
 
 
