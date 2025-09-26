@@ -76,7 +76,7 @@ And here is the early breadboard prototype, which worked beautifully.
 
 ![V2-prototype](pics/dw-probe-V3.jpg)
 
-I have turned the prototype into an Arduino Shield, which you can buy [at Tindie](https://www.tindie.com/products/31798/) as a kit. With that, the hardware setup is straightforward. Just plug in an ISP cable, and you can start debugging.
+I have turned the prototype into an Arduino Shield, which I sold [at Tindie](https://www.tindie.com/products/31798/) as a kit. With that, the hardware setup is straightforward. Just plug in an ISP cable, and you can start debugging. Since MPLAB SNAP has become cheaper than this kit, I decided to retire the kit, and now recommend to [buy a SNAP](https://www.microchip.com/en-us/development-tool/pg164100). Together with my Python package dw-gdbserver, you get the same debugging experience. Furthermore, you will also be able to debug other AVRs than only the debugWIRE MCUs.
 
 ![dw-link probe](pics/dw-probe.jpg)
 

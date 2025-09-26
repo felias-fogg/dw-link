@@ -13,7 +13,7 @@ If you have performed all the above steps, then the setup should look like as in
 
 Your development machine, the *host*, is connected to the UNO acting as a *hardware debugger* over the usual USB connection. The  two devices use the *GDB remote serial protocol* to communicate with each other. The hardware debugger in turn is connected to the *target system*, whereby the *debugWIRE protocol* is used for communication. 
 
-The physical connection between the hardware debugger and the target, as described in the [section about the hardware setup](installation.md#setting-up-the-hardware), is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in thje part about [*a better hardware debugger*](better.md). Finally, [possible problems](problems.md) and [troubleshooting](troubleshooting.md) is covered.
+The physical connection between the hardware debugger and the target, as described in the [section about the hardware setup](installation.md#setting-up-the-hardware), is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in the part about [*a better hardware debugger*](better.md). Finally, [possible problems](problems.md) and [troubleshooting](troubleshooting.md) is covered.
 
 And what do you with your hardware debugger once you have debugged all your programs and they work flawlessly? Since version 2.2.0, you can use dw-link also as an STK500 v1 ISP programmer. If you connect to dw-link with 19200 bps and start avrdude, then dw-link becomes an ISP programmer.
 
@@ -41,7 +41,7 @@ When you are done with debugging and you want to get the target system back into
 
 ## Other debugging approaches for classic ATtinys and ATmegaX8s
 
-While dw-link is (unsurprisingly) one of my preferred open source solution for debugging classic tiny AVRs and ATmegaX8s, there are a number of other possible approaches. 
+While dw-link is (unsurprisingly) one of my preferred open source solution for debugging classic tiny AVRs and ATmegaX8s, there are a number of other possible solutions. 
 
 [Bloom](https://bloom.oscillate.io/) is not a hardware debugger, but it is a pretty extensive implementation of a gdbserver for almost all AVR MCUs using the Microchip hardware debuggers. The only drawback is that it runs only under Linux. Similarly, [avarice](https://github.com/avrdudes/avarice) is another such gdbserver. Recently, I added another gdbserver to the mix, which is written in Python: [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver). 
 
