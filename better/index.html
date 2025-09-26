@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>A better hardware debugger - dw-link</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../style.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "A better hardware debugger";
+        var mkdocs_page_input_path = "better.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="..">
+          <img src="../pics/uno-debug2-small.png" class="logo" alt="Logo"/>
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Quickstart</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-Arduino-IDE2/">Arduino IDE 2</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-AVR-GDB/">AVR-GDB</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../intro/">Background</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../requirements/">Hardware requirements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">A better hardware debugger</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#the-basic-solution">The basic solution</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#a-simple-prototype-shield">A simple prototype shield</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#adapter-with-level-shifters-and-switchable-power-supply">Adapter with level-shifters and switchable power supply</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../problems/">Problems</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">About</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../license-link/">License</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../acknowledgements/">Acknowledgements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../history/">Revision history</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">dw-link</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Usage</li>
+      <li class="breadcrumb-item active">A better hardware debugger</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/better.md">Edit on dw-link</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="better-hardware-for-the-hardware-debugger">Better hardware for the hardware debugger</h1>
+<p>The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 jumper wires to connect dw-link to your target as described in the <a href="../installation/#debugging-an-attiny85">installation section</a>. However, if you want to use this tool more than once, then there should be at least something like an ISP cable connection. Otherwise, you might scratch your head which cable goes where every time you start a debugging session.</p>
+<h2 id="the-basic-solution">The basic solution</h2>
+<p>For most of the wires, we use the same pins on the debugger and the target. Moreover, most of the pins are connected to the ISP connector on board. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in <a href="https://www.instructables.com/Arduino-ICSP-Programming-Cable/">this instructable</a>. In contrast to such a programmer cable, it makes sense to also break out the Vcc wire. And you do not want to integrate a capacitor between RESET and GND in such a cable in contrast to what is described in the instructable!</p>
+<p><img alt="isp-cable" src="../pics/isp-cable.jpg" /></p>
+<p>As argued in <a href="https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/">my blog post on being cheap</a>, with such an ISP cable, we have sort of constructed a hardware debugger for less than 10 €, which can be considered semi-durable. Just add the optional system LED with an attached resistor and a capacitor between RESET and GND.</p>
+<p><img alt="el cheapo debugger" src="../pics/simple-debug.jpg" /></p>
+<p>The relevant pins are defined in the following table. </p>
+<p><a name="simplemap"></a></p>
+<table>
+<thead>
+<tr>
+<th>Arduino pin</th>
+<th>ISP pin</th>
+<th>Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D13</td>
+<td>3</td>
+<td>SCK</td>
+</tr>
+<tr>
+<td>D12</td>
+<td>1</td>
+<td>MISO</td>
+</tr>
+<tr>
+<td>D11</td>
+<td>4</td>
+<td>MOSI</td>
+</tr>
+<tr>
+<td>5V</td>
+<td>2</td>
+<td>VTG</td>
+</tr>
+<tr>
+<td>D8</td>
+<td>5</td>
+<td>RESET</td>
+</tr>
+<tr>
+<td>GND</td>
+<td>6</td>
+<td>GND</td>
+</tr>
+<tr>
+<td>D7</td>
+<td></td>
+<td>System LED+</td>
+</tr>
+<tr>
+<td>D6</td>
+<td></td>
+<td>System LED- (if using a LED with a resistor soldered on)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="a-simple-prototype-shield">A simple prototype shield</h2>
+<p>Taking it one step further, one can take a prototype shield for an UNO, put an ISP socket on it, and connect the socket to the respective shield pins. You should also plan to have jumper pins to to be able to power-cycle the target. Finally, you probably also want to place the system LED on the board. So, it could look like the following Fritzing sketch. </p>
+<p><img alt="dw-probe-fritzing" src="../pics/dw-probe-2.0.jpg" /></p>
+<h2 id="adapter-with-level-shifters-and-switchable-power-supply">Adapter with level-shifters and switchable power supply</h2>
+<p>The basic adapter is quite limited. Power-cycling has to be done manually, it cannot interact with 3.3 V systems, and it has a high load on the SCK line (because the UNO LED is driven by this pin) when the ISP mode is disabled. Thus, it would be great to have a board with the following features: </p>
+<ul>
+<li>switchable target power supply (supporting power-cycling by the hardware debugger) offering 5-volt and 3.3-volt supply up to 300 mA, </li>
+<li>a bidirectional (conditional) level-shifter on the debugWIRE/RESET line,</li>
+<li>an optional pull-up resistor of 10 kΩ on this line,</li>
+<li>unidirectional (conditional) level-shifters on the ISP lines, and</li>
+<li>high-impedance status for the two output signals MOSI and SCK when ISP is inactive.</li>
+</ul>
+<p>Such a board does not need to be very complex. The electronic design is minimalistic. It uses just three MOS-FETs, one LED, one voltage regulator, and some passive components. We need to (conditionally) level-shift the RESET line in a bidirectional manner and the SPI lines unidirectionally.  One needs to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, no level shifting is done at all, relying on the fact that the input pins of the hardware debugger recognize a logical one already at  3.0 V. For the RESET line, which is open drain, we rely on the same fact. This means that this hardware debugger cannot deal with systems that use a supply voltage of less than 3 V, though.</p>
+<p>For downshifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because some possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors that guarantee that the signal level is above 3V on the SCK line, when we supply the board with 5V. These pull-ups will be disabled when no ISP programming is active, giving the target system full control of the two lines. The schematic looks as follows (thanks to <strong><a href="https://github.com/gwideman">gwideman</a></strong> for the reworked schematic).</p>
+<p><img alt="KiCad-Schematic" src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/pcb/schematic.png" /></p>
+<p>The pin mapping is a bit different from the basic design described above. The change from the basic mapping is controlled by pin D5, which is tied to GND in order to signal that the more complex pin mapping is used. The additional pins are all in italics. The ones not used on the board are struck out.</p>
+<table>
+<thead>
+<tr>
+<th>Arduino pin</th>
+<th>ISP pin</th>
+<th>Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><s>D13</s></td>
+<td><s>3</s></td>
+<td><s>SCK</s></td>
+</tr>
+<tr>
+<td>D12</td>
+<td>1</td>
+<td>MISO</td>
+</tr>
+<tr>
+<td>D11</td>
+<td>4</td>
+<td>MOSI (open drain)</td>
+</tr>
+<tr>
+<td><em>D10</em></td>
+<td><em>3</em></td>
+<td><em>SCK (open drain)</em></td>
+</tr>
+<tr>
+<td><s>5V</s></td>
+<td><s>2</s></td>
+<td><s>VTG</s></td>
+</tr>
+<tr>
+<td>D8</td>
+<td>5</td>
+<td>RESET</td>
+</tr>
+<tr>
+<td>GND</td>
+<td>6</td>
+<td>GND</td>
+</tr>
+<tr>
+<td>D7</td>
+<td></td>
+<td>System LED+</td>
+</tr>
+<tr>
+<td><s>D6</s></td>
+<td></td>
+<td><s>System LED- (if using an LED with a resistor soldered on)</s></td>
+</tr>
+<tr>
+<td><em>D5</em></td>
+<td></td>
+<td><em>Sense pin: Connected to GND when a board with a level shifter is used</em></td>
+</tr>
+<tr>
+<td><em>D4</em></td>
+<td></td>
+<td><em>ISP pull-up enable (open drain, active low)</em></td>
+</tr>
+<tr>
+<td><em>D3</em></td>
+<td></td>
+<td><em>Input: automatic debugWire switching disable (open drain, active low)</em></td>
+</tr>
+<tr>
+<td><em>D2</em></td>
+<td></td>
+<td><em>Power enable (open drain, active low)</em></td>
+</tr>
+<tr>
+<td></td>
+<td><em>2</em></td>
+<td><em>VTG:</em> <em>Power from Q1 controlled by power jumper</em></td>
+</tr>
+</tbody>
+</table>
+<p>And here is the early breadboard prototype, which worked beautifully. </p>
+<p><img alt="V2-prototype" src="../pics/dw-probe-V3.jpg" /></p>
+<p>I have turned the prototype into an Arduino Shield, which you can buy <a href="https://www.tindie.com/products/31798/">at Tindie</a> as a kit. With that, the hardware setup is straightforward. Just plug in an ISP cable, and you can start debugging.</p>
+<p><img alt="dw-link probe" src="../pics/dw-probe.jpg" /></p>
+<p><a name="jumper"></a></p>
+<p>Before you start, you have to configure three jumpers. Then you are all set.</p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Left</th>
+<th>Middle</th>
+<th>Right</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Supply</strong></td>
+<td><strong>5 V</strong> are supplied to the target</td>
+<td><strong>extern</strong>: target needs its own supply and power cycling has to be done manually</td>
+<td><strong>3.3 V</strong> are supplied to the target</td>
+</tr>
+<tr>
+<td><strong>Pullup</strong></td>
+<td>There is <strong>no</strong> pull-up resistor connected to RESET</td>
+<td>&nbsp;</td>
+<td>A <strong>10 kΩ</strong> pull-up resistor is connected to the RESET line of the target</td>
+</tr>
+<tr>
+<td><strong>Auto_DW</strong></td>
+<td>Automatic power-cycling is disabled in the <strong>off</strong> state.</td>
+<td></td>
+<td>Automatic power-cycling when executing <code>monitor debugwire enable</code> is enabled in the <strong>on</strong> state. This is the default and <em>recommended</em> mode.</td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../debugging/" class="btn btn-neutral float-left" title="Debugging"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../problems/" class="btn btn-neutral float-right" title="Problems">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/felias-fogg/dw-link" class="fa fa-code-fork" style="color: #fcfcfc"> dw-link</a>
+        </span>
+    
+    
+      <span><a href="../debugging/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../problems/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

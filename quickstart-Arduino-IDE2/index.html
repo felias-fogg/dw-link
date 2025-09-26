@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Arduino IDE 2 - dw-link</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../style.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Arduino IDE 2";
+        var mkdocs_page_input_path = "quickstart-Arduino-IDE2.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="..">
+          <img src="../pics/uno-debug2-small.png" class="logo" alt="Logo"/>
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Quickstart</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Arduino IDE 2</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#what-you-need">What you need</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-1-install-arduino-ide-2">Step 1: Install Arduino IDE 2</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-2-install-new-board-manager-files">Step 2: Install new board manager files</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-3-install-dw-link-firmware-on-an-uno">Step 3: Install dw-link firmware on an Uno</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-4-hardware-setup">Step 4: Hardware setup</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#step-5-start-debugging">Step 5: Start Debugging</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#after-debugging-has-finished">After debugging has finished</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#what-can-go-wrong">What can go wrong?</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-AVR-GDB/">AVR-GDB</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../intro/">Background</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../requirements/">Hardware requirements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../better/">A better hardware debugger</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../problems/">Problems</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">About</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../license-link/">License</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../acknowledgements/">Acknowledgements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../history/">Revision history</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">dw-link</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Quickstart</li>
+      <li class="breadcrumb-item active">Arduino IDE 2</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/quickstart-Arduino-IDE2.md">Edit on dw-link</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="quick-start-guide-for-debugging-with-the-arduino-ide-2-using-an-arduino-uno">Quick-start guide for debugging with the Arduino IDE 2 using an Arduino Uno</h1>
+<p>You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under <a href="https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/">Arduino IDE 2</a>. Takes less than one hour. </p>
+<p>If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for <a href="../quickstart-AVR-GDB/">AVR-GDB debugging</a>.</p>
+<p>If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel ICE, JTAGICE3, you can use it directly to debug classic AVR chips in the Arduino IDE 2 using the <a href="https://github.com/felias-fogg/dw-gdbserver">dw-gdbserver</a> Python script.</p>
+<h2 id="what-you-need">What you need</h2>
+<ul>
+<li>Computer running Windows, macOS, or Linux (the <em>host</em>)</li>
+<li>Arduino Uno (will become the <em>hardware debugger</em>)</li>
+<li>USB cable </li>
+<li>ATtiny85 (or any other classic ATtiny or ATmegaX8) as the <em>target</em></li>
+<li>In order to connect the hardware debugger to the target, you need:</li>
+<li>a breadboard together with</li>
+<li>11 Jumper wires (male-to-male)</li>
+<li>2 LEDs</li>
+<li>3 Resistors (10 kΩ, 220Ω, 220Ω)</li>
+<li>2 Capacitors (100 nF, 10 µF)</li>
+</ul>
+<h2 id="step-1-install-arduino-ide-2">Step 1: Install Arduino IDE 2</h2>
+<p>You probably already have the Arduino IDE 2 installed. If not, download and install it from https://arduino.cc. </p>
+<p><strong>Check:</strong> Start IDE and check the <code>About Arduino</code> entry under the <code>Arduino</code> or <code>Help</code> menu for the version number. It should be &gt;= 2.3.0.</p>
+<h2 id="step-2-install-new-board-manager-files">Step 2: Install new board manager files</h2>
+<p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following <code>Board Manager URLs</code> into the list:</p>
+<pre><code>https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+</code></pre>
+<p>Close the <code>Preference</code> dialog with <code>OK</code>. Now, we want to install the three cores, <code>ATTinyCore</code> , <code>MiniCore</code>, and <code>MicroCore</code>. </p>
+<ul>
+<li>Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>Board Managers</code> ... . This will open the Boards Manager dialog. </li>
+<li>In the search field, type <code>ATTinyCore</code> and install the most recent version.</li>
+<li>Next, repeat the process with <code>MiniCore</code> and <code>MicroCore</code>.</li>
+</ul>
+<p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>MiniCore</code> -&gt; <code>Atmega328</code>. </p>
+<h2 id="step-3-install-dw-link-firmware-on-an-uno">Step 3: Install <em>dw-link</em> firmware on an Uno</h2>
+<p>Download the dw-link firmware. This means you should </p>
+<ul>
+<li>open the webpage https://github.com/felias-fogg/dw-link, </li>
+<li>click on <code>Latest</code> in the field <strong>Releases</strong> (on the left),</li>
+<li>choose either <code>zip</code> or <code>tar.gz</code>,</li>
+<li>download it to  your hard disk, </li>
+<li>extract the firmware from the downloaded archive using <code>unzip</code> or <code>tar -xvzf</code>. </li>
+</ul>
+<p>In order to install the firmware, </p>
+<ul>
+<li>first make sure that the auto-reset feature of the Uno is not disabled, e.g., by a shield or a capacitor plugged into the Uno board,</li>
+<li>then connect the Arduino Uno to your computer with a USB cable,</li>
+<li>open the Arduino IDE and select <code>Arduino Uno</code> under <code>Tools</code> as the destination <code>board</code>, </li>
+<li>select the right <code>Port</code> in the <code>Tools</code> menu, </li>
+<li>and load the dw-link sketch into the IDE, which is located at <code>dw-link-x.y.z/dw-link/dw-link.ino</code>. </li>
+<li>Finally, compile and download the sketch to the Uno by either pressing the right arrow button, or by typing <code>CTRL-U</code> or <code>⌘U</code>. The Uno acts now as a hardware debugger (but needs a bit of additional hardware).</li>
+</ul>
+<p><strong>Check:</strong> Open the <code>Serial Monitor</code> (under <code>Tools</code> menu), choose <code>115200 baud</code>,  type  <code>-</code>  (minus sign) into the upper line, and send it. The hardware debugger should respond with <code>$#00</code>. </p>
+<h2 id="step-4-hardware-setup">Step 4: Hardware setup</h2>
+<p>This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the <a href="../installation/#debugging-an-uno">dw-link manual</a>.</p>
+<p>You need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your Uno, turned into a hardware debugger. Note that the notch or dot on the ATtiny is oriented towards the left. </p>
+<p><img alt="ATtiny85-debug" src="../pics/attiny85-debug-new.png" /></p>
+<p>Here is a table of all connections to check that you have made all the connections. </p>
+<table>
+<thead>
+<tr>
+<th>ATtiny pin#</th>
+<th>Arduino Uno pin</th>
+<th>component</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 (Reset)</td>
+<td>D8</td>
+<td>10k resistor to Vcc</td>
+</tr>
+<tr>
+<td>2 (D3)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>3 (D4)</td>
+<td></td>
+<td>220 Ω resistor to target (red) LED (+)</td>
+</tr>
+<tr>
+<td>4 (GND)</td>
+<td>GND</td>
+<td>red and yellow LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-)</td>
+</tr>
+<tr>
+<td>5 (D0, MOSI)</td>
+<td>D11</td>
+<td></td>
+</tr>
+<tr>
+<td>6 (D1, MISO)</td>
+<td>D12</td>
+<td></td>
+</tr>
+<tr>
+<td>7 (D2, SCK)</td>
+<td>D13</td>
+<td></td>
+</tr>
+<tr>
+<td>8 (Vcc)</td>
+<td>5V</td>
+<td>10k resistor, decoupling cap 100 nF</td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td>RESET</td>
+<td>RESET blocking cap of 10 µF (+)</td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td>D7</td>
+<td>220 Ω to system (yellow) LED (+)</td>
+</tr>
+</tbody>
+</table>
+<p>The yellow LED is the <em>system LED</em>, and the red one is the <em>ATtiny-LED</em>. The system LED gives you information about the internal state of the debugger: </p>
+<ol>
+<li>debugWIRE mode disabled (LED is off),</li>
+<li>waiting for power-cycling the target (LED flashes every second for 0.1 sec)</li>
+<li>debugWIRE mode enabled (LED is on),</li>
+<li>ISP programming (LED is blinking slowly),</li>
+<li>error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec).</li>
+</ol>
+<p><strong>Check:</strong> Go through the table above and check every connection. Wrong wiring can often cause hours of useless software debugging!</p>
+<h2 id="step-5-start-debugging">Step 5: Start Debugging</h2>
+<ul>
+<li>Load the sketch you want to debug  (e.g., <code>dw-link-x.y.z/examples/varblink/varblink.ino</code>) into the IDE by choosing <code>Open...</code> in the <code>File</code> menu. </li>
+<li>Select <code>ATtiny25/45/85 (no bootloader)</code> as the board under <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATTinyCore</code>.</li>
+<li>In the <code>Tools</code> menu,  choose <code>1 MHz (internal)</code> as the <code>Clock Source</code>  (assuming that the ATtiny is as it comes from the factory and no fuse has been changed).</li>
+<li>In the <code>Sketch</code> menu, select <code>Optimize for Debugging</code>.</li>
+<li>Compile the code by clicking the <code>Verify</code> button in the upper left corner.  </li>
+<li>Open the debug panes by clicking the debug symbol (bug with triangle) in the left sidebar. </li>
+<li>Click the debug symbol in the top row to start debugging. This will start the debugger and the debug server. The activities are logged in the <code>Debug Console</code> and the <code>gdb-server</code> console in the bottom right part of the window. </li>
+<li>You will probably be asked to "power-cycle the target." This means that you need to remove power from the target and then reconnect it, activating the debugWIRE mode.</li>
+<li>After the debugger and gdb-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the <code>setup</code> function.</li>
+<li>Now, you are in business and can set breakpoints (clicking left of the line number), continue executing, stop the program asynchronously, inspect and change values, and examine different stack frames. To terminate your debugging session, click the red box in the debug row before terminating the debugging session.</li>
+</ul>
+<p><img alt="debug window" src="../pics/ide2-3.png" /></p>
+<p>Be aware that after finishing the debug session, the MCU is still in debugWIRE mode! You can change that by typing <code>monitor debugwire disable</code> in the last line of the <code>Debug Console</code>. More information can be found in the <a href="../debugging/">dw-link manual</a>.</p>
+<h2 id="after-debugging-has-finished">After debugging has finished</h2>
+<p>When you are done with debugging, you probably want to disable the debugWIRE mode again, because in debugWIRE mode you cannot use the RESET line or ISP programming. This can be accomplised by using the command <code>monitor debugwire disable</code> before you leave the debugger. </p>
+<p>So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called <code>Arduino as ISP</code> or <code>Arduino as ISP fast</code>. In the latter case, the upload speed is 115200 instead of 19200.</p>
+<p>If you want a more durable hardware debugging solution, there are some <a href="../better/">suggestions</a> in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link, it costs less than US-$ 15 and it is able to do much more! </p>
+<h2 id="what-can-go-wrong">What can go wrong?</h2>
+<p>First, you might be unable to start debugging because the debug button is greyed out. This happens for all MCUs that the IDE cannot debug. If you think that this is an error, you might need to install the correct board definition files or choose the <code>Reload Board Data</code> entry in the <code>Tools</code> menu.</p>
+<p>Second, the debug-server might terminate early. In this case, you should see an error message in the <code>gdb-server</code> console. </p>
+<p>If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When strange error messages appear, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a <a href="../troubleshooting/">troubleshooting section</a> in the dw-link manual, which may be helpful. </p>
+<p>The most annoying problem is that an MCU might not be responsive after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. The command <code>monitor debugwire disable</code> typed into the lasr line of the <code>Debug Console</code> just before terminating the debugger should restore the RESET line functionality. If this does not help, you may have to use a High-Voltage programmer, such as <a href="https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/">RescueAVR</a>.</p>
+<p>If you have found a bug, please post it on <a href="https://github.com/felias-fogg/dw-link/issues">issues</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../quickstart-AVR-GDB/" class="btn btn-neutral float-right" title="AVR-GDB">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/felias-fogg/dw-link" class="fa fa-code-fork" style="color: #fcfcfc"> dw-link</a>
+        </span>
+    
+    
+    
+      <span><a href="../quickstart-AVR-GDB/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

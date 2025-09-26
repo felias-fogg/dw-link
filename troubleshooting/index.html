@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Troubleshooting - dw-link</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../style.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Troubleshooting";
+        var mkdocs_page_input_path = "troubleshooting.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="..">
+          <img src="../pics/uno-debug2-small.png" class="logo" alt="Logo"/>
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Quickstart</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-Arduino-IDE2/">Arduino IDE 2</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-AVR-GDB/">AVR-GDB</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../intro/">Background</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../requirements/">Hardware requirements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../better/">A better hardware debugger</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../problems/">Problems</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Troubleshooting</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#problems-while-preparing-the-setup">Problems while preparing the setup</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-it-is-impossible-to-upload-the-dw-link-firmware-to-the-uno-board">Problem: It is impossible to upload the dw-link firmware to the UNO board</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#startup-problems">Startup problems</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-in-the-gdb-server-console-the-session-is-terminated-right-after-the-message-that-the-gdbserver-is-waiting-for-a-connection">Problem: In the gdb-server console, the session is terminated right after the message that the gdbserver is waiting for a connection</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-in-the-gdb-server-console-right-after-starting-the-dw-gdbserver-green-line-there-are-a-lot-of-error-messages-shown">Problem: In the gdb-server console, right after starting the dw-gdbserver (green line), there are a lot of error messages shown</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-it-is-impossible-to-connect-to-the-hardware-debugger-in-the-gdb-server-console-the-message-no-hardware-debugger-discovered-is-shown">Problem: It is impossible to connect to the hardware debugger. In the gdb-server console the message "No hardware debugger discovered" is shown</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-when-connecting-to-the-target-using-the-target-remote-command-it-takes-a-long-time-and-then-you-get-the-message-remote-replied-unexpectedly-to-vmustreplyempty-timeout">Problem: When connecting to the target using the target remote command, it takes a long time and then you get the message Remote replied unexpectedly to 'vMustReplyEmpty': timeout</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-in-response-to-the-monitor-debugwire-enable-command-you-get-the-error-message-cannot-connect">Problem: In response to the monitor debugwire enable command you get the error message Cannot connect: ...**</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#problems-while-debugging">Problems while debugging</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-you-get-the-message-connection-to-target-lost-the-program-receives-a-sighup-signal-when-you-try-to-start-execution-andor-the-system-led-is-off">Problem: You get the message Connection to target lost, the program receives a SIGHUP signal when you try to start execution, and/or the system LED is off</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-when-stopping-the-program-with-ctrl-c-or-with-the-stop-button-you-get-the-message-cannot-remove-breakpoints-because-program-is-no-longer-writable">Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message Cannot remove breakpoints because program is no longer writable.</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-when-trying-to-start-execution-with-the-run-command-gdb-stops-with-an-internal-error">Problem: When trying to start execution with the run command, GDB stops with an internal error</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-and-you-get-the-warning-cannot-insert-breakpoint-command-aborted">Problem: The debugger does not start execution when you request single-stepping or execution and you get the warning Cannot insert breakpoint ... Command aborted</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-when-single-stepping-with-next-or-step-you-receive-the-message-warning-cannot-insert-breakpoint-0-and-the-program-is-stopped-at-a-strange-location">Problem: When single stepping with next or step , you receive the message Warning: Cannot insert breakpoint 0 and the program is stopped at a strange location</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-you-get-the-message-illegal-instruction-and-the-program-receives-a-sigill-signal">Problem: The debugger does not start execution when you request single-stepping or execution, you get the message illegal instruction, and the program receives a SIGILL signal</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#strange-behavior-of-the-debugger">Strange behavior of the debugger</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-after-changing-optimization-options-the-binary-is-still-too-largevery-small">Problem: After changing optimization options, the binary is still too large/very small</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-responses-are-very-sluggish">Problem: The debugger responses are very sluggish</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-while-single-stepping-time-seems-to-be-frozen-ie-the-timers-do-not-advance-and-no-timer-interrupt-is-raised">Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-pwm-analogwrite-does-not-seem-to-work-when-the-program-is-stopped">Problem: PWM (analogWrite) does not seem to work when the program is stopped</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-when-single-stepping-with-next-or-step-the-program-ends-up-at-the-start-of-flash-memory-eg-0x0030">Problem: When single stepping with next or step , the program ends up at the start of flash memory, e.g., 0x0030</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-after-requesting-to-stop-at-a-function-the-debugger-displays-a-completely-different-file-where-the-execution-will-stop">Problem: After requesting to stop at a function, the debugger displays a completely different file, where the execution will stop</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-does-not-stop-at-the-line-a-breakpoint-was-set">Problem: The debugger does not stop at the line a breakpoint was set</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-does-things-that-appear-to-be-strange">Problem: The debugger does things that appear to be strange</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#problems-with-with-guiide">Problems with with GUI/IDE</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-when-starting-the-debug-session-in-platformio-you-get-the-message-pioinitxx-error-in-sourced-command-file">Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#problems-after-debugging">Problems after debugging</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-after-debugging-the-chip-is-unresponsive-ie-does-not-respond-anymore-to-isp-programming-or-bootloader-upload">Problem: After debugging, the chip is unresponsive, i.e., does not respond anymore to ISP programming or bootloader upload**</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#internal-and-fatal-debugger-errors">Internal and fatal debugger errors</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-the-system-led-blinks-furiously-andor-the-program-receives-an-abort-signal-when-trying-to-start-execution">Problem: The system LED blinks furiously and/or the program receives an ABORT signal when trying to start execution</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">About</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../license-link/">License</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../acknowledgements/">Acknowledgements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../history/">Revision history</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">dw-link</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Usage</li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/troubleshooting.md">Edit on dw-link</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="troubleshooting">Troubleshooting</h1>
+<h2 id="problems-while-preparing-the-setup">Problems while preparing the setup</h2>
+<h3 id="problem-it-is-impossible-to-upload-the-dw-link-firmware-to-the-uno-board">Problem: It is impossible to upload the dw-link firmware to the UNO board</h3>
+<p>Maybe, the dw-link probe shield or the auto-reset disabling capacitor is still plugged into the UNO board? Remove, and try gain. </p>
+<h2 id="startup-problems">Startup problems</h2>
+<p>Problems during startup can often be diagnosed when one selects the <code>gdb-server</code>  console in the Arduino IDE 2.</p>
+<h3 id="problem-in-the-gdb-server-console-the-session-is-terminated-right-after-the-message-that-the-gdbserver-is-waiting-for-a-connection">Problem: In the gdb-server console, the session is terminated right after the message that the gdbserver is waiting for a connection</h3>
+<p>This is an indication that the avr-gdb program could not be started. One could try to solve the problem by getting hold of an avr-gdb version tailored for one's own operating system and replacing the version in the tools folder. The path to this folder is shown in the green line in the <code>gdb-server</code> console. </p>
+<h3 id="problem-in-the-gdb-server-console-right-after-starting-the-dw-gdbserver-green-line-there-are-a-lot-of-error-messages-shown">Problem: In the gdb-server console, right after starting the dw-gdbserver (green line), there are a lot of error messages shown</h3>
+<p>This could indicate that the dw-gdbserver binary is incompatible with one's operating system. One may try to solve the problem by building one's own binary. If you have Python Version &gt;= 3.10 and have pipx installed, you can download, generate, and install a version of dw-gdbserver that should work on your OS. Execute <code>pipx install dwgdbserver</code>, and copy the generated binary (try <code>pipx list</code> to locate it on your computer) into the tools folder as shown in the green line in the <code>gdb-server</code> console.</p>
+<h3 id="problem-it-is-impossible-to-connect-to-the-hardware-debugger-in-the-gdb-server-console-the-message-no-hardware-debugger-discovered-is-shown">Problem: It is impossible to connect to the hardware debugger. In the gdb-server console the message "No hardware debugger discovered" is shown</h3>
+<p>One common problem is that the IDE uses the serial line to the debugger for the <code>Serial Monitor</code>. Simply close this console. If this does not help, try to choose a different serial port in the <code>Tools</code> menu.</p>
+<p>Sometimes, one can no longer connect to the hardware debugger.  Try to disconnect and reconnect the USB cable. Next, you may also want to disconnect and reconnect the target. </p>
+<p>If this happens when the hardware debugger powers the target, this is a sign that the capacitive load of the target may be too high. So, one cure is here to power the target externally and do the power-cycling manually.  </p>
+<h3 id="problem-when-connecting-to-the-target-using-the-target-remote-command-it-takes-a-long-time-and-then-you-get-the-message-remote-replied-unexpectedly-to-vmustreplyempty-timeout">Problem: When connecting to the target using the <em>target remote</em> command, it takes a long time and then you get the message <em>Remote replied unexpectedly to 'vMustReplyEmpty': timeout</em></h3>
+<p>This will probably not happen when dw-link is used in the Arduino IDE.</p>
+<p>The serial connection to the hardware debugger could not be established. The most likely reason for that is that there is a mismatch of the bit rates. The Arduino uses by default 115200 baud, but you can recompile dw-link with a changed value of <code>HOSTBPS</code>, e.g., using 230400. If GDB is told something differently, either as the argument to the <code>-b</code> option when starting avr-gdb or as an argument to the GDB command <code>set serial baud ...</code>, you should change that. If you did not specify the bitrate at all, GDB uses its default speed of 9600, which will not work!</p>
+<p>My experience is that 230400 bps works only with UNO boards. The Arduino Nano cannot communicate at that speed.</p>
+<p>A further (unlikely) reason for a failure in connecting to the host might be that a different communication format was chosen (parity, two stop bits, ...). </p>
+<h3 id="problem-in-response-to-the-monitor-debugwire-enable-command-you-get-the-error-message-cannot-connect">Problem: In response to the <code>monitor debugwire enable</code> command you get the error message <em>Cannot connect: ...</em>**</h3>
+<p>Depending on the concrete error message, the problem fix varies.</p>
+<ul>
+<li><em>Cannot connect: Could not communicate by ISP; check wiring</em>: The debugger cannot establish an ISP connection. Check wiring. Maybe you forgot to power the target board? I did that more than once. If this is not the reason, disconnect everything and put it together again. This helps sometimes. Finally, this error could be caused by bricking your MCU having too much capacitive load or a pull-up resistor that is too strong on the RESET line.  </li>
+<li><em>Cannot connect: Could not activate debugWIRE</em>: An ISP connection was established, but it was not possible to activate debugWIRE. Most probably the MCU is now in a limbo state and can only be resurrected by a HV programmer. The reason is most probably too much capacitive load on the RESET line or a strong pullup resistor on this line.</li>
+<li><em>Cannot connect: Unsupported MCU</em>: This MCU is not supported by dw-link.</li>
+<li><em>Cannot connect: Lock bits could not be cleared:</em> This should not happen at all because it is always possible to clear the lock bits by erasing the entire chip.</li>
+<li><em>Cannot connect: PC with stuck-at-one bits</em>: dw-link tried to connect to an <a href="../requirements/#mcus-with-debugwire-interface">MCU with stuck-at-one bits in the program counter</a>. These MCUs cannot be debugged with GDB. </li>
+<li><em>Cannot connect: Reset line has a capacitive load</em>: The message says it all.</li>
+<li><em>MCU type does not match</em>: The chip connected to the hardware debugger is different from what you announced when starting the debugger through an IDE or by calling dw-gdbserver. </li>
+<li><em>Cannot connect: Target not powered or RESET shortened to GND</em>: The RESET line is low. Either you forgot to power the target, or there is another (maybe temporary?) reason for it.</li>
+<li><em>Cannot connect for unknown reasons:</em> This error message should not be shown at all. If it does, please tell me!</li>
+</ul>
+<h2 id="problems-while-debugging">Problems while debugging</h2>
+<p><a name="lost"></a></p>
+<h3 id="problem-you-get-the-message-connection-to-target-lost-the-program-receives-a-sighup-signal-when-you-try-to-start-execution-andor-the-system-led-is-off">Problem: You get the message <em>Connection to target lost</em>, the program receives a <code>SIGHUP</code> signal when you try to start execution, and/or the system LED is off</h3>
+<p>The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the <a href="../requirements/#requirements-concerning-the-target-system">necessary electrical requirements</a>. Other reasons might be that the program disturbed the communication by changing, e.g., the <a href="../problems/#mcu-operations-interfering-with-debugwire">MCU clock frequency</a>. Try to identify the reason, eliminate it, and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the <code>load</code> command should be used to reload the program.</p>
+<h3 id="problem-when-stopping-the-program-with-ctrl-c-or-with-the-stop-button-you-get-the-message-cannot-remove-breakpoints-because-program-is-no-longer-writable">Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message <em>Cannot remove breakpoints because program is no longer writable.</em></h3>
+<p>The reason is most probably that the communication connection to the target system has been lost (<a href="#lost">see above</a>).</p>
+<h3 id="problem-when-trying-to-start-execution-with-the-run-command-gdb-stops-with-an-internal-error">Problem: When trying to start execution with the <code>run</code> command, GDB stops with an internal error</h3>
+<p>This happens with older avr-gdb versions. You can instead use <code>monitor reset</code> and <code>continue</code>. </p>
+<h3 id="problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-and-you-get-the-warning-cannot-insert-breakpoint-command-aborted">Problem: The debugger does not start execution when you request <em>single-stepping</em> or <em>execution</em> and you get the warning <em>Cannot insert breakpoint ... Command aborted</em></h3>
+<p>You use more than the allowed number of breakpoints, i.e., usually 20 (including one for a temporary breakpoint for single-stepping). If you have executed the <code>monitor breakpoint h</code> command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.</p>
+<h3 id="problem-when-single-stepping-with-next-or-step-you-receive-the-message-warning-cannot-insert-breakpoint-0-and-the-program-is-stopped-at-a-strange-location">Problem: When single stepping with <code>next</code> or <code>step</code> , you receive the message <em>Warning: Cannot insert breakpoint 0</em> and the program is stopped at a strange location</h3>
+<p>The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for GDB. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the <code>continue</code> command. If this is not possible, restart and use fewer breakpoints.</p>
+<h3 id="problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-you-get-the-message-illegal-instruction-and-the-program-receives-a-sigill-signal">Problem: The debugger does not start execution when you request <em>single-stepping</em> or <em>execution</em>, you get the message <em>illegal instruction</em>, and the program receives a <code>SIGILL</code> signal</h3>
+<p>It could be that you did not issue a load command. In this case, one should do that.</p>
+<p>A second reason for such a signal could be that at the position we want to continue from, there is a BREAK instruction that either was explicitly inserted by the programmer or is a leftover from a previous debugging session that was not cleaned up. In the former case, you may want to change the sketch and restart debugging. In the latter case, a simple <code>load</code> command will do.</p>
+<h2 id="strange-behavior-of-the-debugger">Strange behavior of the debugger</h2>
+<h3 id="problem-after-changing-optimization-options-the-binary-is-still-too-largevery-small">Problem: After changing optimization options, the binary is still too large/very small</h3>
+<p>You switched the optimization option from <strong>-Og -fno-lto</strong> back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this option is no longer available. You need to locate the compiled files and delete them manually.</p>
+<h3 id="problem-the-debugger-responses-are-very-sluggish">Problem: The debugger responses are very sluggish</h3>
+<p>One reason for that could be that the target is run with a clock less than 1 MHz, e.g. at 128 kHz. Since the debugWIRE communication speed is usually clock/8, the debugWIRE communication speed could be 16kbps. If the CKDIV8 fuse is programmed, it could even be only 2kbps. Unprogram CKDIV8 and if possible <a href="../problems/#slow-responses-when-loading-or-single-stepping">choose a higher clock frequency</a>.</p>
+<h3 id="problem-while-single-stepping-time-seems-to-be-frozen-ie-the-timers-do-not-advance-and-no-timer-interrupt-is-raised">Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised</h3>
+<p>This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the <code>continue</code> command (or when the <code>next</code> command skips over a function call). You can change this behavior by using the command <code>monitor singlestep i</code>, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping control is transferred into an interrupt routine.</p>
+<h3 id="problem-pwm-analogwrite-does-not-seem-to-work-when-the-program-is-stopped">Problem: PWM (analogWrite) does not seem to work when the program is stopped</h3>
+<p>The reason is that all timers are usually stopped when the program is in a stopped state. However, you can change this behavior using the GDB command <code>monitor timers r</code>. In this case, the timers are run even when the program is stopped, which means that PWM (aka <code>analogWrite</code>) is also still active.</p>
+<h3 id="problem-when-single-stepping-with-next-or-step-the-program-ends-up-at-the-start-of-flash-memory-eg-0x0030">Problem: When single stepping with <code>next</code> or <code>step</code> , the program ends up at the start of flash memory, e.g., 0x0030</h3>
+<p>This should only happen when you have used the command <code>monitor singlestep interruptible</code> before, which enables interrupts while single-stepping. In this case, an interrupt might have been raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the <code>continue</code> command. If you want to avoid this behavior in the future, issue the debugger command <code>monitor singlestep safe</code>. </p>
+<h3 id="problem-after-requesting-to-stop-at-a-function-the-debugger-displays-a-completely-different-file-where-the-execution-will-stop">Problem: After requesting to stop at a function, the debugger displays a completely different file, where the execution will stop</h3>
+<p>This is a GDB problem. It can happen when a function call is inlined at the beginning of the function one intends to stop at. While the place where execution will stop looks crazy (e.g., HardwareSerial.h at line 121), the execution stops indeed at the beginning of the specified function (in this case at the beginning of setup).</p>
+<h3 id="problem-the-debugger-does-not-stop-at-the-line-a-breakpoint-was-set">Problem: The debugger does not stop at the line a breakpoint was set</h3>
+<p>Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, <strong>-Og3</strong> is the recommended optimization option, which applies optimizations in a debug-friendly way. This is also the default for PlatformIO. In the Arduino IDE, you have to activate the <code>Optimize for Debugging</code> switch in the  <code>Sketch</code> menu.</p>
+<h3 id="problem-the-debugger-does-things-that-appear-to-be-strange">Problem: The debugger does things that appear to be strange</h3>
+<p>The debugger starts execution, but it never stops at a breakpoint it should stop, single-stepping does not lead to the expected results, etc. I have seen three possible reasons for that (apart from a programming error that you are hunting).</p>
+<p>Often, I had forgotten to load the binary code into flash. Remember to use the <code>load</code> command <strong><em>every time</em></strong> after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the <code>load</code> command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably force a hardware reset by using the command <code>monitor reset</code>. Alternatively, when you initiated your session with <code>target extended-remote ...</code>, you can use the <code>run</code> command that resets the MCU and starts at address zero. In the Arduino IDE 2, all that cannot happen.</p>
+<p>Second, you may have specified a board/MCU different from your actual target. This happens quite easily with PlatformIO when you work with different targets. In this case, some things appear to work, but others do not work at all. Again, in the Arduino IDE 2, this cannot happen.</p>
+<p>Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen <strong>-Og3</strong>, then single-stepping may not work as expected and/or you may not be able to assign values to local variables. If objects are not printed the right way, then you may consider disabling LTO (by using the compiler option <strong>-fno-lto</strong>). </p>
+<p>So, before blaming the debugger, check for the three possible causes.</p>
+<h2 id="problems-with-with-guiide">Problems with with GUI/IDE</h2>
+<h3 id="problem-when-starting-the-debug-session-in-platformio-you-get-the-message-pioinitxx-error-in-sourced-command-file">Problem: When starting the debug session in PlatformIO, you get the message *pioinit:XX: Error in sourced command file</h3>
+<p>Something in the <code>platformio.ini</code> file is not quite right. Sometimes an additional line of information is given that identifies the problem. If you see also see the message <code>"monitor" command not supported by this target</code> then the dw-link adapter could not be found.</p>
+<p>One other common problem is that the debug environment is not the first environment or the default environment. In this case, the wrong environment is used to configure the debug session and probably some environment variables are not set at all or set to the wrong values. So, you need to edit the <code>platformio.ini</code> file accordingly.</p>
+<h2 id="problems-after-debugging">Problems after debugging</h2>
+<h3 id="problem-after-debugging-the-chip-is-unresponsive-ie-does-not-respond-anymore-to-isp-programming-or-bootloader-upload">Problem: After debugging, the chip is unresponsive, i.e., does not respond anymore to ISP programming or bootloader upload**</h3>
+<p>There are many possible causes:</p>
+<ul>
+<li>The DWEN fuse is still programmed, i.e., the MCU is still in debugWIRE mode. In this case, it may help to enter and leave the debugger again, provided that there are not any <a href="../requirements/#worst-case-scenario">problems with the RESET line</a>. It may also be helpful to issue the command <code>monitor debugwire disable</code>. </li>
+<li>Another fuse has been programmed by accident. In particular, there are the <code>monitor</code> commands that change the clock source. If an external clock or an XTAL has been chosen, then you can recover the chip only by providing such an external clock or XTAL and then use either ISP programming or connect again to dw-link. </li>
+<li>Apparently it happens that the MCU is stuck halfway when transitioning to debugWIRE state. </li>
+</ul>
+<p>If nothing helps, then <a href="../requirements/#worst-case-scenario">high-voltage programming</a> might still be a last resort.</p>
+<h2 id="internal-and-fatal-debugger-errors">Internal and fatal debugger errors</h2>
+<p><a name="fatalerror"></a></p>
+<h3 id="problem-the-system-led-blinks-furiously-andor-the-program-receives-an-abort-signal-when-trying-to-start-execution">Problem: The system LED blinks furiously and/or the program receives an <code>ABORT</code> signal when trying to start execution</h3>
+<p>In this case some serious internal error had happened. You have to stop the current debug session and restart. </p>
+<p>The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. You can find out what kind of error happened by typing the following command:</p>
+<pre><code>monitor info
+</code></pre>
+<p>If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors (see below).</p>
+<p>If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. </p>
+<p>After a reset or a power cycle of the hardware debugger, everything usually works again. If not, you need to unplug everything and put it together again.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Error #</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td>Connection error: Could not communicate by ISP; check wiring</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>Connection error: Could not activate debugWIRE</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>Connection error: MCU type is not supported</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>Connection error: Lock bits or BOOTRST could not be cleared</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>Connection error: MCU has PC with stuck-at-one bits</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>Connection error: RESET line has a capacitive load</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>Connection error: Target not powered or RESET shortened to GND</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>MCU type does not match</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>Unknown connection error</td>
+</tr>
+<tr>
+<td style="text-align: right;">101</td>
+<td>No free slot in breakpoint table</td>
+</tr>
+<tr>
+<td style="text-align: right;">102</td>
+<td>Packet length too large</td>
+</tr>
+<tr>
+<td style="text-align: right;">103</td>
+<td>Wrong memory type</td>
+</tr>
+<tr>
+<td style="text-align: right;">104</td>
+<td>Packet length is negative</td>
+</tr>
+<tr>
+<td style="text-align: right;">105</td>
+<td>Reset operation failed</td>
+</tr>
+<tr>
+<td style="text-align: right;">106</td>
+<td>Memory address in flash read operation does not point to page start</td>
+</tr>
+<tr>
+<td style="text-align: right;">107</td>
+<td>Could not complete flash read operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">108</td>
+<td>Could not complete RAM read operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">109</td>
+<td>Memory address in flash write operation does not point to page start</td>
+</tr>
+<tr>
+<td style="text-align: right;">110</td>
+<td>Could not complete flash page erase operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">111</td>
+<td>Could not load data into the flash buffer for writing</td>
+</tr>
+<tr>
+<td style="text-align: right;">112</td>
+<td>Error when programming flash page from buffer</td>
+</tr>
+<tr>
+<td style="text-align: right;">113</td>
+<td>Error verifying flashed page while loading program</td>
+</tr>
+<tr>
+<td style="text-align: right;">114</td>
+<td>Assignment of hardware breakpoint is inconsistent</td>
+</tr>
+<tr>
+<td style="text-align: right;">115</td>
+<td>BREAK inserted by debugger at a point where a step or execute operation is required</td>
+</tr>
+<tr>
+<td style="text-align: right;">116</td>
+<td>Trying to read flash word at an uneven address</td>
+</tr>
+<tr>
+<td style="text-align: right;">117</td>
+<td>Error when single-stepping</td>
+</tr>
+<tr>
+<td style="text-align: right;">118</td>
+<td> A relevant breakpoint has disappeared</td>
+</tr>
+<tr>
+<td style="text-align: right;">119</td>
+<td>Input buffer overflow</td>
+</tr>
+<tr>
+<td style="text-align: right;">120</td>
+<td>Wrong fuse</td>
+</tr>
+<tr>
+<td style="text-align: right;">121</td>
+<td>Breakpoint update while flash programming is active</td>
+</tr>
+<tr>
+<td style="text-align: right;">122</td>
+<td>Timeout while reading from debugWIRE line</td>
+</tr>
+<tr>
+<td style="text-align: right;">123</td>
+<td>Timeout while reading general register</td>
+</tr>
+<tr>
+<td style="text-align: right;">124</td>
+<td>Timeout while reading IO register</td>
+</tr>
+<tr>
+<td style="text-align: right;">125</td>
+<td>Could not reenable RWW</td>
+</tr>
+<tr>
+<td style="text-align: right;">126</td>
+<td>Failure while reading from EEPROM</td>
+</tr>
+<tr>
+<td style="text-align: right;">127</td>
+<td>Bad interrupt</td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../problems/" class="btn btn-neutral float-left" title="Problems"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../license-link/" class="btn btn-neutral float-right" title="License">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/felias-fogg/dw-link" class="fa fa-code-fork" style="color: #fcfcfc"> dw-link</a>
+        </span>
+    
+    
+      <span><a href="../problems/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../license-link/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
