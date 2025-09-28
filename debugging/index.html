@@ -68,11 +68,11 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#some-pro-tips">Some Pro Tips</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#monitor-commands">Monitor commands</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#restoring-an-uno-to-its-native-state">Restoring an Uno to its native state</a>
-    </li>
         </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#monitor-commands">Monitor commands</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#restoring-an-uno-to-its-native-state">Restoring an Uno to its native state</a>
     </li>
     </ul>
                   </li>
@@ -168,7 +168,7 @@ debugWIRE is enabled, bps: 125244
 <p>The I/O registers are displayed in the <code>CORTEX PERIPHERALS</code> debugger pane. There, you also can change single register values.</p>
 <p>Global variables are, for some reason, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value.</p>
 <p>If you select the Debug Console, you can type GDB commands in the bottom line. This can be useful for changing the value of global variables using the GDB command <code>set var &lt;varname&gt;=&lt;value&gt;</code>. This can also be used to disable the debugWIRE mode using the command <code>monitor debugwire disable</code>. The following section describes more monitor commands.</p>
-<h3 id="monitor-commands">Monitor commands</h3>
+<h2 id="monitor-commands">Monitor commands</h2>
 <table>
 <thead>
 <tr>
@@ -228,7 +228,7 @@ debugWIRE is enabled, bps: 125244
 </tbody>
 </table>
 <p>The default setting is always the first one listed, except for <code>debugwire</code>, which depends on the MCU itself. All commands can, as usual, be abbreviated. For example, <code>mo d e</code> is equivalent to <code>monitor debugwire enable</code>. </p>
-<h3 id="restoring-an-uno-to-its-native-state">Restoring an Uno to its native state</h3>
+<h2 id="restoring-an-uno-to-its-native-state">Restoring an Uno to its native state</h2>
 <p>When you want to restore the target so that it behaves again like an ordinary UNO after a debugging session, you have two options: you can restore it as a MiniCore 328P board or as an original Uno board. The former one is the more attractive alternative in my eyes. Just check out the pages about <a href="https://github.com/MCUdude/MiniCore">MiniCore</a>. Further, the command <code>Burn Bootloader</code> does apparently not work so well with some programmers or debuggers when doing it for the Uno setting. However, the dw-link built-in programmer has no problems. </p>
 <p>In order to restore your board, you need to do the following steps:</p>
 <ol>
