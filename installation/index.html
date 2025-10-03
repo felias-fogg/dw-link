@@ -69,6 +69,12 @@
     <li class="toctree-l2"><a class="reference internal" href="#states-of-the-hardware-debugger">States of the hardware debugger</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#setting-up-the-debugging-software">Setting up the debugging software</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#installing-avr-gdb">Installing AVR-GDB</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#installing-board-packages-for-the-arduino-ide-2">Installing board packages for the Arduino IDE 2</a>
+    </li>
+        </ul>
     </li>
     </ul>
                   </li>
@@ -207,16 +213,25 @@
 <li>ISP programming (LED is blinking slowly every 0.5 sec), or</li>
 <li>error, i.e., it is not possible to connect to the target or there is an internal error (LED blinks furiously every 0.1 sec).</li>
 </ul>
-<p>If the hardware debugger is in the error state, one should try to find out the reason by typing the command <code>monitor info</code>, studying the <a href="../troubleshooting/#internal-and-fatal-debugger-errors">error message table</a> at the end of the document, finishing the GDB session, resetting the debugger, and restarting everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.</p>
+<p>If the hardware debugger is in the error state, one should try to find out the reason by typing the command <code>monitor info</code> and studying the <a href="../troubleshooting/#internal-and-fatal-debugger-errors">error message table</a> at the end of the document. Then finish the GDB session, reset the debugger, and restart everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.</p>
 <p>If the problem persists, please check the section on <a href="../troubleshooting/">troubleshooting</a>.</p>
 <h2 id="setting-up-the-debugging-software">Setting up the debugging software</h2>
-<p>Depending on what chips you want to debug, you need to install three new board packages. Open the <code>Preference</code> dialog of the Arduino IDE and paste the following three URLs into the list of <code>Additional boards manager URLs</code>:</p>
+<p>Finally, you need to install the debugging software on the host. </p>
+<h3 id="installing-avr-gdb">Installing AVR-GDB</h3>
+<p>If you want to perform debugging using a command-line interface, you only need to install avr-gdb, which is most probably already installed on your host anyway. On Linux, the package manager of your choice will solve the problem. Note that the corresponding package is named <em>gdb-avr</em>! On macOS, use <a href="https://brew.sh">Homebrew</a>. After having installed Homebrew, type:</p>
+<pre><code>xcode-select --install
+brew tap osx-cross/avr
+brew install avr-gdb
+</code></pre>
+<p>Under Windows, you can download a version from Zak's <a href="https://github.com/ZakKemble/avr-gcc-build">avr-gcc-build</a> repository.</p>
+<h3 id="installing-board-packages-for-the-arduino-ide-2">Installing board packages for the Arduino IDE 2</h3>
+<p>Depending on what chips you want to debug, you need to install three new board packages. Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following three URLs into the list of <code>Additional boards manager URLs</code>:</p>
 <pre><code>https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
 https://MCUdude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 </code></pre>
-<p>The first one is for all classical ATtinys, the second one is for the ATtiny13(a), and the third one is for all ATtinyX8's, including the ATmega328P, which is the MCU on the the Arduino Uno.</p>
-<p>Then, you need to start the  <code>Boards Manager</code>, which you find under <code>Tools</code>--&gt;<code>Board</code>. Install MiniCore, MicroCore and ATTinyCore, choosing the most recent version. Note that the packages include tools that might be incompatible with older OS versions. If you encounter problems when starting the debugging software, consult the troubleshooting section on <a href="../troubleshooting/#startup-problems">startup problems</a>.</p>
+<p>The first one is for all classical ATtinys, the second one is for the ATtiny13(a), and the third one is for all ATtinyX8s, including the ATmega328P, which is the MCU on the Arduino Uno board.</p>
+<p>Then, you need to start the  <code>Boards Manager</code>, which you find under <code>Tools</code>--&gt;<code>Board</code>. Install MiniCore, MicroCore, and/or ATTinyCore, choosing the most recent version. Note that the packages include tools that might be incompatible with older OS versions. If you encounter problems when starting the debugging software, consult the troubleshooting section on <a href="../troubleshooting/#startup-problems">startup problems</a>.</p>
               
             </div>
           </div><footer>
