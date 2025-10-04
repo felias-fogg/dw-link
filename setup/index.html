@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Hardware setup - dw-link</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../style.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Hardware setup";
+        var mkdocs_page_input_path = "setup.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="..">
+          <img src="../pics/uno-debug2-small.png" class="logo" alt="Logo"/>
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Quickstart</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-Arduino-IDE2/">Arduino IDE 2</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-AVR-GDB/">AVR-GDB</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../intro/">Background</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../requirements/">Hardware requirements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Hardware setup</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#debugging-an-attiny85">Debugging an ATtiny85</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#debugging-an-uno">Debugging an UNO</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#states-of-the-hardware-debugger">States of the hardware debugger</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../better/">A better hardware debugger</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../problems/">Problems</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">About</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../license-link/">License</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../acknowledgements/">Acknowledgements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../history/">Revision history</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">dw-link</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Usage</li>
+      <li class="breadcrumb-item active">Hardware setup</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/setup.md">Edit on dw-link</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="setting-up-the-hardware">Setting up the hardware</h1>
+<p>Before you can start debugging, you have to set up the hardware. I'll use an ATtiny85 on a breadboard as one example target system. However, any MCU listed above would do as a target. One could even use an Arduino UNO, provided the modifications described in the section on <a href="../requirements/#requirements-concerning-the-target-system">modifying an Uno board</a> have been done.</p>
+<h2 id="debugging-an-attiny85">Debugging an ATtiny85</h2>
+<p>In order to debug an ATtiny85, we will assume it is completely "naked" and plugged into a breadboard as shown below. </p>
+<p><a name="Fritzing"></a></p>
+<p><img alt="Fritz-attiny" src="../pics/attiny85-debug-new.png" /></p>
+<p>Notice the capacitor of 10 µF or more between RESET and GND on the UNO board. This will disable the auto-reset of the UNO board. Second, note the yellow LED connected to pin D7. This is the system LED which is used to visualise the internal state of the debugger (see below).  You can also build an LED with a series resistor soldered on and then use pins D6 and D7, where D6 is used as GND.</p>
+<p>GND and Vcc of the ATtiny are connected to the respective lines on the breadboard, which in turn are connected to GND and 5V of the UNO. Pin D8 of the Arduino UNO is connected to the RESET pin of the ATtiny (pin 1).   Note the presence of the pull-up resistor of 10kΩ on the ATtiny RESET pin. The remaining connections between Arduino UNO and ATtiny are MOSI (Arduino UNO D11), MISO (Arduino UNO D12), and SCK (Arduino UNO D13), which you need for ISP programming. In addition, there is an LED connected to pin 3 of the ATtiny chip (which is PB4 or pin D4 in Arduino terminology). The pinout of the ATtiny85 is given in the following figure (with the usual "counter-clockwise" numbering of Arduino pins).</p>
+<p><img alt="ATtiny85 pinout" src="https://raw.githubusercontent.com/SpenceKonde/ATTinyCore/v2.0.0-devThis-is-the-head-submit-PRs-against-this/avr/extras/Pinout_x5.jpg" /></p>
+<p>Here is a table of all the connections so that you can check that you have made all the connections. </p>
+<table>
+<thead>
+<tr>
+<th>ATtiny pin#</th>
+<th>Arduino UNO pin</th>
+<th>component</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 (Reset)</td>
+<td>D8</td>
+<td>10k resistor to Vcc</td>
+</tr>
+<tr>
+<td>2 (D3)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>3 (D4)</td>
+<td></td>
+<td>220 Ω resistor to (red) target LED (+)</td>
+</tr>
+<tr>
+<td>4 (GND)</td>
+<td>GND</td>
+<td>both LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-)</td>
+</tr>
+<tr>
+<td>5 (D0, MOSI)</td>
+<td>D11</td>
+<td></td>
+</tr>
+<tr>
+<td>6 (D1, MISO)</td>
+<td>D12</td>
+<td></td>
+</tr>
+<tr>
+<td>7 (D2, SCK)</td>
+<td>D13</td>
+<td></td>
+</tr>
+<tr>
+<td>8 (Vcc)</td>
+<td>5V</td>
+<td>10k resistor, decoupling cap 100 nF</td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td>RESET</td>
+<td>RESET blocking cap of 10 µF (+)</td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td>D7</td>
+<td>220 Ω resistor to (yellow) system LED (+)</td>
+</tr>
+</tbody>
+</table>
+<p><a name="section452"></a></p>
+<h2 id="debugging-an-uno">Debugging an UNO</h2>
+<p>If you want to debug an UNO board instead of an ATtiny85, everything said above applies. The Fritzing sketch below shows the connections. Here, the series resistor for the system LED is soldered to the LED cathode, so we do not need a breadboard. The hardware debugger needs a USB connection to your host, but the target does not need to be connected to the host! If it is, then remove the red cable between the 5V pins of the hardware debugger and the target. </p>
+<p><img alt="Uno as DUT" src="../pics/Uno-debug-new.png" /></p>
+<p>Remember to cut the <code>RESET EN</code> solder bridge on the target board (see <a href="../requirements/#requirements-concerning-the-target-system">section on Requirements concerning the target system</a>)! When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described <a href="../debugging/#restoring-an-uno-to-its-native-state">in the end of the debugging section</a>.</p>
+<h2 id="states-of-the-hardware-debugger">States of the hardware debugger</h2>
+<p>We are now good to go and 'only' need to install the additional debugging software on the host. Before we do that, let us have a look, in which states the hardware debugger can be and how it signals that using the system LED.</p>
+<p>There are five states the debugger can be in and each is signaled by a different blink pattern of the system LED:</p>
+<ul>
+<li>debugWIRE mode disabled (LED is off),</li>
+<li>waiting for power-cycling the target (LED flashes every second for 0.1 sec),</li>
+<li>debugWIRE mode enabled (LED is on) ,</li>
+<li>ISP programming (LED is blinking slowly every 0.5 sec), or</li>
+<li>error, i.e., it is not possible to connect to the target or there is an internal error (LED blinks furiously every 0.1 sec).</li>
+</ul>
+<p>If the hardware debugger is in the error state, one should try to find out the reason by typing the command <code>monitor info</code> and studying the <a href="../troubleshooting/#internal-and-fatal-debugger-errors">error message table</a> at the end of the document. Then finish the GDB session, reset the debugger, and restart everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.</p>
+<p>If the problem persists, please check the section on <a href="../troubleshooting/">troubleshooting</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../installation/" class="btn btn-neutral float-left" title="Installation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../debugging/" class="btn btn-neutral float-right" title="Debugging">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/felias-fogg/dw-link" class="fa fa-code-fork" style="color: #fcfcfc"> dw-link</a>
+        </span>
+    
+    
+      <span><a href="../installation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../debugging/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
