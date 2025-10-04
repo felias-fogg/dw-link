@@ -29,6 +29,7 @@ nav:
     - Background: 'intro.md'
     - Hardware requirements: 'requirements.md'
     - Installation: 'installation.md'
+    - Hardware setup: 'setup.md'
     - Debugging: 'debugging.md'
     - A better hardware debugger: 'better.md'
     - Problems: 'problems.md'

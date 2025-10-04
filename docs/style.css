@@ -6,3 +6,6 @@
     overflow : visible !important;
 }
 
+li.wy-breadcrumbs-aside {
+    display: none;
+}

@@ -13,7 +13,7 @@ As a base for the debugger, in principle one can use any ATmega328 based board. 
 
 If you intend to use dw-link on a board with an MCU different from ATmega328P, you should be aware that dw-link makes heavy use of the particular hardware features of the ATmega328P and operates close to the limit. I tried it out on the Leonardo and on the Mega256, but was not successful. 
 
-The most basic setup is to use the UNO board and connect the cables, as shown in the [Fritzing sketch](installation.md#Fritzing) further down. If you want to use the debugger more than once, it may pay off to build a modified ISP cable or to use a prototype shield and put an ISP socket on it. The more luxurious solution is a shield for the UNO with level shifters. All these possibilities are described in the section on how to build [a better hardware debugger](better.md).
+The most basic setup is to use the UNO board and connect the cables, as shown in the [Fritzing sketch](setup.md#Fritzing) in the [hardware setup section](setup.md). If you want to use the debugger more than once, it may pay off to build a modified ISP cable or to use a prototype shield and put an ISP socket on it. The more luxurious solution is a shield for the UNO with level shifters. All these possibilities are described in the section on how to build [a better hardware debugger](better.md).
 
 ## MCUs with debugWIRE interface
 

@@ -77,7 +77,7 @@ Global variables are, for some reason, not displayed. However, you can set a wat
 
 If you select the Debug Console, you can type GDB commands in the bottom line. This can be useful for changing the value of global variables using the GDB command `set var <varname>=<value>`. This can also be used to disable the debugWIRE mode using the command `monitor debugwire disable`. The following section describes more monitor commands.
 
-### Monitor commands
+## Monitor commands
 
 | Command                                                | Action                                                       |
 | :----------------------------------------------------- | ------------------------------------------------------------ |
@@ -96,7 +96,7 @@ If you select the Debug Console, you can type GDB commands in the bottom line. T
 
 The default setting is always the first one listed, except for `debugwire`, which depends on the MCU itself. All commands can, as usual, be abbreviated. For example, `mo d e` is equivalent to `monitor debugwire enable`. 
 
-### Restoring an Uno to its native state
+## Restoring an Uno to its native state
 
 When you want to restore the target so that it behaves again like an ordinary UNO after a debugging session, you have two options: you can restore it as a MiniCore 328P board or as an original Uno board. The former one is the more attractive alternative in my eyes. Just check out the pages about [MiniCore](https://github.com/MCUdude/MiniCore). Further, the command `Burn Bootloader` does apparently not work so well with some programmers or debuggers when doing it for the Uno setting. However, the dw-link built-in programmer has no problems. 
 

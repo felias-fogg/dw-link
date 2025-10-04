@@ -3,7 +3,8 @@
 Before we start the excursion into the world of debugging, some background on the [debugWIRE interface](#the-debugwire-interface) is provided, sketching the physical properties of the debugWIRE protocol. Then we survey [other open-source approaches to debugging classic AVR MCUs](#other-debugging-approaches-for-classic-attinys-and-atmegax8s)
 
 
-With that out of the way, we have a look at what we need on the hardware side.  You need an Arduino UNO (or something equivalent) as the [hardware debugger](requirements.md#the-hardware-debugger) and a [chip or board that understands debugWIRE](requirements.md#mcus-with-debugwire-interface), i.e., a classic ATtiny or an ATmegaX8. Then, you only have to [install the debugger firmware on the UNO](installation.md#firmware-installation) and [set up the hardware for a debugging session](installation.md#setting-up-the-hardware). Finally, you need to [install a debugging environment](installation.md#setting-up-the-debugging-software) and then you can [start debugging](debugging.md). 
+With that out of the way, we have a look at what we need on the hardware side.  You need an Arduino UNO (or something equivalent) as the [hardware debugger](requirements.md#the-hardware-debugger) and a [chip or board that understands debugWIRE](requirements.md#mcus-with-debugwire-interface), i.e., a classic ATtiny or an ATmegaX8. Then, you have to [install the debugger firmware on the UNO](installation.md#firmware-installation) and  [install a software debugging environment](installation.md#setting-up-the-debugging-software). If that is all done, you need to
+[set up the hardware for a debugging session](setup.md#setting-up-the-hardware).
 
 If you have performed all the above steps, then the setup should look like as in the following picture.
 
@@ -13,7 +14,7 @@ If you have performed all the above steps, then the setup should look like as in
 
 Your development machine, the *host*, is connected to the UNO acting as a *hardware debugger* over the usual USB connection. The  two devices use the *GDB remote serial protocol* to communicate with each other. The hardware debugger in turn is connected to the *target system*, whereby the *debugWIRE protocol* is used for communication. 
 
-The physical connection between the hardware debugger and the target, as described in the [section about the hardware setup](installation.md#setting-up-the-hardware), is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in the part about [*a better hardware debugger*](better.md). Finally, [possible problems](problems.md) and [troubleshooting](troubleshooting.md) is covered.
+The physical connection between the hardware debugger and the target, as described in the [section about the hardware setup](setup.md#setting-up-the-hardware), is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in the part about [*a better hardware debugger*](better.md). Finally, [possible problems](problems.md) and [troubleshooting](troubleshooting.md) is covered.
 
 And what do you with your hardware debugger once you have debugged all your programs and they work flawlessly? Since version 2.2.0, you can use dw-link also as an STK500 v1 ISP programmer. If you connect to dw-link with 19200 bps and start avrdude, then dw-link becomes an ISP programmer.
 
