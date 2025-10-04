@@ -1,6 +1,15 @@
 // This is an implementation of the GDB remote serial protocol for debugWIRE.
 // It should run on all ATmega328 boards and provides a hardware debugger
-// for the classic ATtinys and some small ATmegas 
+// for the classic ATtinys and some small ATmegas
+//
+// Copyright (c) 2021-2025 Bernhard Nebel
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 // NOTE: The RESET line of the target should have a 10k pull-up resistor and there
 //       should not be capacitative load on the RESET line. So, when you want

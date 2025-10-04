@@ -11,11 +11,11 @@ This tutorial explains how to use the [GNU Debugger GDB](https://www.sourceware.
 * USB cable 
 * ATtiny85 (or any other classic ATtiny or ATmegaX8) as the *target*
 * In order to connect the hardware debugger to the target, you need:
-  * a breadboard together with
-  * 11 Jumper wires (male-to-male)
-  * 2 LEDs
-  * 3 Resistors (10 kΩ, 220Ω, 220Ω)
-  * 2 Capacitors (100 nF, 10 µF)
+    * a breadboard together with
+    * 11 Jumper wires (male-to-male)
+    * 2 LEDs
+    * 3 Resistors (10 kΩ, 220Ω, 220Ω)
+    * 2 Capacitors (100 nF, 10 µF)
 
 
 

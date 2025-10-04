@@ -11,9 +11,8 @@
 
 ![cover](docs/pics/uno-debug2.png)
 
-This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. It is particularly useful if you would like to try to find out how it feels to symbolically debug your Arduino sketch on an Arduino Uno or an ATtiny board.
-
-Do you want to try it? Use the [**Quick-start Guide**](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/) to see if it works for you. 
+This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. It is particularly useful if you would like to find out how it feels to symbolically debug your Arduino sketch on an Arduino Uno or an ATtiny board.
+Do you want to give it a try? Use the [**Quick-start Guide**](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/) to see if it works for you. 
 
 Since version 2.2.0, you can use dw-link as a (STK500 v1) programmer as well. Since version 4.0.0, you can use this debugger in the **Arduino IDE 2** by downloading three additional board manager files. Version 5.0.0 aims to make the user interface similar to what is offered by the Python packages [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver) and [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD), which interface to Microchip's hardware debuggers. Since Microchip's MPLAB SNAP debugger has become incredibly cheap, this may actually be an alternative to this DIY debugger. You can use SNAP as a drop-in replacement for dw-link.
 
@@ -26,7 +25,7 @@ The background and ongoing development of dw-link are topics on my [blog](https:
 This repository contains the following directories:
 
 * [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger
-* [**docs**](docs/): Contains the documentation, in particular the [manual](docs/manual.md)
+* [**docs**](docs/): Contains the documentation file for the [manual](https://felias-fogg.github.io/dw-link/)
 * [**examples**](examples/): Contains two Arduino sketches and a PlatformIO project
 * [**tests**](tests/): Contains some test cases and a Python script for running them semi-automatically
 * [**pcb**](pcb/): Contains design data (KiCad) for the optional dw-link probe
