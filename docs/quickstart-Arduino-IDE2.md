@@ -29,16 +29,16 @@ You probably already have the Arduino IDE 2 installed. If not, download and inst
 
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
-	https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+	https://felias-fogg.github.io/package_debugging_index.json
 	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
-Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`. 
+Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore (Debug enabled)` , `MiniCore`, and `MicroCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type `ATTinyCore` and install the most recent version.
+* In the search field, type `ATTinyCore (Debug enabled)` and install the most recent version.
 * Next, repeat the process with `MiniCore` and `MicroCore`.
 
-**Check:** Select `Tools` -> `Board` -> `ATtinyCore` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
+**Check:** Select `Tools` -> `Board` -> `ATtinyCore Debug enabled)` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
 
 ## Step 3: Install *dw-link* firmware on an Uno
 
@@ -133,5 +133,4 @@ If something does not work as advertised, it is often a simple wiring problem. O
 The most annoying problem is that an MCU might not be responsive after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. The command `monitor debugwire disable` typed into the lasr line of the `Debug Console` just before terminating the debugger should restore the RESET line functionality. If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
 If you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues).
-
 

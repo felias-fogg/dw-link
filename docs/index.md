@@ -8,10 +8,5 @@ Unfortunately, neither the old nor the new Arduino IDE supports any kind of debu
 
 If you want to give it a try, the two quickstart guides on [debugging using a command-line interface](quickstart-AVR-GDB.md) and [debugging using the Arduino IDE 2](quickstart-Arduino-IDE2.md) might be the right entry points for you.
 
-<font color="red">
-
-## Warning
-
-</font>
-
-Please read the [sections about the RESET line requirements](requirements.md#requirements-concerning-the-target-system) before connecting the debugger to a target system. You might very well "brick" your MCU by enabling debugWIRE on a system that does not satisfy these requirements. 
+!!! Warning
+    Please read the [sections about the RESET line requirements](requirements.md#requirements-concerning-the-target-system) before connecting the debugger to a target system. You might very well "brick" your MCU by enabling debugWIRE on a system that does not satisfy these requirements. 

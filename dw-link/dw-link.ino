@@ -44,7 +44,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.2.4"
+#define VERSION "5.2.5"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -60,6 +60,17 @@
 
 // these constants should stay undefined for the ordinary user
 // -----------------------------------------------------------
+//#define NOISPPROG 1        // disable ISP programmer
+//#define NOXBIN 1           // disable binary load
+//#define NONYI 1            // disable NYI messages
+//#define SHORTSTR 1         // only short strings
+//#define NOMONITORHELP 1    // disable monitor help function
+//#define NOMOVERSION 1      // disable version command
+//#define NOMOINFO 1         // disable monitor info command
+//#define NOEXTREM 1         // disable extern remote
+// #define NOMEGA 1           // remove ATmega MCUs
+//#define NO90   1           // remove AT90 MCUs
+//#define NOTINY 1           // remove ATtiny MCUs
 // #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define CONSTDWSPEED 1     // constant communication speed with target
 // #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
@@ -67,10 +78,8 @@
 // #define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
 // #define UNITDW 1           // enable debugWIRE unit tests
-#define UNITTG 1           // enable target unit tests
+// #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
-// #define NOMONITORHELP 1    // disable monitor help function
-// #define NOISPPROG 1        // disable ISP programmer
 // #define ILLOPDETECT 1      // detect illegal opcodes when starting execution
 
 #if UNITALL == 1
@@ -80,6 +89,12 @@
 #define UNITTG 1
 #undef  UNITGDB
 #define UNITGDB 1
+#endif
+
+#if defined(SHORTSTR)
+#define LONGSHORT(a,b) b
+#else
+#define LONGSHORT(a,b) a
 #endif
 
 #if F_CPU < 16000000UL
@@ -257,11 +272,12 @@ volatile byte *ledout, *todsckmode, *tmosiout, *tmosimode, *tmisoin, *tsckout;
 
 // MCU names
 const char unknown[] PROGMEM ="Unknown";
+#if !defined(NOTINY)
 const char attiny13[] PROGMEM = "ATtiny13";
-const char attiny43[] PROGMEM = "ATtiny43U";
 const char attiny2313[] PROGMEM = "ATtiny2313";
 const char attiny2313a[] PROGMEM = "ATtiny2313A";
 const char attiny4313[] PROGMEM = "ATtiny4313";
+const char attiny43[] PROGMEM = "ATtiny43U";
 const char attiny24[] PROGMEM = "ATtiny24";
 const char attiny44[] PROGMEM = "ATtiny44";
 const char attiny84[] PROGMEM = "ATtiny84";
@@ -279,6 +295,8 @@ const char attiny828[] PROGMEM = "ATtiny828";
 const char attiny48[] PROGMEM = "ATtiny48";
 const char attiny88[] PROGMEM = "ATtiny88";
 const char attiny1634[] PROGMEM = "ATtiny1634";
+#endif
+#if !defined(NOMEGA)
 const char atmega48a[] PROGMEM = "ATmega48";
 const char atmega48pa[] PROGMEM = "ATmega48P";
 const char atmega48pb[] PROGMEM = "ATmega48PB";
@@ -299,6 +317,8 @@ const char atmega64c1[] PROGMEM = "ATmega64C1";
 const char atmega16m1[] PROGMEM = "ATmega16M1";
 const char atmega32m1[] PROGMEM = "ATmega32M1";
 const char atmega64m1[] PROGMEM = "ATmega64M1";
+#endif
+#if !defined(NO90)
 const char at90usb82[] PROGMEM = "AT90USB82";
 const char at90usb162[] PROGMEM = "AT90USB162";
 const char at90pwm1[] PROGMEM = "AT90PWM1";
@@ -315,6 +335,7 @@ const char atmega16hvbrevb[] PROGMEM = "ATmega16HVBREVB";
 const char atmega32hvb[] PROGMEM = "ATmega32HVB";
 const char atmega32hvbrevb[] PROGMEM = "ATmega32HVBREVB";
 const char atmega64hve2[] PROGMEM = "ATmega64HVE2";
+#endif
 
 const char Connected[] PROGMEM = "Connected to ";
 
@@ -361,6 +382,7 @@ struct mcu_info_type {
   const byte*  mask;       // I/O register mask
 };
 
+#if !defined(NOTINY)
 const byte t13mask[] PROGMEM =  { 0x4e, 0};
 const byte t2313mask[] PROGMEM = { 0x2c, 0x3f, 0x46, 0x57, 0 };
 const byte t4313mask[] PROGMEM = { 0x2c, 0x46, 0x47, 0x57, 0 };
@@ -373,10 +395,14 @@ const byte t43mask[] PROGMEM = { 0x47, 0 };
 const byte t828mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0 };
 const byte tX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0 };
 const byte t1634mask[] PROGMEM = { 0x40, 0x4e, 0x73, 0 };
+#endif
+#if !defined(NOMEGA)
 const byte mX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0 };
 const byte m328pbmsk[] PROGMEM = { 0x4e, 0x51, 0x82, 0x92, 0xa2, 0xae, 0xc6, 0xce, 0 };
 const byte mXu2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0 }; 
 const byte mXy1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xd2, 0 };
+#endif
+#if !defined(NO90)
 const byte auX2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0 };
 const byte ap1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0 };
 const byte ap81mask[] PROGMEM = { 0x51, 0x56, 0x58, 0 };
@@ -384,6 +410,7 @@ const byte ap161mask[] PROGMEM = { 0x51, 0x56, 0x58, 0x59, 0 };
 const byte apXmask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xab, 0xc6, 0xce, 0 };
 const byte mHVmsk[] PROGMEM = { 0x4e, 0x51, 0 };
 const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
+#endif
 
 // mcu infos (for all AVR mcus supporting debugWIRE)
 // untested ones are marked 
@@ -393,6 +420,7 @@ const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
 // er4 is 1 iff the erase command erase 4 pages, boot is the (highest) boot sector (word-)address,
 // eecr is eeprom control io-reg, eearh is eeprom adress reg high io-reg, 
 // sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh  plus name            mask
+#if !defined(NOTINY)              
   {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny13,      t13mask},
 
   {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny2313,  t2313mask},
@@ -425,7 +453,9 @@ const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
   {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0, attiny88,      tX8mask},
   
   {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0, attiny1634,  t1634mask},
-  
+#endif
+
+#if !defined(NOMEGA)
   {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48a,     mX8mask},
   {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48pa,    mX8mask},
   {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48pb,    mX8mask}, // untested
@@ -434,7 +464,7 @@ const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
   {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, atmega88pb,    mX8mask}, // untested
   {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168a,    mX8mask},
   {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168pa,   mX8mask},
-  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168pb,   mX8mask}, // untested
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168pb,   mX8mask}, 
   {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328,     mX8mask},
   {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328p,    mX8mask},
   {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328pb, m328pbmsk},
@@ -443,22 +473,24 @@ const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
   {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, atmega16u2,   mXu2mask}, // untested
   {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, atmega32u2,   mXu2mask}, // untested
 
-  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, atmega16m1,   mXy1mask}, // untested
   {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega32c1,   mXy1mask}, // untested
-  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega32m1,   mXy1mask}, // untested
   {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, atmega64c1,   mXy1mask}, // untested
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, atmega16m1,   mXy1mask}, // untested
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega32m1,   mXy1mask}, // untested
   {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, atmega64m1,   mXy1mask}, // untested
+#endif
 
+#if !defined(NO90)
   {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 1, at90usb82,    auX2mask}, // untested
-  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 1, at90usb162,   auX2mask}, // untested
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 1, at90usb162,   auX2mask}, 
 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm1,      ap1mask}, // untested 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm2b,     apXmask}, // untested 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm3b,     apXmask}, // untested 
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm1,      ap1mask}, // untested
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm2b,     apXmask}, // untested
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm3b,     apXmask}, // untested
 
   {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 1, at90pwm81,    ap81mask}, // untested
   {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, at90pwm161,  ap161mask}, // untested
-
+  
   {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, at90pwm216,    apXmask}, // untested
   {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, at90pwm316,    apXmask}, // untested
   {0x9310,  8, 0,  4,  8, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1, atmega8hva,     mHVmsk}, // untested
@@ -468,6 +500,7 @@ const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
   {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, atmega16hvbrevb,mHVmsk}, // untested
   {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, atmega32hvbrevb,mHVmsk}, // untested
   {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 1, atmega64hve2, m64HVmsk}, // untested
+#endif
   { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0, NULL,             NULL}, // last mark
 };
 
@@ -761,9 +794,10 @@ void reportFatalError(byte errnum, boolean checkio)
   }
   DEBPR(F("***Report fatal error: ")); DEBLN(errnum);
   if (fatalerror == NO_FATAL) {
-    if (errnum >= 100) { // not a connection error
-      gdbDebugMessagePSTR(PSTR("*** Fatal internal error: "),errnum);
-    }
+    if (errnum >= 100)
+      { // not a connection error
+        gdbDebugMessagePSTR(PSTR(LONGSHORT("*** Fatal internal error: ","***FATAL:")), errnum);
+      }
     fatalerror = errnum;
   }
   setSysState(ERROR_STATE);
@@ -882,9 +916,11 @@ void gdbParsePacket(const byte *buff)
   case '?':                                           /* last signal */
     gdbSendSignal(lastsignal);
     break;
+#if !defined(NOEXTREM)
   case '!':                                           /* Set to extended mode, always OK */
     gdbSendReply("OK");
     break;
+#endif
   case '=':
     strncpy(mcu.required, (char *)&buff[1], MAXNAMELEN);      /* copy name of required MCU */
     mcu.required[MAXNAMELEN-1] = 0;
@@ -907,9 +943,11 @@ void gdbParsePacket(const byte *buff)
   case 'M':                                           /* write memory */
     gdbWriteMemory(buff + 1, false);
     break;
+#if !defined(NOXBIN)
   case 'X':                                           /* write memory from binary data */
     gdbWriteMemory(buff + 1, true); 
     break;
+#endif
   case 'D':                                           /* detach from target */
     gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
     validpg = false;
@@ -934,6 +972,7 @@ void gdbParsePacket(const byte *buff)
   case 'Z':                                           /* insert break/watch point */
     gdbHandleBreakpointCommand(buf);
     break;
+#if !defined(NOEXTREM)
   case 'v':                                          
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {/* Run command */
 	gdbReset();
@@ -945,6 +984,7 @@ void gdbParsePacket(const byte *buff)
       gdbSendReply("");                             /* not supported */
     }
     break;
+#endif
   case 'q':                                           /* query requests */
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0) /* monitor command */
 	gdbParseMonitorPacket(buf+6);
@@ -987,13 +1027,17 @@ void gdbParseMonitorPacket(byte *buf)
   if (strlen(cmdbuf) == 0) mocmd = MOHELP;
   
   switch(mocmd) {
-#if (!NOMONITORHELP)
+#if !defined(NOMONITORHELP)
   case MOHELP:
     gdbHelp();
     break;
+#endif
+#if !defined(NOMOINFO)
   case MOINFO:
     gdbInfo();
     break;
+#endif
+#if !defined(NOMOVERSION)
   case MOVERSION:
     gdbVersion();
     break;
@@ -1002,8 +1046,8 @@ void gdbParseMonitorPacket(byte *buf)
     gdbDwireOption(cmdbuf[mooptix]);
     break;
   case MORESET:
-    if (gdbReset()) gdbReplyMessagePSTR(PSTR("MCU has been reset"), -1);
-    else gdbReplyMessagePSTR(PSTR("Enable debugWIRE first"), -1);
+    if (gdbReset()) gdbReplyMessagePSTR(PSTR(LONGSHORT("MCU has been reset","DONE")), -1);
+    else gdbReplyMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first","DW OFF")), -1);
     break;
   case MOLOAD:
     gdbLoadOption(cmdbuf[mooptix]); 
@@ -1026,19 +1070,23 @@ void gdbParseMonitorPacket(byte *buf)
   case MOSPEED:
     gdbSpeed(cmdbuf[mooptix]);
     break;
+#if !defined(NONYI)
   case MOCACHE:
     gdbReplyMessagePSTR(PSTR("Caching is not implemented"), -1);
     break;
   case MORANGE:
     gdbReplyMessagePSTR(PSTR("Range stepping is not yet implemented"), -1);
     break;
+#endif
+#if defined(UNITDW) ||  defined(UNITTG) ||  defined(UNITGDB) ||  defined(UNITALL)
   case MOTEST:
     if (targetOffline()) {
-      gdbReplyMessagePSTR(PSTR("Enable debugWIRE first"), -1);
+      gdbReplyMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first","DW OFF")), -1);
     } else {
       alltests();
     }
     break;
+#endif
   case MOUNK:
     gdbUnknownCmd();
     break;
@@ -1101,17 +1149,17 @@ int gdbDetermineMonitorCommand(char *line, int &optionix)
 
 // unkown command
 void gdbUnknownCmd(void) {
-  gdbReplyMessagePSTR(PSTR("Unknown 'monitor' command"), -1);
+  gdbReplyMessagePSTR(PSTR(LONGSHORT("Unknown 'monitor' command","UNK")), -1);
 }
 
 // unkown command
 void gdbUnknownOpt(void) {
-  gdbReplyMessagePSTR(PSTR("Unknown 'monitor' option"), -1);
+  gdbReplyMessagePSTR(PSTR(LONGSHORT("Unknown 'monitor' option","UNK")), -1);
 }
 
 // ambiguous command
 void gdbAmbiguousCmd(void) {
-  gdbReplyMessagePSTR(PSTR("Ambiguous 'monitor' command string"), -1);
+  gdbReplyMessagePSTR(PSTR(LONGSHORT("Ambiguous 'monitor' command string","AMBG")), -1);
 }
 
 inline void gdbBreakOption(char arg) {
@@ -1192,10 +1240,10 @@ void gdbInfo(void) {
 // report whether timers will run when stopped
 void gdbReportTimers(void)
 {
-  if (ctx.tmask == 0xDF) 
-    gdbReplyMessagePSTR(PSTR("Timers will run when execution is stopped"), -1);
+  if (ctx.tmask == 0xDF)
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Timers will run when execution is stopped","RUN")), -1);
   else 
-    gdbReplyMessagePSTR(PSTR("Timers are frozen when execution is stopped"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Timers are frozen when execution is stopped","FREEZE")), -1);
 }
 
 // check whether required name fits with actual mcu
@@ -1206,12 +1254,14 @@ boolean gdbCheckMcu(void)
   int ix = 0;
   if (mcu.sig == 0 || mcu.required[0] == 0)  // if target not determined yet, or not required, skip
     return true;
-  if (strcasecmp_P(mcu.required, attiny2313a) != 0) { // the big exception!
+#if !defined(NOTINY)
+  if (strcasecmp_P(mcu.required, attiny2313a) != 0)  // the big exception!
+#endif    
     if ((tolower(mcu.required[strlen(mcu.required)-1]) == 'a' &&
 	 (tolower(mcu.required[strlen(mcu.required)-2]) == 'p' || isdigit(mcu.required[strlen(mcu.required)-2]))) ||
 	tolower(mcu.required[strlen(mcu.required)-1]) == 'v')
       mcu.required[strlen(mcu.required)-1] = 0; // remove unessential suffixes
-  }
+
   while ((nameptr = pgm_read_word(&mcu_info[ix].name))) {
     if (strcasecmp_P(mcu.required, (char*)nameptr) == 0) {
       reqsig = pgm_read_word(&mcu_info[ix].sig);
@@ -1262,6 +1312,7 @@ void setupDW(void)
   // Now fix DWDR address if necessary.
   // This is a very special case, where the DWDR address
   // is not uniquely determined by the chip signature.
+#if !defined(NOTINY)
   if (mcu.dwdr == 0x1F) { // DWDR address on the ATTiny2313 (and only on that MCU!)
     if (!DWreadRegister(1, true)) { // read register unsuccessful, must be a different address
       mcu.dwdr = 0x27;
@@ -1269,6 +1320,7 @@ void setupDW(void)
       mcu.mask = t4313mask;
     }
   }
+#endif
 }
 
 // start a connection initially (target remote ...)  trying only DW,
@@ -1327,7 +1379,7 @@ boolean gdbConnectDW(void)
     return true;
   } else {
     // "wrong MCU" message was alread sent by gdbStartConnect
-    gdbReplyMessagePSTR(PSTR("Cannot activate debugWIRE"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Cannot activate debugWIRE","FAIL")), -1);
     return false;
   }
 }
@@ -1353,7 +1405,7 @@ void gdbDwireOption(char arg)
   switch (arg) {
   case 'e':
     if (ctx.state == NOTCONN_STATE && ctx.dwactivated) {
-      gdbReplyMessagePSTR(PSTR("Cannot reactivate debugWIRE: Do a restart"),-1);
+      gdbReplyMessagePSTR(PSTR(LONGSHORT("Cannot reactivate debugWIRE: Do a restart", "FAIL")), -1);
     } else {
       gdbConnectDW();
     }
@@ -1369,13 +1421,13 @@ void gdbDwireOption(char arg)
 void gdbReportConnected(void)
 {
   if (mcu.name == unknown) {
-    gdbReplyMessagePSTR(PSTR("debugWIRE is not yet enabled"),-1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("debugWIRE is not yet enabled", "DIS")),-1);
   } else { 
     gdbDebugMessagePSTR(Connected,-2);
     if (!targetOffline()) {
-      gdbReplyMessagePSTR(PSTR("debugWIRE is enabled, bps: "),ctx.bps);
+      gdbReplyMessagePSTR(PSTR(LONGSHORT("debugWIRE is enabled, bps: ", "CONN:")),ctx.bps);
     } else {
-      gdbReplyMessagePSTR(PSTR("debugWIRE is disabled"),-1);
+      gdbReplyMessagePSTR(PSTR(LONGSHORT("debugWIRE is disabled","DIS")),-1);
     }
   }
 }
@@ -1385,6 +1437,9 @@ void gdbReportConnected(void)
 void gdbReportConnectionProblem(int errnum, boolean doprint)
 {
   if (doprint) {
+#if defined(SHORTSTR)
+    gdbDebugMessagePSTR(PSTR("***CONN ERR:"), errnum);
+#else
     switch (errnum) {
     case 0: return;
     case 1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not communicate by ISP; check wiring***"),-1); break;
@@ -1397,6 +1452,7 @@ void gdbReportConnectionProblem(int errnum, boolean doprint)
     case 8: gdbDebugMessagePSTR(PSTR("***MCU type does not match***"), -1); break;
     default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons***"),-1); break;
     }
+#endif
   }
   reportFatalError(errnum, false);
 }
@@ -1404,7 +1460,7 @@ void gdbReportConnectionProblem(int errnum, boolean doprint)
 // report last error number
 void gdbReportLastError(void)
 {
-  gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
+  gdbReplyMessagePSTR(PSTR(LONGSHORT("Last fatal error: ","FATAL:")), fatalerror);
 }
 
 
@@ -1423,9 +1479,9 @@ void gdbSteppingOption(char arg)
     }
   }
   if (ctx.safestep)
-    gdbReplyMessagePSTR(PSTR("Single-stepping is interrupt-safe"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Single-stepping is interrupt-safe","SAFE")), -1);
   else
-    gdbReplyMessagePSTR(PSTR("Single-stepping is interruptible"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Single-stepping is interruptible","INTR")), -1);
 }
 
 
@@ -1442,9 +1498,9 @@ void gdbLoadOption(char arg)
     }
   }
   if (ctx.readbeforewrite) 
-    gdbReplyMessagePSTR(PSTR("Reading before writing when loading"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Reading before writing when loading","READ")), -1);
   else 
-    gdbReplyMessagePSTR(PSTR("No reading before writing when loading"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("No reading before writing when loading","WRITE")), -1);
 }
 
 void gdbOnlyOption(char arg)
@@ -1460,9 +1516,9 @@ void gdbOnlyOption(char arg)
     }
   }
   if (ctx.onlyloaded) 
-    gdbReplyMessagePSTR(PSTR("Execution is only possible after a previous load command"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Execution is only possible after a previous load command","FIRST LOAD")), -1);
   else 
-    gdbReplyMessagePSTR(PSTR("Execution is always possible"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Execution is always possible","ALWAYS")), -1);
 }
 
 void gdbVerifyOption(char arg)
@@ -1478,9 +1534,9 @@ void gdbVerifyOption(char arg)
     }
   }
   if (ctx.verifyload) 
-    gdbReplyMessagePSTR(PSTR("Verifying flash after load"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Verifying flash after load","VERIFY")), -1);
   else 
-    gdbReplyMessagePSTR(PSTR("Load operations are not verified"), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Load operations are not verified","NO VERIFY")), -1);
 }
 
 
@@ -1506,7 +1562,7 @@ void gdbTimerOption(char arg)
 // show version
 inline void gdbVersion(void)
 {
-  gdbReplyMessagePSTR(PSTR("dw-link version " VERSION), -1);
+  gdbReplyMessagePSTR(PSTR(LONGSHORT("dw-link version ","v") VERSION), -1);
 }
   
 // set DW communication speed
@@ -1518,14 +1574,14 @@ void gdbSpeed(char arg)
   case 'l': speedlimit = SPEEDLOW;
     break;
   case '\0':
-    gdbDebugMessagePSTR(PSTR("Current limit:             "), speedlimit);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Current limit:             ","LIM:")), speedlimit);
     break;
   default:
     gdbSendReply("");
     return;
   }
   if (arg) doBreak(true);
-  gdbReplyMessagePSTR(PSTR("Current debugWIRE bitrate: "), ctx.bps);
+  gdbReplyMessagePSTR(PSTR(LONGSHORT("Current debugWIRE bitrate: ","BPS:")), ctx.bps);
   return;
 }
 
@@ -1545,9 +1601,9 @@ inline void gdbSetMaxBPs(byte num, boolean only)
 
 inline void gdbGetMaxBPs(void)
 {
-  if (onlysbp) gdbReplyMessagePSTR(PSTR("Only software breakpoints, maximum: "), maxbreak);
-  else if (maxbreak == 1) gdbReplyMessagePSTR(PSTR("Only hardware breakpoints, maximum: "),maxbreak);
-  else gdbReplyMessagePSTR(PSTR("All breakpoints are allowed, maximum: "),maxbreak);
+  if (onlysbp) gdbReplyMessagePSTR(PSTR(LONGSHORT("Only software breakpoints, maximum: ", "SWBP:")), maxbreak);
+  else if (maxbreak == 1) gdbReplyMessagePSTR(PSTR(LONGSHORT("Only hardware breakpoints, maximum: ", "HWBP:")),maxbreak);
+  else gdbReplyMessagePSTR(PSTR(LONGSHORT("All breakpoints are allowed, maximum: ","ALLBP:")),maxbreak);
 }
 
 // perform an automatic power cycle
@@ -1631,11 +1687,11 @@ void power(boolean on)
 boolean gdbReset(void)
 {
   if (ctx.state == NOTCONN_STATE) {
-    gdbDebugMessagePSTR(PSTR("Enable debugWIRE first"), -1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first", "DW OFF")), -1);
     return false;
   }
   if (targetOffline()) {
-    gdbDebugMessagePSTR(PSTR("Target offline: Cannot reset"), -1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Target offline: Cannot reset", "OFFLINE")), -1);
     return false;
   }
   targetReset();
@@ -1720,12 +1776,12 @@ byte gdbStep(void)
   //DEBLN(F("Start step operation"));
   if (fatalerror) return SIGABRT;
   if (bpcnt == maxbreak) {
-    gdbDebugMessagePSTR(PSTR("Too many active breakpoints"), -1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Too many active breakpoints","TOO MANY BP")), -1);
     return SIGABRT;
   }
   if (targetOffline()) return SIGHUP;
   if (ctx.onlyloaded and ctx.notloaded) {
-    gdbDebugMessagePSTR(PSTR("No program loaded"), -1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("No program loaded","NO PRG")), -1);
     return SIGILL;
   }
   getInstruction(opcode, arg);
@@ -1780,14 +1836,14 @@ byte gdbContinue(void)
   if (fatalerror) sig = SIGABRT;
   else if (ctx.onlyloaded and ctx.notloaded) {
     sig = SIGILL;
-    gdbDebugMessagePSTR(PSTR("No program loaded"), -1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("No program loaded", "NO PRG")), -1);
   } else if (targetOffline()) sig = SIGHUP;
   else {
     getInstruction(opcode, arg);
     if (opcode == BREAKCODE) return SIGILL;
     if (!gdbUpdateBreakpoints(false))  { // update breakpoints in flash memory
       sig = SIGABRT;
-      gdbDebugMessagePSTR(PSTR("Too many active breakpoints"), -1);
+      gdbDebugMessagePSTR(PSTR(LONGSHORT("Too many active breakpoints", "TOO MANY BP")), -1);
     }
 #if ILLOPDETECT
     if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
@@ -2260,6 +2316,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     reportFatalError(PACKET_LEN_FATAL, false);
     return;
   }
+#if !defined(NOXBIN)
   if (binary) {
     memsz = gdbBin2Mem(buff, membuf, sz);
     if (memsz < 0) { 
@@ -2268,7 +2325,9 @@ void gdbWriteMemory(const byte *buff, boolean binary)
       return;
     }
     sz = (unsigned long)memsz;
-  } else {
+  } else
+#endif
+   {
     for ( i = 0; i < sz; ++i) {
       membuf[i]  = hex2nib(*buff++) << 4;
       membuf[i] |= hex2nib(*buff++);
@@ -2495,19 +2554,19 @@ void gdbSendState(byte signo)
   targetSaveRegisters();
   switch (signo) {
   case SIGHUP:
-    gdbDebugMessagePSTR(PSTR("No connection to target"),-1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("No connection to target", "NOCONN")),-1);
     setSysState(NOTCONN_STATE);
     break;
   case SIGILL:
-    gdbDebugMessagePSTR(PSTR("Illegal instruction"),-1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Illegal instruction", "ILL")),-1);
     break;
   case SIGABRT:
     if (fatalerror == 0)
       break;
     if (fatalerror < 100)  
-      gdbDebugMessagePSTR(PSTR("***Fatal debugger error: "),fatalerror);
+      gdbDebugMessagePSTR(PSTR(LONGSHORT("***Fatal debugger error: ","***FATAL:")),fatalerror);
     else
-      gdbDebugMessagePSTR(PSTR("***Fatal internal debugger error: "),fatalerror);
+      gdbDebugMessagePSTR(PSTR(LONGSHORT("***Fatal internal debugger error: ","***FATAL:")),fatalerror);
     setSysState(ERROR_STATE);
     break;
   }
@@ -4014,11 +4073,13 @@ boolean setMcuAttr(unsigned int id)
       else mcu.targetpgsz = mcu.pagesz;
       // dwen, chmsk, ckdiv8 are identical for almost all MCUs, so we treat the exceptions here
       mcu.dwenfuse = 0x40;
+#if !defined(NOTINY)
       if (mcu.name == attiny13) {
 	mcu.dwenfuse = 0x08;
       } else if (mcu.name == attiny2313 || mcu.name == attiny4313) {
 	mcu.dwenfuse = 0x80;
-      } 
+      }
+#endif
 #if 0
       DEBPR(F("sig=")); DEBLNF(mcu.sig,HEX);
       DEBPR(F("aep="));  DEBLN(mcu.avreplus);
@@ -4141,7 +4202,7 @@ int freeRam(void)
 
 
 /********************************* General setup and reporting functions ******************************/
-
+#if defined(UNITDW) ||  defined(UNITTG) ||  defined(UNITGDB) ||  defined(UNITALL)
 // run all unit tests
 void alltests(void)
 {
@@ -4956,7 +5017,7 @@ int DWtests(int &num)
     return 0;
   }
 }
-
+#endif // some unit tests enabled
 /************************************** ISP programmer ***********************************/
 
 //

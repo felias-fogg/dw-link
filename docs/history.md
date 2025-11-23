@@ -120,4 +120,4 @@ Initial version
 - ATtiny13 support
 
 ### V 5.1
-- Completely reworked the manual to put in the MkDocs format.
+- Completely reworked the manual to put it into the MkDocs format.
