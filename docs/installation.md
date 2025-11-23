@@ -29,14 +29,21 @@ Under Windows, you can download a version from Zak's [avr-gcc-build](https://git
 
 ### Installing board packages for the Arduino IDE 2
 
-Depending on what chips you want to debug, you need to install three new board packages. Open the `Preferences` dialog of the Arduino IDE and paste the following three URLs into the list of `Additional boards manager URLs`:
+Depending on what chips you want to debug, you need to install five new board packages. Open the `Preferences` dialog of the Arduino IDE and paste the following three URLs into the list of `Additional boards manager URLs`:
 
 ```
-https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+https://felias-fogg.github.io/package_debugging_index.json
 https://MCUdude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 ```
-The first one is for all classical ATtinys, the second one is for the ATtiny13(a), and the third one is for all ATtinyX8s, including the ATmega328P, which is the MCU on the Arduino Uno board.
+The first package index will make the following board packages known to the IDE:
 
-Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install MiniCore, MicroCore, and/or ATTinyCore, choosing the most recent version. Note that the packages include tools that might be incompatible with older OS versions. If you encounter problems when starting the debugging software, consult the troubleshooting section on [startup problems](troubleshooting.md#startup-problems).
+- *[Arduino AVR Boards (Debug enabled)](https://github.com/felias-fogg/ArduinoCore-avr-debug-enabled)*, which is a fork of the official Arduino AVR board package, extended by a means to allow for debugging all the boards in this package. However, with dw-link, you can only debug the debugWIRE MCUs.
+- *[Atmel AVR Xplained-minis (Debug enabled)](https://github.com/felias-fogg/avr-xminis-debug-enabled)*, which is a new core only for the three Atmega328/168 Xplained mini boards. It is based on MiniCore (see below), but is heavily tailored towards these development boards.
+
+- *[ATTinyCore (Debug enabled)](https://github.com/felias-fogg/ATTinyCore-debug-enabled)*, which is a fork of ATTinyCore-2.0.0 extended to allow for debugging.
+
+The remaining two package indices make the [*MicroCore*](https://github.com/MCUdude/MicroCore) (ATtin13(a)) and [*MiniCore*](https://github.com/MCUdude/MiniCore) (ATmegaX8) known to the IDE. These cores are already debug-enabled.
+
+Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install any of the above cores you want. Note that the packages include tools that might be incompatible with older OS versions. If you encounter problems when starting the debugging software, consult the troubleshooting section on [startup problems](troubleshooting.md#startup-problems).
 
