@@ -154,7 +154,7 @@
 <p><strong>Check:</strong> Start IDE and check the <code>About Arduino</code>  entry under the <code>Arduino</code> or <code>Help</code> menu for the version number.</p>
 <h2 id="step-2-install-new-board-manager-files">Step 2: Install new board manager files</h2>
 <p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following <code>Board Manager URLs</code> into the list:</p>
-<pre><code>https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
+<pre><code>https://felias-fogg.github.io/package_debugging_index.json
 https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 </code></pre>
@@ -162,10 +162,10 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <p>You can also install the three board manager files using arduino-cli.</p>
 <ul>
 <li>Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>Board Managers</code> ... . This will open the Boards Manager dialog. </li>
-<li>In the search field, type <code>ATTinyCore</code> and install the most recent version.</li>
+<li>In the search field, type <code>ATTinyCore(Debug enabled)</code> and install the most recent version.</li>
 <li>Afterward, do the same with <code>MiniCore</code> and <code>MicroCore</code>.</li>
 </ul>
-<p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>MiniCore</code> -&gt; <code>Atmega328</code>. </p>
+<p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore (Debug enabled)</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>MiniCore</code> -&gt; <code>Atmega328</code>. </p>
 <h2 id="step-3-install-dw-link-firmware">Step 3: Install <em>dw-link</em> firmware</h2>
 <p>Download the dw-link firmware into a place inside the <em>Arduino sketchbook</em>. This means, you should </p>
 <ul>
