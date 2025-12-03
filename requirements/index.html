@@ -113,6 +113,10 @@
               
                 <h1 id="hardware-requirements">Hardware requirements</h1>
 <p>There are a few constraints on what kind of board you can use as the base for the hardware debugger and some requirements on how to connect the debugger to the target system. Furthermore, there is only a limited set of AVR MCUs that have a debugWIRE interface.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Please read the <a href="./#requirements-concerning-the-target-system">sections about the RESET line requirements</a> before connecting the debugger to a target system. You might very well "brick" your MCU by enabling debugWIRE on a system that does not satisfy these requirements. </p>
+</div>
 <h2 id="the-hardware-debugger">The hardware debugger</h2>
 <p>As a base for the debugger, in principle one can use any ATmega328 based board. The clock speed  must be 16MHz. Currently, the sketch has been tested on the following boards:</p>
 <ul>

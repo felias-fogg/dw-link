@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Wish list for dw-link - dw-link</title>
+    <title>Internal errors - dw-link</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -13,8 +13,8 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Wish list for dw-link";
-        var mkdocs_page_input_path = "wishlist.md";
+        var mkdocs_page_name = "Internal errors";
+        var mkdocs_page_input_path = "internal_errors.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -90,9 +90,9 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
-      <li class="breadcrumb-item active">Wish list for dw-link</li>
+      <li class="breadcrumb-item active">Internal errors</li>
     <li class="wy-breadcrumbs-aside">
-          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/wishlist.md">Edit on dw-link</a>
+          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/internal_errors.md">Edit on dw-link</a>
     </li>
   </ul>
   <hr/>
@@ -100,138 +100,163 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="wish-list-for-dw-link">Wish list for dw-link</h1>
-<h5 id="list-of-tasks-to-work-on">List of tasks to work on:</h5>
-<ul>
-<li>
-<p>Prohibit debug sleep-crash when single- stepping.</p>
-</li>
-<li>
-<p>maybe have a variable length break, dependent on the speed of ISP?</p>
-</li>
-<li>
-<p>implement semi-hosting</p>
-</li>
-<li>
-<p>Implement range-stepping with one HWBP</p>
-</li>
-<li>
-<p>being able to receive qRcmd commands before the actual debugging starts (would allow to pass pyAvrOCD monitor options to debugger)</p>
-</li>
-<li>
-<p>Check for output of error routines. Sometimes it does not seem to work</p>
-</li>
-</ul>
-<h5 id="list-of-tasks-done">List of tasks done:</h5>
-<ul>
-<li>
-<p>debug tiny13 problem, perhaps by reverting back to the version in
-  2022, when it seemed to work - was actually the _delay_ms problem</p>
-</li>
-<li>
-<p>Create Python script dw-gdbserver.py that implements a dw server on
-  top of pymcuprog</p>
-</li>
-<li>
-<p>Build a V5 version: unified monitor commands and tight integration
-  into the script; power-cycling is now only initiated by monitor debugwire enable</p>
-</li>
-<li>
-<p>a mode where writes are double-checked: "monitor verify/noverify". Could be on or off by default.</p>
-</li>
-<li>
-<p>produce short youtube video to promote dw-link probe</p>
-</li>
-<li>
-<p>Write a step-by-step explanation on how to restore an UNO after debugging</p>
-</li>
-<li>
-<p>try integration of tool into IDE 2.0 again</p>
-</li>
-<li>
-<p>clean up Gede interface</p>
-</li>
-<li>
-<p>no multiple main breakspoints</p>
-</li>
-<li>
-<p>reloading files in GUI when reloading files</p>
-</li>
-<li>
-<p>write a short debug description for PIO</p>
-</li>
-<li>
-<p>write/design setup for UNO debugging with connected USB cable</p>
-</li>
-<li>
-<p>rewrite compile-time conditionals so that they do not show up as errors in PIO</p>
-</li>
-<li>
-<p>use DEBTX pin (if TXODEBUG is not defined) as a sensing pin to disable automatic DWEN programming, i.e., you have to use mo dw +/- by yourself.</p>
-</li>
-<li>
-<p>optimize ispTransfer so that higher ISP rates are possible (currently, 50 kHz is max)</p>
-</li>
-<li>
-<p>important (3.1.0): When trying to debug the boarduino at 5V with the probe shield, the feedback
-  is: <code>Wrong Wiring</code>. It works flawlessly with a lot of other boards (ATtiny,
-  UNO, ...), with other shields, with 5V, you name it --&gt; turned out to be that the boarduino had a particularly strong pull-down resistor. That is, the cure is to use 1K or stringer pull-ups on the SPI lines!</p>
-</li>
-<li>
-<p><code>monitor clock</code> command that displays the current clock setting --
-  well, redesigned all monitor commands! </p>
-</li>
-<li>
-<p>integrate programmer into code so that one also could do ISP programming</p>
-</li>
-<li>
-<p>design new adapter board</p>
-</li>
-<li>
-<p>test prototype of such  a board</p>
-</li>
-<li>
-<p>Adding response in dw-link to one special byte in order to be able to identify the debug serial port</p>
-</li>
-<li>
-<p>writing Python function for identifying debug port</p>
-</li>
-<li>
-<p>Erasing MCU automatically when lock bits are set</p>
-</li>
-<li>write hook to set UPLOAD_PORT and DEBUG_PORT in extra_script. </li>
-<li>Explaining how to recover UNO (soldering + Bootloader burning) in Manual</li>
-<li>remove part about lock bits in Manual</li>
-<li>remove automatic speed recognition</li>
-<li>delete the fancy control stuff in dw-link</li>
-<li>rewrite part in manual about adapter boards</li>
-<li>rewrite part in Manual about PlatformIO</li>
-</ul>
-<p><strong>List of tasks abandoned</strong>:</p>
-<ul>
-<li>
-<p>Use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video? Something to be done for PyAvrOCD.</p>
-</li>
-<li>
-<p>Implement STK500v2 protocol</p>
-</li>
-<li>
-<p>design case for debugger and print it</p>
-</li>
-<li>
-<p>try to use seer GUI again</p>
-</li>
-<li>
-<p>integrate into the Arduino VSC plugin</p>
-</li>
-<li>
-<p>reorganize BP management: have a list of stored and a list of new
-  BPs, which would save us 3 bytes per BP, i.e., we could easily go from 25 to 30 BPs -- but be careful!</p>
-</li>
-<li>
-<p>perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)</p>
-</li>
-</ul>
+                <p>If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors. </p>
+<p>If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. </p>
+<p>After a reset or a power cycle of the hardware debugger, everything usually works again. If not, you need to unplug everything and put it together again.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Error #</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td>Connection error: Could not communicate by ISP; check wiring</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>Connection error: Could not activate debugWIRE</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>Connection error: MCU type is not supported</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>Connection error: Lock bits or BOOTRST could not be cleared</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>Connection error: MCU has PC with stuck-at-one bits</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>Connection error: RESET line has a capacitive load</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>Connection error: Target not powered or RESET shortened to GND</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>MCU type does not match</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>Unknown connection error</td>
+</tr>
+<tr>
+<td style="text-align: right;">101</td>
+<td>No free slot in breakpoint table</td>
+</tr>
+<tr>
+<td style="text-align: right;">102</td>
+<td>Packet length too large</td>
+</tr>
+<tr>
+<td style="text-align: right;">103</td>
+<td>Wrong memory type</td>
+</tr>
+<tr>
+<td style="text-align: right;">104</td>
+<td>Packet length is negative</td>
+</tr>
+<tr>
+<td style="text-align: right;">105</td>
+<td>Reset operation failed</td>
+</tr>
+<tr>
+<td style="text-align: right;">106</td>
+<td>Memory address in flash read operation does not point to page start</td>
+</tr>
+<tr>
+<td style="text-align: right;">107</td>
+<td>Could not complete flash read operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">108</td>
+<td>Could not complete RAM read operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">109</td>
+<td>Memory address in flash write operation does not point to page start</td>
+</tr>
+<tr>
+<td style="text-align: right;">110</td>
+<td>Could not complete flash page erase operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">111</td>
+<td>Could not load data into the flash buffer for writing</td>
+</tr>
+<tr>
+<td style="text-align: right;">112</td>
+<td>Error when programming flash page from buffer</td>
+</tr>
+<tr>
+<td style="text-align: right;">113</td>
+<td>Error verifying flashed page while loading program</td>
+</tr>
+<tr>
+<td style="text-align: right;">114</td>
+<td>Assignment of hardware breakpoint is inconsistent</td>
+</tr>
+<tr>
+<td style="text-align: right;">115</td>
+<td>BREAK inserted by debugger at a point where a step or execute operation is required</td>
+</tr>
+<tr>
+<td style="text-align: right;">116</td>
+<td>Trying to read flash word at an uneven address</td>
+</tr>
+<tr>
+<td style="text-align: right;">117</td>
+<td>Error when single-stepping</td>
+</tr>
+<tr>
+<td style="text-align: right;">118</td>
+<td>A relevant breakpoint has disappeared</td>
+</tr>
+<tr>
+<td style="text-align: right;">119</td>
+<td>Input buffer overflow</td>
+</tr>
+<tr>
+<td style="text-align: right;">120</td>
+<td>Wrong fuse</td>
+</tr>
+<tr>
+<td style="text-align: right;">121</td>
+<td>Breakpoint update while flash programming is active</td>
+</tr>
+<tr>
+<td style="text-align: right;">122</td>
+<td>Timeout while reading from debugWIRE line</td>
+</tr>
+<tr>
+<td style="text-align: right;">123</td>
+<td>Timeout while reading general register</td>
+</tr>
+<tr>
+<td style="text-align: right;">124</td>
+<td>Timeout while reading IO register</td>
+</tr>
+<tr>
+<td style="text-align: right;">125</td>
+<td>Could not reenable RWW</td>
+</tr>
+<tr>
+<td style="text-align: right;">126</td>
+<td>Failure while reading from EEPROM</td>
+</tr>
+<tr>
+<td style="text-align: right;">127</td>
+<td>Bad interrupt</td>
+</tr>
+</tbody>
+</table>
               
             </div>
           </div><footer>

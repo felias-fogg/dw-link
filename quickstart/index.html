@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Quick-start guide for debugging with the Arduino IDE 2 using an Arduino Uno - dw-link</title>
+    <title>Quick-start guide: Debugging with the Arduino IDE 2 - dw-link</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -13,7 +13,7 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Quick-start guide for debugging with the Arduino IDE 2 using an Arduino Uno";
+        var mkdocs_page_name = "Quick-start guide: Debugging with the Arduino IDE 2";
         var mkdocs_page_input_path = "quickstart.md";
         var mkdocs_page_url = null;
       </script>
@@ -90,7 +90,7 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
-      <li class="breadcrumb-item active">Quick-start guide for debugging with the Arduino IDE 2 using an Arduino Uno</li>
+      <li class="breadcrumb-item active">Quick-start guide: Debugging with the Arduino IDE 2</li>
     <li class="wy-breadcrumbs-aside">
           <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/quickstart.md">Edit on dw-link</a>
     </li>
@@ -100,10 +100,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="quick-start-guide-for-debugging-with-the-arduino-ide-2-using-an-arduino-uno">Quick-start guide for debugging with the Arduino IDE 2 using an Arduino Uno</h1>
-<p>You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under <a href="https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/">Arduino IDE 2</a>. Takes less than one hour. </p>
-<p>If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for <a href="https://felias-fogg.github.io/dw-link/quickstart-AVR-GDB/">AVR-GDB debugging</a>.</p>
-<p>If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel ICE, JTAGICE3, you can use it directly to debug classic AVR chips in the Arduino IDE 2 using the <a href="https://github.com/felias-fogg/dw-gdbserver">dw-gdbserver</a> Python script.</p>
+                <h1 id="quick-start-guide-debugging-with-the-arduino-ide-2">Quick-start guide: Debugging with the Arduino IDE 2</h1>
+<p>You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under <a href="https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/">Arduino IDE 2</a>. If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for <a href="https://felias-fogg.github.io/dw-link/quickstart-AVR-GDB/">AVR-GDB debugging</a>.</p>
+<p>If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel-ICE, JTAGICE3, or one of the embedded debuggers EDBG, mEDBG, or nEDBG, you can use it directly to debug classic AVR chips in the Arduino IDE 2 employing <a href="https://github.com/felias-fogg/PyAvrOCD">PyAvrOCD</a>.</p>
 <h2 id="what-you-need">What you need</h2>
 <ul>
 <li>Computer running Windows, macOS, or Linux (the <em>host</em>)</li>
@@ -128,13 +127,12 @@
 https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 </code></pre>
-<p>Close the <code>Preference</code> dialog with <code>OK</code>. Now, we want to install the three cores, <code>ATTinyCore (Debug enabled)</code> , <code>MiniCore</code>, and <code>MicroCore</code>. </p>
+<p>Close the <code>Preference</code> dialog with <code>OK</code>. Now, you can install the cores, <code>ATTinyCore (Debug enabled)</code> , <code>Arduino AVR boards (Debug enabled)</code>, <code>MiniCore</code>, and <code>MicroCore</code>. </p>
 <ul>
 <li>Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>Board Managers</code> ... . This will open the Boards Manager dialog. </li>
 <li>In the search field, type <code>ATTinyCore (Debug enabled)</code> and install the most recent version.</li>
-<li>Next, repeat the process with <code>MiniCore</code> and <code>MicroCore</code>.</li>
 </ul>
-<p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore Debug enabled)</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>MiniCore</code> -&gt; <code>Atmega328</code>. </p>
+<p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore Debug enabled)</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. </p>
 <h2 id="step-3-install-dw-link-firmware-on-an-uno">Step 3: Install <em>dw-link</em> firmware on an Uno</h2>
 <p>Download the dw-link firmware. This means you should </p>
 <ul>

@@ -122,7 +122,7 @@
                 <h1 id="debugging">Debugging</h1>
 <p>Now we can do serious business ... </p>
 <h2 id="command-line-interface-debugging">Command-line interface debugging</h2>
-<p>Using avr-gdb, the GDB version for AVR chips, is straightforeward, provided avr-gdb is already installeda.
+<p>Using avr-gdb, the GDB version for AVR chips, is straightforward, provided avr-gdb is already installed.
 After compiling your program, you need to start the avr-gdb debugger, giving the name of the binary as an argument. Once inside GDB, you need to set the baud rate and then connect to dw-link using the serial line, as shown below. Since the hardware debugger is platform agnostic, this will work with all operating systems.</p>
 <pre><code class="language-text">&gt; avr-gdb program.ino.elf
 GNU gdb ...
@@ -140,7 +140,7 @@ debugWIRE is enabled, bps: 125244
 </code></pre>
 <p>If you have come to this point, I trust that you know what you are doing and know how to proceed from there.</p>
 <h2 id="arduino-ide-2-debugging">Arduino IDE 2 debugging</h2>
-<p>If, instead, you want to use dw-link in the Arduino IDE 2, read on. Using dw-link in the Arduino IDE 2 is straightforward. Before starting, you only must <a href="../installation/#setting-up-the-debugging-software">install three new board manager URLs and the respective board packages</a>. And then you can use the debugging feature of the Arduino IDE 2. </p>
+<p>If, instead, you want to use dw-link in the Arduino IDE 2, read on. Using dw-link in the Arduino IDE 2 is straightforward. Before starting, you must only <a href="../installation/#setting-up-the-debugging-software">install three new board manager URLs and the respective board packages</a>. And then you can use the debugging feature of the Arduino IDE 2. </p>
 <h3 id="compiling-the-sketch">Compiling the sketch</h3>
 <p>You must load the sketch into the editor and select a board as usual. If you want to debug an Arduino UNO board, choose ATmega328 from the Minicore in the <code>Tools</code> menu. </p>
 <p>Before clicking the <code>Verify</code> button in the upper left corner, choose <code>Optimize for Debugging</code> in the <code>Sketch</code> menu. This is necessary so that the compiler optimizes the code in a way that makes debugging straightforward. Otherwise, the compiler may rearrange source code lines, and one will get confused when single-stepping through the code.</p>
@@ -150,11 +150,11 @@ debugWIRE is enabled, bps: 125244
 <p>Instead of the message shown in the following screen shot, it may happen that a warning "No hardware debugger discovered" is shown. The reason may be that the Arduino IDE 2 reserved the debugger's serial line for the <code>Serial Monitor</code>. Simply close the <code>Serial Monitor</code> console and try again.</p>
 <p>As mentioned in Section 2, power cycling is only necessary once. The next time you start a debugging session, the MCU will already be in d ebugWIRE mode, and the debugger will not stop at this point. </p>
 <p><img alt="ide2-2" src="../pics/ide2-2.png" /></p>
-<p>After power-cycling the target, the debugger starts. Eventually, execution is stopped in line 4 at an initial internal breakpoint, indicated by the yellow triangle left of line 4 in the following screenshot. It might take a while before we reach that point because the debugger must also load the program. </p>
+<p>After power-cycling the target, the debugger starts. Eventually, execution is stopped in line 35 of the Arduino internal file <code>main.cpp</code> at an initial internal breakpoint, indicated by the yellow triangle left of the line in the following screenshot. It might take a while before we reach that point because the debugger must also load the program. </p>
 <p>After stopping, the IDE rearranges the layout, showing the debugging panes on the left and the sketch on the right. It will also switch from showing the <code>gdb-server</code> console to the <code>Debug Console</code>, which shows the output of the GDB debugger. </p>
-<p><img alt="ide2-3" src="../pics/ide2-3.png" /> </p>
+<p><img alt="ide2-3" src="../pics/ide2-3-new.png" /> </p>
 <p>Now is a good time to familiarize yourself with the window's layout. The source code is on the right side. Below that is a console window, and to the left are the debug panes. If you want to set a breakpoint, you can do that by clicking to the left of the line numbers. Such breakpoints are displayed as red dots as the ones left of line 8 and 13.</p>
-<p><img alt="ide2-4" src="../pics/ide2-4.png" />The debugging panes are orgnized as folloes. Pane A contains the debug controls. From left to right:</p>
+<p><img alt="ide2-4-new" src="../pics/ide2-4-new.png" />The debugging panes are orgnized as folloes. Pane A contains the debug controls. From left to right:</p>
 <ul>
 <li><em>Reset</em>ting the device</li>
 <li><em>Continue</em> execution or <em>pause</em></li>
@@ -168,7 +168,7 @@ debugWIRE is enabled, bps: 125244
 <h3 id="some-pro-tips">Some Pro Tips</h3>
 <p>If you want to switch from the dw-link debugger to a professional hardware debugger, e.g., <a href="https://www.microchip.com/en-us/development-tool/pg164100">MPLAP SNAP</a> or <a href="https://www.microchip.com/en-us/development-tool/atatmel-ice">Atmel-ICE</a>, these debuggers can be used as a drop-in replacement! So you do not have to change anything in the hardware or software configuration. And the SNAP is really cheap these days!</p>
 <p>The I/O registers are displayed in the <code>CORTEX PERIPHERALS</code> debugger pane. There, you also can change single register values.</p>
-<p>Global variables are, for some reason, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value.</p>
+<p>Global variables are, by default, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value. Or you can disable link time optimization (LTO) in the <code>Tools</code> menu. Then all global variables show up, except for one (which seems to be an error of the IDE).</p>
 <p>If you select the Debug Console, you can type GDB commands in the bottom line. This can be useful for changing the value of global variables using the GDB command <code>set var &lt;varname&gt;=&lt;value&gt;</code>. This can also be used to disable the debugWIRE mode using the command <code>monitor debugwire disable</code>. The following section describes more monitor commands.</p>
 <h2 id="monitor-commands">Monitor commands</h2>
 <table>
