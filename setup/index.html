@@ -184,7 +184,11 @@
 <h2 id="debugging-an-uno">Debugging an UNO</h2>
 <p>If you want to debug an UNO board instead of an ATtiny85, everything said above applies. The Fritzing sketch below shows the connections. Here, the series resistor for the system LED is soldered to the LED cathode, so we do not need a breadboard. The hardware debugger needs a USB connection to your host, but the target does not need to be connected to the host! If it is, then remove the red cable between the 5V pins of the hardware debugger and the target. </p>
 <p><img alt="Uno as DUT" src="../pics/Uno-debug-new.png" /></p>
-<p>Remember to cut the <code>RESET EN</code> solder bridge on the target board (see <a href="../requirements/#requirements-concerning-the-target-system">section on Requirements concerning the target system</a>)! When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described <a href="../debugging/#restoring-an-uno-to-its-native-state">in the end of the debugging section</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>You need to cut the <code>RESET EN</code> solder bridge on the target board (see <a href="../requirements/#requirements-concerning-the-target-system">section on Requirements concerning the target system</a>)! </p>
+</div>
+<p>When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described <a href="../debugging/#restoring-an-uno-to-its-native-state">in the end of the debugging section</a>.</p>
 <h2 id="states-of-the-hardware-debugger">States of the hardware debugger</h2>
 <p>We are now good to go and 'only' need to install the additional debugging software on the host. Before we do that, let us have a look, in which states the hardware debugger can be and how it signals that using the system LED.</p>
 <p>There are five states the debugger can be in and each is signaled by a different blink pattern of the system LED:</p>
