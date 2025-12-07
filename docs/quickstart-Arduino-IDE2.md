@@ -1,10 +1,8 @@
-# Quick-start guide for debugging with the Arduino IDE 2 using an Arduino Uno
+# Quick-start guide: Debugging with the Arduino IDE 2
 
-You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/). Takes less than one hour. 
+You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/). If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](https://felias-fogg.github.io/dw-link/quickstart-AVR-GDB/).
 
-If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](https://felias-fogg.github.io/dw-link/quickstart-AVR-GDB/).
-
-If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel ICE, JTAGICE3, you can use it directly to debug classic AVR chips in the Arduino IDE 2 using the [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver) Python script.
+If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel-ICE, JTAGICE3, or one of the embedded debuggers EDBG, mEDBG, or nEDBG, you can use it directly to debug classic AVR chips in the Arduino IDE 2 employing [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD).
 
 ## What you need
 
@@ -32,13 +30,12 @@ Open the `Preferences` dialog of the Arduino IDE and paste the following `Board 
 	https://felias-fogg.github.io/package_debugging_index.json
 	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
-Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore (Debug enabled)` , `MiniCore`, and `MicroCore`. 
+Close the `Preference` dialog with `OK`. Now, you can install the cores, `ATTinyCore (Debug enabled)` , `Arduino AVR boards (Debug enabled)`, `MiniCore`, and `MicroCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
 * In the search field, type `ATTinyCore (Debug enabled)` and install the most recent version.
-* Next, repeat the process with `MiniCore` and `MicroCore`.
 
-**Check:** Select `Tools` -> `Board` -> `ATtinyCore Debug enabled)` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
+**Check:** Select `Tools` -> `Board` -> `ATtinyCore Debug enabled)` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. 
 
 ## Step 3: Install *dw-link* firmware on an Uno
 
@@ -63,7 +60,7 @@ In order to install the firmware,
 
 ## Step 4: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the [dw-link manual](https://felias-fogg.github.io/dw-link/installation/#debugging-an-uno).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the [Hardware setup section](setup.md#debugging-an-uno).
 
 You need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your Uno, turned into a hardware debugger. Note that the notch or dot on the ATtiny is oriented towards the left. 
 

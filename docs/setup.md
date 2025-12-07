@@ -40,7 +40,10 @@ If you want to debug an UNO board instead of an ATtiny85, everything said above 
 
 ![Uno as DUT](pics/Uno-debug-new.png)
 
-Remember to cut the `RESET EN` solder bridge on the target board (see [section on Requirements concerning the target system](requirements.md#requirements-concerning-the-target-system))! When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described [in the end of the debugging section](debugging.md#restoring-an-uno-to-its-native-state).
+!!! Warning
+    You need to cut the `RESET EN` solder bridge on the target board (see [section on Requirements concerning the target system](requirements.md#requirements-concerning-the-target-system))! 
+
+When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described [in the end of the debugging section](debugging.md#restoring-an-uno-to-its-native-state).
 
 ## States of the hardware debugger
 

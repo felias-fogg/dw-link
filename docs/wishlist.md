@@ -2,21 +2,19 @@
 
 ##### List of tasks to work on:
 
-* use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video?
-
-* Implement STK500v2 protocol
-
-* debug sleep-crash when single- stepping verhindern
+* Prohibit debug sleep-crash when single- stepping.
 
 * maybe have a variable length break, dependent on the speed of ISP?
 
 * implement semi-hosting
 
-* design case for debugger and print it
+* Implement range-stepping with one HWBP
 
-* range-stepping implementieren. Sollte wohl nicht so schwierig sein.
+* being able to receive qRcmd commands before the actual debugging starts (would allow to pass pyAvrOCD monitor options to debugger)
 
-  
+* Check for output of error routines. Sometimes it does not seem to work
+
+     
 
 ##### List of tasks done:
 
@@ -39,7 +37,7 @@
 
 - clean up Gede interface
 
-* no multiple main breaks oints
+* no multiple main breakspoints
 
 * reloading files in GUI when reloading files
 
@@ -81,6 +79,12 @@
 
 **List of tasks abandoned**:
 
+- Use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video? Something to be done for PyAvrOCD.
+
+- Implement STK500v2 protocol
+
+- design case for debugger and print it
+
 - try to use seer GUI again
 
 - integrate into the Arduino VSC plugin
@@ -90,5 +94,4 @@
 
 
 * perhaps make conditional/repeating breakpoints faster: less register saving/restoring (would give you perhaps 10 ms out of 40 ms), shorter pauses by GDB (but where to control this?)
-
 

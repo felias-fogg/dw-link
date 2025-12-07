@@ -1,8 +1,8 @@
-# Quick-start guide for AVR-GDB debugging
+# Quick-start guide: AVR-GDB debugging
 
-Turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. Takes less than one hour. 
+Turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. This quickstart guide explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use the [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/).
 
-This tutorial explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/).
+If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel-ICE, JTAGICE3, or one of the embedded debuggers EDBG, mEDBG, or nEDBG, you can use it directly to debug classic AVR chips in the Arduino IDE 2 employing [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD).
 
 ## What you need
 
@@ -34,15 +34,13 @@ Open the `Preferences` dialog of the Arduino IDE and paste the following `Board 
 	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
-Close the `Preference` dialog with `OK`. Now, we want to install the three cores, `ATTinyCore` , `MiniCore`, and `MicroCore`.
-
-You can also install the three board manager files using arduino-cli.
+Close the `Preference` dialog with `OK`. Now, you can install the cores, `ATTinyCore (Debug enabled)` , `Arduino AVR boards (Debug enabled)`,  `MiniCore`, and `MicroCore`.
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
 * In the search field, type `ATTinyCore(Debug enabled)` and install the most recent version.
 * Afterward, do the same with `MiniCore` and `MicroCore`.
 
-**Check:** Select `Tools` -> `Board` -> `ATtinyCore (Debug enabled)` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. Check that also for `Tools` -> `Board` -> `MiniCore` -> `Atmega328`. 
+**Check:** Select `Tools` -> `Board` -> `ATtinyCore (Debug enabled)` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. 
 
 ## Step 3: Install *dw-link* firmware
 
@@ -67,17 +65,17 @@ In order to install the firmware,
 
 ## Step 4: Install *avr-gdb* on the host computer
 
-The installation of the board definition files will (most likely) lead to the download of the GDB debugger in the tools section of the respective package. You should be able to copy it to a place in your `PATH`, e.g., `/usr/local/bin`.
+The installation of the board definition files will lead to the download of a recent version of the GDB debug client in the tools section of the respective package. You should be able to copy it to a place in your `PATH`, e.g., `/usr/local/bin`.
 
-- **On a Mac:** `~/Library/Arduino15/packages/MiniCore/tools/dw-link-tools/XXX/avr-gdb`
-- **Under Linux**: `~/.arduino15/packages/MiniCore/tools/dw-link-tools/XXX/avr-gdb`
-- **Under Windows:**  `C:\Users\\{username}\AppData\Local\Arduino15\packages\MiniCore\tools\dw-link-tools\XXX\avr-gdb.exe`
+- **On a Mac:** `~/Library/Arduino15/packages/MiniCore/tools/avrocd-tools/XXX/avr-gdb`
+- **Under Linux**: `~/.arduino15/packages/MiniCore/tools/avrocd-tools/XXX/avr-gdb`
+- **Under Windows:**  `C:\Users\\{username}\AppData\Local\Arduino15\packages\MiniCore\tools\avrocd-tools\XXX\avr-gdb.exe`
 
 If the file is not there, you can install it from other sources, as described below. 
 
 ##### On a Mac: 
 
-If you have not done so, you must install the package manager Homebrew first. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debugger, by typing the following line into a shell:
+If you have not done so, you must install the package manager Homebrew first. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debug client, by typing the following line into a shell:
 
 ```
 brew tap osx-cross/avr && brew install avr-gdb
@@ -99,7 +97,7 @@ The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolc
 
 ## Step 5: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge).How to set up an Uno as a target board is described in the [dw-link manual](https://felias-fogg.github.io/dw-link/installation/#debugging-an-uno).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the [dw-link manual](https://felias-fogg.github.io/dw-link/installation/#debugging-an-uno).
 
 You need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your Uno, turned into a hardware debugger. Note that the notch or dot on the ATtiny is oriented towards the left. 
 

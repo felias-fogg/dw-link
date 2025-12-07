@@ -44,13 +44,18 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.2.5"
+#define VERSION "5.3.0"
 
 // some constants, you may want to change
 // --------------------------------------
 #ifndef PROGBPS
 #define PROGBPS 19200         // ISP programmer communication speed
 #endif
+
+#if DEBUG
+ #define HOSTBPS 74880UL      // Otherwise we run into problems when using the Atmel 328P Xplained Mini
+#endif
+
 #ifndef HOSTBPS 
 #define HOSTBPS 115200UL      // safe default speed for the host 
 //#define HOSTBPS 230400UL    // works with UNOs, but not with Nanos
@@ -60,27 +65,27 @@
 
 // these constants should stay undefined for the ordinary user
 // -----------------------------------------------------------
-//#define NOISPPROG 1        // disable ISP programmer
-//#define NOXBIN 1           // disable binary load
-//#define NONYI 1            // disable NYI messages
-//#define SHORTSTR 1         // only short strings
-//#define NOMONITORHELP 1    // disable monitor help function
-//#define NOMOVERSION 1      // disable version command
-//#define NOMOINFO 1         // disable monitor info command
-//#define NOEXTREM 1         // disable extern remote
+#ifdef DEBUG // defined by outside forces
+ #define NOISPPROG 1        // disable ISP programmer
+ #define NOXBIN 1           // disable binary load
+ #define NONYI 1            // disable NYI messages
+ #define SHORTSTR 1         // only short strings
+ #define NOMONITORHELP 1    // disable monitor help function
+ #define NOMOVERSION 1      // disable version command
+ #define NOMOINFO 1         // disable monitor info command
+ #define NOEXTREM 1         // disable extern remote
+ #define NO90   1           // remove AT90 MCUs
+#endif
 // #define NOMEGA 1           // remove ATmega MCUs
-//#define NO90   1           // remove AT90 MCUs
-//#define NOTINY 1           // remove ATtiny MCUs
+// #define NOTINY 1           // remove ATtiny MCUs
 // #define TXODEBUG 1         // allow debug output over TXOnly line
 // #define CONSTDWSPEED 1     // constant communication speed with target
-// #define OFFEX2WORD 1       // instead of simu. use offline execution for 2-word instructions
 // #define SCOPEDEBUG 1       // activate scope debugging on PORTC
 // #define FREERAM  1         // measure free ram
 // #define UNITALL 1          // enable all unit tests
 // #define UNITDW 1           // enable debugWIRE unit tests
 // #define UNITTG 1           // enable target unit tests
 // #define UNITGDB 1          // enable gdb function unit tests
-// #define ILLOPDETECT 1      // detect illegal opcodes when starting execution
 
 #if UNITALL == 1
 #undef  UNITDW
@@ -145,6 +150,15 @@
 #define SIGILL  4     // Illegal instruction
 #define SIGTRAP 5     // Trace trap  - stopped on a breakpoint
 #define SIGABRT 6     // Abort because of some fatal error
+#define SIGBUS  10    // Meaning stack overflow
+#define SIGSEGV 11    // Executable not loaded
+#define SIGSYS  12    // Too many breakpoints
+
+// types of parameters for update breakpoints
+#define CLEANUP 1
+#define ASSIGN_ALL_BPS 2
+#define ASSIGN_ONLY_SWBPS 3
+
 // types of fatal errors
 #define NO_FATAL 0
 #define CONNERR_NO_ISP_REPLY 1 // connection error: no ISP reply
@@ -193,6 +207,7 @@
 // instruction codes
 const unsigned int BREAKCODE = 0x9598;
 const unsigned int SLEEPCODE = 0x9588;
+const unsigned int NOPCODE   = 0x0000;
 
 // some dw commands
 const byte DW_STOP_CMD = 0x06;
@@ -843,7 +858,7 @@ void gdbHandleCmd(void)
   case '$':
     buffill = 0;
     for (pkt_checksum = 0, b = gdbReadByte();
-	 b != '#' ; b = gdbReadByte()) {
+	       b != '#' ; b = gdbReadByte()) {
       if (buffill < MAXBUF) buf[buffill++] = b;
       pkt_checksum += b;
     }
@@ -884,7 +899,6 @@ void gdbHandleCmd(void)
 	gdbSendState(SIGINT);
       } else {
 	gdbSendState(SIGHUP);
-	//DEBLN(F("Connection lost"));
       }
     }
     break;
@@ -908,10 +922,7 @@ void gdbParsePacket(const byte *buff)
   if (!flashidle) {
     if (*buff != 'X' && *buff != 'M')
       targetFlushFlashProg();                         /* finalize flash programming before doing something else */
-  } else {
-    if (*buff == 'X' || *buff == 'M')
-      gdbUpdateBreakpoints(true);                     /* remove all BREAKS before writing into flash */
-  }
+  } 
   switch (*buff) {
   case '?':                                           /* last signal */
     gdbSendSignal(lastsignal);
@@ -949,7 +960,7 @@ void gdbParsePacket(const byte *buff)
     break;
 #endif
   case 'D':                                           /* detach from target */
-    gdbUpdateBreakpoints(true);                       /* remove BREAKS in memory before exit */
+    gdbUpdateBreakpoints(CLEANUP);                    /* remove BREAKS in memory before exit */
     validpg = false;
     fatalerror = NO_FATAL;
     gdbStopConnection();                              
@@ -966,7 +977,8 @@ void gdbParsePacket(const byte *buff)
     break;
   case 's':                                           /* single step */
   case 'S':                                           /* step with signal - just ignore signal */
-    gdbSendState(gdbStep());                          /* do only one step and report reason why stopped */
+    s = gdbStep();                                    /* do only one step and report reason why stopped, or exec a sleep walk */
+    if (s) gdbSendState(s);                           /* report reason */
     break;              
   case 'z':                                           /* remove break/watch point */
   case 'Z':                                           /* insert break/watch point */
@@ -1411,7 +1423,7 @@ void gdbDwireOption(char arg)
     }
     break;
   case 'd':
-    gdbUpdateBreakpoints(true);
+    gdbUpdateBreakpoints(CLEANUP);
     gdbDisconnectDW(); break;
   case '\0': gdbReportConnected(); break;
   default: gdbUnknownOpt(); break;
@@ -1639,21 +1651,22 @@ boolean manualPowerCycle(void)
     if (retry%1000 == 1) 
       gdbDebugMessagePSTR(PSTR("*** Please power-cycle target ***"),-1);
     if (digitalRead(DWLINE) == LOW) { // power gone
-      _delay_ms(10);
+      _delay_ms(30);
+      gdbDebugMessagePSTR(PSTR("*** Power-down recognized. Apply power again! ***"),-1);
       if (digitalRead(DWLINE) == LOW) { // still gone
-	while (digitalRead(DWLINE) == LOW && retry++ < 6000) _delay_ms(10);
-	if (retry >= 6000) {
-	  setSysState(NOTCONN_STATE);
-	  return false;
-	}
-	_delay_ms(300);
-	if (targetDWConnect(false)) {
-	  setSysState(DWCONN_STATE);
-	  return true;
-	} else {
-	  gdbReportConnectionProblem(CONNERR_NO_DW_REPLY, true);
-	  return false;
-	}
+	      while (digitalRead(DWLINE) == LOW && retry++ < 6000) _delay_ms(10);
+	      if (retry >= 6000) {
+	        setSysState(NOTCONN_STATE);
+	        return false;
+	      }   
+	      _delay_ms(300);
+	      if (targetDWConnect(false)) {
+	        setSysState(DWCONN_STATE);
+	        return true;
+	      } else {
+	        gdbReportConnectionProblem(CONNERR_NO_DW_REPLY, true);
+	        return false;
+	      }
       }
     }
   }
@@ -1710,15 +1723,11 @@ void getInstruction(unsigned int &opcode, unsigned int &addr)
     opcode = targetReadFlashWord(ctx.wpc<<1);
   else
     opcode = bp[bpix].opcode;
-  //DEBPR(F("sim opcode=")); DEBLNF(opcode,HEX);
   if (twoWordInstr(opcode)) {
-    //DEBPR(F("twoWord/addr=")); DEBLNF((ctx.wpc+1)<<1,HEX);
     addr = targetReadFlashWord((ctx.wpc+1)<<1);
-    //DEBLNF(addr,HEX);
   }
 }
 
-#if OFFEX2WORD == 0
 // check whether an opcode is a 32-bit instruction
 boolean twoWordInstr(unsigned int opcode)
 {
@@ -1740,10 +1749,6 @@ inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
       ctx.wpc += 2;
     } else if ((opcode & ~0x1F0) == 0x9200) { // sts 
       reg = (opcode & 0x1F0) >> 4;
-      //DEBPR(F("Reg="));
-      //DEBLN(reg);
-      //DEBPR(F("addr="));
-      //DEBLNF(addr,HEX);
       if (addr < 0x20)
 	ctx.regs[addr] = ctx.regs[reg];
       else
@@ -1761,47 +1766,86 @@ inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
     }
   }
 }
-#endif
+
+// Checks whether the next instruction operates on the stack and will mess up I/O
+// registers or load data/return addresses from I/O space. If so, false is returned.
+boolean gdbLegalStackPointer(unsigned int opcode)
+{
+  if (((opcode & 0xFE0F) == 0x900F) || // POP
+       ((opcode & 0xFFEF) == 0x9508))  // RET or RETI
+    return (ctx.sp >= mcu.rambase - 1);
+  if ((opcode & 0xFE0F) == 0x920F) // PUSH
+    return (ctx.sp >= mcu.rambase);
+  if (((opcode & 0xFFEF) == 0x9509) || // (E)ICALL
+      ((opcode & 0xFE0E) == 0x940E) || // CALL
+      ((opcode & 0xF000) == 0xD000)) // RCALL
+    return (ctx.sp >= mcu.rambase  + 1);
+  return true;
+}
+
+// Check whether we can continue or step.
+// If not, return the correct signal
+byte gdbCheckPrerequisite(unsigned int opcode)
+{
+  if (fatalerror) return SIGABRT;
+  if (targetOffline()) {
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Not connected", "NO CON")), -1);    
+    return SIGHUP;
+  }
+  if (ctx.onlyloaded and ctx.notloaded) {
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("No program loaded", "NO PRG")), -1);
+    return SIGSEGV;
+  }
+  if (!gdbLegalStackPointer(opcode)) {
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Stack overflow", "STK OVF")), -1);
+    return SIGBUS;
+  }
+  if ((bpcnt > maxbreak) || // Too many breakpoints
+      (maxbreak == bpcnt && maxbreak == 1 && opcode == SLEEPCODE)) { // This means that only HWBPs are allowed
+                                                                 // and all are in use and we want to sleepwalk 
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("Too many active breakpoints","TOO MANY BP")), -1);
+    return SIGSYS;
+  }
+  if (opcode == BREAKCODE) {
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("BREAK instruction. Cannot continue!", "BREAK")), -1);
+    return SIGILL;
+  }
+  return 0;
+}
 
 // do one step
-// start with saved registers and return with saved regs
-// it will return a signal, which in case of success is SIGTRAP
+// Start with saved registers and return with saved regs (except sleep walking)
+// It will return a signal, which in case of success is SIGTRAP.
+// Note that we do not need an update of the breakpoints,
+// except when sleep-walking a SLEEP instruction.
+// We do not need that because in all other cases we simply make one step,
+// in the worst case ending up in interrupt vector table. So, all
+// other BPs are irrelevant.
+// Sleep walking means that in case of a SLEEP instruction, we update
+// the breakpointbs (not allowing thje HWBP to be used), and then we
+// use the HWBP to break after the sleep instruction returning 0 (as when
+// resuming execution.
 byte gdbStep(void)
 {
   unsigned int opcode, arg;
-  //  unsigned int oldpc = ctx.wpc;
+  byte sig;
   int bpix = gdbFindBreakpoint(ctx.wpc);
-  byte sig = SIGTRAP; // SIGTRAP (normal), SIGILL (if noload), SIGABRT (fatal)
 
-  //DEBLN(F("Start step operation"));
-  if (fatalerror) return SIGABRT;
-  if (bpcnt == maxbreak) {
-    gdbDebugMessagePSTR(PSTR(LONGSHORT("Too many active breakpoints","TOO MANY BP")), -1);
-    return SIGABRT;
-  }
-  if (targetOffline()) return SIGHUP;
-  if (ctx.onlyloaded and ctx.notloaded) {
-    gdbDebugMessagePSTR(PSTR(LONGSHORT("No program loaded","NO PRG")), -1);
-    return SIGILL;
-  }
   getInstruction(opcode, arg);
-#if ILLOPDETECT
-  if (targetIllegalOpcode(opcode)) {
-    //DEBPR(F("Illop: ")); DEBLNF(opcode,HEX);
-    return SIGILL;
-  }
-#endif
+  sig = gdbCheckPrerequisite(opcode);
+  if (sig) return sig;
+
   if (opcode == SLEEPCODE) {
-    ctx.wpc++;
-    return sig;
+    // sleep walking
+    gdbUpdateBreakpoints(ASSIGN_ONLY_SWBPS);
+    targetRestoreRegisters();
+    targetContinue(ctx.wpc + 1);
+    return 0;
   }
-  if (opcode == BREAKCODE) return SIGILL;
   if ((bpix >= 0 &&  bp[bpix].inflash) || ctx.safestep) {
-#if OFFEX2WORD == 0
     if (twoWordInstr(opcode)) 
       simTwoWordInstr(opcode, arg);
     else 
-#endif
       {
 	targetRestoreRegisters();
 	DWexecOffline(opcode);
@@ -1816,13 +1860,9 @@ byte gdbStep(void)
       return SIGABRT;
     } else {
       targetSaveRegisters();
-//      if (oldpc == ctx.wpc) {
-//	if (Serial.available())
-//	  sig = SIGINT; // if we do not make progress in single-stepping, ^C (or other inputs) can stop gdb
-//      }
     }
   }
-  return sig;
+  return SIGTRAP;
 }
 
 // start to execute at current PC
@@ -1830,37 +1870,19 @@ byte gdbStep(void)
 // otherwise send command to target in order to start execution and return 0
 byte gdbContinue(void)
 {
-  byte sig = 0;
+  byte sig;
   unsigned int opcode, arg;
-  //DEBLN(F("Start continue operation"));
-  if (fatalerror) sig = SIGABRT;
-  else if (ctx.onlyloaded and ctx.notloaded) {
-    sig = SIGILL;
-    gdbDebugMessagePSTR(PSTR(LONGSHORT("No program loaded", "NO PRG")), -1);
-  } else if (targetOffline()) sig = SIGHUP;
-  else {
-    getInstruction(opcode, arg);
-    if (opcode == BREAKCODE) return SIGILL;
-    if (!gdbUpdateBreakpoints(false))  { // update breakpoints in flash memory
-      sig = SIGABRT;
-      gdbDebugMessagePSTR(PSTR(LONGSHORT("Too many active breakpoints", "TOO MANY BP")), -1);
-    }
-#if ILLOPDETECT
-    if (targetIllegalOpcode(targetReadFlashWord(ctx.wpc*2))) {
-      //DEBPR(F("Illop: ")); DEBLNF(targetReadFlashWord(ctx.wpc*2),HEX);
-      sig = SIGILL;
-    }
-#endif
-  }
-  if (sig) { // something went wrong
-    //DEBPR(F("Error sig=")); DEBLN(sig);
-    _delay_ms(2);
-    return sig;
-  }
-  //DEBPR(F("Before exec: ctx.wpc=")); DEBLNF(ctx.wpc*2,HEX);
+
+  getInstruction(opcode, arg);
+  if (opcode == SLEEPCODE) opcode = NOPCODE; // so that we do not check for sleep walking
+  sig = gdbCheckPrerequisite(opcode);
+  if (sig) return sig;
+
+  gdbUpdateBreakpoints(ASSIGN_ALL_BPS); // update breakpoints in flash memory
+
   targetRestoreRegisters();
   setSysState(RUN_STATE);
-  targetContinue();
+  targetContinue(0xFFFF);
   return 0;
 }
 
@@ -1876,17 +1898,17 @@ byte gdbContinue(void)
 // BP is used, active, not hwbp, and not in flash -> write to flash
 // BP is used, but not active and in flash -> remove from flash, set BP unused
 // BP is used and not in flash -> set BP unused
-// BP is used, active and hwbp -> do nothing, will be taken care of when executing
+// BP is used, active and hwbp -> do nothing, will be taken care of when executing, except
+//    when nohwbp is true, then it will also become a flash BP (needed for sleep walking)
 // Order all actionable BPs by increasing address and only then change flash memory
 // (so that multiple BPs in one page only need one flash change)
 //
-// Return value is true iff all BPs can be allocated 
-//
-// When the parameter cleanup is true, we also will remove BREAK instructions
+// When the kind parameter is CLEANUP, we also will remove BREAK instructions
 // of active breakpoints, because either an exit or a memory write action will
-// follow.
+// follow. If kind == ASSIGN_ALL_BPS, then we use HW and SW BPs. If kind == ASSIGN_ONLY_SWPBS,
+// then no HWBP is allowed.
 //
-boolean gdbUpdateBreakpoints(boolean cleanup)
+void gdbUpdateBreakpoints(byte kind)
 {
   int i, j, ix, rel = 0;
   unsigned int relevant[MAXBREAK*2+1]; // word addresses of relevant locations in flash
@@ -1896,26 +1918,24 @@ boolean gdbUpdateBreakpoints(boolean cleanup)
 
   if (!flashidle) {
     reportFatalError(BREAKPOINT_UPDATE_WHILE_FLASH_PROGRAMMING_FATAL, false);
-    return false;
+    return;
   }
 
-  if (bpcnt > maxbreak) return false;
+  if ((bpcnt > maxbreak && kind != CLEANUP) || bpused == 0 || targetOffline())
+    return;
   
   DEBPR(F("Update Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
-  // if there are no used entries, we also can return immediately
-  // if the target is not connected, we cannot update breakpoints in any case
-  if (bpused == 0 || targetOffline()) return true;
 
   // find relevant BPs
   for (i=0; i < MAXBREAK*2; i++) {
     if (bp[i].used) {                       // only used breakpoints!
-      if (onlysbp && bp[i].hw) {            // only software bps are allowed
+      if ((onlysbp || (kind == ASSIGN_ONLY_SWBPS)) && bp[i].hw) { // only software bps are allowed
 	bp[i].hw = false;
 	bp[i].inflash = false;
 	hwbp = 0xFFFF;
       }
       if (bp[i].active) {                   // active breakpoint
-	if (!cleanup) {
+	if (kind != CLEANUP) {
 	  if (!bp[i].inflash && !bp[i].hw)  // not in flash yet and not a hw bp
 	    relevant[rel++] = bp[i].waddr;  // remember to be set
 	} else {                            // active BP && cleanup
@@ -1956,10 +1976,10 @@ boolean gdbUpdateBreakpoints(boolean cleanup)
 	DEBPR(F("RELEVANT: ")); DEBLNF(relevant[j]*2,HEX);
 	ix = gdbFindBreakpoint(relevant[j++]);
 	if (ix < 0) { reportFatalError(RELEVANT_BP_NOT_PRESENT, false);
-	  return false;
+	  return;
 	}
 	DEBPR(F("Found BP:")); DEBLN(ix);
-	if (bp[ix].active && !cleanup) { // enabled but not yet in flash && not a cleanup operation
+	if (bp[ix].active && (kind != CLEANUP)) { // enabled but not yet in flash && not a cleanup operation
 	  bp[ix].opcode = (newpage[(bp[ix].waddr*2)%mcu.targetpgsz])+
 	    (unsigned int)((newpage[((bp[ix].waddr*2)+1)%mcu.targetpgsz])<<8);
 	  DEBPR(F("Replace op ")); DEBPRF(bp[ix].opcode,HEX); DEBPR(F(" with BREAK at byte addr ")); DEBLNF(bp[ix].waddr*2,HEX);
@@ -1989,7 +2009,6 @@ boolean gdbUpdateBreakpoints(boolean cleanup)
   }
   DEBPR(F("After updating Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
   DEBPR(F("HWBP=")); DEBLNF(hwbp*2,HEX);
-  return true;
 }
 
 // sort breakpoints so that they can be changed together when they are on the same page
@@ -2025,53 +2044,45 @@ void gdbHandleBreakpointCommand(const byte *buff)
 
   measureRam();
 
-  if (targetOffline()) return;
-
   len = parseHex(buff + 3, &byteflashaddr);
   parseHex(buff + 3 + len + 1, &sz);
   
   /* break type */
-  switch (buff[1]) {
-  case '0': /* software breakpoint */
+  if (buff[1] == '0') {
     if (buff[0] == 'Z') {
-      if (gdbInsertBreakpoint(byteflashaddr >> 1)) 
-	gdbSendReply("OK");
-      else
-	gdbSendReply("E03");
-      return;
+      gdbInsertBreakpoint(byteflashaddr >> 1);
     } else {
       gdbRemoveBreakpoint(byteflashaddr >> 1);
-      gdbSendReply("OK");
     }
-    return;
-  default:
+    gdbSendReply("OK");
+  } else {
     gdbSendReply("");
-    break;
   }
 }
 
 /* insert bp, flash addr is in words */
-boolean gdbInsertBreakpoint(unsigned int waddr)
+void gdbInsertBreakpoint(unsigned int waddr)
 {
   int i,j;
 
   measureRam();
 
-  // check for duplicates
   i = gdbFindBreakpoint(waddr);
   if (i >= 0)
     if (bp[i].active)  // this is a BP set twice, can be ignored!
-      return true;
+      return;
+  
+  // increment and check, whether we are full alrady
+  if (++bpcnt > maxbreak) return; 
   
   // if bp is already there, but not active, then activate
   i = gdbFindBreakpoint(waddr);
   if (i >= 0) { // existing bp
     bp[i].active = true;
-    bpcnt++;
     DEBPR(F("New recycled BP: ")); DEBPRF(waddr*2,HEX);
     if (bp[i].inflash) { DEBPR(F(" (flash) ")); }
     DEBPR(F(" / now active: ")); DEBLN(bpcnt);
-    return true;
+    return;
   }
   // find free slot (should be there, even if there are MAXBREAK inactive bps)
   for (i=0; i < MAXBREAK*2; i++) {
@@ -2094,7 +2105,6 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
 	  } else reportFatalError(HWBP_ASSIGNMENT_INCONSISTENT_FATAL, false);
 	}
       }
-      bpcnt++;
       bpused++;
       DEBPR(F("New BP: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
       if (bp[i].hw) { DEBLN(F("implemented as a HW BP")); }
@@ -2102,8 +2112,6 @@ boolean gdbInsertBreakpoint(unsigned int waddr)
     }
   }
   reportFatalError(NO_FREE_SLOT_FATAL, false);
-  //DEBLN(F("***No free slot in bp array"));
-  return false;
 }
 
 // inactivate a bp 
@@ -2113,10 +2121,10 @@ void gdbRemoveBreakpoint(unsigned int waddr)
 
   measureRam();
 
+  if (bpcnt > maxbreak) bpcnt = maxbreak; // can happen when too many BPs were tried to set
   i = gdbFindBreakpoint(waddr);
   if (i < 0) return; // could happen when too many bps were tried to set
   if (!bp[i].active) return; // not active, could happen for duplicate bps 
-  //DEBPR(F("Remove BP: ")); DEBLNF(bp[i].waddr*2,HEX);
   bp[i].active = false;
   bpcnt--;
   DEBPR(F("BP removed: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
@@ -2133,7 +2141,7 @@ void gdbCleanupBreakpointTable(void)
     bp[i].active = false;
     if (bp[i].used) bpused++;
   }
-  gdbUpdateBreakpoints(false); // now remove all breakpoints
+  gdbUpdateBreakpoints(CLEANUP); // now remove all breakpoints
 }
 
 // GDB wants to see the 32 8-bit registers (r00 - r31), the
@@ -2257,7 +2265,7 @@ void gdbReadMemory(const byte *buff)
     gdbHideBREAKs(addr, membuf, sz);
   } else if (flag == EEPROM_OFFSET) targetReadEeprom(addr, membuf, sz);
   else {
-    gdbSendReply("E05");
+    gdbSendReply("E14");
     return;
   }
   for (i = 0; i < sz; ++i) {
@@ -2312,7 +2320,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
 
   // convert to binary data by deleting the escapes
   if (sz > MAXMEMBUF) { // should not happen because we required packet length to be less
-    gdbSendReply("E05");
+    gdbSendReply("E15");
     reportFatalError(PACKET_LEN_FATAL, false);
     return;
   }
@@ -2320,7 +2328,7 @@ void gdbWriteMemory(const byte *buff, boolean binary)
   if (binary) {
     memsz = gdbBin2Mem(buff, membuf, sz);
     if (memsz < 0) { 
-      gdbSendReply("E05");
+      gdbSendReply("E15");
       reportFatalError(NEG_SIZE_FATAL, false);
       return;
     }
@@ -2339,15 +2347,16 @@ void gdbWriteMemory(const byte *buff, boolean binary)
   switch (flag) {
   case SRAM_OFFSET:
     if (addr+sz > mcu.ramsz+mcu.rambase) {
-      gdbSendReply("E02"); 
+      gdbSendReply("E13"); 
       return;
     }
     targetWriteSram(addr, membuf, sz);
     break;
   case FLASH_OFFSET:
+    if (flashidle) 
+      gdbUpdateBreakpoints(CLEANUP); // make sure all BPs are gone from memory when starting to write flash
     if (addr+sz > mcu.flashsz) {
-      //DEBPR(F("addr,sz,flashsz=")); DEBLN(addr); DEBLN(sz); DEBLN(mcu.flashsz);
-      gdbSendReply("E03"); 
+      gdbSendReply("E11"); 
       return;
     }
     setSysState(LOAD_STATE);
@@ -2356,13 +2365,13 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     break;
   case EEPROM_OFFSET:
     if (addr+sz > mcu.eepromsz) {
-      gdbSendReply("E04"); 
+      gdbSendReply("E13"); 
       return;
     }
     targetWriteEeprom(addr, membuf, sz);
     break;
   default:
-    gdbSendReply("E06"); 
+    gdbSendReply("E13"); 
     reportFatalError(WRONG_MEM_FATAL, false);
     return;
   }
@@ -3028,7 +3037,7 @@ inline void targetFlushFlashProg(void)
 void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 {
   measureRam();
-  int offset = 0;
+  unsigned int offset = 0;
 
   while (addr+offset < 32 && offset < len) { // if addr points to registers, then write to in-memory copy 
     ctx.regs[addr+offset] = mem[offset];
@@ -3104,14 +3113,13 @@ void targetBreak(void)
 }
 
 // start to execute
-void targetContinue(void)
+void targetContinue(unsigned int runto)
 {
   measureRam();
 
-  // DEBPR(F("Continue at (byte adress) "));  DEBLNF(ctx.wpc*2,HEX);
-  if (hwbp != 0xFFFF) {
+  if (hwbp != 0xFFFF || runto != 0xFFFF) {
     dw.sendCmd((byte)(0x61&ctx.tmask));
-    DWsetWBp(hwbp);
+    DWsetWBp(runto != 0xFFFF ? runto : hwbp);
   } else {
     dw.sendCmd((byte)(0x60&ctx.tmask));
   }
@@ -3145,64 +3153,6 @@ boolean targetReset(void)
   }
 }
 
-#if ILLOPDETECT
-// check for illegal opcodes
-// based on: http://lyons42.com/AVR/Opcodes/AVRAllOpcodes.html
-boolean targetIllegalOpcode(unsigned int opcode)
-{
-  byte lsb = opcode & 0xFF;
-  byte msb = (opcode & 0xFF00)>>8;
-
-  measureRam();
-
-  switch(msb) {
-  case 0x00: // nop
-    DEBLNF(msb, HEX); DEBLNF(lsb, HEX); 
-    return lsb != 0; 
-  case 0x02: // muls
-  case 0x03: // mulsu/fmuls
-    return !mcu.avreplus;
-  case 0x90: 
-  case 0x91: // lds, ld, lpm, elpm
-    if ((lsb & 0x0F) == 0x3 || (lsb & 0x0F) == 0x6 || (lsb & 0x0F) == 0x7 ||
-	(lsb & 0x0F) == 0x8 || (lsb & 0x0F) == 0xB) return true; // unassigned + elpm
-    if (opcode == 0x91E1 || opcode == 0x91E2 || opcode == 0x91F1 || opcode == 0x91F2 ||
-	opcode == 0x91E5 || opcode == 0x91F5 || 
-	opcode == 0x91C9 || opcode == 0x91CA || opcode == 0x91D9 || opcode == 0x91DA ||
-	opcode == 0x91AD || opcode == 0x91AE || opcode == 0x91BD || opcode == 0x91BE)
-      return true; // undefined behavior for ld and lpm with increment
-    return false;
-  case 0x92:
-  case 0x93:  // sts, st, push
-    if (((lsb & 0xF) >= 0x3 && (lsb & 0xF) <= 0x8) || ((lsb & 0xF) == 0xB)) return true;
-    if (opcode == 0x93E1 || opcode == 0x93E2 || opcode == 0x93F1 || opcode == 0x93F2 ||
-	opcode == 0x93C9 || opcode == 0x93CA || opcode == 0x93D9 || opcode == 0x93DA ||
-	opcode == 0x93AD || opcode == 0x93AE || opcode == 0x93BD || opcode == 0x93BE)
-      return true; // undefined behavior for st with increment
-    return false;
-  case 0x94:
-  case 0x95: // ALU, ijmp, icall, ret, reti, jmp, call, des, ...
-    if (opcode == 0x9409 || opcode == 0x9509) return false; //ijmp + icall
-    if (opcode == 0x9508 || opcode == 0x9518 || opcode == 0x9588 || opcode == 0x95A8 ||
-	opcode == 0x95C8 || opcode == 0x95E8) return false; // ret, reti, sleep, wdr, lpm, spm
-    if ((lsb & 0xF) == 0x4 || (lsb & 0xF) == 0x9 || (lsb & 0xF) == 0xB) return true;
-    if ((lsb & 0xF) == 0x8 && msb == 0x95) return true; // unassigned + break + spm z+
-    break;
-  case 0x9c:
-  case 0x9d:
-  case 0x9e:
-  case 0x9f: // mul
-    return !mcu.avreplus;
-  default: if (((msb & 0xF8) == 0xF8) && ((lsb & 0xF) >= 8)) return true; 
-    return false;
-  }
-  if (mcu.flashsz <= 8192)  // small ATtinys for which CALL and JMP is not needed/permitted
-    if ((opcode & 0x0FE0E) == 0x940C || // jmp
-	(opcode & 0x0FE0E) == 0x940E)  // call
-      return true;
-  return false;
-}
-#endif
 
 
 /****************** debugWIRE specific functions *************/
@@ -3439,9 +3389,10 @@ void DWreadRegisters (byte *regs)
   if (response != 32) reportFatalError(DW_READREG_FATAL,true);
 }
 
-// Read register <reg> by building and executing an "out DWDR,<reg>" instruction via the CMD_SET_INSTR register
+// Read register <reg> by building and executing an "out DWDR,<reg>" instruction
+// via the CMD_SET_INSTR register.
 // This function is also used to check whether we have the right DWDR address.
-byte DWreadRegister (byte reg, bool checkdwdr=false) {
+byte DWreadRegister (byte reg, bool checkdwdr) {
   int response;
   byte res = 0;
   byte rdReg[] = {(byte)(0x64&ctx.tmask),                               // Set up for single step using loaded instruction
@@ -3779,7 +3730,7 @@ byte DWreadSPMCSR(void)
   measureRam();
   DWflushInput();
   dw.sendCmd(sc, sizeof(sc));
-  return DWreadRegister(30);
+  return DWreadRegister(30, false);
 }
 
 unsigned int DWgetWPc (boolean corrected) {
@@ -4512,7 +4463,7 @@ int gdbTests(int &num) {
   // cleanup
   gdbDebugMessagePSTR(PSTR("Delete BPs & BP update: "), testnum++);
   gdbRemoveBreakpoint(0xe0);
-  gdbUpdateBreakpoints(false);
+  gdbUpdateBreakpoints(ASSIGN_ALL_BPS);
   failed += testResult(bpcnt == 0 && bpused == 0 && hwbp == 0xFFFF);
 
   // test the illegal opcode detector for single step
@@ -4741,7 +4692,7 @@ int targetTests(int &num) {
   succ = true;
   hwbp = 0xFFFF;
   targetRestoreRegisters();
-  targetContinue();
+  targetContinue(0xFFFF);
   targetBreak(); // DW responds with 0x55 on break
   if (!expectUCalibrate()) succ = false;
   targetSaveRegisters();
@@ -4758,14 +4709,6 @@ int targetTests(int &num) {
   DEBPR(F("WPC after:  ")); DEBLNF(ctx.wpc,HEX);
   failed += testResult((ctx.wpc & 0x7F) == 0 && ctx.sreg == 0); // PC can be set to boot area!
 
-#if ILLOPDETECT
-  gdbDebugMessagePSTR(PSTR("targetIllegalOpcode (mul r16, r16): "), testnum++);
-  failed += testResult(targetIllegalOpcode(0x9F00) == !mcu.avreplus);
-
-  gdbDebugMessagePSTR(PSTR("targetIllegalOpcode (jmp ...): "), testnum++);
-  failed += testResult(targetIllegalOpcode(0x940C) == (mcu.flashsz <= 8192));
-#endif
-  
   if (num >= 1) {
     num = testnum;
     return failed;
@@ -4799,7 +4742,7 @@ int DWtests(int &num)
   DWwriteRegister(0, 0x55);
   DWwriteRegister(15, 0x9F);
   DWwriteRegister(31, 0xFF);
-  failed += testResult(DWreadRegister(0) == 0x55 && DWreadRegister(15) == 0x9F && DWreadRegister(31) == 0xFF);
+  failed += testResult(DWreadRegister(0, false) == 0x55 && DWreadRegister(15, false) == 0x9F && DWreadRegister(31, false) == 0xFF);
 
   // write registers in one go and read them in one go (much faster than writing/reading individually) 
   gdbDebugMessagePSTR(PSTR("DWwriteRegisters/DWreadRegisters: "), testnum++);
@@ -4978,7 +4921,7 @@ int DWtests(int &num)
   DWexecOffline(0x2411); // specify opcode as MSB LSB (bigendian!)
   succ = false;
   if (pc + 1 == DWgetWPc(true)) // PC advanced by one, then +1 for break, but this is autmatically subtracted
-    if (DWreadRegister(1) == 0)  // reg 1 should be zero now
+    if (DWreadRegister(1, false) == 0)  // reg 1 should be zero now
       if (DWreadIOreg(0x3F) == 0x02) // in SREG, only zero bit should be set
 	succ = true;
   failed += testResult(succ);
@@ -4992,13 +4935,13 @@ int DWtests(int &num)
   DWexecOffline(0x9F00); // specify opcode as MSB LSB (bigendian!)
   newpc = DWgetWPc(true);
   succ = false;
-  DEBPR(F("reg 1:")); DEBLN(DWreadRegister(1));
-  DEBPR(F("reg 0:")); DEBLN(DWreadRegister(0));
+  DEBPR(F("reg 1:")); DEBLN(DWreadRegister(1, false));
+  DEBPR(F("reg 0:")); DEBLN(DWreadRegister(0, false));
   DEBLN(mcu.avreplus);
   DEBLNF(newpc,HEX);
   if (pc+1 == newpc) // PC advanced by one, then +1 for break, but this is autmatically subtracted
-    succ = ((DWreadRegister(0) == 25 && DWreadRegister(1) == 0 && mcu.avreplus) ||
-	    (DWreadRegister(0) == 0x55 && DWreadRegister(0) == 0x55 && !mcu.avreplus));
+    succ = ((DWreadRegister(0, false) == 25 && DWreadRegister(1, false) == 0 && mcu.avreplus) ||
+	    (DWreadRegister(0, false) == 0x55 && DWreadRegister(0, false) == 0x55 && !mcu.avreplus));
   failed += testResult(succ);
 
   // execute a rjmp instruction offline 

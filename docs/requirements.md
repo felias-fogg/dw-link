@@ -2,6 +2,9 @@
 
 There are a few constraints on what kind of board you can use as the base for the hardware debugger and some requirements on how to connect the debugger to the target system. Furthermore, there is only a limited set of AVR MCUs that have a debugWIRE interface.
 
+!!! Warning
+    Please read the [sections about the RESET line requirements](requirements.md#requirements-concerning-the-target-system) before connecting the debugger to a target system. You might very well "brick" your MCU by enabling debugWIRE on a system that does not satisfy these requirements. 
+
 
 ## The hardware debugger
 

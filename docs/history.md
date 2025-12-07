@@ -121,3 +121,7 @@ Initial version
 
 ### V 5.1
 - Completely reworked the manual to put it into the MkDocs format.
+
+### V 5.2
+
+- Adapted to new package indices in the quickstart and installation sections

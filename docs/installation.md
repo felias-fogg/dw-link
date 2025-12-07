@@ -1,7 +1,7 @@
 
-# Installation of firmware and hardware setup
+# Installation of firmware and software environment
 
-There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. For the hardware setup, you need a breadboard or a development board with one of the chips that speaks debugWIRE.
+There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. Setting up the software environment is also quite simple, if you either opt for CLI debugging with AVR-GDB or the Arduino IDE 2. For other options, I refer to [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD).
 
 ## Firmware installation
 
@@ -29,7 +29,7 @@ Under Windows, you can download a version from Zak's [avr-gcc-build](https://git
 
 ### Installing board packages for the Arduino IDE 2
 
-Depending on what chips you want to debug, you need to install five new board packages. Open the `Preferences` dialog of the Arduino IDE and paste the following three URLs into the list of `Additional boards manager URLs`:
+Open the `Preferences` dialog of the Arduino IDE and paste the following three URLs into the list of `Additional boards manager URLs`:
 
 ```
 https://felias-fogg.github.io/package_debugging_index.json
@@ -39,7 +39,7 @@ https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 The first package index will make the following board packages known to the IDE:
 
 - *[Arduino AVR Boards (Debug enabled)](https://github.com/felias-fogg/ArduinoCore-avr-debug-enabled)*, which is a fork of the official Arduino AVR board package, extended by a means to allow for debugging all the boards in this package. However, with dw-link, you can only debug the debugWIRE MCUs.
-- *[Atmel AVR Xplained-minis (Debug enabled)](https://github.com/felias-fogg/avr-xminis-debug-enabled)*, which is a new core only for the three Atmega328/168 Xplained mini boards. It is based on MiniCore (see below), but is heavily tailored towards these development boards.
+- *[Atmel AVR Xplained-minis (Debug enabled)](https://github.com/felias-fogg/avr-xminis-debug-enabled)*, which is a new core only for the three Atmega328/168 Xplained mini boards. It is based on MiniCore (see below), but is heavily tailored towards these development boards. Since these boards have a hardware debugger on board, dw-link is not needed here. 
 
 - *[ATTinyCore (Debug enabled)](https://github.com/felias-fogg/ATTinyCore-debug-enabled)*, which is a fork of ATTinyCore-2.0.0 extended to allow for debugging.
 

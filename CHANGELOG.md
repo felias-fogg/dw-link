@@ -1,5 +1,28 @@
 # Changelog for dw-link
 
+## Version 5.3.0 (08-Dec-2025)
+
+- Changed: Error codes and signals have been synchronized again with pyAvrOCD.
+- Changed: When inserting breakpoints, we go one beyond `maxbreak` and do not store any more BPs. That means we do not return an error code to Z packages anymore, and the only way "too many breakpoints" are recognized is when single-stepping or continuing, and there are too many active breakpoints. Since GDB rolls back all BPs, this is OK.
+- Changed: Because of the above, when removing breakpoints, we set back `bpcnt` to `maxbreak` once we start to remove breakpoints. 
+- Changed: gdbUpdateBreakpoints now has a three-valued parameter: `CLEANUP`, `ASSIGN_ALL_BPS`, and `ASSIGN_ONLY_SWBPS`.
+- Added: Feedback when power-cycling has been recognized.
+- Added new function: `gdbCheckPrerequisite` checks whether the prerequisite for step/continue is satisfied and returns 0 in this case. Otherwise, an error signal is returned. 
+- Added: 'sleep walking' in `gdbStep`. If a single step over a SLEEP instruction is requested, we instead set the HWBP after the sleep instruction and continue execution. This means that we need to update the BP table before, disallowing HWBPs. Also, in the main loop, we now have to test whether a signal is returned.
+- Changed: In the main loop, we removed the breakpoint cleanup if an X or M package is received. We added that inside gdbWriteMemory for flash writing.
+- Removed: Unused options ILLOPDETECT and OFFEX2WORD.
+
+## Version 5.2.5 (28-Nov-2025)
+
+- Fixed: Three warnings when compiling dw-link using PlatformIO have
+  been accounted for:
+    - two comparisions between signed and unsigned in targetWriteSram
+    - using a default parameter in DWReadRegister
+- Changed: Removed the pio example (is now a GitHub repo)
+- Changed: A number of conditional compilation statements have been
+added to minimize flash code when using a debugger; these are all
+inactive, though.
+
 ## Version 5.2.4 (18-Aug-2025)
 
 - Fixed: The recognition of stuck-at-1-PC-MCUs got somehow lost and led to strange errors for those MCUs. Now the recognition works again, and dw-link refuses to debug such MCUs.
