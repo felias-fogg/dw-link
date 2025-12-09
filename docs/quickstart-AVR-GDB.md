@@ -30,11 +30,11 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
-	https://felias-fogg.github.io/package_debugging_index.json
+	https://downloads.pyavrocd.io/package_debugging_index.json
 	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
-Close the `Preference` dialog with `OK`. Now, you can install the cores, `ATTinyCore (Debug enabled)` , `Arduino AVR boards (Debug enabled)`,  `MiniCore`, and `MicroCore`.
+Close the `Preference` dialog with `OK`. Now, you can install the cores, `ATTinyCore (Debug enabled)` ,  `MiniCore`, and `MicroCore`.
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
 * In the search field, type `ATTinyCore(Debug enabled)` and install the most recent version.
