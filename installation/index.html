@@ -130,13 +130,12 @@ brew install avr-gdb
 <p>Under Windows, you can download a version from Zak's <a href="https://github.com/ZakKemble/avr-gcc-build">avr-gcc-build</a> repository.</p>
 <h3 id="installing-board-packages-for-the-arduino-ide-2">Installing board packages for the Arduino IDE 2</h3>
 <p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following three URLs into the list of <code>Additional boards manager URLs</code>:</p>
-<pre><code>https://felias-fogg.github.io/package_debugging_index.json
+<pre><code>https://downloads.pyavrocd.io/package_debug_enabled_index.json
 https://MCUdude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 </code></pre>
 <p>The first package index will make the following board packages known to the IDE:</p>
 <ul>
-<li><em><a href="https://github.com/felias-fogg/ArduinoCore-avr-debug-enabled">Arduino AVR Boards (Debug enabled)</a></em>, which is a fork of the official Arduino AVR board package, extended by a means to allow for debugging all the boards in this package. However, with dw-link, you can only debug the debugWIRE MCUs.</li>
 <li>
 <p><em><a href="https://github.com/felias-fogg/avr-xminis-debug-enabled">Atmel AVR Xplained-minis (Debug enabled)</a></em>, which is a new core only for the three Atmega328/168 Xplained mini boards. It is based on MiniCore (see below), but is heavily tailored towards these development boards. Since these boards have a hardware debugger on board, dw-link is not needed here. </p>
 </li>
