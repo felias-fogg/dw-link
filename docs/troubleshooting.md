@@ -52,12 +52,6 @@ Depending on the concrete error message, the problem fix varies.
 
 ## Problems while debugging
 
-<a name="lost"></a>
-
-### Problem: You get the message *Connection to target lost*, the program receives a `SIGHUP` signal when you try to start execution, and/or the system LED is off
-
-The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the [necessary electrical requirements](requirements.md#requirements-concerning-the-target-system). Other reasons might be that the program disturbed the communication by changing, e.g., the [MCU clock frequency](problems.md#mcu-operations-interfering-with-debugwire). Try to identify the reason, eliminate it, and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
-
 ### Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*
 
 The reason is most probably that the communication connection to the target system has been lost ([see above](#lost)).
@@ -66,19 +60,19 @@ The reason is most probably that the communication connection to the target syst
 
 This happens with older avr-gdb versions. You can instead use `monitor reset` and `continue`. 
 
-### Problem: The debugger does not start execution when you request *single-stepping* or *execution* and you get the warning *Cannot insert breakpoint ... Command aborted*
+### Problem: The debugger does not start execution and you receive a signal
 
-You use more than the allowed number of breakpoints, i.e., usually 20 (including one for a temporary breakpoint for single-stepping). If you have executed the `monitor breakpoint h` command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.
+- `SIGSYS`:  You use more than the allowed number of breakpoints, i.e., usually 16 (including one for a temporary breakpoint for single-stepping). If you have executed the `monitor breakpoint h` command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.
+
+- `SIGBUS`: This means that the stack is going to overflow, or a return will fetch its address from an area below the SRAM start when you begin execution.
+- `SIGILL`: The only reason for such a signal is that at the position we want to continue from, there is a BREAK instruction that the programmer explicitly inserted, or it is a leftover from a previous debugging session that was not cleaned up. In the former case, you may want to change the sketch and restart debugging. In the latter case, a simple `load` command followed by a restart will do.
+- `SIGHUP`: The target is not responsive any longer, and the status LED is off. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the [necessary electrical requirements](requirements.md#requirements-concerning-the-target-system). Other reasons might be that the program disturbed the communication by changing, e.g., the [MCU clock frequency](problems.md#mcu-operations-interfering-with-debugwire). Try to identify the reason, eliminate it, and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the `load` command should be used to reload the program.
+- `SIGABRT`: There was a fatal error and further execution is not possible. The status LED will blink furiously. Check the error number with the `monitor info` command and [look up the reason below](#internal-and-fatal-debugger-errors). 
+- `SIGSEGV`: Execution was requested to start before the binary was loaded. Use the `load` command. 
 
 ### Problem: When single stepping with `next` or `step` , you receive the message *Warning: Cannot insert breakpoint 0* and the program is stopped at a strange location
 
 The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for GDB. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the `continue` command. If this is not possible, restart and use fewer breakpoints.
-
-### Problem: The debugger does not start execution when you request *single-stepping* or *execution*, you get the message *illegal instruction*, and the program receives a `SIGILL` signal
-
-It could be that you did not issue a load command. In this case, one should do that.
-
-A second reason for such a signal could be that at the position we want to continue from, there is a BREAK instruction that either was explicitly inserted by the programmer or is a leftover from a previous debugging session that was not cleaned up. In the former case, you may want to change the sketch and restart debugging. In the latter case, a simple `load` command will do.
 
 ## Strange behavior of the debugger
 
@@ -96,7 +90,7 @@ This is a feature, not a bug.  It allows you to single-step through the code wit
 
 ### Problem: PWM (analogWrite) does not seem to work when the program is stopped
 
-The reason is that all timers are usually stopped when the program is in a stopped state. However, you can change this behavior using the GDB command `monitor timers r`. In this case, the timers are run even when the program is stopped, which means that PWM (aka `analogWrite`) is also still active.
+The reason is that all timers are usually stopped when the program is in a stopped state. However, you can change this behavior using the GDB command `monitor timers run`. In this case, the timers are run even when the program is stopped, which means that PWM (aka `analogWrite`) is also still active. Actually, this is the default behavior!
 
 ### Problem: When single stepping with `next` or `step` , the program ends up at the start of flash memory, e.g., 0x0030
 
@@ -114,7 +108,7 @@ Not all source lines generate machine code so that it is sometimes impossible to
 
 The debugger starts execution, but it never stops at a breakpoint it should stop, single-stepping does not lead to the expected results, etc. I have seen three possible reasons for that (apart from a programming error that you are hunting).
 
-Often, I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably force a hardware reset by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. In the Arduino IDE 2, all that cannot happen.
+Often, I had forgotten to load the binary code into flash. Remember to use the `load` command ***every time*** after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the `load` command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably force a hardware reset by using the command `monitor reset`. Alternatively, when you initiated your session with `target extended-remote ...`, you can use the `run` command that resets the MCU and starts at address zero. In the Arduino IDE 2, all these problems will not happen.
 
 Second, you may have specified a board/MCU different from your actual target. This happens quite easily with PlatformIO when you work with different targets. In this case, some things appear to work, but others do not work at all. Again, in the Arduino IDE 2, this cannot happen.
 

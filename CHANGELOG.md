@@ -1,5 +1,21 @@
 # Changelog for dw-link
 
+## Version 5.4.0 (13-Dec-2025)
+
+- Removed: `monitor speed` command (in order to unify monitor commands with PyAvrOCD). You still can increase debugWIRE communication speed by setting a compile time constant and recompile.
+- Added: `monitor erasebeforeload` is implemented as a dummy.
+- Added: `monitor atexit` command
+- Added: Monitor option values (such as `--timer`) can now be received from pyavrocd together with the MCU type
+- Added: 'Manage' options (only the negative ones, e.g., `nodwen`) can now also be received and are tracked in the `mon` structure
+- Added: Handling of no-fuse options, i.e., `nobootrst`, `nodwen`, and `nolockbits`.
+- Added: `onlycache` option for `monitor load` command. In the case of dw-link, it will, of course, not cache the binary, but simply suppress programming flash memory, assuming that it is already programmed.
+- Changed: All monitor variables are now collected in the structure `mon`.
+- Changed: Maximal number of breakpoints reduced from 20 to 16 to get space for range-stepping table.
+- Added: base addresses and masks for `DWEN` and `BOOTRST`
+- Fixed: Handling of `DWEN` fuse and `BOOTRST` fuse for non-common MCUs
+- Added: Masks for read-only registers and handling in `targetWriteSram`
+
+
 ## Version 5.3.0 (08-Dec-2025)
 
 - Changed: Error codes and signals have been synchronized again with pyAvrOCD.

@@ -1,21 +1,26 @@
-If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors. 
+If the error number is less than 100, then it is a connection error. Try again, perhaps after disconnecting and reconnecting everything. Check wiring. If the error persists, try perhaps with a different MCU.
 
-If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. 
+Errors above 100 are serious internal debugger errors. If you have encountered such an internal debugger error, then please try to reproduce the problem and tell me how it happened. 
 
 After a reset or a power cycle of the hardware debugger, everything usually works again. If not, you need to unplug everything and put it together again.
 
 
 | Error # | Meaning                                                      |
 | ------: | ------------------------------------------------------------ |
-|       1 | Connection error: Could not communicate by ISP; check wiring |
-|       2 | Connection error: Could not activate debugWIRE               |
-|       3 | Connection error: MCU type is not supported                  |
-|       4 | Connection error: Lock bits or BOOTRST could not be cleared  |
-|       5 | Connection error: MCU has PC with stuck-at-one bits          |
-|       6 | Connection error: RESET line has a capacitive load           |
-|       7 | Connection error: Target not powered or RESET shortened to GND |
-|       8 | MCU type does not match                                      |
-|       9 | Unknown connection error                                     |
+|       1 | Could not communicate by ISP; check wiring                   |
+|       2 | Could not activate debugWIRE                                 |
+|       3 | MCU type is not supported                                    |
+|       4 | Lockbits could not be cleared                                |
+|       5 | Lockbits are set but not managed by dw-link                  |
+|       6 | BOOTRST fuse could not be cleared                            |
+|       7 | MCU has a program counter with stuck-at-one bits             |
+|       8 | RESET line has a capacitive load                             |
+|       9 | Target not powered or RESET shortened to GND                 |
+|      10 | MCU type does not match                                      |
+|      11 | DWEN fuse could not be programmed                            |
+|      12 | DWEN fuse is unprogrammed but not managed by dw-link         |
+|      13 | EESAVE fuse could not be changed                             |
+|      14 | Unknown connection error                                     |
 |     101 | No free slot in breakpoint table                             |
 |     102 | Packet length too large                                      |
 |     103 | Wrong memory type                                            |

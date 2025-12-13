@@ -1,4 +1,3 @@
-// This is an implementation of the GDB remote serial protocol for debugWIRE.
 // It should run on all ATmega328 boards and provides a hardware debugger
 // for the classic ATtinys and some small ATmegas
 //
@@ -44,7 +43,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.3.0"
+#define VERSION "5.4.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -52,8 +51,8 @@
 #define PROGBPS 19200         // ISP programmer communication speed
 #endif
 
-#if DEBUG
- #define HOSTBPS 74880UL      // Otherwise we run into problems when using the Atmel 328P Xplained Mini
+#ifdef ARDUINO_AVR_ATMEL_ATMEGA328P_XMINI
+ #define HOSTBPS 74880UL      // The xmini cannot deal with 115200 bps
 #endif
 
 #ifndef HOSTBPS 
@@ -68,14 +67,14 @@
 #ifdef DEBUG // defined by outside forces
  #define NOISPPROG 1        // disable ISP programmer
  #define NOXBIN 1           // disable binary load
- #define NONYI 1            // disable NYI messages
  #define SHORTSTR 1         // only short strings
  #define NOMONITORHELP 1    // disable monitor help function
  #define NOMOVERSION 1      // disable version command
- #define NOMOINFO 1         // disable monitor info command
  #define NOEXTREM 1         // disable extern remote
  #define NO90   1           // remove AT90 MCUs
 #endif
+// #define NOMOINFO 1         // disable monitor info command
+// #define NONYI 1            // disable NYI messages
 // #define NOMEGA 1           // remove ATmega MCUs
 // #define NOTINY 1           // remove ATtiny MCUs
 // #define TXODEBUG 1         // allow debug output over TXOnly line
@@ -128,7 +127,7 @@
 #define MAXBUFHEXSTR "90"  // hex representation string of MAXBUF 
 #define MAXMEMBUF 150 // size of memory buffer
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
-#define MAXBREAK 20 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
+#define MAXBREAK 16 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
 #define MAXNAMELEN 16 // maximal length of MCU name (incl. NUL terminator)
 
 // communication bit rates 
@@ -164,12 +163,16 @@
 #define CONNERR_NO_ISP_REPLY 1 // connection error: no ISP reply
 #define CONNERR_NO_DW_REPLY 2 // connection error: no DW reply
 #define CONNERR_UNSUPPORTED_MCU 3 // connection error: MCU not supported
-#define CONNERR_LOCK_BITS 4 // connection error: lock bits are set
-#define CONNERR_STUCKAT1_PC 5 // connection error: MCU has PC with stuck-at-one bits
-#define CONNERR_CAPACITIVE_LOAD 6 // connection error: capacitive load on reset line
-#define CONNERR_NO_TARGET_POWER 7 // target has no power
-#define CONNERR_WRONG_MCU 8 // wrong MCU (detected by monitor mcu command)
-#define CONNERR_UNKNOWN 9 // unknown connection error
+#define CONNERR_CANNOT_CLEAR_LOCK_BITS 4 // connection error: lock bits could not be cleared
+#define CONNERR_LOCK_BITS_NOT_MANAGED 5 // connection error: lock bits are set
+#define CONNERR_BOOTRST 6 // connection error: could not unprogram bootrst
+#define CONNERR_STUCKAT1_PC 7 // connection error: MCU has PC with stuck-at-one bits
+#define CONNERR_CAPACITIVE_LOAD 8 // connection error: capacitive load on reset line
+#define CONNERR_NO_TARGET_POWER 9 // target has no power
+#define CONNERR_WRONG_MCU 10 // wrong MCU (detected by monitor mcu command)
+#define CONNERR_CANNOT_SET_DWEN 11 // Cannot set DWEN with ISP programming
+#define CONNERR_DWEN_NOT_MANAGED 12 // DWEN not managed by dw-link
+#define CONNERR_UNKNOWN 14 // unknown connection error
 #define NO_FREE_SLOT_FATAL 101 // no free slot in BP structure
 #define PACKET_LEN_FATAL 102 // packet length too large
 #define WRONG_MEM_FATAL 103 // wrong memory type
@@ -226,8 +229,6 @@ struct breakpoint
 
 byte bpcnt;             // number of ACTIVE breakpoints (there may be as many as MAXBREAK used ones from the last execution!)
 byte bpused;            // number of USED breakpoints, which may not all be active
-byte maxbreak = MAXBREAK; // actual number of active breakpoints allowed
-boolean onlysbp = false; // only software breakpoints allowed
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
@@ -238,22 +239,33 @@ enum ispspeedtype {SUPER_SLOW_ISP, SLOW_ISP, NORMAL_ISP }; // isp speed: 0.8 kHz
 struct context {
   unsigned int wpc; // pc (using word addresses)
   unsigned int sp; // stack pointer
+  statetype state; // system state
   byte sreg;    // status reg
   byte regs[32]; // general purpose regs
-  boolean saved; // all of the regs have been saved
-  statetype state; // system state
-  boolean levelshifting; // true when using dw-probe sitting on an Arduino board
-  boolean autopc; // do an automagic power-cycle
-  boolean dwactivated; // will be true after dw has been activated once; if then NOTCONN_STATE, you need to leave!
-  boolean readbeforewrite; // read before write when loading
-  byte tmask; // run timers while stopped when tmask = 0xDF, freeze when tmask = 0xFF
+  boolean saved:1; // all of the regs have been saved
+  boolean levelshifting:1; // true when using dw-probe sitting on an Arduino board
+  boolean autopc:1; // do an automagic power-cycle
+  boolean dwactivated:1; // will be true after dw has been activated once; if then NOTCONN_STATE, you need to leave!
+  boolean notloaded:1; // when no binary has been loaded yet
   unsigned long bps; // debugWIRE communication speed
-  boolean safestep; // if true, then single step in a safe way, i.e. not interruptable
   ispspeedtype ispspeed;
-  boolean verifyload; // check whether flash was successful
-  boolean onlyloaded; // allow execution only after load command
-  boolean notloaded; // when no binary has been loaded yet
 } ctx;
+
+struct monitorstate {
+  byte tmask; // run timers while stopped when tmask = 0xDF, freeze when tmask = 0xFF
+  byte maxbreak; // actual number of active breakpoints allowed
+  boolean onlysbp:1; // only software breakpoints allowed
+  boolean atexit_leave:1; // leave debugWIRE at exit
+  boolean readbeforewrite:1; // read before write when loading
+  boolean noread:1; // no read while loading
+  boolean onlyloaded:1; // allow execution only after load command
+  boolean rangestepping:1;
+  boolean safestep:1; // if true, then single step in a safe way, i.e. not interruptable
+  boolean verifyload:1; // check whether flash was successful
+  boolean nobootrst:1; // pseudo monitor option: Do not manage BOOTRST fuse
+  boolean nodwen:1; // pseudo monitor option: Do not manage DWEN fuse
+  boolean nolockbits:1; // pseudo monitor option: Do not manage lockbits
+} mon;
 
 // use LED to signal system state
 // LED off = not connected to target system, ISP connected, or transitional
@@ -370,8 +382,11 @@ struct {
   byte         eecr;         // io-reg address of EECR register
   byte         eearh;        // io-reg address of EARL register (0 if none)
   const char*  name;         // pointer to name in PROGMEM
-  const byte*  mask;         // pointer to mask array in PROGMEM
-  byte         dwenfuse;     // bit mask for DWEN fuse in high fuse byte
+  const byte*  maskregs;     // pointer to write-only mask array and read-only mask array in PROGMEM
+  byte         dwenbase;     // base address for dwen
+  byte         dwenmask;     // bit mask for DWEN fuse 
+  byte         bootrstbase;  // base address for BOOTRST fuse
+  byte         bootrstmask;  // bit mask for BOOTRST
   byte         sutmsk;       // bit mask for selecting SUT
   byte         eedr;         // address of EEDR (computed from EECR)
   byte         eearl;        // address of EARL (computed from EECR)
@@ -393,38 +408,75 @@ struct mcu_info_type {
   byte         eecr;           // address of EECR register
   byte         eearh;          // address of EARL register (0 if none)
   boolean      avreplus;       // AVRe+ architecture
+  byte         dwenbase;       // DWEN fuse base
+  byte         dwenmask;       // DWEN fuse mask
+  byte         bootrstbase;    // BOOTRST fuse abse
+  byte         bootrstmask;    // BOOTRST fuse mask
   const char*  name;           // pointer to name in PROGMEM
-  const byte*  mask;       // I/O register mask
+  const byte*  mask;           // I/O register mask
 };
 
 #if !defined(NOTINY)
-const byte t13mask[] PROGMEM =  { 0x4e, 0};
-const byte t2313mask[] PROGMEM = { 0x2c, 0x3f, 0x46, 0x57, 0 };
-const byte t4313mask[] PROGMEM = { 0x2c, 0x46, 0x47, 0x57, 0 };
-const byte tX4mask[] PROGMEM = { 0x42, 0x47, 0};
-const byte tX41mask[] PROGMEM = { 0x42, 0x47, 0x80, 0x90, 0xb0, 0xc8, 0};
-const byte tX5mask[] PROGMEM = { 0x42, 0 };
-const byte tX61mask[] PROGMEM = { 0x40, 0 };
-const byte tX7mask[] PROGMEM = { 0x4e, 0x51, 0xd2, 0 };
-const byte t43mask[] PROGMEM = { 0x47, 0 };
-const byte t828mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0 };
-const byte tX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0 };
-const byte t1634mask[] PROGMEM = { 0x40, 0x4e, 0x73, 0 };
+const byte t13mask[] PROGMEM =  { 0x4e, 0,
+                                  0x26, 0x28, 0x36, 0x41, 0x46, 0x51, 0x57, 0x58, 0x5a, 0 };
+const byte t2313mask[] PROGMEM = { 0x2c, 0x3f, 0x46, 0x57, 0,
+                                   0x28, 0x2b, 0x2e, 0x30, 0x36, 0x39, 0x41, 0x42, 0x51, 0x58, 0x5a, 0 };
+const byte t4313mask[] PROGMEM = { 0x2c, 0x46, 0x47, 0x57, 0,
+                                   0x24, 0x25, 0x28, 0x2b, 0x2e, 0x30, 0x36, 0x39, 0x41, 0x42, 0x51, 0x58, 0x5a, 0 };
+const byte tX4mask[] PROGMEM = { 0x42, 0x47, 0,
+                                 0x26, 0x28, 0x2b, 0x2e, 0x30, 0x36, 0x39, 0x41, 0x51, 0x57, 0x58, 0x5a, 0 };
+const byte tX41mask[] PROGMEM = { 0x42, 0x47, 0x80, 0x90, 0xb0, 0xc8, 0,
+                                  0x25, 0x2e, 0x30, 0x57, 0x58, 0x5a, 0x86, 0x96, 0xa0, 0xa2, 0 };
+const byte tX5mask[] PROGMEM = { 0x42, 0,
+                                 0x28, 0x2e, 0x30, 0x36, 0x41, 0x46, 0x4f, 0x51, 0x54, 0x57, 0x5a, 0 };
+const byte tX61mask[] PROGMEM = { 0x40, 0,
+                                  0x26, 0x2e, 0x30, 0x36, 0x39, 0x41, 0x48, 0x4a, 0x4e, 0x51, 0x57, 0x58, 0x5a, 0 };
+const byte tX7mask[] PROGMEM = { 0x4e, 0x51, 0xd2, 0,
+                                 0x20, 0x23, 0x35, 0x36, 0x3b, 0x3c, 0x4d, 0x50, 0x60, 0x61, 0x66, 0x7a, 0xb9, 0xbb, 0xcb, 0 };
+const byte t43mask[] PROGMEM = { 0x47, 0,
+                                 0x26, 0x28, 0x2b, 0x2e, 0x30, 0x36, 0x39, 0x41, 0x46, 0x51, 0x57, 0x58, 0x5a, 0 };
+const byte t828mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0,
+                                  0x35, 0x36, 0x3b, 0x3c, 0x4d, 0x7a, 0xbc, 0xbd, 0xc0, 0 };
+const byte tX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0,
+                                 0x23, 0x26, 0x29, 0x2c, 0x2d, 0x2e, 0x32, 0x35, 0x36, 0x3b,
+                                 0x3c, 0x4d, 0x50, 0x60, 0x61, 0x64, 0x66, 0 };
+const byte t1634mask[] PROGMEM = { 0x40, 0x4e, 0x73, 0,
+                                   0x23, 0x46, 0x4b, 0x4d, 0x57, 0x59, 0x63, 0x64, 0x65, 0x66, 0x70, 0x79, 0x7a, 0x7c, 0 };
 #endif
 #if !defined(NOMEGA)
-const byte mX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0 };
-const byte m328pbmsk[] PROGMEM = { 0x4e, 0x51, 0x82, 0x92, 0xa2, 0xae, 0xc6, 0xce, 0 };
-const byte mXu2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0 }; 
-const byte mXy1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xd2, 0 };
+const byte mX8mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xc6, 0,
+                                 0x23, 0x26, 0x29, 0x35, 0x36, 0x37, 0x3b, 0x3c, 0x4d, 0x50, 0x60,
+                                 0x61, 0x64, 0x66, 0x7a, 0xbc, 0xc0, 0 };
+const byte m328pbmsk[] PROGMEM = { 0x4e, 0x51, 0x82, 0x92, 0xa2, 0xae, 0xc6, 0xce, 0,
+                                   0x23, 0x26, 0x29, 0x2c, 0x35, 0x36, 0x37, 0x38, 0x39,
+                                   0x3b, 0x3c, 0x4d, 0x50, 0x60, 0x61, 0x64, 0x65, 0x66, 0x7a, 0xad, 0xbc, 0xc0, 0xc8, 0xdc, 0 };
+const byte mXu2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0,
+                                  0x23, 0x26, 0x29, 0x35, 0x36, 0x3b, 0x3c, 0x4d, 0x50,
+                                  0x60, 0x61, 0x63, 0x66, 0xd2, 0xe6, 0xef, 0xf2, 0 }; 
+const byte mXy1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xd2, 0,
+                                  0x23, 0x26, 0x29, 0x2c, 0x35, 0x36, 0x3c, 0x4d, 0x50, 0x60,
+                                  0x61, 0x66, 0x7a, 0xcb, 0xd9, 0xdc, 0xe0, 0 };
 #endif
 #if !defined(NO90)
-const byte auX2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0 };
-const byte ap1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0 };
-const byte ap81mask[] PROGMEM = { 0x51, 0x56, 0x58, 0 };
-const byte ap161mask[] PROGMEM = { 0x51, 0x56, 0x58, 0x59, 0 };
-const byte apXmask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xab, 0xc6, 0xce, 0 };
-const byte mHVmsk[] PROGMEM = { 0x4e, 0x51, 0 };
-const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
+const byte auX2mask[] PROGMEM = { 0x4e, 0x51, 0x7f, 0xce, 0xf1, 0,
+                                  0x23, 0x26, 0x29, 0x35, 0x36, 0x3b, 0x3c, 0x4d, 0x50, 0x60,
+                                  0x61, 0x63, 0x66, 0xd2, 0xe6, 0xef, 0xf2, 0 };
+const byte ap1mask[] PROGMEM = { 0x4e, 0x51, 0x82, 0,
+                                 0x23, 0x29, 0x2c, 0x35, 0x36, 0x3c, 0x4d, 0x50, 0x60, 0x61, 0x66, 0x7a, 0 };
+const byte ap81mask[] PROGMEM = { 0x51, 0x56, 0x58, 0, 0x20, 0x22, 0x23, 0x26,
+                                  0x29, 0x2c, 0x38, 0x40, 0x82, 0x83, 0x88, 0 };
+const byte ap161mask[] PROGMEM = { 0x51, 0x56, 0x58, 0x59, 0, 0x20, 0x22, 0x23, 0x26,
+                                   0x29, 0x2c, 0x38, 0x40, 0x6c, 0x82, 0x83, 0x88, 0 };
+const byte apXmask[] PROGMEM = { 0x4e, 0x51, 0x82, 0xab, 0xc6, 0xce, 0,
+                                 0x23, 0x29, 0x2c, 0x35, 0x36, 0x3c, 0x4d, 0x50, 0x60, 0x61, 0x66, 0x7a, 0xc0, 0xca, 0 };
+const byte mHVAmsk[] PROGMEM = { 0x4e, 0x51, 0,
+                                0x20, 0x23, 0x26, 0x35, 0x36, 0x37, 0x3c, 0x4d, 0x54, 0x60,
+                                0x61, 0x7a, 0xc8, 0xe0, 0xe1, 0xe2, 0xe3, 0xfe, 0};
+const byte mHVBmsk[] PROGMEM = { 0x4e, 0x51, 0,
+                                 0x20, 0x21, 0x22, 0x23, 0x26, 0x35, 0x36, 0x37, 0x3b, 0x3c,
+                                 0x4d, 0x54, 0x60, 0x61, 0x7a, 0xb9, 0xbc, 0xc8, 0xfe, 0 };
+const byte m64HVEmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0,
+                                   0x20, 0x23, 0x35, 0x36, 0x3b, 0x3c, 0x4d, 0x54, 0x60, 0x61, 0x62, 0xc3, 0 };
 #endif
 
 // mcu infos (for all AVR mcus supporting debugWIRE)
@@ -434,87 +486,88 @@ const byte m64HVmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0 };
 // eep is eep_size/64, flsh is flsh_size/1024, dwdr is io-reg addr of DW reg, pg is flash_page_size/2,
 // er4 is 1 iff the erase command erase 4 pages, boot is the (highest) boot sector (word-)address,
 // eecr is eeprom control io-reg, eearh is eeprom adress reg high io-reg, 
-// sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh  plus name            mask
+// sig  sram low eep flsh dwdr  pg er4  boot    eecr eearh  +  db dm    bb bm    name            mask
 #if !defined(NOTINY)              
-  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny13,      t13mask},
+  {0x9007,  1, 1,  1,  1, 0x2E,  16, 0, 0x0000, 0x1C, 0x00, 0, 1, 0x08, 0, 0x00, attiny13,      t13mask},
 
-  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny2313,  t2313mask},
-  {0x910A,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x00, 0, attiny2313a, t4313mask},
-  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0, attiny4313,  t4313mask},
+  {0x910A,  2, 1,  2,  2, 0x1f,  16, 0, 0x0000, 0x1C, 0x00, 0, 1, 0x80, 0, 0x00, attiny2313,  t2313mask},
+  {0x910A,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x00, 0, 1, 0x80, 0, 0x00, attiny2313a, t4313mask},
+  {0x920D,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0, 1, 0x80, 0, 0x00, attiny4313,  t4313mask},
 
-  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0, attiny43,      t43mask},
+  {0x920C,  4, 1,  1,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x00, 0, 1, 0x40, 0, 0x00, attiny43,      t43mask},
 
-  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0, attiny24,      tX4mask},   
-  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny44,      tX4mask},
-  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny84,      tX4mask},
+  {0x910B,  2, 1,  2,  2, 0x27,  16, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny24,      tX4mask},   
+  {0x9207,  4, 1,  4,  4, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny44,      tX4mask},
+  {0x930C,  8, 1,  8,  8, 0x27,  32, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny84,      tX4mask},
   
-  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0, attiny441,    tX41mask}, 
-  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0, attiny841,    tX41mask},
+  {0x9215,  4, 0,  4,  4, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny441,    tX41mask}, 
+  {0x9315,  8, 0,  8,  8, 0x27,   8, 1, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny841,    tX41mask},
   
-  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0, attiny25,      tX5mask},
-  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny45,      tX5mask},
-  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny85,      tX5mask},
+  {0x9108,  2, 1,  2,  2, 0x22,  16, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny25,      tX5mask},
+  {0x9206,  4, 1,  4,  4, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny45,      tX5mask},
+  {0x930B,  8, 1,  8,  8, 0x22,  32, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny85,      tX5mask},
   
-  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0, attiny261,    tX61mask},
-  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny461,    tX61mask},
-  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0, attiny861,    tX61mask},
+  {0x910C,  2, 1,  2,  2, 0x20,  16, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny261,    tX61mask},
+  {0x9208,  4, 1,  4,  4, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny461,    tX61mask},
+  {0x930D,  8, 1,  8,  8, 0x20,  32, 0, 0x0000, 0x1C, 0x1F, 0, 1, 0x40, 0, 0x00, attiny861,    tX61mask},
   
-  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0, attiny87,      tX7mask},  
-  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0, attiny167,     tX7mask},
+  {0x9387,  8, 0,  8,  8, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0, 1, 0x40, 0, 0x00, attiny87,      tX7mask},  
+  {0x9487,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 0, 1, 0x40, 0, 0x00, attiny167,     tX7mask},
 
-  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0, attiny828,    t828mask},
+  {0x9314,  8, 0,  4,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 0, 1, 0x40, 2, 0x01, attiny828,    t828mask},
 
-  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0, attiny48,      tX8mask},  
-  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0, attiny88,      tX8mask},
+  {0x9209,  4, 0,  1,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0, 1, 0x40, 0, 0x00, attiny48,      tX8mask},  
+  {0x9311,  8, 0,  1,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 0, 1, 0x40, 0, 0x00, attiny88,      tX8mask},
   
-  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0, attiny1634,  t1634mask},
+  {0x9412, 16, 0,  4, 16, 0x2E,  16, 1, 0x0000, 0x1C, 0x00, 0, 1, 0x40, 0, 0x00, attiny1634,  t1634mask},
 #endif
 
 #if !defined(NOMEGA)
-  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48a,     mX8mask},
-  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48pa,    mX8mask},
-  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega48pb,    mX8mask}, // untested
-  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, atmega88a,     mX8mask},
-  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, atmega88pa,    mX8mask},
-  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, atmega88pb,    mX8mask}, // untested
-  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168a,    mX8mask},
-  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168pa,   mX8mask},
-  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, atmega168pb,   mX8mask}, 
-  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328,     mX8mask},
-  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328p,    mX8mask},
-  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega328pb, m328pbmsk},
+  {0x9205,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, 1, 0x40, 0, 0x00, atmega48a,     mX8mask},
+  {0x920A,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, 1, 0x40, 0, 0x00, atmega48pa,    mX8mask},
+  {0x9210,  8, 0,  4,  4, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, 1, 0x40, 0, 0x00, atmega48pb,    mX8mask}, // untested
+  {0x930A, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, atmega88a,     mX8mask},
+  {0x930F, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, atmega88pa,    mX8mask},
+  {0x9316, 16, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, atmega88pb,    mX8mask}, // untested
+  {0x9406, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, atmega168a,    mX8mask},
+  {0x940B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, atmega168pa,   mX8mask},
+  {0x9415, 16, 0,  8, 16, 0x31,  64, 0, 0x1F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, atmega168pb,   mX8mask}, 
+  {0x9514, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega328,     mX8mask},
+  {0x950F, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega328p,    mX8mask},
+  {0x9516, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega328pb, m328pbmsk},
   
-  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, atmega8u2,    mXu2mask}, // untested
-  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, atmega16u2,   mXu2mask}, // untested
-  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, atmega32u2,   mXu2mask}, // untested
+  {0x9389,  8, 0,  8,  8, 0x31,  32, 0, 0x0000, 0x1F, 0x22, 1, 1, 0x80, 1, 0x01, atmega8u2,    mXu2mask}, // untested
+  {0x9489,  8, 0,  8, 16, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, 1, 0x80, 1, 0x01, atmega16u2,   mXu2mask}, // untested
+  {0x958A, 16, 0, 16, 32, 0x31,  64, 0, 0x0000, 0x1F, 0x22, 1, 1, 0x80, 1, 0x01, atmega32u2,   mXu2mask}, // untested
 
-  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega32c1,   mXy1mask}, // untested
-  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, atmega64c1,   mXy1mask}, // untested
-  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, atmega16m1,   mXy1mask}, // untested
-  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, atmega32m1,   mXy1mask}, // untested
-  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, atmega64m1,   mXy1mask}, // untested
+  {0x9586, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega32c1,   mXy1mask}, // untested
+  {0x9686, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega64c1,   mXy1mask}, // untested
+  {0x9484, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega16m1,   mXy1mask}, // untested
+  {0x9584, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega32m1,   mXy1mask}, // untested
+  {0x9684, 64, 0, 32, 64, 0x31, 128, 0, 0x7F00, 0x1F, 0x22, 1, 1, 0x40, 1, 0x01, atmega64m1,   mXy1mask}, // untested
 #endif
 
 #if !defined(NO90)
-  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 1, at90usb82,    auX2mask}, // untested
-  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 1, at90usb162,   auX2mask}, 
+  {0x9382,  8, 0,  8,  8, 0x31,  64, 0, 0x1E00, 0x1F, 0x22, 1, 1, 0x80, 1, 0x01, at90usb82,    auX2mask}, // untested
+  {0x9482,  8, 0,  8, 16, 0x31,  64, 0, 0x3E00, 0x1F, 0x22, 1, 1, 0x80, 1, 0x01, at90usb162,   auX2mask}, 
 
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm1,      ap1mask}, // untested
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm2b,     apXmask}, // untested
-  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, at90pwm3b,     apXmask}, // untested
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, at90pwm1,      ap1mask}, // untested
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, at90pwm2b,     apXmask}, // untested
+  {0x9383,  8, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, at90pwm3b,     apXmask}, // untested
 
-  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 1, at90pwm81,    ap81mask}, // untested
-  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, at90pwm161,  ap161mask}, // untested
+  {0x9388,  4, 0,  8,  8, 0x31,  32, 0, 0x0F80, 0x1C, 0x1F, 1, 1, 0x40, 1, 0x01, at90pwm81,    ap81mask}, // untested
+  {0x948B, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, 1, 0x40, 1, 0x01, at90pwm161,  ap161mask}, // untested
   
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, at90pwm216,    apXmask}, // untested
-  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, at90pwm316,    apXmask}, // untested
-  {0x9310,  8, 0,  4,  8, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1, atmega8hva,     mHVmsk}, // untested
-  {0x940C,  8, 0,  4, 16, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1, atmega16hva,    mHVmsk}, // untested
-  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, atmega16hvb,    mHVmsk}, // untested
-  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, atmega32hvb,    mHVmsk}, // untested
-  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, atmega16hvbrevb,mHVmsk}, // untested
-  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, atmega32hvbrevb,mHVmsk}, // untested
-  {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 1, atmega64hve2, m64HVmsk}, // untested
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, at90pwm216,    apXmask}, // untested
+  {0x9483, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1F, 0x22, 1, 1, 0x40, 2, 0x01, at90pwm316,    apXmask}, // untested
+  
+  {0x9310,  8, 0,  4,  8, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1, 0, 0x10, 0, 0x00, atmega8hva,     mHVAmsk}, // untested
+  {0x940C,  8, 0,  4, 16, 0x31,  64, 0, 0x0000, 0x1C, 0x1F, 1, 0, 0x10, 0, 0x00, atmega16hva,    mHVAmsk}, // untested
+  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, 1, 0x08, 1, 0x01, atmega16hvb,    mHVBmsk}, // untested
+  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, 1, 0x08, 1, 0x01, atmega32hvb,    mHVBmsk}, // untested
+  {0x940D, 16, 0,  8, 16, 0x31,  64, 0, 0x1F00, 0x1C, 0x1F, 1, 1, 0x08, 1, 0x01, atmega16hvbrevb,mHVBmsk}, // untested
+  {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, 1, 0x08, 1, 0x01, atmega32hvbrevb,mHVBmsk}, // untested
+  {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 1, 1, 0x08, 1, 0x01, atmega64hve2, m64HVEmsk}, // untested
 #endif
   { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0, NULL,             NULL}, // last mark
 };
@@ -525,7 +578,7 @@ unsigned long speedlimit = SPEEDLIMIT;
 
 enum Fuses { CkDiv8, CkDiv1, CkRc, CkARc, CkXtal, CkExt, CkSlow, Erase, DWEN, UnknownFuse };
 
-enum FuseByte { LowFuse, HighFuse, ExtendedFuse };
+enum FuseByte { LowFuse=0, HighFuse=1, ExtendedFuse=2 };
 
 // monitor command names
 const char mohelp[] PROGMEM = "help";
@@ -539,9 +592,16 @@ const char moverify[] PROGMEM = "verify";
 const char motimers[] PROGMEM = "timers";
 const char mobreak[] PROGMEM = "breakpoints";
 const char mosinglestep[] PROGMEM = "singlestep";
-const char mospeed[] PROGMEM = "speed";
 const char mocache[] PROGMEM = "caching";
 const char morange[] PROGMEM = "rangestepping";
+const char moatexit[] PROGMEM = "atexit";
+const char moerasebeforeload[] PROGMEM = "erasebeforeload";
+
+const char monnobootrst[] PROGMEM = "\x17nobootrst";
+const char monnodwen[] PROGMEM = "\x17nodwen";
+const char monnolockbits[] PROGMEM = "\x17nolockbits";
+const char monmcu[] PROGMEM = "\x17mcu";
+
 const char motest[] PROGMEM = "LiveTests";
 const char mounk[] PROGMEM ="";
 const char moamb[] PROGMEM ="";
@@ -558,18 +618,23 @@ const char moamb[] PROGMEM ="";
 #define MOTIMERS 8
 #define MOBREAK 9
 #define MOSINGLESTEP 10
-#define MOSPEED 11
-#define MOTEST 12
-#define MOCACHE 13
-#define MORANGE 14
-#define MOUNK 15
-#define MOAMB 16
-#define NUMMONCMDS 17
+#define MOTEST 11
+#define MOCACHE 12
+#define MORANGE 13
+#define MOATEXIT 14
+#define MOEBL 15
+#define MONOBOOT 16
+#define MONODWEN 17
+#define MONOLOCK 18
+#define MOMCU 19
+#define MOUNK 20
+#define MOAMB 21
+#define NUMMONCMDS 22
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
-  mohelp, moinfo, moversion, modwire, moreset, moload, moonly, moverify, motimers, mobreak, mosinglestep, mospeed, 
-  motest, mocache, morange, mounk, moamb }; 
+  mohelp, moinfo, moversion, modwire, moreset, moload, moonly, moverify, motimers, mobreak, mosinglestep,  
+  motest, mocache, morange, moatexit, moerasebeforeload, monnobootrst, monnodwen, monnolockbits, monmcu, mounk, moamb }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -698,7 +763,8 @@ int main(void) {
   digitalWrite(DEBTX, LOW); // PD3 on UNO
 #endif
   initSession(); // initialize all critical global variables
-
+  mcu.required[0] = '\0'; // initialize the 'required' label. 
+  
   //  DEBLN(F("Now configuereSupply"));
   DEBLN(F("Setup done"));
   
@@ -770,12 +836,7 @@ void initSession(void)
 {
   DEBLN(F("initSession"));
   flashidle = true;
-  ctx.readbeforewrite = true;
-  ctx.safestep = true;
   ctx.dwactivated = false;
-  ctx.tmask = 0xFF;
-  ctx.verifyload = true;
-  ctx.onlyloaded = true;
   ctx.notloaded = true;
   bpcnt = 0;
   bpused = 0;
@@ -788,6 +849,25 @@ void initSession(void)
   targetInitRegisters();
   mcu.name = (const char *)unknown;
 }
+
+// init monitor values
+void initMonValues(void)
+{
+  mon.atexit_leave = false;
+  mon.readbeforewrite = true;
+  mon.noread = false;
+  mon.safestep = true;
+  mon.tmask = 0xDF;
+  mon.verifyload = true;
+  mon.onlyloaded = true;
+  mon.onlysbp = false;
+  mon.maxbreak = MAXBREAK;
+  mon.rangestepping = true;
+  mon.nobootrst = false;
+  mon.nodwen = false;
+  mon.nolockbits = false;
+}
+
 
 // Report a fatal error and stop everything
 // error will be displayed when trying to execute.
@@ -932,10 +1012,6 @@ void gdbParsePacket(const byte *buff)
     gdbSendReply("OK");
     break;
 #endif
-  case '=':
-    strncpy(mcu.required, (char *)&buff[1], MAXNAMELEN);      /* copy name of required MCU */
-    mcu.required[MAXNAMELEN-1] = 0;
-    break;
   case 'H':                                           /* Set thread, always OK */
     gdbSendReply("OK");
     break;
@@ -967,6 +1043,8 @@ void gdbParsePacket(const byte *buff)
     gdbSendReply("OK");                               /* and signal that everything is OK */
                                                       /* after that avr-gdb will disconnect */
     _delay_ms(500);                                   /* wait a bit */
+    if (mon.atexit_leave)
+      targetStop();
     dwlrestart();                                     /* fresh restart */
     break;
   case 'c':                                           /* continue */
@@ -1001,8 +1079,9 @@ void gdbParsePacket(const byte *buff)
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0) /* monitor command */
 	gdbParseMonitorPacket(buf+6);
     else if (memcmp_P(buff, (void *)PSTR("qSupported"), 10) == 0) {
-      //DEBLN(F("qSupported"));
       initSession();                                  /* always init all vars when gdb connects */
+      if (mcu.required[0] == '\0')                    /* if no MCU name given, initialize also monitor values */
+        initMonValues();
       gdbStartConnect(true);                          /* and try to connect */
       gdbSendPSTR((const char *)PSTR("PacketSize=" MAXBUFHEXSTR)); /* needs to be given in hexadecimal! */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
@@ -1059,7 +1138,6 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MORESET:
     if (gdbReset()) gdbReplyMessagePSTR(PSTR(LONGSHORT("MCU has been reset","DONE")), -1);
-    else gdbReplyMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first","DW OFF")), -1);
     break;
   case MOLOAD:
     gdbLoadOption(cmdbuf[mooptix]); 
@@ -1079,17 +1157,27 @@ void gdbParseMonitorPacket(byte *buf)
   case MOSINGLESTEP:
     gdbSteppingOption(cmdbuf[mooptix]);
     break;
-  case MOSPEED:
-    gdbSpeed(cmdbuf[mooptix]);
+  case MOATEXIT:
+    gdbAtExit(cmdbuf[mooptix]);
     break;
-#if !defined(NONYI)
   case MOCACHE:
     gdbReplyMessagePSTR(PSTR("Caching is not implemented"), -1);
     break;
   case MORANGE:
     gdbReplyMessagePSTR(PSTR("Range stepping is not yet implemented"), -1);
     break;
-#endif
+  case MOEBL:
+    gdbReplyMessagePSTR(PSTR("'Erase-before-load' is not supported on debugWIRE targets"), -1);
+    break;
+  case MONOBOOT:
+  case MONODWEN:
+  case MONOLOCK:
+    reportFatalError(200, false);
+    gdbPseudoOption(mocmd);
+    break;
+  case MOMCU:
+    gdbStoreReqMcu(&cmdbuf[mooptix]);
+    break;
 #if defined(UNITDW) ||  defined(UNITTG) ||  defined(UNITGDB) ||  defined(UNITALL)
   case MOTEST:
     if (targetOffline()) {
@@ -1174,6 +1262,47 @@ void gdbAmbiguousCmd(void) {
   gdbReplyMessagePSTR(PSTR(LONGSHORT("Ambiguous 'monitor' command string","AMBG")), -1);
 }
 
+inline void gdbPseudoOption(byte opt) {
+  switch(opt) {
+  case MONOBOOT:
+    mon.nobootrst = true;
+    break;
+  case MONODWEN:
+    mon.nodwen = true;
+    break;
+  case MONOLOCK:
+    mon.nolockbits = true;
+    break;
+  }
+  gdbReplyMessagePSTR(PSTR("OK"), -1);
+}
+
+inline void gdbStoreReqMcu(char mcuname[]) {
+  strncpy(mcu.required, mcuname, MAXNAMELEN);
+  mcu.required[MAXNAMELEN - 1] = '\0';
+}
+ 
+inline void gdbAtExit(char arg) {
+  switch (arg) {
+  case 's':
+    mon.atexit_leave = false;
+    break;
+  case 'l':
+    mon.atexit_leave = true;
+    break;
+  case '\0':
+    break;
+  default:
+    gdbUnknownOpt();
+    return;
+  }
+  if (mon.atexit_leave) 
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Leave debugWIRE at exit","LEAVE")), -1);
+  else 
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Stay in debugWIRE at exit","STAY")), -1);
+}
+  
+
 inline void gdbBreakOption(char arg) {
   switch (arg) {
   case 'h':
@@ -1239,7 +1368,7 @@ void gdbInfo(void) {
   gdbDebugMessagePSTR(PSTR("Number of debugWIRE timeouts: "), timeoutcnt);
   if (fatalerror) {
     if (fatalerror < 100) {
-      gdbReportConnectionProblem(fatalerror, true);
+      gdbReportConnectionProblem(fatalerror);
     } else {
       gdbReplyMessagePSTR(PSTR("Last fatal error: "), fatalerror);
     }
@@ -1252,7 +1381,7 @@ void gdbInfo(void) {
 // report whether timers will run when stopped
 void gdbReportTimers(void)
 {
-  if (ctx.tmask == 0xDF)
+  if (mon.tmask == 0xDF)
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Timers will run when execution is stopped","RUN")), -1);
   else 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Timers are frozen when execution is stopped","FREEZE")), -1);
@@ -1303,9 +1432,9 @@ boolean stuckAtOneOrCap(void)
     }
 #else
     if  (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
-      gdbReportConnectionProblem(CONNERR_STUCKAT1_PC,false);
+      gdbReportConnectionProblem(CONNERR_STUCKAT1_PC);
     } else {
-      gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD,false);
+      gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD);
     }
     return true;
   }
@@ -1329,7 +1458,7 @@ void setupDW(void)
     if (!DWreadRegister(1, true)) { // read register unsuccessful, must be a different address
       mcu.dwdr = 0x27;
       mcu.name = attiny2313a;
-      mcu.mask = t4313mask;
+      mcu.maskregs = t4313mask;
     }
   }
 #endif
@@ -1343,12 +1472,12 @@ boolean gdbStartConnect(boolean initialconnect)
   _delay_ms(100); // allow for startup of MCU initially
   mcu.sig = 0;
   if (digitalRead(DWLINE) == LOW) { // externally un-powered!
-    gdbReportConnectionProblem(CONNERR_NO_TARGET_POWER,!initialconnect); // Oops, target is not powered up
+    gdbReportConnectionProblem(CONNERR_NO_TARGET_POWER); // Oops, target is not powered up
     return false;
   }
   if (targetDWConnect(initialconnect)) { // if immediately in DW mode, that is OK!
     if (!gdbCheckMcu()) {
-      gdbReportConnectionProblem(CONNERR_WRONG_MCU,!initialconnect);
+      gdbReportConnectionProblem(CONNERR_WRONG_MCU);
       return false;
     }
     if (stuckAtOneOrCap())
@@ -1361,7 +1490,7 @@ boolean gdbStartConnect(boolean initialconnect)
     return true;
   conncode = targetISPConnect();
   if (conncode < 0) {
-    gdbReportConnectionProblem(conncode == -1 ? CONNERR_NO_ISP_REPLY : -conncode + 1,!initialconnect);
+    gdbReportConnectionProblem(-conncode);
     return false;
   }
   if (powerCycle()) { // power-cycle automatically or manually, then connect
@@ -1446,27 +1575,56 @@ void gdbReportConnected(void)
 
 // report connection problem using gdbDebugMessage with *** prefix
 // and halt further execution
-void gdbReportConnectionProblem(int errnum, boolean doprint)
+void gdbReportConnectionProblem(int errnum)
 {
-  if (doprint) {
 #if defined(SHORTSTR)
     gdbDebugMessagePSTR(PSTR("***CONN ERR:"), errnum);
 #else
     switch (errnum) {
-    case 0: return;
-    case 1: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not communicate by ISP; check wiring***"),-1); break;
-    case 2: gdbDebugMessagePSTR(PSTR("***Cannot connect: Could not activate debugWIRE***"),-1); break;
-    case 3: gdbDebugMessagePSTR(PSTR("***Cannot connect: Unsupported MCU***"),-1); break;
-    case 4: gdbDebugMessagePSTR(PSTR("***Cannot connect: Lock bits could not be cleared***"),-1); break;
-    case 5: gdbDebugMessagePSTR(PSTR("***Cannot connect: PC with stuck-at-one bits***"),-1); break;
-    case 6: gdbDebugMessagePSTR(PSTR("***Cannot connect: RESET line has a capacitive load***"),-1); break;
-    case 7: gdbDebugMessagePSTR(PSTR("***Cannot connect: Target not powered or RESET shortened to GND***"),-1); break; 
-    case 8: gdbDebugMessagePSTR(PSTR("***MCU type does not match***"), -1); break;
-    default: gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons***"),-1); break;
+    case NO_FATAL: return;
+    case CONNERR_NO_ISP_REPLY:
+      gdbDebugMessagePSTR(PSTR("***Could not communicate by ISP; check wiring***"),-1);
+      break;
+    case CONNERR_NO_DW_REPLY:
+      gdbDebugMessagePSTR(PSTR("***Could not activate debugWIRE"),-1);
+      break;
+    case CONNERR_UNSUPPORTED_MCU:
+      gdbDebugMessagePSTR(PSTR("***Unsupported MCU"),-1);
+      break;
+    case CONNERR_CANNOT_CLEAR_LOCK_BITS:
+      gdbDebugMessagePSTR(PSTR("***Lock bits could not be cleared"),-1);
+      break;
+    case CONNERR_LOCK_BITS_NOT_MANAGED:
+      gdbDebugMessagePSTR(PSTR("***Lock bits are set, but not managed by dw-link. Cannot continue."), -1);
+      break;
+    case CONNERR_BOOTRST:
+      gdbDebugMessagePSTR(PSTR("***BOOTRST fuse could not be cleared"),-1);
+      break;
+    case CONNERR_STUCKAT1_PC:
+      gdbDebugMessagePSTR(PSTR("***PC with stuck-at-one bits"),-1);
+      break;
+    case CONNERR_CAPACITIVE_LOAD:
+      gdbDebugMessagePSTR(PSTR("***RESET line has a capacitive load"),-1);
+      break;
+    case CONNERR_NO_TARGET_POWER:
+      gdbDebugMessagePSTR(PSTR("***Target not powered or RESET shortened to GND"),-1);
+      break; 
+    case CONNERR_WRONG_MCU:
+      gdbDebugMessagePSTR(PSTR("***MCU type does not match"), -1);
+      break;
+    case CONNERR_DWEN_NOT_MANAGED:
+      gdbDebugMessagePSTR(PSTR("***DWEN is not set, but not managed by dw-link. Cannot continue."),
+                          -1);
+      break;
+    case CONNERR_CANNOT_SET_DWEN:
+      gdbDebugMessagePSTR(PSTR("***DWEN could not be programmed"), -1);
+      break;
+    default:
+      gdbDebugMessagePSTR(PSTR("***Cannot connect for unknown reasons"),-1);
+      break;
     }
 #endif
-  }
-  reportFatalError(errnum, false);
+    reportFatalError(errnum, false);
 }
 
 // report last error number
@@ -1482,15 +1640,15 @@ void gdbSteppingOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 's')
-      ctx.safestep = true;
+      mon.safestep = true;
     else if (arg == 'i')
-      ctx.safestep = false;
+      mon.safestep = false;
     else {
       gdbUnknownOpt();
       return;
     }
   }
-  if (ctx.safestep)
+  if (mon.safestep)
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Single-stepping is interrupt-safe","SAFE")), -1);
   else
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Single-stepping is interruptible","INTR")), -1);
@@ -1500,16 +1658,23 @@ void gdbSteppingOption(char arg)
 void gdbLoadOption(char arg)
 {
   if (arg != '\0') {
-    if (arg == 'r')
-      ctx.readbeforewrite = true;
-    else if (arg == 'w')
-      ctx.readbeforewrite = false;
-    else {
+    if (arg == 'r') {
+      mon.readbeforewrite = true;
+      mon.noread = false;
+    } else if (arg == 'w') {
+      mon.readbeforewrite = false;
+      mon.noread = false;
+    } else if (arg == 'o') {
+      mon.noread = true;
+      mon.readbeforewrite = true;
+    } else {
       gdbUnknownOpt();
       return;
     }
   }
-  if (ctx.readbeforewrite) 
+  if (mon.noread)
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("No reading when loading","NOREAD")), -1);
+  if (mon.readbeforewrite) 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Reading before writing when loading","READ")), -1);
   else 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("No reading before writing when loading","WRITE")), -1);
@@ -1519,15 +1684,15 @@ void gdbOnlyOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 'e')
-      ctx.onlyloaded = true;
+      mon.onlyloaded = true;
     else if (arg == 'd')
-      ctx.onlyloaded = false;
+      mon.onlyloaded = false;
     else {
       gdbUnknownOpt();
       return;
     }
   }
-  if (ctx.onlyloaded) 
+  if (mon.onlyloaded) 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Execution is only possible after a previous load command","FIRST LOAD")), -1);
   else 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Execution is always possible","ALWAYS")), -1);
@@ -1537,15 +1702,15 @@ void gdbVerifyOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 'e')
-      ctx.verifyload = true;
+      mon.verifyload = true;
     else if (arg == 'd')
-      ctx.verifyload = false;
+      mon.verifyload = false;
     else {
       gdbUnknownOpt();
       return;
     }
   }
-  if (ctx.verifyload) 
+  if (mon.verifyload) 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Verifying flash after load","VERIFY")), -1);
   else 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Load operations are not verified","NO VERIFY")), -1);
@@ -1557,11 +1722,11 @@ void gdbTimerOption(char arg)
 {
     switch (arg) {
     case 'r':
-      ctx.tmask = 0xDF;
+      mon.tmask = 0xDF;
       gdbReportTimers();
       break;
     case 'f':
-      ctx.tmask = 0xFF;
+      mon.tmask = 0xFF;
       gdbReportTimers();
       break;
     case '\0':
@@ -1577,45 +1742,25 @@ inline void gdbVersion(void)
   gdbReplyMessagePSTR(PSTR(LONGSHORT("dw-link version ","v") VERSION), -1);
 }
   
-// set DW communication speed
-void gdbSpeed(char arg)
-{
-  switch (arg) {
-  case 'h': speedlimit = SPEEDHIGH;
-    break;
-  case 'l': speedlimit = SPEEDLOW;
-    break;
-  case '\0':
-    gdbDebugMessagePSTR(PSTR(LONGSHORT("Current limit:             ","LIM:")), speedlimit);
-    break;
-  default:
-    gdbSendReply("");
-    return;
-  }
-  if (arg) doBreak(true);
-  gdbReplyMessagePSTR(PSTR(LONGSHORT("Current debugWIRE bitrate: ","BPS:")), ctx.bps);
-  return;
-}
-
 
 // "monitor h|4|a|s"
 // set maximum number of breakpoints and allowed types of breakpoints
 // h = only 1 hardware bp
 // 4 = 4 mixed bp
-// a = 20 mixed bp
-// s = 20 only software bp
+// a = MAXBREAK mixed bp
+// s = MAXBREAK only software bp
 inline void gdbSetMaxBPs(byte num, boolean only)
 {
-  onlysbp = only;
-  maxbreak = num;
+  mon.onlysbp = only;
+  mon.maxbreak = num;
   gdbGetMaxBPs();
 }
 
 inline void gdbGetMaxBPs(void)
 {
-  if (onlysbp) gdbReplyMessagePSTR(PSTR(LONGSHORT("Only software breakpoints, maximum: ", "SWBP:")), maxbreak);
-  else if (maxbreak == 1) gdbReplyMessagePSTR(PSTR(LONGSHORT("Only hardware breakpoints, maximum: ", "HWBP:")),maxbreak);
-  else gdbReplyMessagePSTR(PSTR(LONGSHORT("All breakpoints are allowed, maximum: ","ALLBP:")),maxbreak);
+  if (mon.onlysbp) gdbReplyMessagePSTR(PSTR(LONGSHORT("Only software breakpoints, maximum: ", "SWBP:")), mon.maxbreak);
+  else if (mon.maxbreak == 1) gdbReplyMessagePSTR(PSTR(LONGSHORT("Only hardware breakpoints, maximum: ", "HWBP:")),mon.maxbreak);
+  else gdbReplyMessagePSTR(PSTR(LONGSHORT("All breakpoints are allowed, maximum: ","ALLBP:")),mon.maxbreak);
 }
 
 // perform an automatic power cycle
@@ -1664,7 +1809,7 @@ boolean manualPowerCycle(void)
 	        setSysState(DWCONN_STATE);
 	        return true;
 	      } else {
-	        gdbReportConnectionProblem(CONNERR_NO_DW_REPLY, true);
+	        gdbReportConnectionProblem(CONNERR_NO_DW_REPLY);
 	        return false;
 	      }
       }
@@ -1700,11 +1845,11 @@ void power(boolean on)
 boolean gdbReset(void)
 {
   if (ctx.state == NOTCONN_STATE) {
-    gdbDebugMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first", "DW OFF")), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first", "DW OFF")), -1);
     return false;
   }
   if (targetOffline()) {
-    gdbDebugMessagePSTR(PSTR(LONGSHORT("Target offline: Cannot reset", "OFFLINE")), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Target offline: Cannot reset", "OFFLINE")), -1);
     return false;
   }
   targetReset();
@@ -1792,7 +1937,7 @@ byte gdbCheckPrerequisite(unsigned int opcode)
     gdbDebugMessagePSTR(PSTR(LONGSHORT("Not connected", "NO CON")), -1);    
     return SIGHUP;
   }
-  if (ctx.onlyloaded and ctx.notloaded) {
+  if (mon.onlyloaded and ctx.notloaded) {
     gdbDebugMessagePSTR(PSTR(LONGSHORT("No program loaded", "NO PRG")), -1);
     return SIGSEGV;
   }
@@ -1800,8 +1945,8 @@ byte gdbCheckPrerequisite(unsigned int opcode)
     gdbDebugMessagePSTR(PSTR(LONGSHORT("Stack overflow", "STK OVF")), -1);
     return SIGBUS;
   }
-  if ((bpcnt > maxbreak) || // Too many breakpoints
-      (maxbreak == bpcnt && maxbreak == 1 && opcode == SLEEPCODE)) { // This means that only HWBPs are allowed
+  if ((bpcnt > mon.maxbreak) || // Too many breakpoints
+      (mon.maxbreak == bpcnt && mon.maxbreak == 1 && opcode == SLEEPCODE)) { // This means that only HWBPs are allowed
                                                                  // and all are in use and we want to sleepwalk 
     gdbDebugMessagePSTR(PSTR(LONGSHORT("Too many active breakpoints","TOO MANY BP")), -1);
     return SIGSYS;
@@ -1842,7 +1987,7 @@ byte gdbStep(void)
     targetContinue(ctx.wpc + 1);
     return 0;
   }
-  if ((bpix >= 0 &&  bp[bpix].inflash) || ctx.safestep) {
+  if ((bpix >= 0 &&  bp[bpix].inflash) || mon.safestep) {
     if (twoWordInstr(opcode)) 
       simTwoWordInstr(opcode, arg);
     else 
@@ -1921,7 +2066,7 @@ void gdbUpdateBreakpoints(byte kind)
     return;
   }
 
-  if ((bpcnt > maxbreak && kind != CLEANUP) || bpused == 0 || targetOffline())
+  if ((bpcnt > mon.maxbreak && kind != CLEANUP) || bpused == 0 || targetOffline())
     return;
   
   DEBPR(F("Update Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
@@ -1929,7 +2074,7 @@ void gdbUpdateBreakpoints(byte kind)
   // find relevant BPs
   for (i=0; i < MAXBREAK*2; i++) {
     if (bp[i].used) {                       // only used breakpoints!
-      if ((onlysbp || (kind == ASSIGN_ONLY_SWBPS)) && bp[i].hw) { // only software bps are allowed
+      if ((mon.onlysbp || (kind == ASSIGN_ONLY_SWBPS)) && bp[i].hw) { // only software bps are allowed
 	bp[i].hw = false;
 	bp[i].inflash = false;
 	hwbp = 0xFFFF;
@@ -2073,7 +2218,7 @@ void gdbInsertBreakpoint(unsigned int waddr)
       return;
   
   // increment and check, whether we are full alrady
-  if (++bpcnt > maxbreak) return; 
+  if (++bpcnt > mon.maxbreak) return; 
   
   // if bp is already there, but not active, then activate
   i = gdbFindBreakpoint(waddr);
@@ -2091,7 +2236,7 @@ void gdbInsertBreakpoint(unsigned int waddr)
       bp[i].waddr = waddr;
       bp[i].active = true;
       bp[i].inflash = false;
-      if (!onlysbp) { // if hardware bps are allowed
+      if (!mon.onlysbp) { // if hardware bps are allowed
 	if (hwbp == 0xFFFF) { // hardware bp unused
 	  bp[i].hw = true;
 	  hwbp = waddr;
@@ -2121,7 +2266,7 @@ void gdbRemoveBreakpoint(unsigned int waddr)
 
   measureRam();
 
-  if (bpcnt > maxbreak) bpcnt = maxbreak; // can happen when too many BPs were tried to set
+  if (bpcnt > mon.maxbreak) bpcnt = mon.maxbreak; // can happen when too many BPs were tried to set
   i = gdbFindBreakpoint(waddr);
   if (i < 0) return; // could happen when too many bps were tried to set
   if (!bp[i].active) return; // not active, could happen for duplicate bps 
@@ -2248,7 +2393,6 @@ void gdbReadMemory(const byte *buff)
   if (sz > MAXMEMBUF || sz*2 > MAXBUF) { // should not happen because we required packet length to be less
     gdbSendReply("E04");
     reportFatalError(PACKET_LEN_FATAL, false);
-    //DEBLN(F("***Packet length too large"));
     return;
   }
 
@@ -2361,7 +2505,8 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     }
     setSysState(LOAD_STATE);
     ctx.notloaded = false;
-    targetWriteFlash(addr, membuf, sz);
+    if (!mon.noread)
+      targetWriteFlash(addr, membuf, sz);
     break;
   case EEPROM_OFFSET:
     if (addr+sz > mcu.eepromsz) {
@@ -2681,57 +2826,51 @@ boolean targetDWConnect(boolean initialconnect)
 // try to establish an ISP connection and program the DWEN fuse
 // if possible, set DWEN fuse
 //   0 if we need to powercycle
-//   -1 if we cannot connect
-//   -2 if unknown MCU type
-//   -3 if lock bits set
-//   -7 MCU mismatch
+//   negative: negative error code
 int targetISPConnect(void)
 {
   unsigned int sig;
   int result = 0;
-  boolean succ;
   
-  if (!enterProgramMode()) return -1;
+  if (!enterProgramMode()) return -CONNERR_NO_ISP_REPLY;
   sig = ispGetChipId();
-  if (sig == 0) { // no reasonable signature
-    result = -1;
-  } else if (!setMcuAttr(sig)) {
-    result = -2;
-  } else {
-    if (!gdbCheckMcu())
-      return -7;
-    if (ispLocked()) {
+  if (sig == 0)  // no reasonable signature
+    result = -CONNERR_NO_ISP_REPLY;
+  if (!result && !setMcuAttr(sig)) 
+    result = -CONNERR_UNSUPPORTED_MCU;
+  if (!result && !gdbCheckMcu()) 
+      result = -CONNERR_WRONG_MCU;
+  if (!result && ispLocked()) {
+    if (mon.nolockbits) 
+      result = -CONNERR_LOCK_BITS_NOT_MANAGED;
+    if (!result) {
       ispEraseFlash(); // erase flash mem and lock bits
-      leaveProgramMode();
       _delay_ms(1000);
-      enterProgramMode();
-      if (ispLocked()) 
-	result = -3;
-      else { // here we disable the bootloader-vector fuse BOOTRST if set
-	// ATmega88/168: Ext. Fuse, Bit 0
-	// ATmega328: High Fuse, Bit 0
-	succ = true;
-	if (sig == 0x930A || sig == 0x930F || sig == 0x9316 || sig == 0x9406 || sig == 0x940B || sig == 0x9415) {
-	  // ATmega88 or 168: BOOTRST is in bit 0 of the extended fuse byte
-	  succ = ispProgramFuse(ExtendedFuse, 1, 1);
-	} else if (sig == 0x9514 || sig == 0x950F || sig == 0x9516) {
-	  // ATmega328: BOOTRST is bit 0 of high fuse byte
-	  succ = ispProgramFuse(HighFuse, 1, 1);
-	}
-	if (succ) result = 0;
-	else result = -3;
-      }
-    }
-  }
-  if (result == 0) {
-    if (ispProgramFuse(HighFuse, mcu.dwenfuse, 0)) { // set DWEN fuse and powercycle later
-      result = 0;
-    } else {
-      result = -1;
     }
   }
   leaveProgramMode();
-  //DEBPR(F("Programming result: ")); DEBLN(result);
+  _delay_ms(200);
+  if (result) return result;
+  enterProgramMode();
+  if (ispLocked()) 
+    result = -CONNERR_CANNOT_CLEAR_LOCK_BITS;
+  if (!result && !mon.nobootrst && mcu.bootrstmask)  // here we disable the bootloader-vector fuse BOOTRST if existent and allowed
+    if (!ispProgramFuse(mcu.bootrstbase, mcu.bootrstmask, mcu.bootrstmask))
+      result = -CONNERR_BOOTRST;
+  if (!result) {
+    if ((ispReadFuse(mcu.dwenbase) & mcu.dwenmask) != 0) { // DWEN is not set
+      if (!mon.nodwen) {
+        if (ispProgramFuse(mcu.dwenbase, mcu.dwenmask, 0)) { // set DWEN fuse and powercycle later
+          result = 0;
+        } else {
+          result = -CONNERR_CANNOT_SET_DWEN;
+        }
+      } else { // DWEN not set and not managed by dw-link
+        result = -CONNERR_DWEN_NOT_MANAGED;
+      }
+    } // DWEN already active
+  }
+  leaveProgramMode();
   return result;
 }
 
@@ -2779,7 +2918,7 @@ int targetSetFuses(Fuses fuse)
   // now we are in ISP mode and know what processor we are dealing with
   switch (fuse) {
   case Erase:  succ = ispEraseFlash(); break;
-  case DWEN:   succ = ispProgramFuse(HighFuse, mcu.dwenfuse, mcu.dwenfuse); break; // disable DWEN!
+  case DWEN:   succ = ispProgramFuse(mcu.dwenbase, mcu.dwenmask, mcu.dwenmask); break; // disable DWEN!
   default: succ = false;
   }
   return (succ ? 1 : -3);
@@ -2824,11 +2963,12 @@ void targetReadFlash(unsigned int addr, byte *mem, unsigned int len)
 }
 
 // read some portion of SRAM into buffer pointed at by *mem
+// skip write-only I/O registers
 void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
 {
   unsigned int offset = 0;
   unsigned int end = addr + len;
-  const byte *mask = mcu.mask;
+  const byte *mask = mcu.maskregs;
   byte mask_reg = 0;
   DEBPR(F("targetReadSram start at 0x"));
   DEBPRF(addr, HEX);
@@ -2850,12 +2990,12 @@ void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
   DEBLNF(addr+offset, HEX);
   DEBPR(F("End address is 0x"));
   DEBLNF(end,HEX);
-  while (mask && (mask_reg = pgm_read_byte(mask++))) {
+  while (mask_reg = pgm_read_byte(mask++)) {
     DEBPR(F("Reading until mask register: 0x"));
     DEBLNF(mask_reg,HEX);
     DEBPR(F("Current address: 0x"));
     DEBLNF(addr+offset,HEX);
-    if (mask_reg >= end or addr + offset >= end) {
+    if (mask_reg >= end || addr + offset >= end) {
       DEBLN(F("We are done here."));
       break;
     }
@@ -2922,7 +3062,7 @@ void targetWriteFlashPage(unsigned int addr)
     return;
   }
   DWreenableRWW();
-  if (ctx.readbeforewrite) {
+  if (mon.readbeforewrite) {
     // read old page contents (maybe from page cache)
     targetReadFlashPage(addr);
     // check whether something changed
@@ -2978,7 +3118,7 @@ void targetWriteFlashPage(unsigned int addr)
     DWreenableRWW();
   }
 
-  if (ctx.verifyload) {
+  if (mon.verifyload) {
     // read back last programmed page and compare
     validpg = false;
     targetReadFlashPage(addr);
@@ -3031,19 +3171,41 @@ void targetWriteFlash(unsigned int addr, byte *mem, unsigned int len)
 inline void targetFlushFlashProg(void)
 {
   targetWriteFlash(0, membuf, 0);
+  mon.noread = false; // reset noread flag after one load!
 }
 
 // write SRAM chunk
+// skip read-only I/O registers
 void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 {
   measureRam();
   unsigned int offset = 0;
+  unsigned int end = addr + len;
+  const byte *mask = mcu.maskregs;
+  byte mask_reg = 0;
 
+  if (addr > 0xFF) { // if in SRAM, simply write
+    while (offset < len) {
+    DWwriteSramByte(addr+offset, mem[offset]);
+    offset++;
+    }
+  }
   while (addr+offset < 32 && offset < len) { // if addr points to registers, then write to in-memory copy 
     ctx.regs[addr+offset] = mem[offset];
     offset++;
   }
-
+  while (mask_reg = pgm_read_byte(mask++)); // read until we are beyond the first 0 in the mask array
+  while (mask_reg = pgm_read_byte(mask++)) {  // go through all mask regs
+    if (mask_reg >= end || addr + offset >= end)  // we are done in the masked write-loop
+      break;
+    if (mask_reg < addr + offset) // mask_reg too small, go for next one
+      continue;
+    while (addr + offset < mask_reg && offset < len) {
+      DWwriteSramByte(addr+offset, mem[offset]);
+      offset++;
+    }
+    offset++; // skip next address 
+  }
   while (offset < len) {
     DWwriteSramByte(addr+offset, mem[offset]);
     offset++;
@@ -3118,10 +3280,10 @@ void targetContinue(unsigned int runto)
   measureRam();
 
   if (hwbp != 0xFFFF || runto != 0xFFFF) {
-    dw.sendCmd((byte)(0x61&ctx.tmask));
+    dw.sendCmd((byte)(0x61&mon.tmask));
     DWsetWBp(runto != 0xFFFF ? runto : hwbp);
   } else {
-    dw.sendCmd((byte)(0x60&ctx.tmask));
+    dw.sendCmd((byte)(0x60&mon.tmask));
   }
   DWsetWPc(ctx.wpc);
   dw.sendCmd(0x30, true); // return during sending the stop bit so that nothing surprises us
@@ -3134,7 +3296,7 @@ void targetStep(void)
 
   // DEBPR(F("Single step at (byte address):")); DEBLNF(ctx.wpc*2,HEX);
   // _delay_ms(5);
-  byte cmd[] = {(byte)(0x60&ctx.tmask), 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
+  byte cmd[] = {(byte)(0x60&mon.tmask), 0xD0, (byte)(ctx.wpc>>8), (byte)(ctx.wpc), 0x31};
   dw.sendCmd(cmd, sizeof(cmd), true); // return before last bit is sent
 }
 
@@ -3176,7 +3338,7 @@ boolean doBreak (boolean doprinterror = true) {
   PORTD&=~(1<<PD3);
 #endif
   if (digitalRead(DWLINE) == LOW) { // should be high by now!
-    gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD, doprinterror);  // if not, we have a capacitive load on the RESET line
+    gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD);  // if not, we have a capacitive load on the RESET line
     return false;
   }
   if (!expectUCalibrate()) {
@@ -3351,7 +3513,7 @@ byte inLow  (byte add, byte reg) {
 // Write all registers 
 void DWwriteRegisters(byte *regs)
 {
-  byte wrRegs[] = {(byte)(0x66&ctx.tmask),              // read/write
+  byte wrRegs[] = {(byte)(0x66&mon.tmask),              // read/write
 		   0xD0, mcu.stuckat1byte, 0x00,        // start reg
 		   0xD1, mcu.stuckat1byte, 0x20,        // end reg
 		   0xC2, 0x05,                          // write registers
@@ -3363,7 +3525,7 @@ void DWwriteRegisters(byte *regs)
 
 // Set register <reg> by building and executing an "in <reg>,DWDR" instruction via the CMD_SET_INSTR register
 void DWwriteRegister (byte reg, byte val) {
-  byte wrReg[] = {(byte)(0x64&ctx.tmask),                                  // Set up for single step using loaded instruction
+  byte wrReg[] = {(byte)(0x64&mon.tmask),                                  // Set up for single step using loaded instruction
                   0xD2, inHigh(mcu.dwdr, reg), inLow(mcu.dwdr, reg), 0x23, // Build "in reg,DWDR" instruction
                   val};                                                    // Write value to register via DWDR
   measureRam();
@@ -3375,7 +3537,7 @@ void DWwriteRegister (byte reg, byte val) {
 void DWreadRegisters (byte *regs)
 {
   int response;
-  byte rdRegs[] = {(byte)(0x66&ctx.tmask),
+  byte rdRegs[] = {(byte)(0x66&mon.tmask),
 		   0xD0, mcu.stuckat1byte, 0x00, // start reg
 		   0xD1, mcu.stuckat1byte, 0x20, // end reg
 		   0xC2, 0x01};                  // read registers
@@ -3395,7 +3557,7 @@ void DWreadRegisters (byte *regs)
 byte DWreadRegister (byte reg, bool checkdwdr) {
   int response;
   byte res = 0;
-  byte rdReg[] = {(byte)(0x64&ctx.tmask),                               // Set up for single step using loaded instruction
+  byte rdReg[] = {(byte)(0x64&mon.tmask),                               // Set up for single step using loaded instruction
                   0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg)}; // Build "out DWDR, reg" instruction
   measureRam();
   DWflushInput();
@@ -3413,7 +3575,7 @@ byte DWreadRegister (byte reg, bool checkdwdr) {
 
 // Write one byte to SRAM address space using an SRAM-based value for <addr>, not an I/O address
 void DWwriteSramByte (unsigned int addr, byte val) {
-  byte wrSram[] = {(byte)(0x66&ctx.tmask),                           // Set up for read/write 
+  byte wrSram[] = {(byte)(0x66&mon.tmask),                           // Set up for read/write 
                    0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
                    0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
@@ -3432,7 +3594,7 @@ void DWwriteSramByte (unsigned int addr, byte val) {
 // Write one byte to IO register (via R0)
 void DWwriteIOreg (byte ioreg, byte val)
 {
-  byte wrIOreg[] = {(byte)(0x64&ctx.tmask),                                // Set up for single step using loaded instruction
+  byte wrIOreg[] = {(byte)(0x64&mon.tmask),                                // Set up for single step using loaded instruction
 		    0xD2, inHigh(mcu.dwdr, 0), inLow(mcu.dwdr, 0), 0x23,    // Build "in reg,DWDR" instruction
 		    val,                                                // load val into r0
 		    0xD2, outHigh(ioreg, 0), outLow(ioreg, 0),          // now store from r0 into ioreg
@@ -3450,7 +3612,7 @@ byte DWreadSramByte (unsigned int addr) {
   DWreadSramBytes(addr, &res, 1);
 #else
   unsigned int response;
-  byte rdSram[] = {(byte)(0x66&ctx.tmask),                            // Set up for read/write 
+  byte rdSram[] = {(byte)(0x66&mon.tmask),                            // Set up for read/write 
                    0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
                    0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
@@ -3476,7 +3638,7 @@ byte DWreadIOreg (byte ioreg)
 {
   unsigned int response; 
   byte res = 0;
-  byte rdIOreg[] = {(byte)(0x64&ctx.tmask),                            // Set up for single step using loaded instruction
+  byte rdIOreg[] = {(byte)(0x64&mon.tmask),                            // Set up for single step using loaded instruction
 		    0xD2, inHigh(ioreg, 0), inLow(ioreg, 0),           // Build "out DWDR, reg" instruction
 		    0x23,
 		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0)};  // Build "out DWDR, 0" instruction
@@ -3496,7 +3658,7 @@ byte DWreadIOreg (byte ioreg)
 void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   unsigned int len2 = len * 2;
   unsigned int rsp;
-  byte rdSram[] = {(byte)(0x66&ctx.tmask),                          // Set up for read/write using 
+  byte rdSram[] = {(byte)(0x66&mon.tmask),                          // Set up for read/write using 
 		   0xD0, mcu.stuckat1byte, 0x1E,                    // Set Start Reg number (r30)
 		   0xD1, mcu.stuckat1byte, 0x20,                    // Set End Reg number (r31) + 1
 		   0xC2, 0x05,                                      // Set repeating copy to registers via DWDR
@@ -3520,7 +3682,7 @@ void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
 byte DWreadEepromByte (unsigned int addr) {
   unsigned int response;
   byte retval;
-  byte setRegs[] = {(byte)(0x66&ctx.tmask),                                      // Set up for read/write 
+  byte setRegs[] = {(byte)(0x66&mon.tmask),                                      // Set up for read/write 
                     0xD0, mcu.stuckat1byte, 0x1C,                                // Set Start Reg number (r28)
                     0xD1, mcu.stuckat1byte, 0x20,                                // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                                  // Set repeating copy to registers via DWDR
@@ -3536,7 +3698,7 @@ byte DWreadEepromByte (unsigned int addr) {
   DWflushInput();
   dw.sendCmd(setRegs, sizeof(setRegs));
   blockIRQ();
-  dw.sendCmd((byte)(0x64&ctx.tmask));                                   // Set up for single step using loaded instruction
+  dw.sendCmd((byte)(0x64&mon.tmask));                                   // Set up for single step using loaded instruction
   if (mcu.eearh)                                                        // if there is a high byte EEAR reg, set it
     dw.sendCmd(doReadH, sizeof(doReadH));
   dw.sendCmd(doRead, sizeof(doRead));                                   // set rest of control regs and query
@@ -3549,7 +3711,7 @@ byte DWreadEepromByte (unsigned int addr) {
 
 //   Write one byte to EEPROM
 void DWwriteEepromByte (unsigned int addr, byte val) {
-  byte setRegs[] = {(byte)(0x66&ctx.tmask),                                       // Set up for read/write 
+  byte setRegs[] = {(byte)(0x66&mon.tmask),                                       // Set up for read/write 
                     0xD0, mcu.stuckat1byte, 0x1C,                                 // Set Start Reg number (r30)
                     0xD1, mcu.stuckat1byte, 0x20,                                 // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                                   // Set repeating copy to registers via DWDR
@@ -3575,7 +3737,7 @@ void DWwriteEepromByte (unsigned int addr, byte val) {
 void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int rsp;
   unsigned int lenx2 = len * 2;
-  byte rdFlash[] = {(byte)(0x66&ctx.tmask),                             // Set up for read/write
+  byte rdFlash[] = {(byte)(0x66&mon.tmask),                             // Set up for read/write
 		    0xD0, mcu.stuckat1byte, 0x1E,                       // Set Start Reg number (r30)
 		    0xD1, mcu.stuckat1byte, 0x20,                       // Set End Reg number (r31) + 1
 		    0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
@@ -3597,7 +3759,7 @@ void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
 // erase entire flash page
 void DWeraseFlashPage(unsigned int addr) {
   byte timeout = 0;
-  byte eflash[] = { (byte)(0x64&ctx.tmask), // single stepping
+  byte eflash[] = { (byte)(0x64&mon.tmask), // single stepping
 		    0xD2, // load into instr reg
 		    outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		    outLow(0x37, 29), 
@@ -3628,7 +3790,7 @@ void DWprogramFlashPage(unsigned int addr)
   boolean succ;
   byte timeout = 0;
   unsigned int wait = 10000;
-  byte eprog[] = { (byte)(0x64&ctx.tmask), // single stepping
+  byte eprog[] = { (byte)(0x64&mon.tmask), // single stepping
 		   0xD2, // load into instr reg
 		   outHigh(0x37, 29), // Build "out SPMCSR, r29"
 		   outLow(0x37, 29), 
@@ -3670,7 +3832,7 @@ void DWprogramFlashPage(unsigned int addr)
 // load bytes into temp memory
 void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
 {
-  byte eload[] = { (byte)(0x64&ctx.tmask), 0xD2,
+  byte eload[] = { (byte)(0x64&mon.tmask), 0xD2,
 		   outHigh(0x37, 29),       // Build "out SPMCSR, r29"
 		   outLow(0x37, 29),
 		   0x23,                    // execute
@@ -3698,7 +3860,7 @@ void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
 void DWreenableRWW(void)
 {
   unsigned int wait = 10000;
-  byte errw[] = { (byte)(0x64&ctx.tmask), 0xD2,
+  byte errw[] = { (byte)(0x64&mon.tmask), 0xD2,
 		  outHigh(0x37, 29),       // Build "out SPMCSR, r29"
 		  outLow(0x37, 29),
 		  0x23,                    // execute
@@ -3723,7 +3885,7 @@ void DWreenableRWW(void)
 
 byte DWreadSPMCSR(void)
 {
-  byte sc[] = { (byte)(0x64&ctx.tmask), 0xD2,        // setup for single step and load instr reg 
+  byte sc[] = { (byte)(0x64&mon.tmask), 0xD2,        // setup for single step and load instr reg 
 		inHigh(0x37, 30),  // build "in 30, SPMCSR"
 		inLow(0x37, 30),
 		0x23 };             // execute
@@ -3938,12 +4100,14 @@ unsigned int ispGetChipId (void)
 }
 
 // read high or low fuse
-byte ispReadFuse(boolean high)
+byte ispReadFuse(FuseByte fuse)
 {
-  if (high)
-    return ispSend(0x58, 0x08, 0x00, 0x00, true);
-  else
-    return ispSend(0x50, 0x00, 0x00, 0x00, true);
+  switch (fuse) {
+  case LowFuse: return ispSend(0x50, 0x00, 0x00, 0x00, true);
+  case HighFuse: return ispSend(0x58, 0x08, 0x00, 0x00, true);
+  case ExtendedFuse: ispSend(0x50, 0x08, 0x00, 0x00, true);
+  }
+  return 0;
 }
 
 // program fuse and/or high fuse
@@ -4014,48 +4178,22 @@ boolean setMcuAttr(unsigned int id)
       mcu.eecr =  pgm_read_byte(&mcu_info[ix].eecr);
       mcu.eearh =  pgm_read_byte(&mcu_info[ix].eearh);
       mcu.avreplus = pgm_read_byte(&mcu_info[ix].avreplus);
+      mcu.dwenbase = pgm_read_byte(&mcu_info[ix].dwenbase);
+      mcu.dwenmask = pgm_read_byte(&mcu_info[ix].dwenmask);
+      mcu.bootrstbase = pgm_read_byte(&mcu_info[ix].bootrstbase);
+      mcu.bootrstmask = pgm_read_byte(&mcu_info[ix].bootrstmask);
       mcu.name = (const char *)pgm_read_word(&mcu_info[ix].name);
-      mcu.mask = (const byte *)pgm_read_word(&mcu_info[ix].mask);
+      mcu.maskregs = (const byte *)pgm_read_word(&mcu_info[ix].mask);
       // the remaining fields will be derived 
       mcu.eearl = mcu.eecr + 2;
       mcu.eedr = mcu.eecr + 1;
       // we treat the 4-page erase MCU as if pages were larger by a factor of 4!
       if (mcu.erase4pg) mcu.targetpgsz = mcu.pagesz*4; 
       else mcu.targetpgsz = mcu.pagesz;
-      // dwen, chmsk, ckdiv8 are identical for almost all MCUs, so we treat the exceptions here
-      mcu.dwenfuse = 0x40;
-#if !defined(NOTINY)
-      if (mcu.name == attiny13) {
-	mcu.dwenfuse = 0x08;
-      } else if (mcu.name == attiny2313 || mcu.name == attiny4313) {
-	mcu.dwenfuse = 0x80;
-      }
-#endif
-#if 0
-      DEBPR(F("sig=")); DEBLNF(mcu.sig,HEX);
-      DEBPR(F("aep="));  DEBLN(mcu.avreplus);
-      DEBPR(F("ram=")); DEBLN(mcu.ramsz);
-      DEBPR(F("bas=0x")); DEBLNF(mcu.rambase,HEX);
-      DEBPR(F("eep=")); DEBLN(mcu.eepromsz);
-      DEBPR(F("fla="));  DEBLN(mcu.flashsz);
-      DEBPR(F("dwd=0x")); DEBLNF(mcu.dwdr,HEX);
-      DEBPR(F("pgs=")); DEBLN(mcu.pagesz);
-      DEBPR(F("e4p=")); DEBLN(mcu.erase4pg);
-      DEBPR(F("boo=0x")); DEBLNF(mcu.bootaddr,HEX);
-      DEBPR(F("eec=0x")); DEBLNF(mcu.eecr,HEX);
-      DEBPR(F("eea=0x")); DEBLNF(mcu.eearh,HEX);
-      strcpy_P(buf,mcu.name);
-      DEBPR(F("nam=")); DEBLN((char*)buf);
-      DEBPR(F("ear=0x")); DEBLNF(mcu.eearl,HEX);
-      DEBPR(F("eed=0x")); DEBLNF(mcu.eedr,HEX);
-      DEBPR(F("tps=")); DEBLN(mcu.targetpgsz);
-      DEBPR(F("dwe=0x")); DEBLNF(mcu.dwenfuse,HEX);
-#endif
       return true;
     }
     ix++;
   }
-  // DEBPR(F("Could not determine MCU type with SIG: ")); DEBLNF(id, HEX);
   return false;
 }
 
