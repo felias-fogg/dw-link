@@ -70,13 +70,11 @@ The pin mapping is a bit different from the basic design described above. The ch
 | *D2*        |          | *Power enable (open drain, active low)*                      |
 |             | *2*      | *VTG:* *Power from Q1 controlled by power jumper*            |
 
-
-
 And here is the early breadboard prototype, which worked beautifully. 
 
 ![V2-prototype](pics/dw-probe-V3.jpg)
 
-I have turned the prototype into an Arduino Shield, which I sold [at Tindie](https://www.tindie.com/products/31798/) as a kit. With that, the hardware setup is straightforward. Just plug in an ISP cable, and you can start debugging. Since MPLAB SNAP has become cheaper than this kit, I decided to retire the kit, and now recommend to [buy a SNAP](https://www.microchip.com/en-us/development-tool/pg164100). Together with my Python packages [dw-gdbserver](https://github.com/felias-fogg/dw-gdbserver) and [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD), you get the same debugging experience. Furthermore, you will also be able to debug other AVRs than only debugWIRE MCUs.
+I have turned the prototype into an Arduino Shield, which I sold [at Tindie](https://www.tindie.com/products/31798/) as a kit. With that, the hardware setup is straightforward. Just plug in an ISP cable, and you can start debugging. 
 
 ![dw-link probe](pics/dw-probe.jpg)
 
@@ -89,3 +87,5 @@ Label | Left | Middle | Right
 **Supply** | **5 V** are supplied to the target | **extern**: target needs its own supply and power cycling has to be done manually | **3.3 V** are supplied to the target 
 **Pullup** | There is **no** pull-up resistor connected to RESET | &nbsp; | A **10 kΩ** pull-up resistor is connected to the RESET line of the target 
 **Auto_DW** | Automatic power-cycling is disabled in the **off** state. |  | Automatic power-cycling when executing `monitor debugwire enable` is enabled in the **on** state. This is the default and *recommended* mode. 
+
+Since the hardware debugger MPLAB SNAP has become cheaper than this kit, I decided to retire the kit, and now recommend to [buy a SNAP](https://www.microchip.com/en-us/development-tool/pg164100). Together with my Python package [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD), you get the same debugging experience. Furthermore, you will also be able to debug other AVRs than only debugWIRE MCUs.

@@ -2,21 +2,21 @@
 
 ##### List of tasks to work on:
 
-* Prohibit debug sleep-crash when single- stepping.
-
 * maybe have a variable length break, dependent on the speed of ISP?
 
 * implement semi-hosting
 
-* Implement range-stepping with one HWBP
-
-* being able to receive qRcmd commands before the actual debugging starts (would allow to pass pyAvrOCD monitor options to debugger)
-
 * Check for output of error routines. Sometimes it does not seem to work
 
-     
+        
 
 ##### List of tasks done:
+
+- being able to receive qRcmd commands before the actual debugging starts (would allow to pass pyAvrOCD monitor options to debugger)
+
+- Implement range-stepping with one HWBP
+
+- Prohibit debug sleep-crash when single- stepping.
 
 * debug tiny13 problem, perhaps by reverting back to the version in
   2022, when it seemed to work - was actually the _delay_ms problem
