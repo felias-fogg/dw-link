@@ -91,7 +91,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../acknowledgements/">Acknowledgements</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../history/">Revision history</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../history/">Document revision history</a>
                   </li>
               </ul>
       </div>
@@ -147,28 +147,28 @@ debugWIRE is enabled, bps: 125244
 <p><img alt="ide2-1" src="../pics/ide2-1.png" /></p>
 <h3 id="debugging_1">Debugging</h3>
 <p>After having verified the sketch (which also compiled it), it is time to start debugging by clicking on the debug button in the top row. This will start the debug server, which will notice that the MCU is not yet in debugWIRE mode and ask you to power-cycle the target board by displaying a message to that effect. </p>
-<p>Instead of the message shown in the following screen shot, it may happen that a warning "No hardware debugger discovered" is shown. The reason may be that the Arduino IDE 2 reserved the debugger's serial line for the <code>Serial Monitor</code>. Simply close the <code>Serial Monitor</code> console and try again.</p>
-<p>As mentioned in Section 2, power cycling is only necessary once. The next time you start a debugging session, the MCU will already be in d ebugWIRE mode, and the debugger will not stop at this point. </p>
+<p>Instead of the message shown in the following screenshot, it may happen that a warning "No hardware debugger discovered" is shown. The reason may be that the Arduino IDE 2 reserved the debugger's serial line for the <code>Serial Monitor</code>. Close the <code>Serial Monitor</code> console and try again.</p>
+<p>As mentioned in Section 2, power cycling is only necessary once. The next time you start a debugging session, the MCU will already be in debugWIRE mode, and the debugger will not stop at this point. </p>
 <p><img alt="ide2-2" src="../pics/ide2-2.png" /></p>
 <p>After power-cycling the target, the debugger starts. Eventually, execution is stopped in line 35 of the Arduino internal file <code>main.cpp</code> at an initial internal breakpoint, indicated by the yellow triangle left of the line in the following screenshot. It might take a while before we reach that point because the debugger must also load the program. </p>
 <p>After stopping, the IDE rearranges the layout, showing the debugging panes on the left and the sketch on the right. It will also switch from showing the <code>gdb-server</code> console to the <code>Debug Console</code>, which shows the output of the GDB debugger. </p>
 <p><img alt="ide2-3" src="../pics/ide2-3-new.png" /> </p>
-<p>Now is a good time to familiarize yourself with the window's layout. The source code is on the right side. Below that is a console window, and to the left are the debug panes. If you want to set a breakpoint, you can do that by clicking to the left of the line numbers. Such breakpoints are displayed as red dots as the ones left of line 8 and 13.</p>
-<p><img alt="ide2-4-new" src="../pics/ide2-4-new.png" />The debugging panes are orgnized as folloes. Pane A contains the debug controls. From left to right:</p>
+<p>Now is a good time to familiarize yourself with the window's layout. The source code is on the right side. Below that is a console window, and to the left are the debug panes. If you want to set a breakpoint, you can do that by clicking to the left of the line numbers. Such breakpoints are displayed as red dots, such as those left of lines 8 and 13.</p>
+<p><img alt="ide2-4-new" src="../pics/ide2-4-new.png" />The debugging panes are organized as follows. Pane A contains the debug controls. From left to right:</p>
 <ul>
 <li><em>Reset</em>ting the device</li>
 <li><em>Continue</em> execution or <em>pause</em></li>
 <li><em>Step over</em>: execute one source line</li>
 <li><em>Step into</em>: execute stepping into the function, if in this line one is called</li>
-<li><em>Step out</em>: finish the current function and stop after the line where it had been called</li>
+<li><em>Step out</em>: finish the current function and stop after the line where it was called</li>
 <li><em>Restart</em>: Same as Reset</li>
 <li><em>Stop</em>: Terminate debugging</li>
 </ul>
 <p>Pane B shows the active threads, but there is just one in our case. Pane C displays the call stack starting from the bottom, i.e., the current frame is the topmost. Pane D displays variable values. Unfortunately, global variables are not shown. Pane E can be populated with watch expressions.  Finally, in pane F, the active breakpoints are listed. The panes below are useless in our case. Some more information about debugging can be found in the Arduino <a href="https://docs.arduino.cc/software/ide-v2/tutorials/ide-v2-debugger/">debugging tutorial</a>. </p>
 <h3 id="some-pro-tips">Some Pro Tips</h3>
-<p>If you want to switch from the dw-link debugger to a professional hardware debugger, e.g., <a href="https://www.microchip.com/en-us/development-tool/pg164100">MPLAP SNAP</a> or <a href="https://www.microchip.com/en-us/development-tool/atatmel-ice">Atmel-ICE</a>, these debuggers can be used as a drop-in replacement! So you do not have to change anything in the hardware or software configuration. And the SNAP is really cheap these days!</p>
-<p>The I/O registers are displayed in the <code>CORTEX PERIPHERALS</code> debugger pane. There, you also can change single register values.</p>
-<p>Global variables are, by default, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value. Or you can disable link time optimization (LTO) in the <code>Tools</code> menu. Then all global variables show up, except for one (which seems to be an error of the IDE).</p>
+<p>If you want to switch from the DW-link debugger to a professional hardware debugger, e.g., <a href="https://www.microchip.com/en-us/development-tool/pg164100">MPLAP SNAP</a> or <a href="https://www.microchip.com/en-us/development-tool/atatmel-ice">Atmel-ICE</a>, these debuggers can be used as a drop-in replacement! So you do not have to change anything in the hardware or software configuration. And the SNAP is really cheap these days!</p>
+<p>The I/O registers are displayed in the <code>CORTEX PERIPHERALS</code> debugger pane. There, you can also change single register values.</p>
+<p>Global variables are, by default, not displayed. However, you can set a watch expression in the Watch pane to display a global variable's value. Or you can disable link time optimization (LTO) in the <code>Tools</code> menu. Then all global variables show up, except for one (which is an error of the IDE).</p>
 <p>If you select the Debug Console, you can type GDB commands in the bottom line. This can be useful for changing the value of global variables using the GDB command <code>set var &lt;varname&gt;=&lt;value&gt;</code>. This can also be used to disable the debugWIRE mode using the command <code>monitor debugwire disable</code>. The following section describes more monitor commands.</p>
 <h2 id="monitor-commands">Monitor commands</h2>
 <table>
@@ -189,7 +189,7 @@ debugWIRE is enabled, bps: 125244
 </tr>
 <tr>
 <td><code>monitor</code> <code>caching</code> [<code>enable</code> | <code>disable</code>]</td>
-<td>The loaded executable is cached in the gdbserver when <code>enable</code>d, which is the default setting. <strong>(+)</strong></td>
+<td>This command is not implemented in dw-link.</td>
 </tr>
 <tr>
 <td><code>monitor</code> <code>debugwire</code> [<code>enable</code> | <code>disable</code>]</td>
@@ -197,7 +197,7 @@ debugWIRE is enabled, bps: 125244
 </tr>
 <tr>
 <td><code>monitor</code>  <code>erasebeforeload</code> [<code>enable</code> | <code>disable</code>]</td>
-<td>This monitor option controls whether the flash is erased before an executable is loaded, which is the default for all targets, except for debugWIRE targets, which do not have a chip erase command in debug mode. <strong>(+)</strong></td>
+<td>This command is not implemented in dw-link because there is no way to erase the flash memory in debugWIRE mode.</td>
 </tr>
 <tr>
 <td><code>monitor</code> <code>help</code></td>
@@ -242,15 +242,14 @@ debugWIRE is enabled, bps: 125244
 </tbody>
 </table>
 <p>All commands can, as usual, be abbreviated. For example, <code>mo d e</code> is equivalent to <code>monitor debugwire enable</code>. If you use a command without an argument, the current setting is printed. All state-changing commands (except <code>debugwire</code>) can also be specified as command-line options when invoking PyAvrOCD, e.g., <code>--verify disable</code>.</p>
-<p>Commands marked with <strong>(+)</strong> are not implemented in dw-link.</p>
 <h2 id="restoring-an-uno-to-its-native-state">Restoring an Uno to its native state</h2>
-<p>When you want to restore the target so that it behaves again like an ordinary UNO after a debugging session, you have two options: you can restore it as a MiniCore 328P board or as an original Uno board. The former one is the more attractive alternative in my eyes. Just check out the pages about <a href="https://github.com/MCUdude/MiniCore">MiniCore</a>. Further, the command <code>Burn Bootloader</code> does apparently not work so well with some programmers or debuggers when doing it for the Uno setting. However, the dw-link built-in programmer has no problems. </p>
+<p>When you want to restore the target so that it behaves again like an ordinary UNO after a debugging session, you have two options: you can restore it as a MiniCore 328P board or as an original UNO board. The former one is the more attractive alternative in my eyes. Just check out the pages about <a href="https://github.com/MCUdude/MiniCore">MiniCore</a>. Further, the command <code>Burn Bootloader</code> does apparently not work so well with some programmers or debuggers when doing it for the Uno setting. However, the dw-link built-in programmer has no problems. </p>
 <p>In order to restore your board, you need to do the following steps:</p>
 <ol>
 <li>You need the target board to exit the debugWIRE mode. This could be done by typing <code>monitor debugwire disable</code> into the debugger just before exiting. Or it will be done automagically using the built-in programmer mentioned in the following step.</li>
 <li>Now you have to flash the bootloader. Since version 2.2.0, the hardware debugger can also act as a programmer! This means that you leave the whole hardware setup as it was. However, you can, of course, use any other ISP programmer.</li>
-<li>Select <code>Arduino UNO</code> or the <code>ATmega328 board</code> as the target board in the <code>Tools</code> menu, select <code>AVR ISP</code> as the Programmer, choose the right serial port, and use  <code>Burn Bootloader</code> from the <code>Tools</code> menu. This will revert the MCU to its normal state (if it still in debugWARE state) and will restore the fuses, the bootloader, and the lock bits to their original state. </li>
-<li>Reestablish the <code>RESET EN</code> connection by putting a solder blob on the connection or soldering pins to the connections that can be shortened using a jumper, as shown in the next picture. It does not look pretty, but it does its job. After that, your UNO is as good as new. Note that in the future, code uploading should be done by choosing the type of board you used when executing the <code>Burn Bootloader</code> command.</li>
+<li>Select <code>Arduino UNO</code> or the <code>ATmega328 board</code> as the target board in the <code>Tools</code> menu, select <code>AVR ISP</code> as the Programmer, choose the correct serial port, and use  <code>Burn Bootloader</code> from the <code>Tools</code> menu. This will revert the MCU to its normal state (if it is still in debugWARE state) and will restore the fuses, the bootloader, and the lock bits to their original state. </li>
+<li>Reestablish the <code>RESET EN</code> connection by putting a solder blob on the connection or soldering pins to the connections that can be shortened using a jumper, as shown in the following picture. It does not look pretty, but it does its job. After that, your UNO is as good as new. Note that in the future, code uploading should be done by choosing the type of board you used when executing the <code>Burn Bootloader</code> command.</li>
 </ol>
 <p align="center">
 <img src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/docs/pics/pins+jumper.JPG" width="60%">
