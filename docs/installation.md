@@ -1,7 +1,7 @@
 
 # Installation of firmware and software environment
 
-There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. Setting up the software environment is also quite simple, if you either opt for CLI debugging with AVR-GDB or the Arduino IDE 2. For other options, I refer to [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD).
+There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. Setting up the software environment is also quite simple, if you either opt for CLI debugging with AVR-GDB or the Arduino IDE 2. For other options, I refer to [PyAvrOCD](https://PyAvrOCD.io).
 
 ## Firmware installation
 

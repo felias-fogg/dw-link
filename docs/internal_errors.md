@@ -48,4 +48,4 @@ After a reset or a power cycle of the hardware debugger, everything usually work
 |     125 | Could not reenable RWW                                       |
 |     126 | Failure while reading from EEPROM                            |
 |     127 | Bad interrupt                                                |
-
+|     128 | Inconsistent classification of opcodes in range-stepping     |
