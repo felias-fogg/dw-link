@@ -2,8 +2,6 @@
 
 Turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. This quickstart guide explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use the [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/).
 
-If you already own a Microchip debugger, such as SNAP, PICkit4, Atmel-ICE, JTAGICE3, or one of the embedded debuggers EDBG, mEDBG, or nEDBG, you can use it directly to debug classic AVR chips in the Arduino IDE 2 employing [PyAvrOCD](https://github.com/felias-fogg/PyAvrOCD).
-
 ## What you need
 
 * Computer running Windows, macOS, or Linux (the *host*)
