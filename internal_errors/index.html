@@ -100,8 +100,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <p>If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors. </p>
-<p>If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. </p>
+                <p>If the error number is less than 100, then it is a connection error. Try again, perhaps after disconnecting and reconnecting everything. Check wiring. If the error persists, try perhaps with a different MCU.</p>
+<p>Errors above 100 are serious internal debugger errors. If you have encountered such an internal debugger error, then please try to reproduce the problem and tell me how it happened. </p>
 <p>After a reset or a power cycle of the hardware debugger, everything usually works again. If not, you need to unplug everything and put it together again.</p>
 <table>
 <thead>
@@ -113,38 +113,58 @@
 <tbody>
 <tr>
 <td style="text-align: right;">1</td>
-<td>Connection error: Could not communicate by ISP; check wiring</td>
+<td>Could not communicate by ISP; check wiring</td>
 </tr>
 <tr>
 <td style="text-align: right;">2</td>
-<td>Connection error: Could not activate debugWIRE</td>
+<td>Could not activate debugWIRE</td>
 </tr>
 <tr>
 <td style="text-align: right;">3</td>
-<td>Connection error: MCU type is not supported</td>
+<td>MCU type is not supported</td>
 </tr>
 <tr>
 <td style="text-align: right;">4</td>
-<td>Connection error: Lock bits or BOOTRST could not be cleared</td>
+<td>Lockbits could not be cleared</td>
 </tr>
 <tr>
 <td style="text-align: right;">5</td>
-<td>Connection error: MCU has PC with stuck-at-one bits</td>
+<td>Lockbits are set but not managed by dw-link</td>
 </tr>
 <tr>
 <td style="text-align: right;">6</td>
-<td>Connection error: RESET line has a capacitive load</td>
+<td>BOOTRST fuse could not be cleared</td>
 </tr>
 <tr>
 <td style="text-align: right;">7</td>
-<td>Connection error: Target not powered or RESET shortened to GND</td>
+<td>MCU has a program counter with stuck-at-one bits</td>
 </tr>
 <tr>
 <td style="text-align: right;">8</td>
-<td>MCU type does not match</td>
+<td>RESET line has a capacitive load</td>
 </tr>
 <tr>
 <td style="text-align: right;">9</td>
+<td>Target not powered or RESET shortened to GND</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td>MCU type does not match</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td>DWEN fuse could not be programmed</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td>DWEN fuse is unprogrammed but not managed by dw-link</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td>EESAVE fuse could not be changed</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
 <td>Unknown connection error</td>
 </tr>
 <tr>
@@ -254,6 +274,10 @@
 <tr>
 <td style="text-align: right;">127</td>
 <td>Bad interrupt</td>
+</tr>
+<tr>
+<td style="text-align: right;">128</td>
+<td>Inconsistent classification of opcodes in range-stepping</td>
 </tr>
 </tbody>
 </table>

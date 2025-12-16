@@ -174,62 +174,75 @@ debugWIRE is enabled, bps: 125244
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">Command</th>
+<th>Command</th>
 <th>Action</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>help</code></td>
-<td>Give a help message on monitor commands.</td>
+<td><code>monitor</code> <code>atexit</code> [<code>stayindebugwire</code> | <code>leavedebugwire</code>]</td>
+<td>When specifying <code>leavedebugwire</code>, then debugWIRE mode will be left when exiting the debugger. This is useful when dealing with embedded debuggers such as the Xplained Mini boards. The default is <code>stayindebugwire</code>, i.e., debugWIREmode will not be left when exiting the debugger.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>info</code></td>
-<td>Give information about target and debugger.</td>
+<td><code>monitor</code> <code>breakpoints</code> [<code>all</code> | <code>software</code> | <code>hardware</code>]</td>
+<td>Restricts the kind of breakpoints that can be used. Either <code>all</code> types are permitted, only <code>software</code> breakpoints are allowed, or only <code>hardware</code> breakpoints can be used. Using <code>all</code> kinds is the default.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>version</code></td>
-<td>Print version number of firmware.</td>
+<td><code>monitor</code> <code>caching</code> [<code>enable</code> | <code>disable</code>]</td>
+<td>The loaded executable is cached in the gdbserver when <code>enable</code>d, which is the default setting. <strong>(+)</strong></td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>debugwire</code> [<code>enable</code>| <code>disable</code>]</td>
-<td><strong>Enable</strong> or <strong>disable</strong> debugWIRE mode.</td>
+<td><code>monitor</code> <code>debugwire</code> [<code>enable</code> | <code>disable</code>]</td>
+<td>DebugWIRE mode will be <code>enable</code>d or <code>disable</code>d. When enabling it, the MCU will be reset, and you may be asked to power-cycle the target. After disabling debugWIRE mode, one has to exit the debugger. Afterward, the MCU can be programmed again using SPI programming.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>reset</code></td>
-<td>Reset the MCU.</td>
+<td><code>monitor</code>  <code>erasebeforeload</code> [<code>enable</code> | <code>disable</code>]</td>
+<td>This monitor option controls whether the flash is erased before an executable is loaded, which is the default for all targets, except for debugWIRE targets, which do not have a chip erase command in debug mode. <strong>(+)</strong></td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor load</code> [<code>readbeforewrite</code>|<code>writeonly</code>]</td>
-<td>When loading, either <strong>read before write</strong> or <strong>write only</strong>. The first option is faster and reduces flash wear. So, it is the default.</td>
+<td><code>monitor</code> <code>help</code></td>
+<td>Display help text.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>verify</code> [<code>enable</code>|<code>disable</code>]</td>
-<td><strong>Enable</strong> to verify flash loads or <strong>disable</strong> this feature.</td>
+<td><code>monitor</code> <code>info</code></td>
+<td>Display information about the target and the state of the debugger.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>onlyloaded</code> [<code>enable</code>|<code>disable</code>]</td>
-<td><strong>Enable</strong> the check that execution is only possible after a load command or <strong>disable</strong> this feature.</td>
+<td><code>monitor</code> <code>load</code> [<code>readbeforewrite</code> | <code>writeonly</code> | <code>onlycache</code>]</td>
+<td>When loading an executable, either each flash page is compared with the content to be loaded, and flashing is skipped if the content is already there (<code>readbeforewrite</code>), or each flash page is written without reading the current contents beforehand (<code>writeonly</code>). The first option is the default option for debugWIRE targets. For JTAG targets, the overhead of checking whether the page content is identical is so high that the <code>writeonly</code> option is the default. The third option (<code>onlycache</code>) will disable loading code into flash memory, but only fill the cache of PyAvrOCD. This is useful when one knows that the code is already loaded and one wants to avoid the overhead of reading flash memory content.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>timers</code> [<code>freeze</code>|<code>run</code>]</td>
-<td><strong>Freeze</strong> timers or let them <strong>run</strong> when the program is stopped.</td>
+<td><code>monitor</code> <code>onlywhenloaded</code> [<code>enable</code> | <code>disable</code>]</td>
+<td>Execution is only possible when a <code>load</code> command was previously executed, which is the default. If you want to start execution without loading an executable first, you need to <code>disable</code> this mode.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>breakpoint</code> [<code>all</code>|<code>software</code>|<code>hardware</code>]</td>
-<td>Allow for <strong>all</strong> kinds of breakpoints, for <strong>software</strong> breakpoints only, or for <strong>hardware</strong> breakpoints only (of which there exists only one).</td>
+<td><code>monitor</code> <code>rangestepping</code>[<code>enable</code> | <code>disable</code>]</td>
+<td>The GDB range-stepping command is supported or disabled. The default is that it is <code>enable</code>d.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>singlestep</code> [<code>safe</code>|<code>interuptible</code>]</td>
-<td>Sets single stepping to <strong>safe</strong> or <strong>interruptible</strong>.</td>
+<td><code>monitor</code> <code>reset</code></td>
+<td>Resets the MCU.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>monitor</code> <code>speed</code> [<code>low</code>|<code>high</code>]</td>
-<td>Set the communication speed limit to <strong>low</strong> (=150kbps) (default) or to <strong>high</strong> (=300kbps); without an argument, the current communication speed and speed limit is printed.</td>
+<td><code>monitor</code> <code>singlestep</code> [<code>safe</code> | <code>interruptible</code>]</td>
+<td>Single-stepping can be performed in a <code>safe</code> way, where single steps are shielded against interrupts. Otherwise, a single step can lead to a jump into the interrupt dispatch table. The <code>safe</code> option is the default.</td>
+</tr>
+<tr>
+<td><code>monitor</code> <code>timer</code> [<code>run</code> | <code>freeze</code>]</td>
+<td>Timers can either be <code>frozen</code> when execution is stopped, or they can <code>run</code> freely. The latter option is helpful when PWM output is crucial, and it is the default.</td>
+</tr>
+<tr>
+<td><code>monitor</code> <code>verify</code> [<code>enable</code>|<code>disable</code>]</td>
+<td>Verify flash after loading each flash page. The default setting is for this option to be <code>enable</code>d.</td>
+</tr>
+<tr>
+<td><code>monitor</code> <code>version</code></td>
+<td>Show version of the gdbserver.</td>
 </tr>
 </tbody>
 </table>
-<p>The default setting is always the first one listed, except for <code>debugwire</code>, which depends on the MCU itself. All commands can, as usual, be abbreviated. For example, <code>mo d e</code> is equivalent to <code>monitor debugwire enable</code>. </p>
+<p>All commands can, as usual, be abbreviated. For example, <code>mo d e</code> is equivalent to <code>monitor debugwire enable</code>. If you use a command without an argument, the current setting is printed. All state-changing commands (except <code>debugwire</code>) can also be specified as command-line options when invoking PyAvrOCD, e.g., <code>--verify disable</code>.</p>
+<p>Commands marked with <strong>(+)</strong> are not implemented in dw-link.</p>
 <h2 id="restoring-an-uno-to-its-native-state">Restoring an Uno to its native state</h2>
 <p>When you want to restore the target so that it behaves again like an ordinary UNO after a debugging session, you have two options: you can restore it as a MiniCore 328P board or as an original Uno board. The former one is the more attractive alternative in my eyes. Just check out the pages about <a href="https://github.com/MCUdude/MiniCore">MiniCore</a>. Further, the command <code>Burn Bootloader</code> does apparently not work so well with some programmers or debuggers when doing it for the Uno setting. However, the dw-link built-in programmer has no problems. </p>
 <p>In order to restore your board, you need to do the following steps:</p>

@@ -88,17 +88,13 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#problems-while-debugging">Problems while debugging</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#problem-you-get-the-message-connection-to-target-lost-the-program-receives-a-sighup-signal-when-you-try-to-start-execution-andor-the-system-led-is-off">Problem: You get the message Connection to target lost, the program receives a SIGHUP signal when you try to start execution, and/or the system LED is off</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#problem-when-stopping-the-program-with-ctrl-c-or-with-the-stop-button-you-get-the-message-cannot-remove-breakpoints-because-program-is-no-longer-writable">Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message Cannot remove breakpoints because program is no longer writable.</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#problem-when-trying-to-start-execution-with-the-run-command-gdb-stops-with-an-internal-error">Problem: When trying to start execution with the run command, GDB stops with an internal error</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-and-you-get-the-warning-cannot-insert-breakpoint-command-aborted">Problem: The debugger does not start execution when you request single-stepping or execution and you get the warning Cannot insert breakpoint ... Command aborted</a>
+    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-does-not-start-execution-and-you-receive-a-signal">Problem: The debugger does not start execution and you receive a signal</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#problem-when-single-stepping-with-next-or-step-you-receive-the-message-warning-cannot-insert-breakpoint-0-and-the-program-is-stopped-at-a-strange-location">Problem: When single stepping with next or step , you receive the message Warning: Cannot insert breakpoint 0 and the program is stopped at a strange location</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-you-get-the-message-illegal-instruction-and-the-program-receives-a-sigill-signal">Problem: The debugger does not start execution when you request single-stepping or execution, you get the message illegal instruction, and the program receives a SIGILL signal</a>
     </li>
         </ul>
     </li>
@@ -210,20 +206,25 @@
 <li><em>Cannot connect for unknown reasons:</em> This error message should not be shown at all. If it does, please tell me!</li>
 </ul>
 <h2 id="problems-while-debugging">Problems while debugging</h2>
-<p><a name="lost"></a></p>
-<h3 id="problem-you-get-the-message-connection-to-target-lost-the-program-receives-a-sighup-signal-when-you-try-to-start-execution-andor-the-system-led-is-off">Problem: You get the message <em>Connection to target lost</em>, the program receives a <code>SIGHUP</code> signal when you try to start execution, and/or the system LED is off</h3>
-<p>The target is not responsive any longer. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the <a href="../requirements/#requirements-concerning-the-target-system">necessary electrical requirements</a>. Other reasons might be that the program disturbed the communication by changing, e.g., the <a href="../problems/#mcu-operations-interfering-with-debugwire">MCU clock frequency</a>. Try to identify the reason, eliminate it, and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the <code>load</code> command should be used to reload the program.</p>
 <h3 id="problem-when-stopping-the-program-with-ctrl-c-or-with-the-stop-button-you-get-the-message-cannot-remove-breakpoints-because-program-is-no-longer-writable">Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message <em>Cannot remove breakpoints because program is no longer writable.</em></h3>
 <p>The reason is most probably that the communication connection to the target system has been lost (<a href="#lost">see above</a>).</p>
 <h3 id="problem-when-trying-to-start-execution-with-the-run-command-gdb-stops-with-an-internal-error">Problem: When trying to start execution with the <code>run</code> command, GDB stops with an internal error</h3>
 <p>This happens with older avr-gdb versions. You can instead use <code>monitor reset</code> and <code>continue</code>. </p>
-<h3 id="problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-and-you-get-the-warning-cannot-insert-breakpoint-command-aborted">Problem: The debugger does not start execution when you request <em>single-stepping</em> or <em>execution</em> and you get the warning <em>Cannot insert breakpoint ... Command aborted</em></h3>
-<p>You use more than the allowed number of breakpoints, i.e., usually 20 (including one for a temporary breakpoint for single-stepping). If you have executed the <code>monitor breakpoint h</code> command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.</p>
+<h3 id="problem-the-debugger-does-not-start-execution-and-you-receive-a-signal">Problem: The debugger does not start execution and you receive a signal</h3>
+<ul>
+<li>
+<p><code>SIGSYS</code>:  You use more than the allowed number of breakpoints, i.e., usually 16 (including one for a temporary breakpoint for single-stepping). If you have executed the <code>monitor breakpoint h</code> command, this number is reduced to 1. In this case, you can either set a breakpoint or you can single-step, but not both! In any case, you need to reduce the number of breakpoints before you can continue.</p>
+</li>
+<li>
+<p><code>SIGBUS</code>: This means that the stack is going to overflow, or a return will fetch its address from an area below the SRAM start when you begin execution.</p>
+</li>
+<li><code>SIGILL</code>: The only reason for such a signal is that at the position we want to continue from, there is a BREAK instruction that the programmer explicitly inserted, or it is a leftover from a previous debugging session that was not cleaned up. In the former case, you may want to change the sketch and restart debugging. In the latter case, a simple <code>load</code> command followed by a restart will do.</li>
+<li><code>SIGHUP</code>: The target is not responsive any longer, and the status LED is off. Possible reasons for such a loss of connectivity could be that the RESET line of the target system does not satisfy the <a href="../requirements/#requirements-concerning-the-target-system">necessary electrical requirements</a>. Other reasons might be that the program disturbed the communication by changing, e.g., the <a href="../problems/#mcu-operations-interfering-with-debugwire">MCU clock frequency</a>. Try to identify the reason, eliminate it, and then restart the debug session.  Most probably, there are still BREAK instructions in flash memory, so the <code>load</code> command should be used to reload the program.</li>
+<li><code>SIGABRT</code>: There was a fatal error and further execution is not possible. The status LED will blink furiously. Check the error number with the <code>monitor info</code> command and <a href="#internal-and-fatal-debugger-errors">look up the reason below</a>. </li>
+<li><code>SIGSEGV</code>: Execution was requested to start before the binary was loaded. Use the <code>load</code> command. </li>
+</ul>
 <h3 id="problem-when-single-stepping-with-next-or-step-you-receive-the-message-warning-cannot-insert-breakpoint-0-and-the-program-is-stopped-at-a-strange-location">Problem: When single stepping with <code>next</code> or <code>step</code> , you receive the message <em>Warning: Cannot insert breakpoint 0</em> and the program is stopped at a strange location</h3>
 <p>The problem is similar to the one above: You used too many breakpoints and there is no temporary breakpoint left for GDB. The program is probably stopped somewhere you have not anticipated. You may be able to recover by deleting one or more breakpoints, setting a breakpoint close to where you wanted to step, and then using the <code>continue</code> command. If this is not possible, restart and use fewer breakpoints.</p>
-<h3 id="problem-the-debugger-does-not-start-execution-when-you-request-single-stepping-or-execution-you-get-the-message-illegal-instruction-and-the-program-receives-a-sigill-signal">Problem: The debugger does not start execution when you request <em>single-stepping</em> or <em>execution</em>, you get the message <em>illegal instruction</em>, and the program receives a <code>SIGILL</code> signal</h3>
-<p>It could be that you did not issue a load command. In this case, one should do that.</p>
-<p>A second reason for such a signal could be that at the position we want to continue from, there is a BREAK instruction that either was explicitly inserted by the programmer or is a leftover from a previous debugging session that was not cleaned up. In the former case, you may want to change the sketch and restart debugging. In the latter case, a simple <code>load</code> command will do.</p>
 <h2 id="strange-behavior-of-the-debugger">Strange behavior of the debugger</h2>
 <h3 id="problem-after-changing-optimization-options-the-binary-is-still-too-largevery-small">Problem: After changing optimization options, the binary is still too large/very small</h3>
 <p>You switched the optimization option from <strong>-Og -fno-lto</strong> back to normal and you recompiled, but your program still looks very big. The reason for that can be that the Arduino IDE/CLI does not always recompile the core, but reuses the compiled and linked archive. In the Arduino IDE 1, you can force a recompile of the core by exiting the IDE. In IDE 2, this option is no longer available. You need to locate the compiled files and delete them manually.</p>
@@ -232,7 +233,7 @@
 <h3 id="problem-while-single-stepping-time-seems-to-be-frozen-ie-the-timers-do-not-advance-and-no-timer-interrupt-is-raised">Problem: While single-stepping, time seems to be frozen, i.e., the timers do not advance and no timer interrupt is raised</h3>
 <p>This is a feature, not a bug.  It allows you to single-step through the code without being distracted by interrupts that transfer the control to the interrupt service routine. Time passes and interrupts are raised only when you use the <code>continue</code> command (or when the <code>next</code> command skips over a function call). You can change this behavior by using the command <code>monitor singlestep i</code>, which enables the timers and interrupts while single-stepping. In this case, however, it may happen that during single-stepping control is transferred into an interrupt routine.</p>
 <h3 id="problem-pwm-analogwrite-does-not-seem-to-work-when-the-program-is-stopped">Problem: PWM (analogWrite) does not seem to work when the program is stopped</h3>
-<p>The reason is that all timers are usually stopped when the program is in a stopped state. However, you can change this behavior using the GDB command <code>monitor timers r</code>. In this case, the timers are run even when the program is stopped, which means that PWM (aka <code>analogWrite</code>) is also still active.</p>
+<p>The reason is that all timers are usually stopped when the program is in a stopped state. However, you can change this behavior using the GDB command <code>monitor timers run</code>. In this case, the timers are run even when the program is stopped, which means that PWM (aka <code>analogWrite</code>) is also still active. Actually, this is the default behavior!</p>
 <h3 id="problem-when-single-stepping-with-next-or-step-the-program-ends-up-at-the-start-of-flash-memory-eg-0x0030">Problem: When single stepping with <code>next</code> or <code>step</code> , the program ends up at the start of flash memory, e.g., 0x0030</h3>
 <p>This should only happen when you have used the command <code>monitor singlestep interruptible</code> before, which enables interrupts while single-stepping. In this case, an interrupt might have been raised which has transferred control to the interrupt vector table at the beginning of flash memory. If you want to continue debugging, set a breakpoint at the line you planned to stop with the single-step command and use the <code>continue</code> command. If you want to avoid this behavior in the future, issue the debugger command <code>monitor singlestep safe</code>. </p>
 <h3 id="problem-after-requesting-to-stop-at-a-function-the-debugger-displays-a-completely-different-file-where-the-execution-will-stop">Problem: After requesting to stop at a function, the debugger displays a completely different file, where the execution will stop</h3>
@@ -241,7 +242,7 @@
 <p>Not all source lines generate machine code so that it is sometimes impossible to stop at a given line. The debugger will then try to stop at the next possible line. This effect can get worse with different compiler optimization levels. For debugging, <strong>-Og3</strong> is the recommended optimization option, which applies optimizations in a debug-friendly way. This is also the default for PlatformIO. In the Arduino IDE, you have to activate the <code>Optimize for Debugging</code> switch in the  <code>Sketch</code> menu.</p>
 <h3 id="problem-the-debugger-does-things-that-appear-to-be-strange">Problem: The debugger does things that appear to be strange</h3>
 <p>The debugger starts execution, but it never stops at a breakpoint it should stop, single-stepping does not lead to the expected results, etc. I have seen three possible reasons for that (apart from a programming error that you are hunting).</p>
-<p>Often, I had forgotten to load the binary code into flash. Remember to use the <code>load</code> command <strong><em>every time</em></strong> after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the <code>load</code> command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably force a hardware reset by using the command <code>monitor reset</code>. Alternatively, when you initiated your session with <code>target extended-remote ...</code>, you can use the <code>run</code> command that resets the MCU and starts at address zero. In the Arduino IDE 2, all that cannot happen.</p>
+<p>Often, I had forgotten to load the binary code into flash. Remember to use the <code>load</code> command <strong><em>every time</em></strong> after you have started a debugging session. Otherwise it may be the case that the MCU flash memory contains old code! Note that after the <code>load</code> command the program counter is set to zero. However, the MCU and its registers have not been reset. You should probably force a hardware reset by using the command <code>monitor reset</code>. Alternatively, when you initiated your session with <code>target extended-remote ...</code>, you can use the <code>run</code> command that resets the MCU and starts at address zero. In the Arduino IDE 2, all these problems will not happen.</p>
 <p>Second, you may have specified a board/MCU different from your actual target. This happens quite easily with PlatformIO when you work with different targets. In this case, some things appear to work, but others do not work at all. Again, in the Arduino IDE 2, this cannot happen.</p>
 <p>Another possible reason for strange behavior is the chosen compiler optimization level. If you have not chosen <strong>-Og3</strong>, then single-stepping may not work as expected and/or you may not be able to assign values to local variables. If objects are not printed the right way, then you may consider disabling LTO (by using the compiler option <strong>-fno-lto</strong>). </p>
 <p>So, before blaming the debugger, check for the three possible causes.</p>
@@ -265,8 +266,8 @@
 <p>The reason for such an error could be that the connection to the target could not be established or that there was an internal debugger error. It may be that the corresponding error message has already been displayed. You can find out what kind of error happened by typing the following command:</p>
 <pre><code>monitor info
 </code></pre>
-<p>If the error number is less than 100, then it is a connection error. Errors above 100 are serious internal debugger errors. </p>
-<p>If you have encountered an internal debugger error, then please try to reproduce the problem and tell me how it happened. </p>
+<p>If the error number is less than 100, then it is a connection error. Try again, perhaps after disconnecting and reconnecting everything. Check wiring. If the error persists, try perhaps with a different MCU.</p>
+<p>Errors above 100 are serious internal debugger errors. If you have encountered such an internal debugger error, then please try to reproduce the problem and tell me how it happened. </p>
 <p>After a reset or a power cycle of the hardware debugger, everything usually works again. If not, you need to unplug everything and put it together again.</p>
 <table>
 <thead>
@@ -278,38 +279,58 @@
 <tbody>
 <tr>
 <td style="text-align: right;">1</td>
-<td>Connection error: Could not communicate by ISP; check wiring</td>
+<td>Could not communicate by ISP; check wiring</td>
 </tr>
 <tr>
 <td style="text-align: right;">2</td>
-<td>Connection error: Could not activate debugWIRE</td>
+<td>Could not activate debugWIRE</td>
 </tr>
 <tr>
 <td style="text-align: right;">3</td>
-<td>Connection error: MCU type is not supported</td>
+<td>MCU type is not supported</td>
 </tr>
 <tr>
 <td style="text-align: right;">4</td>
-<td>Connection error: Lock bits or BOOTRST could not be cleared</td>
+<td>Lockbits could not be cleared</td>
 </tr>
 <tr>
 <td style="text-align: right;">5</td>
-<td>Connection error: MCU has PC with stuck-at-one bits</td>
+<td>Lockbits are set but not managed by dw-link</td>
 </tr>
 <tr>
 <td style="text-align: right;">6</td>
-<td>Connection error: RESET line has a capacitive load</td>
+<td>BOOTRST fuse could not be cleared</td>
 </tr>
 <tr>
 <td style="text-align: right;">7</td>
-<td>Connection error: Target not powered or RESET shortened to GND</td>
+<td>MCU has a program counter with stuck-at-one bits</td>
 </tr>
 <tr>
 <td style="text-align: right;">8</td>
-<td>MCU type does not match</td>
+<td>RESET line has a capacitive load</td>
 </tr>
 <tr>
 <td style="text-align: right;">9</td>
+<td>Target not powered or RESET shortened to GND</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td>MCU type does not match</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td>DWEN fuse could not be programmed</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td>DWEN fuse is unprogrammed but not managed by dw-link</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td>EESAVE fuse could not be changed</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
 <td>Unknown connection error</td>
 </tr>
 <tr>
@@ -419,6 +440,10 @@
 <tr>
 <td style="text-align: right;">127</td>
 <td>Bad interrupt</td>
+</tr>
+<tr>
+<td style="text-align: right;">128</td>
+<td>Inconsistent classification of opcodes in range-stepping</td>
 </tr>
 </tbody>
 </table>
