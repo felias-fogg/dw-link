@@ -59,6 +59,8 @@ jobs:
 
           # - arduino-boards-fqbn: arduino:avr:nano
           #   sketches-exclude: unittests, isr, flashtest, oop, fibonacci, tictactoe
+          
+            - arduino-boards-fqbn: arduino:avr:uno
 
       # Do not cancel all jobs / architectures if one job fails
       fail-fast: false
