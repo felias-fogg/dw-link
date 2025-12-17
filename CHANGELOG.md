@@ -1,5 +1,12 @@
 # Changelog for dw-link
 
+## Version 6.0.0 (17-Dec-2025)
+
+- Changed: dw-link will now return 'dw-link6.0.0' when queried. PyAvrOCD will refuse to work with earlier versions in order to make sure that all the 'manage' requests are, in fact, honored by dw-link. 
+- Added: range stepping using one HWBP.
+- Added: New fatal error message 128
+- Fixed: All compiler warnings
+
 ## Version 5.4.0 (13-Dec-2025)
 
 - Removed: `monitor speed` command (in order to unify monitor commands with PyAvrOCD). You still can increase debugWIRE communication speed by setting a compile time constant and recompile.

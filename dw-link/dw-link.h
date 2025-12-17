@@ -40,7 +40,7 @@ boolean autoPowerCycle(void);
 boolean manualPowerCycle(void);
 boolean powerCycle();
 void power(boolean);
-boolean gdbReset();
+boolean gdbReset(boolean);
 #if ISPMON
 void gdbSetFuses(Fuses);
 void gdbGetFuses(boolean, boolean);

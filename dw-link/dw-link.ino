@@ -43,7 +43,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "5.4.0"
+#define VERSION "6.0.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -129,6 +129,7 @@
 #define MAXPAGESIZE 256 // maximum number of bytes in one flash memory page (for the 64K MCUs)
 #define MAXBREAK 16 // maximum of active breakpoints (we need double as many entries for lazy breakpoint setting/removing!)
 #define MAXNAMELEN 16 // maximal length of MCU name (incl. NUL terminator)
+#define MAXBRANCH 16; // maximal number of branch points in range stepping
 
 // communication bit rates 
 #define SPEEDHIGH     300000UL // maximum communication speed limit for DW
@@ -157,6 +158,7 @@
 #define CLEANUP 1
 #define ASSIGN_ALL_BPS 2
 #define ASSIGN_ONLY_SWBPS 3
+#define PROTECT_AND_STEAL_HWBP 4
 
 // types of fatal errors
 #define NO_FATAL 0
@@ -192,7 +194,7 @@
 #define NO_STEP_FATAL 117 // could not do a single-step operation
 #define RELEVANT_BP_NOT_PRESENT 118 // identified relevant BP not present any longer 
 #define INPUT_OVERLFOW_FATAL 119 // input buffer overflow - should not happen at all!
-#define WRONG_FUSE_SPEC_FATAL 120 // specification of a fuse we are not prepafred to change
+#define WRONG_FUSE_SPEC_FATAL 120 // specification of a fuse we are not prepared to change
 #define BREAKPOINT_UPDATE_WHILE_FLASH_PROGRAMMING_FATAL 121 // should not happen!
 #define DW_TIMEOUT_FATAL 122 // timeout while reading from DW line
 #define DW_READREG_FATAL 123 // timeout while register reading
@@ -200,6 +202,7 @@
 #define REENABLERWW_FATAL 125 // timeout during reeanble RWW operation
 #define EEPROM_READ_FATAL 126 // timeout during EEPROM read
 #define BAD_INTERRUPT_FATAL 127 // bad interrupt
+#define INCONS_OPCODE_CLASSIFCATION_FATAL 128 // inconsistent opcode classification 
 
 // some masks to interpret memory addresses
 #define MEM_SPACE_MASK 0x00FF0000 // mask to detect what memory area is meant
@@ -223,12 +226,12 @@ struct breakpoint
   boolean active:1;       // breakpoint is active, i.e., has been set by GDB
   boolean inflash:1;      // breakpoint is in flash memory, i.e., BREAK instr has been set in memory
   boolean hw:1;           // breakpoint is a hardware breakpoint, i.e., not set in memory, but HWBP is used
-  unsigned int waddr;  // word address of breakpoint
-  unsigned int opcode; // opcode that has been replaced by BREAK (in little endian mode)
+  unsigned int waddr;     // word address of breakpoint
+  unsigned int opcode;    // opcode that has been replaced by BREAK (in little endian mode)
 } bp[MAXBREAK*2];
 
-byte bpcnt;             // number of ACTIVE breakpoints (there may be as many as MAXBREAK used ones from the last execution!)
-byte bpused;            // number of USED breakpoints, which may not all be active
+byte bpcnt;               // number of ACTIVE breakpoints <= MAXBREAK + 1 (== MAXBREAK+1 if too many)
+byte bpused;              // number of USED breakpoints, which may not all be active <= MAXBREAK*2
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
 
@@ -258,14 +261,20 @@ struct monitorstate {
   boolean atexit_leave:1; // leave debugWIRE at exit
   boolean readbeforewrite:1; // read before write when loading
   boolean noread:1; // no read while loading
-  boolean onlyloaded:1; // allow execution only after load command
-  boolean rangestepping:1;
+  boolean onlywhenloaded:1; // allow execution only after load command
+  boolean rangestepping:1; // range-stepping allowed
   boolean safestep:1; // if true, then single step in a safe way, i.e. not interruptable
   boolean verifyload:1; // check whether flash was successful
   boolean nobootrst:1; // pseudo monitor option: Do not manage BOOTRST fuse
   boolean nodwen:1; // pseudo monitor option: Do not manage DWEN fuse
   boolean nolockbits:1; // pseudo monitor option: Do not manage lockbits
 } mon;
+
+struct rangestepstate { // all are word addresses
+  unsigned int start; //start of range (inclusive), is zero when not set
+  unsigned int end; // end of range (exclusive)
+  unsigned int leave; // single exit point (if any), is zero if too many exit points
+} range;
 
 // use LED to signal system state
 // LED off = not connected to target system, ISP connected, or transitional
@@ -569,7 +578,7 @@ const byte m64HVEmsk[] PROGMEM = { 0x4e, 0x51, 0xca, 0,
   {0x9510, 32, 0, 16, 32, 0x31,  64, 0, 0x3F00, 0x1C, 0x1F, 1, 1, 0x08, 1, 0x01, atmega32hvbrevb,mHVBmsk}, // untested
   {0x9610, 64, 0, 16, 64, 0x31,  64, 0, 0x7F00, 0x1C, 0x1F, 1, 1, 0x08, 1, 0x01, atmega64hve2, m64HVEmsk}, // untested
 #endif
-  { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0, NULL,             NULL}, // last mark
+  { 0,      0, 0,  0, 0,  0,      0, 0, 0,      0,    0,    0, 0, 0x00, 0, 0x00, NULL,              NULL} // last mark
 };
 
 const byte maxspeedexp = 4; // corresponds to a factor of 16
@@ -587,7 +596,7 @@ const char moversion[] PROGMEM = "version";
 const char modwire[] PROGMEM = "debugwire";
 const char moreset[] PROGMEM = "reset";
 const char moload[] PROGMEM = "load";
-const char moonly[] PROGMEM = "onlyloaded";
+const char moonly[] PROGMEM = "onlywhenloaded";
 const char moverify[] PROGMEM = "verify";
 const char motimers[] PROGMEM = "timers";
 const char mobreak[] PROGMEM = "breakpoints";
@@ -848,6 +857,8 @@ void initSession(void)
   setSysState(NOTCONN_STATE);
   targetInitRegisters();
   mcu.name = (const char *)unknown;
+  range.start = 0;
+  range.leave = 0xFFFF;
 }
 
 // init monitor values
@@ -859,7 +870,7 @@ void initMonValues(void)
   mon.safestep = true;
   mon.tmask = 0xDF;
   mon.verifyload = true;
-  mon.onlyloaded = true;
+  mon.onlywhenloaded = true;
   mon.onlysbp = false;
   mon.maxbreak = MAXBREAK;
   mon.rangestepping = true;
@@ -984,7 +995,7 @@ void gdbHandleCmd(void)
     break;
 
   case 0x05: // enquiry, answer back with dw-link
-    Serial.print(F("dw-link"));
+    Serial.print(F("dw-link" VERSION));
     break;
     
   default:
@@ -1047,34 +1058,44 @@ void gdbParsePacket(const byte *buff)
       targetStop();
     dwlrestart();                                     /* fresh restart */
     break;
-  case 'c':                                           /* continue */
-  case 'C':                                           /* continue with signal - just ignore signal! */
-    s = gdbContinue();                                /* start execution on target at current PC */
-    if (s) gdbSendState(s);                           /* if s != 0, it is a signal notifying an error */
-                                                      /* otherwise the target is now executing */
-    break;
-  case 's':                                           /* single step */
-  case 'S':                                           /* step with signal - just ignore signal */
-    s = gdbStep();                                    /* do only one step and report reason why stopped, or exec a sleep walk */
-    if (s) gdbSendState(s);                           /* report reason */
-    break;              
   case 'z':                                           /* remove break/watch point */
   case 'Z':                                           /* insert break/watch point */
     gdbHandleBreakpointCommand(buf);
     break;
-#if !defined(NOEXTREM)
   case 'v':                                          
     if (memcmp_P(buf, (void *)PSTR("vRun"), 4) == 0) {/* Run command */
-	gdbReset();
+	gdbReset(true);
 	gdbSendState(SIGTRAP);                        /* trap signal */
     } else if (memcmp_P(buf, (void *)PSTR("vKill"), 5) == 0) { /* used only in extended-remote: just reset */
-      gdbReset();
+      gdbReset(true);
       gdbSendReply("OK");                           /* all OK */
+    } else if (memcmp_P(buf, (void *)PSTR("vCont?"), 6) == 0) { /* vCont query packet */
+        gdbSendReply("vCont;c;C;s;S;r");
+    } else if (memcmp_P(buf, (void *)PSTR("vCont;"), 6) == 0) { /* vCont packets */
+      switch (buf[6]) {
+      case 's':
+      case 'S':
+        s = gdbStep();                                /* do only one step or sleep walk */
+        if (s) gdbSendState(s);                       /* report reason or zero */
+        break;
+      case 'c':                                       /* continue */
+      case 'C':                                       /* continue with signal - just ignore signal! */
+        s = gdbContinue();                            /* start execution on target at current PC */
+        if (s) gdbSendState(s);                       /* if s != 0, it is a signal notifying an error */
+                                                      /* otherwise the target is now executing */
+        break;
+      case 'r':
+        s = gdbRangeStep(buff + 7);                   /* perform range-stepping */
+        if (s) gdbSendState(s);                       /* repoert reason or zero */
+        break;
+      default:
+        gdbSendReply("");
+        break;
+      }
     } else {
       gdbSendReply("");                             /* not supported */
     }
     break;
-#endif
   case 'q':                                           /* query requests */
     if (memcmp_P(buf, (void *)PSTR("qRcmd,"),6) == 0) /* monitor command */
 	gdbParseMonitorPacket(buf+6);
@@ -1137,7 +1158,7 @@ void gdbParseMonitorPacket(byte *buf)
     gdbDwireOption(cmdbuf[mooptix]);
     break;
   case MORESET:
-    if (gdbReset()) gdbReplyMessagePSTR(PSTR(LONGSHORT("MCU has been reset","DONE")), -1);
+    if (gdbReset(false)) gdbReplyMessagePSTR(PSTR(LONGSHORT("MCU has been reset","DONE")), -1);
     break;
   case MOLOAD:
     gdbLoadOption(cmdbuf[mooptix]); 
@@ -1164,7 +1185,7 @@ void gdbParseMonitorPacket(byte *buf)
     gdbReplyMessagePSTR(PSTR("Caching is not implemented"), -1);
     break;
   case MORANGE:
-    gdbReplyMessagePSTR(PSTR("Range stepping is not yet implemented"), -1);
+    gdbRangeSteppingOption(cmdbuf[mooptix]);
     break;
   case MOEBL:
     gdbReplyMessagePSTR(PSTR("'Erase-before-load' is not supported on debugWIRE targets"), -1);
@@ -1172,7 +1193,6 @@ void gdbParseMonitorPacket(byte *buf)
   case MONOBOOT:
   case MONODWEN:
   case MONOLOCK:
-    reportFatalError(200, false);
     gdbPseudoOption(mocmd);
     break;
   case MOMCU:
@@ -1262,6 +1282,26 @@ void gdbAmbiguousCmd(void) {
   gdbReplyMessagePSTR(PSTR(LONGSHORT("Ambiguous 'monitor' command string","AMBG")), -1);
 }
 
+inline void gdbRangeSteppingOption(char arg) {
+  switch (arg) {
+  case 'e':
+    mon.rangestepping = true;
+    break;
+  case 'd':
+    mon.rangestepping = false;
+    break;
+  case '\0':
+    break;
+  default:
+    gdbUnknownOpt();
+    return;
+  }
+  if (mon.rangestepping)
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Range stepping allowed","RSTEP")), -1);
+  else 
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("No range stepping","NO RSTEP")), -1);
+}
+
 inline void gdbPseudoOption(byte opt) {
   switch(opt) {
   case MONOBOOT:
@@ -1280,6 +1320,7 @@ inline void gdbPseudoOption(byte opt) {
 inline void gdbStoreReqMcu(char mcuname[]) {
   strncpy(mcu.required, mcuname, MAXNAMELEN);
   mcu.required[MAXNAMELEN - 1] = '\0';
+  gdbReplyMessagePSTR(PSTR("OK"), -1);
 }
  
 inline void gdbAtExit(char arg) {
@@ -1684,15 +1725,15 @@ void gdbOnlyOption(char arg)
 {
   if (arg != '\0') {
     if (arg == 'e')
-      mon.onlyloaded = true;
+      mon.onlywhenloaded = true;
     else if (arg == 'd')
-      mon.onlyloaded = false;
+      mon.onlywhenloaded = false;
     else {
       gdbUnknownOpt();
       return;
     }
   }
-  if (mon.onlyloaded) 
+  if (mon.onlywhenloaded) 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Execution is only possible after a previous load command","FIRST LOAD")), -1);
   else 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Execution is always possible","ALWAYS")), -1);
@@ -1842,14 +1883,14 @@ void power(boolean on)
 
 // "monitor reset"
 // issue reset on target
-boolean gdbReset(void)
+boolean gdbReset(boolean silent)
 {
   if (ctx.state == NOTCONN_STATE) {
-    gdbReplyMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first", "DW OFF")), -1);
+    if (!silent) gdbReplyMessagePSTR(PSTR(LONGSHORT("Enable debugWIRE first", "DW OFF")), -1);
     return false;
   }
   if (targetOffline()) {
-    gdbReplyMessagePSTR(PSTR(LONGSHORT("Target offline: Cannot reset", "OFFLINE")), -1);
+    if (!silent) gdbReplyMessagePSTR(PSTR(LONGSHORT("Target offline: Cannot reset", "OFFLINE")), -1);
     return false;
   }
   targetReset();
@@ -1861,15 +1902,21 @@ boolean gdbReset(void)
 // retrieve opcode and address at current wpc (regardless of whether it is hidden by break)
 void getInstruction(unsigned int &opcode, unsigned int &addr)
 {
+  getInstructionAtWAddr(ctx.wpc, opcode, addr);
+}
+
+// retrieve opcode and argument at give word address
+void getInstructionAtWAddr(unsigned int waddr, unsigned int &opcode, unsigned int &addr)
+{
   opcode = 0;
   addr = 0;
-  int bpix = gdbFindBreakpoint(ctx.wpc);
+  int bpix = gdbFindBreakpoint(waddr);
   if ((bpix < 0) || (!bp[bpix].inflash)) 
-    opcode = targetReadFlashWord(ctx.wpc<<1);
+    opcode = targetReadFlashWord(waddr<<1);
   else
     opcode = bp[bpix].opcode;
   if (twoWordInstr(opcode)) {
-    addr = targetReadFlashWord((ctx.wpc+1)<<1);
+    addr = targetReadFlashWord((waddr+1)<<1);
   }
 }
 
@@ -1937,7 +1984,7 @@ byte gdbCheckPrerequisite(unsigned int opcode)
     gdbDebugMessagePSTR(PSTR(LONGSHORT("Not connected", "NO CON")), -1);    
     return SIGHUP;
   }
-  if (mon.onlyloaded and ctx.notloaded) {
+  if (mon.onlywhenloaded and ctx.notloaded) {
     gdbDebugMessagePSTR(PSTR(LONGSHORT("No program loaded", "NO PRG")), -1);
     return SIGSEGV;
   }
@@ -1958,8 +2005,8 @@ byte gdbCheckPrerequisite(unsigned int opcode)
   return 0;
 }
 
-// do one step
-// Start with saved registers and return with saved regs (except sleep walking)
+// Do one step
+// Start with saved registers and return with saved regs (except when sleep walking)
 // It will return a signal, which in case of success is SIGTRAP.
 // Note that we do not need an update of the breakpoints,
 // except when sleep-walking a SLEEP instruction.
@@ -1967,7 +2014,7 @@ byte gdbCheckPrerequisite(unsigned int opcode)
 // in the worst case ending up in interrupt vector table. So, all
 // other BPs are irrelevant.
 // Sleep walking means that in case of a SLEEP instruction, we update
-// the breakpointbs (not allowing thje HWBP to be used), and then we
+// the breakpoints (not allowing the HWBP to be used), and then we
 // use the HWBP to break after the sleep instruction returning 0 (as when
 // resuming execution.
 byte gdbStep(void)
@@ -2031,6 +2078,202 @@ byte gdbContinue(void)
   return 0;
 }
 
+// Allow for single stepping in a range (after an initial single step)
+// Catch execution at exit point (only one allowed) with the HWBP.
+// If more than one exit, simply single-step.
+// Special case: No exit points. Then we set exit point to zero so that the
+// loop will execute without single-stepping (allowing also for interrupts)
+byte gdbRangeStep(const byte *args)
+{
+  unsigned long start, end;
+  byte len;
+  len = parseHex(args, &start);
+  parseHex(args + len + 1, &end);
+  if (!mon.rangestepping || start % 2 != 0 || end % 2 != 0 || start == end) // no range stepping possible
+    return(gdbStep());
+  start = start >> 1; // word address
+  end = end >> 1;     // word address
+  if (start == range.start && end == range.end && // active range stepping
+      start <= ctx.wpc && end > ctx.wpc) {        // and still in range
+    if (ctx.wpc == range.leave ||                 // we are at a potential exit point inside range
+        range.leave == 0xFFFF)                    // or too many exit points
+      return(gdbStep());                          // only one step, then check again
+    return(gdbContinue());                        // otherwise continue execution
+  }
+  // We need to start a new range-stepping episode at this point
+  // Make a control flow anaylsis & assign HWBP, if only one exit point.
+  // Then do the initial single-step.
+  // If more than one exit point, set range.leave == 0xFFFF and single-step
+  range.start = start;
+  range.end = end;
+  range.leave = analyzeRange();
+  if (range.leave != 0xFFFF && bpcnt < mon.maxbreak) { // only one exit point identified && BP available
+    gdbUpdateBreakpoints(PROTECT_AND_STEAL_HWBP); // protect SWBP at current point steal HWBP
+    if (hwbp != 0xFFFF) {
+      reportFatalError(HWBP_ASSIGNMENT_INCONSISTENT_FATAL, false);
+      return SIGABRT;
+    }
+    hwbp = range.leave;
+    bpcnt++;
+  } else {
+    range.leave = 0xFFFF;
+  }
+  return(gdbStep()); // initial single step
+}
+
+// returns single exit point of range
+// or 0xFFFF if too many exit points
+// Special case: if no exit point is found, 0x0000 is returned
+// to allow for execution of infinite loop
+unsigned int analyzeRange()
+{
+  unsigned int leave = 0x0000; // Will be zero if no exit point!
+  unsigned int waddr = range.start;
+  unsigned int opcode, argument;
+  unsigned int dest1, dest2;
+
+  while (waddr < range.end) {
+    dest1 = 0xFFFF;
+    dest2 = 0xFFFF;
+    getInstructionAtWAddr(waddr, opcode, argument);
+    if (twoWordInstr(opcode)) {
+      waddr = waddr + 2; // advance two words
+      if (((opcode & 0x0FE0E) == 0x0940E) || ((opcode & 0x0FE0E) == 0x0940C)) {  // Jmp and Call
+        dest1 = argument;
+      } else {
+        dest1 = waddr;
+      }
+    } else {
+      if (!branchInstr(opcode)) {
+        dest1 = waddr + 1;
+      } else if (skipInstr(opcode)) {
+        dest1 = waddr + 1;
+        getInstructionAtWAddr(waddr+1, opcode, argument);
+        dest2 = waddr + 2 + (twoWordInstr(opcode) ? 1 : 0);
+      } else if (condBranchInstr(opcode)) {
+        dest1 = waddr + 1;
+        dest2 = condBranchDestination(opcode, waddr);
+      } else if (relativeBranchInstr(opcode)) {
+        dest1 = relativeBranchDestination(opcode, waddr);
+      } else if (indirBranchInstr(opcode) || retxInstr(opcode)) {
+        // IJMP, EIJMP, RET, ICALL, RETI, EICALL -> internal exit point
+        if (leave != 0x0000) // already assigned an exit point
+          return 0xFFFF;
+        else
+          leave = waddr;
+      } else {
+        reportFatalError(INCONS_OPCODE_CLASSIFCATION_FATAL, false);
+        return 0xFFFF;
+      }
+      waddr++; // advance one word
+    }
+    if ((dest1 != 0xFFFF) && ((range.start > dest1) || (range.end <= dest1))) { // possible exit point
+      if (leave != 0x0000 && leave != dest1) { // which is a new one in addition to one already present
+        return 0xFFFF; // too many exit points
+      } else {
+        leave = dest1; // remember
+      }
+    }
+    if ((dest2 != 0xFFFF) && ((range.start > dest2) || (range.end <= dest2))) {
+      if (leave != 0x0000 && leave != dest2) {
+        return 0xFFFF;
+      } else {
+        leave = dest2;
+      }
+    }
+  }
+  return leave;
+}
+
+// Returns absolute address for conditional branch destination 
+unsigned int condBranchDestination(unsigned int opcode, unsigned int addr)
+{
+  unsigned int rdist, tsc;
+  rdist = (opcode >> 3) & 0x007F;
+  tsc = rdist - int((rdist << 1) & (1 << 7));
+  return(addr + 1 + tsc);
+}
+
+// Returns absolute address for relative branch destination 
+unsigned int relativeBranchDestination(unsigned int opcode, unsigned int addr)
+{
+  unsigned int rdist, tsc;
+  rdist = opcode & 0x0FFF;
+  tsc = rdist - int((rdist << 1) & (1 << 12));
+  return(addr + 1 + tsc);
+}
+
+// Returns true iff it is a branch instruction with relative addressing mode
+// 1101 xxxx xxxx xxxx RCALL
+// 1100 xxxx xxxx xxxx RJMP
+inline boolean relativeBranchInstr(unsigned int opcode)
+{
+  return ((opcode & 0xE000) == 0xC000); // RJMP, RCALL
+}
+
+// Returns true iff instruction is a conditional branch instruction
+// 1111 01xx xxxx xxxx BRBC
+// 1111 00xx xxxx xxxx BRBS
+inline boolean condBranchInstr(unsigned int opcode)
+{
+  return ((opcode & 0xF800) == 0xF000);
+}
+
+// Returns true iff instruction is a skip instruction
+// 0001 00xx xxxx xxxx CPSE
+// 1001 1001 xxxx xxxx SBIC
+// 1001 1011 xxxx xxxx SBIS
+// 1111 110x xxxx 0xxx SBRC
+// 1111 111x xxxx 0xxx SBRS
+inline boolean skipInstr(unsigned int opcode)
+{
+  return (((opcode & 0xFC00) == 0x1000) || // CPSE
+          ((opcode & 0xFD00) == 0x9900) || // SBIC, SBIS
+          ((opcode & 0xFC08) == 0xFC00));  // SBRC, SBRS
+}
+
+// Returns true iff instruction is an indirect jump or call (E)ICALL or E(IJMP)
+// 1001 0101 000x 1001 (E)ICALL
+// 1001 0100 000x 1001 (E)IJMP
+inline boolean indirBranchInstr(unsigned int opcode)
+{
+  return(((opcode & 0xFFEF) == 0x9509) || // (E)ICALL
+         ((opcode & 0xFFEF) == 0x9409));  // (E)IJMP
+}
+
+// Returns true when opcode is a RET or RETI instruction
+// 1001 0101 000x 1000
+inline boolean retxInstr(unsigned int opcode)
+{
+  return ((opcode & 0xFFEF) == 0x9508);
+}
+
+// Returns true iff instruction is not a straightline instruction
+inline boolean branchInstr(unsigned int opcode)
+{
+  return(skipInstr(opcode) ||
+         condBranchInstr(opcode) ||
+         relativeBranchInstr(opcode) ||
+         indirBranchInstr(opcode) ||
+         retxInstr(opcode));
+}
+
+// Check whether range stepping is active
+// If so, check whether we are still in the range
+// If not, disable the active flag and free temporary HW breakpoint (if used)
+void gdbCheckRangeSteppingActive(void)
+{
+  if (range.start) { // if range-stepping is active
+    if (range.start > ctx.wpc || range.end <= ctx.wpc) {
+      range.start = 0;
+      if (range.leave == hwbp && hwbp != 0xFFFF) {
+        range.leave = 0xFFFF;
+        hwbp = 0xFFFF;
+        bpcnt--;
+      }
+    }
+  }
+}
 
 // Remove inactive and set active breakpoints before execution starts or before reset/kill/detach.
 // Note that GDB sets breakpoints immediately before it issues a step or continue command and
@@ -2051,7 +2294,13 @@ byte gdbContinue(void)
 // When the kind parameter is CLEANUP, we also will remove BREAK instructions
 // of active breakpoints, because either an exit or a memory write action will
 // follow. If kind == ASSIGN_ALL_BPS, then we use HW and SW BPs. If kind == ASSIGN_ONLY_SWPBS,
-// then no HWBP is allowed.
+// then no HWBP is allowed. If kind == PROTECT_AND_STEAL_HWBP, then a potential SWBP at
+// the current position is protected and we steal the HWBP.
+//
+// Note that the HWBP may be assigned to range stepping, it will then count as an active BP (bpcnt),
+// and nobody else can use the HWBP in this case, but no slot in the BP table is occupied.
+// It needs to be explicitly unallocated as well, either by gdbCheckRangeSteppingActive or
+// below.
 //
 void gdbUpdateBreakpoints(byte kind)
 {
@@ -2066,7 +2315,7 @@ void gdbUpdateBreakpoints(byte kind)
     return;
   }
 
-  if ((bpcnt > mon.maxbreak && kind != CLEANUP) || bpused == 0 || targetOffline())
+  if ((bpcnt > mon.maxbreak && kind != CLEANUP) || (bpused == 0 && hwbp == 0xFFFF) || targetOffline())
     return;
   
   DEBPR(F("Update Breakpoints (used/active): ")); DEBPR(bpused); DEBPR(F(" / ")); DEBLN(bpcnt);
@@ -2074,7 +2323,8 @@ void gdbUpdateBreakpoints(byte kind)
   // find relevant BPs
   for (i=0; i < MAXBREAK*2; i++) {
     if (bp[i].used) {                       // only used breakpoints!
-      if ((mon.onlysbp || (kind == ASSIGN_ONLY_SWBPS)) && bp[i].hw) { // only software bps are allowed
+      if ((mon.onlysbp || kind == ASSIGN_ONLY_SWBPS || kind == PROTECT_AND_STEAL_HWBP) && // software bps only!
+          bp[i].hw) {                       // and this is the HWBP
 	bp[i].hw = false;
 	bp[i].inflash = false;
 	hwbp = 0xFFFF;
@@ -2088,8 +2338,9 @@ void gdbUpdateBreakpoints(byte kind)
 	    relevant[rel++] = bp[i].waddr;
 	}
       } else {                              // inactive bp
-	if (bp[i].inflash) {                // still in flash 
-	  relevant[rel++] = bp[i].waddr;    // remember to be removed
+	if (bp[i].inflash) {                // still in flash
+          if (kind != PROTECT_AND_STEAL_HWBP || ctx.wpc != bp[i].waddr)  // if unprotected inactive BP
+            relevant[rel++] = bp[i].waddr;  // remember to be removed
 	} else {
 	  bp[i].used = false;               // otherwise free BP already now
 	  if (bp[i].hw) {                   // if hwbp, then free HWBP
@@ -2101,6 +2352,12 @@ void gdbUpdateBreakpoints(byte kind)
       }
     }
   }
+  if (kind == CLEANUP && hwbp != 0xFFFF) { // special case that HWBP has been assigned to range stepping
+    hwbp = 0xFFFF;
+    range.leave = 0xFFFF;
+    bpcnt--;
+  }
+
   relevant[rel++] = 0xFFFF; // end marker
   DEBPR(F("Relevant bps: "));  DEBLN(rel-1);
 
@@ -2253,7 +2510,7 @@ void gdbInsertBreakpoint(unsigned int waddr)
       bpused++;
       DEBPR(F("New BP: ")); DEBPRF(waddr*2,HEX); DEBPR(F(" / now active: ")); DEBLN(bpcnt);
       if (bp[i].hw) { DEBLN(F("implemented as a HW BP")); }
-      return true;
+      return;
     }
   }
   reportFatalError(NO_FREE_SLOT_FATAL, false);
@@ -2706,6 +2963,7 @@ void gdbState2Buf(byte signo)
 void gdbSendState(byte signo)
 {
   targetSaveRegisters();
+  gdbCheckRangeSteppingActive();
   switch (signo) {
   case SIGHUP:
     gdbDebugMessagePSTR(PSTR(LONGSHORT("No connection to target", "NOCONN")),-1);
@@ -2855,12 +3113,12 @@ int targetISPConnect(void)
   if (ispLocked()) 
     result = -CONNERR_CANNOT_CLEAR_LOCK_BITS;
   if (!result && !mon.nobootrst && mcu.bootrstmask)  // here we disable the bootloader-vector fuse BOOTRST if existent and allowed
-    if (!ispProgramFuse(mcu.bootrstbase, mcu.bootrstmask, mcu.bootrstmask))
+    if (!ispProgramFuse((FuseByte)mcu.bootrstbase, mcu.bootrstmask, mcu.bootrstmask))
       result = -CONNERR_BOOTRST;
   if (!result) {
-    if ((ispReadFuse(mcu.dwenbase) & mcu.dwenmask) != 0) { // DWEN is not set
+    if ((ispReadFuse((FuseByte)mcu.dwenbase) & mcu.dwenmask) != 0) { // DWEN is not set
       if (!mon.nodwen) {
-        if (ispProgramFuse(mcu.dwenbase, mcu.dwenmask, 0)) { // set DWEN fuse and powercycle later
+        if (ispProgramFuse((FuseByte)mcu.dwenbase, mcu.dwenmask, 0)) { // set DWEN fuse and powercycle later
           result = 0;
         } else {
           result = -CONNERR_CANNOT_SET_DWEN;
@@ -2918,7 +3176,7 @@ int targetSetFuses(Fuses fuse)
   // now we are in ISP mode and know what processor we are dealing with
   switch (fuse) {
   case Erase:  succ = ispEraseFlash(); break;
-  case DWEN:   succ = ispProgramFuse(mcu.dwenbase, mcu.dwenmask, mcu.dwenmask); break; // disable DWEN!
+  case DWEN:   succ = ispProgramFuse((FuseByte)mcu.dwenbase, mcu.dwenmask, mcu.dwenmask); break; // disable DWEN!
   default: succ = false;
   }
   return (succ ? 1 : -3);
@@ -2990,7 +3248,7 @@ void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
   DEBLNF(addr+offset, HEX);
   DEBPR(F("End address is 0x"));
   DEBLNF(end,HEX);
-  while (mask_reg = pgm_read_byte(mask++)) {
+  while ((mask_reg = pgm_read_byte(mask++))) {
     DEBPR(F("Reading until mask register: 0x"));
     DEBLNF(mask_reg,HEX);
     DEBPR(F("Current address: 0x"));
@@ -3194,8 +3452,8 @@ void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
     ctx.regs[addr+offset] = mem[offset];
     offset++;
   }
-  while (mask_reg = pgm_read_byte(mask++)); // read until we are beyond the first 0 in the mask array
-  while (mask_reg = pgm_read_byte(mask++)) {  // go through all mask regs
+  while ((mask_reg = pgm_read_byte(mask++))); // read until we are beyond the first 0 in the mask array
+  while ((mask_reg = pgm_read_byte(mask++))) {  // go through all mask regs
     if (mask_reg >= end || addr + offset >= end)  // we are done in the masked write-loop
       break;
     if (mask_reg < addr + offset) // mask_reg too small, go for next one
@@ -3275,6 +3533,8 @@ void targetBreak(void)
 }
 
 // start to execute
+// if runto == 0xFFFF, then consider hwbp as a possible target (if != 0xFFFF)
+// otherwise the runto parameter has precedence 
 void targetContinue(unsigned int runto)
 {
   measureRam();
@@ -3322,6 +3582,7 @@ boolean targetReset(void)
 // send a break on the RESET line, check for response and calibrate 
 boolean doBreak (boolean doprinterror = true) {
   measureRam();
+  (void)doprinterror;
 
   DEBLN(F("doBreak"));
   pinMode(DWLINE, INPUT);
@@ -4219,13 +4480,13 @@ byte hex2nib(char hex)
 	 (hex >= 'A' && hex <= 'F' ? hex - 'A' + 10 : 0xFF));
 }
 
-// parse 4 character sequence into 4 byte hex value until no more hex numbers
+// parse hex character sequence into a 4 byte hex value until no more hex numbers
 byte parseHex(const byte *buff, unsigned long *hex)
 {
   byte nib, len;
   measureRam();
 
-  for (*hex = 0, len = 0; (nib = hex2nib(buff[len])) != 0xFF; ++len)
+  for (*hex = 0, len = 0; (nib = hex2nib(buff[len])) != 0xFF && len < 8; ++len)
     *hex = (*hex << 4) + nib;
   return len;
 }

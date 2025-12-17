@@ -1,14 +1,14 @@
 # Better hardware for the hardware debugger
 
-The hardware part of our hardware debugger is very limited so far. You can, of course, use 6 jumper wires to connect dw-link to your target as described in the [hardware setup section](setup.md#debugging-an-attiny85). However, if you want to use this tool more than once, then there should be at least something like an ISP cable connection. Otherwise, you might scratch your head which cable goes where every time you start a debugging session.
+The hardware part of our hardware debugger is very limited so far. You can, of course, use six jumper wires to connect dw-link to your target as described in the [hardware setup section](setup.md#debugging-an-attiny85). However, if you want to use this tool more than once, then there should be at least something like an ISP cable connection. Otherwise, you might scratch your head, wondering which cable goes where every time you start a debugging session.
 
 ## The basic solution
 
-For most of the wires, we use the same pins on the debugger and the target. Moreover, most of the pins are connected to the ISP connector on board. So, it makes sense to think about something similar to an ISP cable people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). In contrast to such a programmer cable, it makes sense to also break out the Vcc wire. And you do not want to integrate a capacitor between RESET and GND in such a cable in contrast to what is described in the instructable!
+For most of the wires, we use the same pins on the debugger and the target. Moreover, most of the pins are connected to the ISP connector on the board. So, it makes sense to think about something similar to an ISP cable that people use when employing an Arduino UNO as an ISP programmer. Such cables can be easily constructed with some Dupont wires and a bit of heat shrink tube, as, for example, demonstrated in [this instructable](https://www.instructables.com/Arduino-ICSP-Programming-Cable/). In contrast to such a programmer cable, it also makes sense to break out the Vcc wire. And you do not want to integrate a capacitor between RESET and GND in such a cable, in contrast to what is described in the instructable!
 
 ![isp-cable](pics/isp-cable.jpg)
 
-As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such an ISP cable, we have sort of constructed a hardware debugger for less than 10 €, which can be considered semi-durable. Just add the optional system LED with an attached resistor and a capacitor between RESET and GND.
+As argued in [my blog post on being cheap](https://hinterm-ziel.de/index.php/2022/01/13/a-debugwire-hardware-debugger-for-less-than-10-e/), with such an ISP cable, we have sort of constructed a hardware debugger for less than 10€, which can be considered semi-durable. Just add the optional system LED with an attached resistor and a capacitor between RESET and GND.
 
 ![el cheapo debugger](pics/simple-debug.jpg)
 
