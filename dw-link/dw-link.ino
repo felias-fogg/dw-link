@@ -43,7 +43,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "6.0.0"
+#define VERSION "6.0.1"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -2125,7 +2125,7 @@ byte gdbRangeStep(const byte *args)
 // or 0xFFFF if too many exit points
 // Special case: if no exit point is found, 0x0000 is returned
 // to allow for execution of infinite loop
-unsigned int analyzeRange()
+unsigned int analyzeRange(void)
 {
   unsigned int leave = 0x0000; // Will be zero if no exit point!
   unsigned int waddr = range.start;

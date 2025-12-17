@@ -1,5 +1,9 @@
 # Changelog for dw-link
 
+## Version 6.0.1 (17-Dec-2025)
+
+- Fixed: Added/corrected entries in dw-link.h
+
 ## Version 6.0.0 (17-Dec-2025)
 
 - Changed: dw-link will now return 'dw-link6.0.0' when queried. PyAvrOCD will refuse to work with earlier versions in order to make sure that all the 'manage' requests are, in fact, honored by dw-link. 
