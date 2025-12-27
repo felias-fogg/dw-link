@@ -1374,19 +1374,17 @@ void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor version         - firmware version"), -1);
   gdbDebugMessagePSTR(PSTR("monitor debugwire [e|d] - enables (e) or disables (d) debugWIRE"), -1);
   gdbDebugMessagePSTR(PSTR("monitor reset           - reset target"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor load [r|w]      - loading: read before write(r) or write(w)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor atexit [s|l]    - stay in debugWIRE (s) or leave (l) at exit"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor load [r|w|o]    - loading: read before write(r) or write(w)"), -1);
+  gdbDebugMessagePSTR(PSTR("                          or only read file but not flash (o)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor verify [e|d]    - verify flash after load(e) or not (d)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor timers [f|r]    - timers freeze or run when stopped"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor onlyloaded [e|d]- allow exec only after load (e) or always (d)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor onlywhenloaded [e|d]"), -1); 
+  gdbDebugMessagePSTR(PSTR("                        - allow exec only after load (e) or always (d)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor breakpoints [a|h|s]"), -1); 
   gdbDebugMessagePSTR(PSTR("                        - allow all, only hw, or only sw bps"), -1);
   gdbDebugMessagePSTR(PSTR("monitor singlestep [s|i]- safe or interruptible single-stepping"), -1);
   //gdbDebugMessagePSTR(PSTR("monitor mcu [<mcutype>]    - check for MCU type or print current"), -1);
-#if HIGHSPEED
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]     - speed limit is h (300kbps) or l (150kbps)"), -1);
-#else
-  gdbDebugMessagePSTR(PSTR("monitor speed [h|l]     - speed limit is l (150kbps) or h (300kbps)"), -1);
-#endif  
   gdbDebugMessagePSTR(PSTR("Commands given without arguments report status"), -1);
   gdbDebugMessagePSTR(PSTR("First option is always the default"), -1);
   gdbSendReply("OK");
@@ -1714,7 +1712,7 @@ void gdbLoadOption(char arg)
     }
   }
   if (mon.noread)
-    gdbReplyMessagePSTR(PSTR(LONGSHORT("No reading when loading","NOREAD")), -1);
+    gdbReplyMessagePSTR(PSTR(LONGSHORT("Only reading, but no flashing","NOREAD")), -1);
   if (mon.readbeforewrite) 
     gdbReplyMessagePSTR(PSTR(LONGSHORT("Reading before writing when loading","READ")), -1);
   else 
