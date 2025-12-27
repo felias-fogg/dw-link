@@ -13,27 +13,8 @@ on:
   pull_request:
 
 jobs:
-  build:
+  compile:
     runs-on: ubuntu-latest # I picked Ubuntu to use shell scripts.
-
-    # - arduino-boards-fqbn: ATTinyCore:avr:attinyx5:chip=85,clock=1internal
-          #  platform-url: https://felias-fogg.github.io/ATTinyCore/package_drazzy.com_ATTinyCore_index.json
-          #  sketches-exclude: dw-link, unittests, dptest, unoblink
-
-          #- arduino-boards-fqbn:  MicroCore:avr:13:clock=1M2
-          #  https://felias-fogg.github.io/MiniCore/package_MCUdude_MiniCore_index.json
-          #  sketches-exclude: dw-link, megablink, tiny85blink, oop, tictactoe, unittests, dptest, unoblink
-
-          #- arduino-boards-fqbn: arduino:avr:mega
-          #  sketches-exclude: unittests, isr, flashtest, oop, fibonacci, tictactoe
-
-          # - arduino-boards-fqbn: arduino:avr:nano
-          #   sketches-exclude: unittests, isr, flashtest, oop, fibonacci, tictactoe
-          
-            - arduino-boards-fqbn: arduino:avr:uno
-
-      # Do not cancel all jobs / architectures if one job fails
-      fail-fast: false
 
     steps:
       - name: Checkout
