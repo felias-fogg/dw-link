@@ -24,4 +24,6 @@ jobs:
         uses: arduino/setup-arduino-cli@v2
 
       - name: Generate firmware
-        run: arduino-cli compile -b arduino:avr:uno dw-link/dw-link.ino 
+        run: |
+          cd dw-link
+          arduino-cli compile -b arduino:avr:uno dw-link.ino 
