@@ -231,7 +231,9 @@ jobs:
 
       - name: Show assets
         working-directory: ./assets
-        run: ls -la
+        run: |
+          chmod +x dw-uploader*
+          ls -la
 
       - name: Asset upload
         if: ${{ github.event.release.name != '' }}
