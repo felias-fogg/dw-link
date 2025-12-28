@@ -43,12 +43,13 @@ jobs:
         run: |
           arduino-cli core install arduino:avr
           arduino-cli compile -b arduino:avr:uno dw-link.ino --build-path build
+          mv build/dw-link.ino.hex dw-link.hex
          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dw-link.hex
-          path: dw-link/build/dw-link.ino.hex
+          path: dw-link/dw-link.hex
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
 
@@ -106,53 +107,77 @@ jobs:
           pyinstaller -y dw-uploader.spec
 
       - name: Run dw-uploader
-        working-directory: ./dw-uploader
-        run: |
-          dist/dw-uploader
+        working-directory: ./dw-uploader/dist
+        run: ./dw-uploader
+
+      - name: Rename Mac ARM executable
+        if: matrix.os == 'macos-15'
+        working-directory: ./dw-uploader/dist
+        run: mv dw-uploader dw-uploader-mac-arm64
 
       - name: Upload as artifact (macOS ARM = macos-15)
         if: matrix.os == 'macos-15'
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-arm64-apple-darwin
-          path: dw-uploader/dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader-mac-arm64
           overwrite: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
-      - name: Upload as artifact (Linux Arm = ubuntu-22.04-arm)
+      - name: Rename Linux ARM executable
+        if: matrix.os == 'ubuntu-24.04-arm'
+        working-directory: ./dw-uploader/dist
+        run: mv dw-uploader dw-uploader-linux-arm64 
+
+      - name: Upload as artifact (Linux Arm = ubuntu-24.04-arm)
         if: matrix.os == 'ubuntu-24.04-arm'
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-aarch64-linux-gnu
-          path: dw-uploader/dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader-linux-arm64 
           overwrite: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
+      - name: Rename Windows Intel executable
+        if: matrix.os == 'windows-2025'
+        working-directory: ./dw-uploader/dist
+        run: mv dw-uploader dw-uploader-windows-intel64 
 
       - name: Upload artifact (Windows Intel (64-bit) = windows-2025)
         if: matrix.os == 'windows-2025'
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-x86_64-mingw32
-          path: dw-uploader/dist/dw-uploader.exe
+          path: dw-uploader/dist/dw-uploader-windows-intel64.exe
           overwrite: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
+      - name: Rename Mac Intel executable
+        if: matrix.os == 'macos-15-intel'
+        working-directory: ./dw-uploader/dist
+        run: mv dw-uploader dw-uploader-mac-intel64 
 
       - name: Upload artifact (macOS Intel = macos-15-intel)
         if: matrix.os == 'macos-15-intel'
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-x86_64-apple-darwin
-          path: dw-uploader/dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader-mac-intel64 
           overwrite: true
           include-hidden-files: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
-      - name: Upload artifact (Linux Intel = ubuntu-22.04)
+      - name: Rename Mac Intel executable
+        if: matrix.os == 'ubuntu-24.04'
+        working-directory: ./dw-uploader/dist
+        run: mv dw-uploader dw-uploader-linux-intel64 
+
+      - name: Upload artifact (Linux Intel = ubuntu-24.04)
         if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-x86_64-linux-gnu
-          path: dw-uploader/dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader-linux-intel64 
           overwrite: true
           include-hidden-files: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
@@ -167,41 +192,42 @@ jobs:
       - name: Create asset directory
         run: |
           mkdir assets
-          mkdir assets/dw-uploader-arm64-apple-darwin
-          mkdir assets/dw-uploader-aarch64-linux-gnu
-          mkdir assets/dw-uploader-x86_64-mingw32
-          mkdir assets/dw-uploader-x86_64-apple-darwin
-          mkdir assets/dw-uploader-x86_64-linux-gnu
 
       - name: Download arm64-apple-darwin
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-arm64-apple-darwin
-          path: assets/dw-uploader-arm64-apple-darwin
+          path: assets/
 
       - name: Download aarch64-linux-gnu
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-aarch64-linux-gnu
-          path: assets/dw-uploader-aarch64-linux-gnu
+          path: assets/
 
       - name: Download x86_64-mingw32
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-x86_64-mingw32
-          path: assets/dw-uploader-x86_64-mingw32
+          path: assets/
 
       - name: Download x86_64-apple-darwin
-        uses: actions/download-artifact@v7
+        uses: actions/
         with:
           name: dw-uploader-x86_64-apple-darwin
-          path: assets/dw-uploader-x86_64-apple-darwin
+          path: assets/
 
       - name: Download dw-uploader-x86_64-linux-gnu
-        uses: actions/download-artifact@v7
+        uses: actions/
         with:
           name: dw-uploader-x86_64-linux-gnu
-          path: assets/dw-uploader-x86_64-linux-gnu
+          path: assets/
+
+      - name: Download dw-link.hex
+        uses: actions/
+        with:
+          name: dw-link.hex
+          path: assets/
 
       - name: Asset upload
         if: ${{ github.event.release.name != '' }}

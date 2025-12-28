@@ -89,7 +89,7 @@ class Uploader(object):
         print(", Signature: 0x{:02x}{:02x}{:02x}".format(*sign))
         if sign not in [(0x1e, 0x95, 0xf), (0x1e, 0x95, 0x14), (0x1e, 0x95, 0x16)]:
             print("Not an ATmega328(P)(B)!")
-            exit(1)
+            sys.exit(1)
 
         
 
@@ -368,7 +368,7 @@ def upload(device, fname):
         Uploader(device).upload(fname)
     except KeyboardInterrupt:
         print("\nGoodbye")
-        exit(0)
+        sys.exit(0)
     except ProtocolException as e:
         print(e)
     except Exception as e:
@@ -377,12 +377,12 @@ def upload(device, fname):
 
 if __name__ == "__main__":
     DWVERSION = ""
-    if os.path.exists("VERSION"):
-        with open("VERSION") as f:
+    if os.path.exists(os.path.abspath(os.path.join(os.path.dirname(__file__), "VERSION"))):
+        with open(os.path.abspath(os.path.join(os.path.dirname(__file__), "VERSION"))) as f:
             DWVERSION = f.readline().strip()
     print("dw-link ({}) firmware uploader v{:s}".format(DWVERSION, VERSION))
-    if os.path.exists("dw-link.hex"):
+    if os.path.exists(os.path.abspath(os.path.join(os.path.dirname(__file__), "dw-link.hex"))):
         upload(discover(), os.path.abspath(os.path.join(os.path.dirname(__file__), "dw-link.hex")))
     else:
         print("There is no file 'dw-link.hex' to upload")
-        exit(1)
+        sys.exit(1)
