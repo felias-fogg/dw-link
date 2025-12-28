@@ -83,7 +83,7 @@ jobs:
       - name: Write Version
         working-directory: ./dw-uploader
         run: |
-          VER=$(grep "#define VERSION" dw-link/dw-link.ino)
+          VER=$(grep "#define VERSION" ../dw-link/dw-link.ino)
           VERSTRING=v${VER#*VERSION \"}}
           VERSTRING=${VERSTRING%"}
           echo $VERSTRING > VERSION
