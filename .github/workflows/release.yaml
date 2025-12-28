@@ -45,11 +45,10 @@ jobs:
           arduino-cli compile -b arduino:avr:uno dw-link.ino 
          
       - name: Upload artifact
-        working-directory: ./dw-link
         uses: actions/upload-artifact@v4
         with:
           name: dw-link.hex
-          path: build/arduino.avr.uno/dw-link.ino.hex
+          path: dw-link/build/arduino.avr.uno/dw-link.ino.hex
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
 
@@ -90,11 +89,10 @@ jobs:
           echo $VERSTRING > VERSION
 
       - name: Download firmware file artifact
-        working-directory: ./dw-uploader
         uses: actions/download-artifact@v7
         with:
           name: dw-link.hex
-          path: .
+          path: ./dw-uploader/dw-link.hex
           
       - name: Install dependencies
         working-directory: ./dw-uploader
@@ -115,51 +113,46 @@ jobs:
       - name: Upload as artifact (macOS ARM = macos-15)
         if: matrix.os == 'macos-15'
         uses: actions/upload-artifact@v4
-        working-directory: ./dw-uploader
         with:
           name: dw-uploader-arm64-apple-darwin
-          path: dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader
           overwrite: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
       - name: Upload as artifact (Linux Arm = ubuntu-22.04-arm)
         if: matrix.os == 'ubuntu-24.04-arm'
-        working-directory: ./dw-uploader
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-aarch64-linux-gnu
-          path: dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader
           overwrite: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
       - name: Upload artifact (Windows Intel (64-bit) = windows-2025)
         if: matrix.os == 'windows-2025'
-        working-directory: ./dw-uploader
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-x86_64-mingw32
-          path: dist/dw-uploader.exe
+          path: dw-uploader/dist/dw-uploader.exe
           overwrite: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
       - name: Upload artifact (macOS Intel = macos-15-intel)
         if: matrix.os == 'macos-15-intel'
-        working-directory: ./dw-uploader
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-x86_64-apple-darwin
-          path: dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader
           overwrite: true
           include-hidden-files: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
       - name: Upload artifact (Linux Intel = ubuntu-22.04)
         if: matrix.os == 'ubuntu-24.04'
-        working-directory: ./dw-uploader
         uses: actions/upload-artifact@v4
         with:
           name: dw-uploader-x86_64-linux-gnu
-          path: dist/dw-uploader
+          path: dw-uploader/dist/dw-uploader
           overwrite: true
           include-hidden-files: true
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
