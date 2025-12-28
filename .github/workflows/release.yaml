@@ -11,8 +11,6 @@ on:
 jobs:
   check:
     runs-on: "ubuntu-latest"
-    defaults:
-      run:
 
     steps:
       - name: Check out repository
