@@ -1,0 +1,197 @@
+# Triggered by a new release, it will do a basic check on version number 
+# Then it will build the firmware as a hex file
+# and create the binary release assets 
+name: Release workflow
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: # to run it manually
+
+jobs:
+  check:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Test release against system version
+        if: ${{ github.event.release.name != '' }}
+        run: |
+          VER=$(grep "#define VERSION" dw-link/dw-link.ino)
+          VERSTRING=v${VER#*VERSION \"}}
+          VERSTRING=${VERSTRING%"}
+          REL_NAME=${{ github.event.release.name }}
+          echo "System version string: $VERSTRING"
+          echo "Github release name: $REL_NAME"
+          if [ "x$REL_NAME" == "x" ]; then
+             REL_NAME=$VERSTRING
+             echo "Adapted GitHub release name to system version string"
+          fi
+          if [ "x$VERSTRING" != "x$REL_NAME" ]; then
+             echo "Release version does not match system version"
+             exit 1
+          fi
+          echo "Release and system version are identical, now we continue"
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Compile firmware
+        run: |
+          cd dw-link
+          arduino-cli core install arduino:avr
+          arduino-cli compile -b arduino:avr:uno dw-link.ino 
+         
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw-link.hex
+          path: build/arduino.avr.uno/dw-link.ino.hex
+
+  build-binaries:
+    needs: check
+    strategy:
+      matrix:
+      # If you change something in the list of OSs, you also have to do it further down!
+       os: [ "ubuntu-24.04", "macos-15-intel",  "windows-2025", "ubuntu-24.04-arm",  "macos-15" ]
+    defaults:
+      run:
+        shell: bash
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python-64-bit
+        if: matrix.os != 'windows-2025'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Set up Python-32-bit
+        if: matrix.os == 'windows-2025'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          architecture: 'x86'
+
+      - name: Write Version
+        run: |
+          cd dw-uploader
+          VER=$(grep "#define VERSION" dw-link/dw-link.ino)
+          VERSTRING=v${VER#*VERSION \"}}
+          VERSTRING=${VERSTRING%"}
+          echo $VERSTRING > VERSION
+
+      - name: Download firmware file artifact
+        uses: actions/downloadartifact@v7
+        with:
+          name: dw-link.hex
+          path: .
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Install dependencies
+
+      - name: Package dw-uploader with PyInstaller
+        run: |
+          pyinstaller -y dw-uploader.spec
+
+      - name: Run dw-uploader
+        run: |
+          dist/dw-uploader
+
+      - name: Upload as artifact (macOS ARM = macos-15)
+        if: matrix.os == 'macos-15'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw-uploader-arm64-apple-darwin
+          path: dist/dw-uploader
+          overwrite: true
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
+      - name: Upload as artifact (Linux Arm = ubuntu-22.04-arm)
+        if: matrix.os == 'ubuntu-24.04-arm'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw-uploader-aarch64-linux-gnu
+          path: dist/dw-uploader
+          overwrite: true
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
+      - name: Upload artifact (Windows Intel (64-bit) = windows-2025)
+        if: matrix.os == 'windows-2025'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw-uploader-x86_64-mingw32
+          path: dist/dw-uploader.exe
+          overwrite: true
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
+      - name: Upload artifact (macOS Intel = macos-15-intel)
+        if: matrix.os == 'macos-15-intel'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw-uploader-x86_64-apple-darwin
+          path: dist/dw-uploader
+          overwrite: true
+          include-hidden-files: true
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
+      - name: Upload artifact (Linux Intel = ubuntu-22.04)
+        if: matrix.os == 'ubuntu-24.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dw-uploader-x86_64-linux-gnu
+          path: dist/dw-uploader
+          overwrite: true
+          include-hidden-files: true
+
+  upload:
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Create asset directory
+        run: mkdir assets
+
+      - name: Download arm64-apple-darwin
+        uses: actions/download-artifact@v7
+        with:
+          name: dw-uploader-arm64-apple-darwin
+          path: assets/
+
+      - name: Download aarch64-linux-gnu
+        uses: actions/download-artifact@v7
+        with:
+          name: dw-uploader-aarch64-linux-gnu
+          path: assets/
+
+      - name: Download x86_64-mingw32
+        uses: actions/download-artifact@v7
+        with:
+          name: dw-uploader-x86_64-mingw32
+          path: extras/binaries/x86_64-mingw32
+
+      - name: Download x86_64-apple-darwin
+        uses: actions/download-artifact@v7
+        with:
+          name: dw-uploader-x86_64-apple-darwin
+          path: assets/
+
+      - name: Download dw-uploader-x86_64-linux-gnu
+        uses: actions/download-artifact@v7
+        with:
+          name: x86_64-linux-gnu
+          path: assets
+
+      - name: Asset upload
+        if: ${{ github.event.release.name != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: assets/*
+

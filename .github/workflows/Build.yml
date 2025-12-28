@@ -14,7 +14,7 @@ on:
 
 jobs:
   compile:
-    runs-on: ubuntu-latest # I picked Ubuntu to use shell scripts.
+    runs-on: ubuntu-latest 
 
     steps:
       - name: Checkout

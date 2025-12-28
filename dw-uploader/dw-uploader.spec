@@ -5,7 +5,7 @@ a = Analysis(
     ['dw-uploader.py'],
     pathex=[],
     binaries=[],
-    datas=[('dw-link.hex', '.')],
+    datas=[('dw-link.hex', '.'), ('VERSION', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

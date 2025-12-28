@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """
 Uploader for dw-link firmware
-Based on STK500v1 implementation byMathieu Virbel <mat@meltingrocks.com>
+Based on STK500v1 implementation by Mathieu Virbel <mat@meltingrocks.com>
 """
+VERSION="1.0.0"
 
 import os
 import sys
@@ -62,6 +63,7 @@ class Uploader(object):
     def try_connect(self):
         self.con = None
         print("Connecting to bootloader...")
+        sys.stdout.flush()
         self.con = serial.Serial(
             self.device,
             baudrate=115200,
@@ -80,12 +82,11 @@ class Uploader(object):
                 self.get_sync()
                 break
             except Exception as e:
-                print("Exception %s" % e)
+                print("\nException %s" % e)
                 pass
-        print("Major: {}".format(self.get_parameter(STK_SW_MAJOR)))
-        print("Minor: {}".format(self.get_parameter(STK_SW_MINOR)))
+        print("Bootloader version: {}.{}".format(self.get_parameter(STK_SW_MAJOR), self.get_parameter(STK_SW_MINOR)),end="")
         sign = self.read_sign()
-        print("Signature: 0x{:02x}{:02x}{:02x}".format(*sign))
+        print(", Signature: 0x{:02x}{:02x}{:02x}".format(*sign))
         if sign not in [(0x1e, 0x95, 0xf), (0x1e, 0x95, 0x14), (0x1e, 0x95, 0x16)]:
             print("Not an ATmega328(P)(B)!")
             exit(1)
@@ -122,20 +123,66 @@ class Uploader(object):
                 progressbar.FileTransferSpeed(),
                 ' ',
                 progressbar.ETA()
-            ]
+            ], max_value=prog_size
         )
-        r = range(0, prog_size + mem["pagesize"], mem["pagesize"]) #mem["size"]
-        for addr in bar(r, ):
+        for addr in range(0, prog_size + mem["pagesize"], mem["pagesize"]):
             if addr > prog_size:
+                sleep(0.1)
+                bar.update(prog_size)
                 break
+            bar.update(addr)
             page = buf[addr:addr + mem["pagesize"]]
             self.load_addr(addr)
             self.prog_page(memtype, page)
-
-        print("\nLeaving programming mode")
+        print("")
+        # verify the device
+        assert(mem["pagesize"] * mem["pagecount"] == mem["size"])
+        progress = 0
+        bar = progressbar.ProgressBar(
+            widgets=[
+                'Verify: ',
+                progressbar.Bar(),
+                ' ',
+                progressbar.Counter(format='%(value)02d/%(max_value)d'),
+                ' ',
+                progressbar.FileTransferSpeed(),
+                ' ',
+                progressbar.ETA()
+            ], max_value=prog_size
+        )
+        for addr in range(0, prog_size + mem["pagesize"], mem["pagesize"]):
+            if addr > prog_size:
+                sleep(0.1)
+                bar.update(prog_size)
+                break
+            bar.update(addr)
+            self.load_addr(addr)
+            expected = bytes(buf[addr:addr + mem["pagesize"]])
+            page = self.read_page(memtype, mem["pagesize"])[:len(expected)]
+            if page != expected:
+                print("\nVerification error in page with base address 0x%X" % addr)
+                diffix = self.finddiff(page, expected)
+                print("Address of first diff: 0x{:04X}".format(diffix+addr))
+                print("Expected: 0x{:02X}".format(expected[diffix]))
+                print("Read:     0x{:02X}".format(page[diffix]))
+                break
         self.leave_progmode()
+        print("\nAll done!")
+        sleep(0.1)
+        self.con.write(b'\x05') # ENQ
+        sleep(0.1)
+        resp = self.con.read(7)
+        if resp == b"dw-link":
+            print("dw-link is operational")
+        else:
+            print("dw-link did not respond to initial communication attempt")
 
-        print("All done!")
+
+    def finddiff(self, observed, expected):
+        for i in range(min(len(observed), len(expected))):
+            if observed[i] != expected[i]:
+                return i
+        return -1
 
     def load_addr(self, addr):
         debug_print("[STK500] Load address {:06x}".format(addr))
@@ -171,27 +218,30 @@ class Uploader(object):
         if self.readbyte() != Resp_STK_OK:
             raise ProtocolException("prog_page() protocol error")
 
-    def read_page(self, memtype, data):
+    def read_page(self, memtype, psize):
         debug_print("[STK500] Read page")
         assert(memtype == "flash")
-        block_size = len(data)
         pkt = struct.pack(
             "BBBBB",
             STK_READ_PAGE,
-            (block_size >> 8) & 0xff,
-            block_size & 0xff,
+            (psize >> 8) & 0xff, 
+            psize & 0xff,
             ord("F"),  # because flash, othersize E for eeprom
             Sync_CRC_EOP
         )
         self.write(pkt)
         if self.readbyte() != Resp_STK_INSYNC:
             raise ProtocolException("read_page() can't get into sync")
-        data[:] = self.read(block_size)
+        pagebuf = self.read(psize)
         if self.readbyte() != Resp_STK_OK:
             raise ProtocolException("read_page() protocol error")
+        debug_print("[STK500] Result pagebuf[{}] {}".format(len(pagebuf), " ".join(
+            ["{:02x}".format(x) for x in pagebuf])))
+        return pagebuf
 
     def get_sync(self):
-        print("Try to get sync")
+        print("Trying to get sync... ", end="")
+        sys.stdout.flush()
         pkt = struct.pack("BB", STK_GET_SYNC, Sync_CRC_EOP)
         for i in range(5):
             sleep(.2)
@@ -202,7 +252,8 @@ class Uploader(object):
                     raise ProtocolException("read_page() can't get into sync")
                 if self.readbyte() != Resp_STK_OK:
                     raise ProtocolException("read_page() protocol error")
-                print("Connected to bootloader")
+                print(" connected to bootloader")
+                sys.stdout.flush()
                 return
             except Exception as e:
                 pass
@@ -269,6 +320,8 @@ class Uploader(object):
                     read, size))
             buf[read:read + len(ret)] = ret
             read += len(ret)
+        debug_print("[STK500] Packet[{}] {}".format(read, " ".join(
+            ["{:02x}".format(x) for x in buf])))
         return bytes(buf[:read])
 
     def write(self, pkt):
@@ -279,21 +332,8 @@ class Uploader(object):
         # don't write too fast or we loose data
         for i in range(0, len(pkt), 32):
             self.con.write(pkt[i:i + 32])
-            sleep(0.05)
+            sleep(0.01)
 
-
-def upload(device, fname):
-    if device is None:
-        return 0
-    try:
-        Uploader(device).upload(fname)
-    except KeyboardInterrupt:
-        print("Goodbye")
-        exit(0)
-    except ProtocolException as e:
-        print(e)
-    except Exception as e:
-        print(e)
 
 def discover():
     ports = []
@@ -304,16 +344,16 @@ def discover():
         ports += [ s.device ]
     debug_print("[STK500] Discovered ports: %s" % ports)
     if ports == []:
-        print("No open serial ports discovered")
+        print("No ports discovered")
         return None
     if len(ports) == 1:
         print("Will use %s for upload" % ports[0])
         return ports[0]
-    print("Choose from:")
+    print("Choose from the following ports:")
     for p in enumerate(ports):
-        print(p)
+        print("{:d}: {}".format(p[0], p[1]))
     try:
-        c = int(input("Choice: "))
+        c = int(input("Choice [0-{}]: ".format(len(ports)-1)))
     except:
         c = -1
     if c < 0 or c >= len(ports):
@@ -321,6 +361,28 @@ def discover():
         return None
     return ports[c]
 
+def upload(device, fname):
+    if device is None:
+        return 0
+    try:
+        Uploader(device).upload(fname)
+    except KeyboardInterrupt:
+        print("\nGoodbye")
+        exit(0)
+    except ProtocolException as e:
+        print(e)
+    except Exception as e:
+        print(e)
+
 
 if __name__ == "__main__":
-    upload(discover(), os.path.abspath(os.path.join(os.path.dirname(__file__), "dw-link.hex")))
+    DWVERSION = ""
+    if os.path.exists("VERSION"):
+        with open("VERSION") as f:
+            DWVERSION = f.readline().strip()
+    print("dw-link ({}) firmware uploader v{:s}".format(DWVERSION, VERSION))
+    if os.path.exists("dw-link.hex"):
+        upload(discover(), os.path.abspath(os.path.join(os.path.dirname(__file__), "dw-link.hex")))
+    else:
+        print("There is no file 'dw-link.hex' to upload")
+        exit(1)

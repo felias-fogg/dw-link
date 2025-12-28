@@ -1181,14 +1181,8 @@ void gdbParseMonitorPacket(byte *buf)
   case MOATEXIT:
     gdbAtExit(cmdbuf[mooptix]);
     break;
-  case MOCACHE:
-    gdbReplyMessagePSTR(PSTR("Caching is not implemented"), -1);
-    break;
   case MORANGE:
     gdbRangeSteppingOption(cmdbuf[mooptix]);
-    break;
-  case MOEBL:
-    gdbReplyMessagePSTR(PSTR("'Erase-before-load' is not supported on debugWIRE targets"), -1);
     break;
   case MONOBOOT:
   case MONODWEN:
@@ -1207,6 +1201,10 @@ void gdbParseMonitorPacket(byte *buf)
     }
     break;
 #endif
+  case MOCACHE:
+  case MOEBL:
+    gdbReplyMessagePSTR(PSTR("Not implemented"), -1);
+    break;
   case MOUNK:
     gdbUnknownCmd();
     break;
@@ -1369,24 +1367,19 @@ inline void gdbBreakOption(char arg) {
 
 // help function (w/o unit tests)
 void gdbHelp(void) {
-  gdbDebugMessagePSTR(PSTR("monitor help            - help function"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor info            - information about target and debugger"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor version         - firmware version"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor debugwire [e|d] - enables (e) or disables (d) debugWIRE"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor reset           - reset target"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor atexit [s|l]    - stay in debugWIRE (s) or leave (l) at exit"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor load [r|w|o]    - loading: read before write(r) or write(w)"), -1);
-  gdbDebugMessagePSTR(PSTR("                          or only read file but not flash (o)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor verify [e|d]    - verify flash after load(e) or not (d)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor timers [f|r]    - timers freeze or run when stopped"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor onlywhenloaded [e|d]"), -1); 
-  gdbDebugMessagePSTR(PSTR("                        - allow exec only after load (e) or always (d)"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor breakpoints [a|h|s]"), -1); 
-  gdbDebugMessagePSTR(PSTR("                        - allow all, only hw, or only sw bps"), -1);
-  gdbDebugMessagePSTR(PSTR("monitor singlestep [s|i]- safe or interruptible single-stepping"), -1);
-  //gdbDebugMessagePSTR(PSTR("monitor mcu [<mcutype>]    - check for MCU type or print current"), -1);
-  gdbDebugMessagePSTR(PSTR("Commands given without arguments report status"), -1);
-  gdbDebugMessagePSTR(PSTR("First option is always the default"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor atexit [s|l]         - stay in debugWIRE (s) or leave (l) at exit"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor breakpoints [a|h|s]  - allow all, only hw, or only sw bps"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor debugwire [e|d]      - enables (e) or disables (d) debugWIRE"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor help                 - help function"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor info                 - information about target and debugger"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor load [r|w|o]         - loading: read before write(r) or write(w)"), -1);
+  gdbDebugMessagePSTR(PSTR("                               or only read file but not flash (o)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor onlywhenloaded [e|d] - allow exec only after load (e) or always (d)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor reset                - reset target"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor singlestep [s|i]     - safe or interruptible single-stepping"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor timers [f|r]         - timers freeze or run when stopped"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor verify [e|d]         - verify flash after load(e) or not (d)"), -1);
+  gdbDebugMessagePSTR(PSTR("monitor version              - firmware version"), -1);
   gdbSendReply("OK");
 }
 
