@@ -42,13 +42,13 @@ jobs:
         working-directory: ./dw-link
         run: |
           arduino-cli core install arduino:avr
-          arduino-cli compile -b arduino:avr:uno dw-link.ino 
+          arduino-cli compile -b arduino:avr:uno dw-link.ino --build-path build
          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dw-link.hex
-          path: dw-link/build/arduino.avr.uno/dw-link.ino.hex
+          path: dw-link/build/dw-link.ino.hex
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
 
