@@ -133,24 +133,10 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 </ul>
 <p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore Debug enabled)</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. </p>
 <h2 id="step-3-install-dw-link-firmware-on-an-uno">Step 3: Install <em>dw-link</em> firmware on an Uno</h2>
-<p>Download the dw-link firmware. This means you should </p>
-<ul>
-<li>open the webpage https://github.com/felias-fogg/dw-link, </li>
-<li>click on <code>Latest</code> in the field <strong>Releases</strong> (on the left),</li>
-<li>choose either <code>zip</code> or <code>tar.gz</code>,</li>
-<li>download it to  your hard disk, </li>
-<li>extract the firmware from the downloaded archive using <code>unzip</code> or <code>tar -xvzf</code>. </li>
-</ul>
-<p>In order to install the firmware, </p>
-<ul>
-<li>first make sure that the auto-reset feature of the Uno is not disabled, e.g., by a shield or a capacitor plugged into the Uno board,</li>
-<li>then connect the Arduino Uno to your computer with a USB cable,</li>
-<li>open the Arduino IDE and select <code>Arduino Uno</code> under <code>Tools</code> as the destination <code>board</code>, </li>
-<li>select the right <code>Port</code> in the <code>Tools</code> menu, </li>
-<li>and load the dw-link sketch into the IDE, which is located at <code>dw-link-x.y.z/dw-link/dw-link.ino</code>. </li>
-<li>Finally, compile and download the sketch to the Uno by either pressing the right arrow button, or by typing <code>CTRL-U</code> or <code>⌘U</code>. The Uno acts now as a hardware debugger (but needs a bit of additional hardware).</li>
-</ul>
-<p><strong>Check:</strong> Open the <code>Serial Monitor</code> (under <code>Tools</code> menu), choose <code>115200 baud</code>,  type  <code>-</code>  (minus sign) into the upper line, and send it. The hardware debugger should respond with <code>$#00</code>. </p>
+<p>First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).</p>
+<p>The simplest way to install the firmware is to download an uploader from the Release assets of the <a href="https://github.com/felias-fogg/dw-link">GitHub repo</a>. The uploader should fit your architecture, e.g., <code>dw-uploader-windows-intel64</code> for Windows. Under <em>Linux</em> and <em>macOS</em>, open a terminal window, go to the download folder, and set the executable permission using <code>chmod +x</code>. Afterward, execute the program. Under <em>Windows</em>, it is enough to start the program after downloading by double-clicking on it.</p>
+<p>Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch using the Arduino IDE 2.</p>
+<p><strong>Check:</strong> Open the <code>Serial Monitor</code> (under the <code>Tools</code> menu), choose <code>115200 baud</code>,  type  <code>-</code>  (minus sign) into the upper line, and send it. The hardware debugger should respond with <code>$#00</code>. </p>
 <h2 id="step-4-hardware-setup">Step 4: Hardware setup</h2>
 <p>This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the <a href="../setup/#debugging-an-uno">Hardware setup section</a>.</p>
 <p>You need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your Uno, turned into a hardware debugger. Note that the notch or dot on the ATtiny is oriented towards the left. </p>
@@ -246,8 +232,9 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <p>So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called <code>Arduino as ISP</code>.</p>
 <p>If you want a more durable hardware debugging solution, there are some <a href="https://felias-fogg.github.io/dw-link/better/">suggestions</a> in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link; it costs less than US-$15, and it is able to do much more! </p>
 <h2 id="what-can-go-wrong">What can go wrong?</h2>
-<p>First, you might be unable to start debugging because the debug button is greyed out. This happens for all MCUs that the IDE cannot debug. If you think that this is an error, you might need to install the correct board definition files or choose the <code>Reload Board Data</code> entry in the <code>Tools</code> menu.</p>
-<p>Second, the debug server might terminate early. In this case, you should see an error message in the <code>gdb-server</code> console. </p>
+<p>First, the dw-link firmware upload may fail. If so, try to use the conventional way by downloading the latest release version and then compiling and uploading the dw-link sketch.</p>
+<p>Second, you might be unable to start debugging because the debug button is greyed out. This happens for all MCUs that the IDE cannot debug. If you think that this is an error, you might need to install the correct board definition files or choose the <code>Reload Board Data</code> entry in the <code>Tools</code> menu.</p>
+<p>Third, the debug server might terminate early. In this case, you should see an error message in the <code>gdb-server</code> console. </p>
 <p>If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When strange error messages appear, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a <a href="https://felias-fogg.github.io/dw-link/troubleshooting/">troubleshooting section</a> in the dw-link manual, which may be helpful. </p>
 <p>The most annoying problem is that an MCU might not be responsive after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. The command <code>monitor debugwire disable</code> typed into the last line of the <code>Debug Console</code> just before terminating the debugger should restore the RESET line functionality. If this does not help, you may have to use a High-Voltage programmer, such as <a href="https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/">RescueAVR</a>.</p>
 <p>If you have found a bug, please post it on <a href="https://github.com/felias-fogg/dw-link/issues">issues</a>.</p>

@@ -124,7 +124,11 @@
 <li><a href="https://store.arduino.cc/products/arduino-nano">Arduino Nano</a>,</li>
 <li><a href="https://docs.arduino.cc/retired/boards/arduino-pro-mini">Arduino Pro Mini</a>.</li>
 </ul>
-<p>If you intend to use dw-link on a board with an MCU different from ATmega328P, you should be aware that dw-link makes heavy use of the particular hardware features of the ATmega328P and operates close to the limit. I tried it out on the Leonardo and on the Mega2560, but was not successful. </p>
+<div class="admonition info">
+<p class="admonition-title">Be aware of bootloaders</p>
+<p>Note that the board needs to be flashed with a "modern" bootloader, e.g., <code>Optiboot</code>, because dw-link uses the watchdog timers (WDT). Older bootloaders cannot deal with that. The Uno board has this bootloader by default. The bootloaders of older Nanos and those of all Pro Minis need to be updated. Simply burn the UNO bootloader on them and afterward handle them as an UNO.</p>
+</div>
+<p>If you intend to use dw-link on a board with an MCU different from ATmega328P, you should know that dw-link makes heavy use of the particular hardware features of the ATmega328P and operates close to the limit. I tried it out on the Leonardo and on the Mega2560, but it was not successful. </p>
 <p>The most basic setup is to use the UNO board and connect the cables, as shown in the <a href="../setup/#Fritzing">Fritzing sketch</a> in the <a href="../setup/">hardware setup section</a>. If you want to use the debugger more than once, it may pay off to build a modified ISP cable or to use a prototype shield and put an ISP socket on it. The more luxurious solution is a shield for the UNO with level shifters. All these possibilities are described in the section on how to build <a href="../better/">a better hardware debugger</a>.</p>
 <h2 id="mcus-with-debugwire-interface">MCUs with debugWIRE interface</h2>
 <p>In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family (which includes the ATmega328P) have the debugWIRE interface. Specifically, the following MCUs that are supported by <a href="https://github.com/SpenceKonde/ATTinyCore">ATTinyCore</a>, <a href="https://github.com/MCUdude/MicroCore">MicroCore</a> and/or by <a href="https://github.com/MCUdude/MiniCore">MiniCore</a> can be debugged using this interface:</p>

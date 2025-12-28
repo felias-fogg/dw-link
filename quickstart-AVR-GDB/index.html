@@ -150,7 +150,7 @@
 </ul>
 <h2 id="step-1-install-arduino-ide-2-or-arduino-cli">Step 1: Install Arduino IDE 2 or arduino-cli</h2>
 <p>You probably already have installed the Arduino IDE 2. If not, download and install it from https://arduino.cc. Alternatively, you can install arduino-cli.</p>
-<p><strong>Check:</strong> Start IDE and check the <code>About Arduino</code>  entry under the <code>Arduino</code> or <code>Help</code> menu for the version number.</p>
+<p><strong>Check:</strong> Start IDE and check the <code>About Arduino</code>  entry under the <code>Arduino</code> or <code>Help</code> menu for the version number.  It should be &gt;= 2.3.0.</p>
 <h2 id="step-2-install-new-board-manager-files">Step 2: Install new board manager files</h2>
 <p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following <code>Board Manager URLs</code> into the list:</p>
 <pre><code>https://downloads.pyavrocd.io/package_debugging_index.json
@@ -165,23 +165,9 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 </ul>
 <p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore (Debug enabled)</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. </p>
 <h2 id="step-3-install-dw-link-firmware">Step 3: Install <em>dw-link</em> firmware</h2>
-<p>Download the dw-link firmware into a place inside the <em>Arduino sketchbook</em>. This means, you should </p>
-<ul>
-<li>open the webpage https://github.com/felias-fogg/dw-link, </li>
-<li>click on <code>Latest</code> in the field <strong>Releases</strong>,</li>
-<li>choose either <code>zip</code> or <code>tar.gz</code>,</li>
-<li>copy the archive to a place in the Arduino sketchbook, </li>
-<li>extract the firmware using <code>unzip</code> or <code>tar -xvzf</code>. </li>
-</ul>
-<p>In order to install the firmware, </p>
-<ul>
-<li>first, make sure that the auto-reset feature of the Uno is not disabled, e.g., by a shield or a capacitor plugged into the Uno board,</li>
-<li>then connect the Arduino Uno to your computer with a USB cable,</li>
-<li>open the Arduino IDE and select <code>Arduino Uno</code> under <code>Tools</code> as the destination <code>board</code>, </li>
-<li>select the correct <code>Port</code> in the <code>Tools</code> menu, </li>
-<li>and load the dw-link sketch into the IDE, which is located at <code>dw-link-x.y.z/dw-link/dw-link.ino</code>. </li>
-<li>Finally, compile and download the sketch to the Uno by either pressing the right arrow button or by typing CTRL-U or ⌘U. The Uno now acts as a hardware debugger (but needs a bit of additional hardware).</li>
-</ul>
+<p>First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).</p>
+<p>The simplest way to install the firmware is to download an uploader from the Release assets of the <a href="https://github.com/felias-fogg/dw-link">GitHub repo</a>. The uploader should fit your architecture, e.g., <code>dw-uploader-windows-intel64</code> for Windows. Under <em>Linux</em> and <em>macOS</em>, open a terminal window, go to the download folder, and set the executable permission using <code>chmod +x</code>. Afterward, execute the program. Under <em>Windows</em>, it is enough to start the program after downloading by double-clicking on it.</p>
+<p>Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch using the Arduino IDE 2.</p>
 <p><strong>Check:</strong> Open the <code>Serial Monitor</code> (under the <code>Tools</code> menu), choose <code>115200 baud</code>,  type  <code>-</code>  (minus sign) into the upper line, and send it. The hardware debugger should respond with <code>$#00</code>. </p>
 <h2 id="step-4-install-avr-gdb-on-the-host-computer">Step 4: Install <em>avr-gdb</em> on the host computer</h2>
 <p>The installation of the board definition files will lead to the download of a recent version of the GDB debug client in the tools section of the respective package. You should be able to copy it to a place in your <code>PATH</code>, e.g., <code>/usr/local/bin</code>.</p>
@@ -354,7 +340,8 @@ Transfer rate: 618 bytes/sec, 113 bytes/write.
 <p>After debugging, you can still can use dw-link as a programmer (of type <code>Arduino as ISP</code>). It is not the fastest one, but if you do not have anything better, it will do its job.</p>
 <p>If you want a more durable hardware debugging solution, there are some <a href="../better/">suggestions</a> in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link; it costs less than US-$15, and it is able to do much more! </p>
 <h2 id="what-can-go-wrong">What can go wrong?</h2>
-<p>If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a <a href="https://felias-fogg.github.io/dw-link/troubleshooting/">troubleshooting section</a> in the dw-link manual, which may be helpful.</p>
+<p>First, the dw-link firmware upload may fail. If so, try to use the conventional way by downloading the latest release version and then compiling and uploading the dw-link sketch.</p>
+<p>Second, if something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a <a href="https://felias-fogg.github.io/dw-link/troubleshooting/">troubleshooting section</a> in the dw-link manual, which may be helpful.</p>
 <p>The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command <code>quit</code>.  If this does not help, you may have to use a High-Voltage programmer, such as <a href="https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/">RescueAVR</a>.</p>
 <p>If you think you have found a bug, please post it on <a href="https://github.com/felias-fogg/dw-link/issues">issues</a>.</p>
               
