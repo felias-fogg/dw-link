@@ -229,6 +229,10 @@ jobs:
           name: dw-link.hex
           path: assets/
 
+      - name: Show assets
+        working-directory: ./assets
+        run: ls -la
+
       - name: Asset upload
         if: ${{ github.event.release.name != '' }}
         uses: softprops/action-gh-release@v2
