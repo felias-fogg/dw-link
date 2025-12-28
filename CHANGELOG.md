@@ -1,9 +1,12 @@
 # Changelog for dw-link
 
+## Version 6.0.2 (28-Dec-2025)
+
+- Added: Executables as assets for uploading the firmware
+
 ## Version 6.0.1 (17-Dec-2025)
 
 - Fixed: Added/corrected entries in dw-link.h
-- Added: Executables for uploading the firmware
 
 ## Version 6.0.0 (17-Dec-2025)
 
