@@ -165,37 +165,43 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Create asset directory
-        run: mkdir assets
+        run: |
+          mkdir assets
+          mkdir assets/dw-uploader-arm64-apple-darwin
+          mkdir assets/dw-uploader-aarch64-linux-gnu
+          mkdir assets/dw-uploader-x86_64-mingw32
+          mkdir assets/dw-uploader-x86_64-apple-darwin
+          mkdir assets/dw-uploader-x86_64-linux-gnu
 
       - name: Download arm64-apple-darwin
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-arm64-apple-darwin
-          path: assets/
+          path: assets/dw-uploader-arm64-apple-darwin
 
       - name: Download aarch64-linux-gnu
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-aarch64-linux-gnu
-          path: assets/
+          path: assets/dw-uploader-aarch64-linux-gnu
 
       - name: Download x86_64-mingw32
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-x86_64-mingw32
-          path: extras/binaries/x86_64-mingw32
+          path: assets/dw-uploader-x86_64-mingw32
 
       - name: Download x86_64-apple-darwin
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-x86_64-apple-darwin
-          path: assets/
+          path: assets/dw-uploader-x86_64-apple-darwin
 
       - name: Download dw-uploader-x86_64-linux-gnu
         uses: actions/download-artifact@v7
         with:
           name: dw-uploader-x86_64-linux-gnu
-          path: assets
+          path: assets/dw-uploader-x86_64-linux-gnu
 
       - name: Asset upload
         if: ${{ github.event.release.name != '' }}
