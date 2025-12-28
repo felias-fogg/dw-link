@@ -85,7 +85,7 @@ jobs:
           echo $VERSTRING > VERSION
 
       - name: Download firmware file artifact
-        uses: actions/downloadartifact@v7
+        uses: actions/download-artifact@v7
         with:
           name: dw-link.hex
           path: .
