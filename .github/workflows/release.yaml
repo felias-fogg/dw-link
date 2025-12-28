@@ -212,19 +212,19 @@ jobs:
           path: assets/
 
       - name: Download x86_64-apple-darwin
-        uses: actions/
+        uses: actions/download-artifact@v7
         with:
           name: dw-uploader-x86_64-apple-darwin
           path: assets/
 
       - name: Download dw-uploader-x86_64-linux-gnu
-        uses: actions/
+        uses: actions/download-artifact@v7
         with:
           name: dw-uploader-x86_64-linux-gnu
           path: assets/
 
       - name: Download dw-link.hex
-        uses: actions/
+        uses: actions/download-artifact@v7
         with:
           name: dw-link.hex
           path: assets/
