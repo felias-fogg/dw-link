@@ -20,8 +20,8 @@ jobs:
         if: ${{ github.event.release.name != '' }}
         run: |
           VER=$(grep "#define VERSION" dw-link/dw-link.ino)
-          VERSTRING=v${VER#*VERSION \"}}
-          VERSTRING=${VERSTRING%"}
+          VERSTRING=v${VER#*VERSION \"}
+          VERSTRING=${VERSTRING%\"}
           REL_NAME=${{ github.event.release.name }}
           echo "System version string: $VERSTRING"
           echo "Github release name: $REL_NAME"
@@ -84,8 +84,8 @@ jobs:
         working-directory: ./dw-uploader
         run: |
           VER=$(grep "#define VERSION" ../dw-link/dw-link.ino)
-          VERSTRING=v${VER#*VERSION \"}}
-          VERSTRING=${VERSTRING%"}
+          VERSTRING=v${VER#*VERSION \"}
+          VERSTRING=${VERSTRING%\"}
           echo $VERSTRING > VERSION
 
       - name: Download firmware file artifact
