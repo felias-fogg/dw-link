@@ -194,7 +194,7 @@ jobs:
       - name: Download dw-uploader-x86_64-linux-gnu
         uses: actions/download-artifact@v7
         with:
-          name: x86_64-linux-gnu
+          name: dw-uploader-x86_64-linux-gnu
           path: assets
 
       - name: Asset upload
