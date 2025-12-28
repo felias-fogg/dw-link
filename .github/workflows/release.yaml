@@ -10,7 +10,6 @@ on:
 
 jobs:
   check:
-    working-directory: ./dw-link
     runs-on: "ubuntu-latest"
     defaults:
       run:
