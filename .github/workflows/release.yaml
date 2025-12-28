@@ -10,7 +10,12 @@ on:
 
 jobs:
   check:
+    working-directory: ./dw-link
     runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        working-directory: ./dw-link
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -38,8 +43,8 @@ jobs:
         uses: arduino/setup-arduino-cli@v2
 
       - name: Compile firmware
+        working-directory: 
         run: |
-          cd dw-link
           arduino-cli core install arduino:avr
           arduino-cli compile -b arduino:avr:uno dw-link.ino 
          
@@ -48,6 +53,8 @@ jobs:
         with:
           name: dw-link.hex
           path: build/arduino.avr.uno/dw-link.ino.hex
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+
 
   build-binaries:
     needs: check
@@ -58,6 +65,8 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: ./dw-uploader
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -78,7 +87,6 @@ jobs:
 
       - name: Write Version
         run: |
-          cd dw-uploader
           VER=$(grep "#define VERSION" dw-link/dw-link.ino)
           VERSTRING=v${VER#*VERSION \"}}
           VERSTRING=${VERSTRING%"}
@@ -148,6 +156,7 @@ jobs:
           path: dist/dw-uploader
           overwrite: true
           include-hidden-files: true
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
 
   upload:
     needs: build-binaries
