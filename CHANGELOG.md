@@ -5,7 +5,7 @@
 - Added: 'Not implemented' for `monitor LiveTests` in order to satisfy PyAvrOCD integration tests
 - Added: Allow now to write to FUSE, LOCK, and SIGNATURE area to
   satisfy PyAvrOCD integration test for reading files with such components
-- Changed: Added 'reset' to `monitor timers ...`
+- Changed: Added 'reset' to `monitor timers ...` to make it compatible with PyAvrOCD
 
 ## Version 6.0.2 (28-Dec-2025)
 
