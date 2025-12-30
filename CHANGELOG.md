@@ -1,5 +1,12 @@
 # Changelog for dw-link
 
+## Version 6.0.3 (30-Dec-2025)
+
+- Added: 'Not implemented' for `monitor LiveTests` in order to satisfy PyAvrOCD integration tests
+- Added: Allow now to write to FUSE, LOCK, and SIGNATURE area to
+  satisfy PyAvrOCD integration test for reading files with such components
+- Changed: Added 'reset' to `monitor timers ...`
+
 ## Version 6.0.2 (28-Dec-2025)
 
 - Added: Executables as assets for uploading the firmware

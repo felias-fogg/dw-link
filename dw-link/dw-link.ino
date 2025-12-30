@@ -43,7 +43,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "6.0.2"
+#define VERSION "6.0.3"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -209,6 +209,9 @@
 #define FLASH_OFFSET   0x00000000 // flash is addressed starting from 0
 #define SRAM_OFFSET    0x00800000 // RAM address from GBD is (real addresss + 0x00800000)
 #define EEPROM_OFFSET  0x00810000 // EEPROM address from GBD is (real addresss + 0x00810000)
+#define FUSE_OFFSET    0x00820000 // fuse area, ignore when loading a file
+#define LOCK_OFFSET    0x00830000 // lock bit area (just one byte!), ignore when loading
+#define SIG_OFFSET     0x00840000 // signature area, will also be ignored although one could enforce equality
 
 // instruction codes
 const unsigned int BREAKCODE = 0x9598;
@@ -1200,6 +1203,8 @@ void gdbParseMonitorPacket(byte *buf)
       alltests();
     }
     break;
+#else
+  case MOTEST:
 #endif
   case MOCACHE:
   case MOEBL:
@@ -1752,6 +1757,9 @@ void gdbVerifyOption(char arg)
 
 void gdbTimerOption(char arg)
 {
+  if (arg == 'r' || arg == 'f') 
+    if (gdbReset(true))
+      gdbDebugMessagePSTR(PSTR("MCU reset"), -1);
     switch (arg) {
     case 'r':
       mon.tmask = 0xDF;
@@ -1990,7 +1998,7 @@ byte gdbCheckPrerequisite(unsigned int opcode)
     return SIGSYS;
   }
   if (opcode == BREAKCODE) {
-    gdbDebugMessagePSTR(PSTR(LONGSHORT("BREAK instruction. Cannot continue!", "BREAK")), -1);
+    gdbDebugMessagePSTR(PSTR(LONGSHORT("BREAK opcode. Cannot continue!", "BREAK")), -1);
     return SIGILL;
   }
   return 0;
@@ -2763,6 +2771,10 @@ void gdbWriteMemory(const byte *buff, boolean binary)
     }
     targetWriteEeprom(addr, membuf, sz);
     break;
+  case LOCK_OFFSET:
+  case FUSE_OFFSET:
+  case SIG_OFFSET:
+    break; // simply ignore so that files containing lockbits and fuses can be loaded 
   default:
     gdbSendReply("E13"); 
     reportFatalError(WRONG_MEM_FATAL, false);
