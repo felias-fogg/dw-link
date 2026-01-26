@@ -1,10 +1,15 @@
 # Changelog for dw-link
 
+## Version 6.1.0
+
+- Changed option value from "o" to "n" for monitor load command.
+- Implemented debugwire CLI option.
+- PyAvrOCD is apparently already prepared to deal with it.
+
 ## Version 6.0.3 (30-Dec-2025)
 
 - Added: 'Not implemented' for `monitor LiveTests` in order to satisfy PyAvrOCD integration tests
-- Added: Allow now to write to FUSE, LOCK, and SIGNATURE area to
-  satisfy PyAvrOCD integration test for reading files with such components
+- Added: Allow now to write to FUSE, LOCK, and SIGNATURE area to satisfy PyAvrOCD integration test for reading files with such components
 - Changed: Added 'reset' to `monitor timers ...` to make it compatible with PyAvrOCD
 
 ## Version 6.0.2 (28-Dec-2025)
