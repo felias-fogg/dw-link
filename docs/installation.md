@@ -40,7 +40,7 @@ The first package index will make the following board packages known to the IDE:
 
 - *[Atmel AVR Xplained-minis (Debug enabled)](https://github.com/felias-fogg/avr-xminis-debug-enabled)*, which is a new core only for the three Atmega328/168 Xplained mini boards. It is based on MiniCore (see below), but is heavily tailored towards these development boards. Since these boards have a hardware debugger on board, dw-link is not needed here. 
 
-- *[ATTinyCore (Debug enabled)](https://github.com/felias-fogg/ATTinyCore-debug-enabled)*, which is a fork of ATTinyCore-2.0.0 extended to allow for debugging.
+- *[ATTinyCore (Debug enabled)](https://github.com/felias-fogg/ATTinyCore-debug-enabled)*, which is a fork of ATTinyCore-1.5.2 extended to allow for debugging.
 
 The remaining two package indices make the [*MicroCore*](https://github.com/MCUdude/MicroCore) (ATtin13(a)) and [*MiniCore*](https://github.com/MCUdude/MiniCore) (ATmegaX8) known to the IDE. These cores are already debug-enabled.
 
