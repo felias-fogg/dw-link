@@ -4,7 +4,6 @@
 
 - Changed option value from "o" to "n" for monitor load command.
 - Implemented debugwire CLI option.
-- PyAvrOCD is apparently already prepared to deal with it.
 
 ## Version 6.0.3 (30-Dec-2025)
 

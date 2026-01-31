@@ -52,6 +52,7 @@
 #endif
 
 #ifdef ARDUINO_AVR_ATMEL_ATMEGA328P_XMINI
+ #define DEBUG 1
  #define HOSTBPS 74880UL      // The xmini cannot deal with 115200 bps
 #endif
 
@@ -64,6 +65,7 @@
 
 // these constants should stay undefined for the ordinary user
 // -----------------------------------------------------------
+
 #ifdef DEBUG // defined by outside forces
  #define NOISPPROG 1        // disable ISP programmer
  #define NOXBIN 1           // disable binary load
@@ -839,8 +841,7 @@ void monitorSystemLoadState(void) {
   if (Serial.available()) noinput = 0;
   noinput++;
   if (noinput == 2777) { // roughly 50 msec, based on the fact that one loop is 18 usec
-    ctx.newmonvals = false; // we do not wait for new monitor values any longer
-    if (mon.early_dw_start) { // early attempt to connect
+    if (mon.early_dw_start && !ctx.newmonvals) { // early attempt to connect and connected to GDB
       mon.early_dw_start = false;
       gdbDwireOption('e');
     } 
@@ -1119,6 +1120,7 @@ void gdbParsePacket(const byte *buff)
         initMonValues();
       gdbStartConnect(true);                          /* and try to connect */
       gdbSendPSTR((const char *)PSTR("PacketSize=" MAXBUFHEXSTR)); /* needs to be given in hexadecimal! */
+      ctx.newmonvals = false;                         /* no more mon vals via CLI */
     } else if (memcmp_P(buf, (void *)PSTR("qC"), 2) == 0)      
       gdbSendReply("QC01");                           /* current thread is always 1 */
     else if (memcmp_P(buf, (void *)PSTR("qfThreadInfo"), 12) == 0)
@@ -1597,14 +1599,13 @@ void gdbDwireOption(char arg)
       mon.early_dw_start = true;
     } else {
       if (targetStop())
-	gdbDebugMessagePSTR(PSTR(LONGSHORT("*** Left debugWIRE mode successfully",
-					   "*** LEFT")),
-			    -1);
+        gdbSendReply("OK");
       else 
-	gdbDebugMessagePSTR(PSTR(LONGSHORT("*** Leaving debugWIRE mode was unsuccessful",
-					   "*** FAIL")), 
-			    -1);			    
+        gdbSendReply("FL");
+      _delay_ms(300);
+      dwlrestart();
     }
+    return;
   } 
   switch (arg) {
   case 'e':
@@ -1841,9 +1842,9 @@ boolean autoPowerCycle(void)
   return(false);
 #endif
   power(false);
-  _delay_ms(500);
+  _delay_ms(700);
   power(true);
-  _delay_ms(100);
+  _delay_ms(700);
   if (targetDWConnect(false)) {
     setSysState(DWCONN_STATE);
     return true;
