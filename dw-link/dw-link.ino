@@ -1,7 +1,7 @@
 // It should run on all ATmega328 boards and provides a hardware debugger
 // for the classic ATtinys and some small ATmegas
 //
-// Copyright (c) 2021-2025 Bernhard Nebel
+// Copyright (c) 2021-2026 Bernhard Nebel
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -43,7 +43,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "6.0.3"
+#define VERSION "6.1.0"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -253,6 +253,7 @@ struct context {
   boolean autopc:1; // do an automagic power-cycle
   boolean dwactivated:1; // will be true after dw has been activated once; if then NOTCONN_STATE, you need to leave!
   boolean notloaded:1; // when no binary has been loaded yet
+  boolean newmonvals:1; // set to true after MCU is transmitted and false once all init done
   unsigned long bps; // debugWIRE communication speed
   ispspeedtype ispspeed;
 } ctx;
@@ -260,6 +261,7 @@ struct context {
 struct monitorstate {
   byte tmask; // run timers while stopped when tmask = 0xDF, freeze when tmask = 0xFF
   byte maxbreak; // actual number of active breakpoints allowed
+  boolean early_dw_start:1; // early switch to debugWIRE (after having made the connection to GDB)
   boolean onlysbp:1; // only software breakpoints allowed
   boolean atexit_leave:1; // leave debugWIRE at exit
   boolean readbeforewrite:1; // read before write when loading
@@ -608,6 +610,7 @@ const char mocache[] PROGMEM = "caching";
 const char morange[] PROGMEM = "rangestepping";
 const char moatexit[] PROGMEM = "atexit";
 const char moerasebeforeload[] PROGMEM = "erasebeforeload";
+const char modw[] PROGMEM = "debugwire";
 
 const char monnobootrst[] PROGMEM = "\x17nobootrst";
 const char monnodwen[] PROGMEM = "\x17nodwen";
@@ -635,18 +638,20 @@ const char moamb[] PROGMEM ="";
 #define MORANGE 13
 #define MOATEXIT 14
 #define MOEBL 15
-#define MONOBOOT 16
-#define MONODWEN 17
-#define MONOLOCK 18
-#define MOMCU 19
-#define MOUNK 20
-#define MOAMB 21
-#define NUMMONCMDS 22
+#define MODW 16
+#define MONOBOOT 17
+#define MONODWEN 18
+#define MONOLOCK 19
+#define MOMCU 20
+#define MOUNK 21
+#define MOAMB 22
+#define NUMMONCMDS 23
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
-  mohelp, moinfo, moversion, modwire, moreset, moload, moonly, moverify, motimers, mobreak, mosinglestep,  
-  motest, mocache, morange, moatexit, moerasebeforeload, monnobootrst, monnodwen, monnolockbits, monmcu, mounk, moamb }; 
+  mohelp, moinfo, moversion, modwire, moreset, moload, moonly, moverify, motimers, mobreak,
+  mosinglestep, motest, mocache, morange, moatexit, moerasebeforeload, modw, monnobootrst,
+  monnodwen, monnolockbits, monmcu, mounk, moamb }; 
 
 // some statistics
 long timeoutcnt = 0; // counter for DW read timeouts
@@ -756,6 +761,7 @@ int main(void) {
   
   // setup
   ctx.autopc = false;
+  ctx.newmonvals = false;
   pinMode(DWLINE, INPUT); 
   power(false);
   pinMode(SENSEBOARD, INPUT_PULLUP);
@@ -828,12 +834,18 @@ void setupio(void) {
 // monitor the system state LOAD_STATE
 // if no input any longer, then flush flash page buffer and
 // set state back to connected
+// additionally: if mon.early_dw_start is true, try to connect to DW
 void monitorSystemLoadState(void) {
   static unsigned int noinput = 0;
 
   if (Serial.available()) noinput = 0;
   noinput++;
   if (noinput == 2777) { // roughly 50 msec, based on the fact that one loop is 18 usec
+    ctx.newmonvals = false; // we do not wait for new monitor values any longer
+    if (mon.early_dw_start) { // early attempt to connect
+      mon.early_dw_start = false;
+      gdbDwireOption('e');
+    } 
     if (ctx.state == LOAD_STATE) {
       if (ctx.bps >= 30000)  // if too slow, wait for next command
                               // instead of asnychronously finishing load 
@@ -880,6 +892,7 @@ void initMonValues(void)
   mon.nobootrst = false;
   mon.nodwen = false;
   mon.nolockbits = false;
+  mon.early_dw_start = false;
 }
 
 
@@ -1194,6 +1207,7 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MOMCU:
     gdbStoreReqMcu(&cmdbuf[mooptix]);
+    ctx.newmonvals = true; // from now on the debugwire option is known to come from the command line
     break;
 #if defined(UNITDW) ||  defined(UNITTG) ||  defined(UNITGDB) ||  defined(UNITALL)
   case MOTEST:
@@ -1378,7 +1392,7 @@ void gdbHelp(void) {
   gdbDebugMessagePSTR(PSTR("monitor help                 - help function"), -1);
   gdbDebugMessagePSTR(PSTR("monitor info                 - information about target and debugger"), -1);
   gdbDebugMessagePSTR(PSTR("monitor load [r|w|o]         - loading: read before write(r) or write(w)"), -1);
-  gdbDebugMessagePSTR(PSTR("                               or only read file but not flash (o)"), -1);
+  gdbDebugMessagePSTR(PSTR("                               only or no flashing initially (n)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor onlywhenloaded [e|d] - allow exec only after load (e) or always (d)"), -1);
   gdbDebugMessagePSTR(PSTR("monitor reset                - reset target"), -1);
   gdbDebugMessagePSTR(PSTR("monitor singlestep [s|i]     - safe or interruptible single-stepping"), -1);
@@ -1580,6 +1594,20 @@ boolean gdbDisconnectDW(void)
 
 void gdbDwireOption(char arg)
 {
+  if (ctx.newmonvals) {
+    if (arg == 'e') {
+      mon.early_dw_start == true;
+    } else {
+      if (targetStop())
+	gdbDebugMessagePSTR(PSTR(LONGSHORT("*** Left debugWIRE mode successfully",
+					   "*** LEFT")),
+			    -1);
+      else 
+	gdbDebugMessagePSTR(PSTR(LONGSHORT("*** Leaving debugWIRE mode was unsuccessful",
+					   "*** FAIL")), 
+			    -1);			    
+    }
+  } 
   switch (arg) {
   case 'e':
     if (ctx.state == NOTCONN_STATE && ctx.dwactivated) {
@@ -1701,7 +1729,7 @@ void gdbLoadOption(char arg)
     } else if (arg == 'w') {
       mon.readbeforewrite = false;
       mon.noread = false;
-    } else if (arg == 'o') {
+    } else if (arg == 'n') {
       mon.noread = true;
       mon.readbeforewrite = true;
     } else {
