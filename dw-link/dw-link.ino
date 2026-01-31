@@ -610,7 +610,6 @@ const char mocache[] PROGMEM = "caching";
 const char morange[] PROGMEM = "rangestepping";
 const char moatexit[] PROGMEM = "atexit";
 const char moerasebeforeload[] PROGMEM = "erasebeforeload";
-const char modw[] PROGMEM = "debugwire";
 
 const char monnobootrst[] PROGMEM = "\x17nobootrst";
 const char monnodwen[] PROGMEM = "\x17nodwen";
@@ -638,19 +637,18 @@ const char moamb[] PROGMEM ="";
 #define MORANGE 13
 #define MOATEXIT 14
 #define MOEBL 15
-#define MODW 16
-#define MONOBOOT 17
-#define MONODWEN 18
-#define MONOLOCK 19
-#define MOMCU 20
-#define MOUNK 21
-#define MOAMB 22
-#define NUMMONCMDS 23
+#define MONOBOOT 16
+#define MONODWEN 17
+#define MONOLOCK 18
+#define MOMCU 19
+#define MOUNK 20
+#define MOAMB 21
+#define NUMMONCMDS 22
 
 // array with all monitor commands
 const char *const mocmds[NUMMONCMDS] PROGMEM = {
   mohelp, moinfo, moversion, modwire, moreset, moload, moonly, moverify, motimers, mobreak,
-  mosinglestep, motest, mocache, morange, moatexit, moerasebeforeload, modw, monnobootrst,
+  mosinglestep, motest, mocache, morange, moatexit, moerasebeforeload, monnobootrst,
   monnodwen, monnolockbits, monmcu, mounk, moamb }; 
 
 // some statistics
@@ -1596,7 +1594,7 @@ void gdbDwireOption(char arg)
 {
   if (ctx.newmonvals) {
     if (arg == 'e') {
-      mon.early_dw_start == true;
+      mon.early_dw_start = true;
     } else {
       if (targetStop())
 	gdbDebugMessagePSTR(PSTR(LONGSHORT("*** Left debugWIRE mode successfully",
