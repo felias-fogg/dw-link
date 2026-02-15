@@ -19,7 +19,7 @@ You can turn your Arduino Uno into a hardware debugger that can be used for embe
 
 You probably already have the Arduino IDE 2 installed. If not, download and install it from https://arduino.cc. 
 
-**Check:** Start IDE and check the `About Arduino` entry under the `Arduino` or `Help` menu for the version number. It should be >= 2.3.0.
+**Check:** Start the IDE and check the `About Arduino` entry under the `Arduino` or `Help` menu for the version number. It should be >= 2.3.0.
 
 ## Step 2: Install new board manager files
 
@@ -87,7 +87,7 @@ The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The sys
 - In the `Tools` menu,  choose `1 MHz (internal)` as the `Clock Source`  (assuming that the ATtiny is as it comes from the factory and no fuse has been changed).
 - In the `Sketch` menu, select `Optimize for Debugging`.
 - Compile the code by clicking the `Verify` button in the upper left corner.  
-- Open the debug panes by clicking the debug symbol (bug with triangle) in the left sidebar. 
+- Open the debug panes by clicking the debug symbol (bug with a triangle) in the left sidebar. 
 - Click the debug symbol in the top row to start debugging. This will start the debugger and the debug server. The activities are logged in the `Debug Console` and the `gdb-server` console in the bottom right part of the window. 
 - You will probably be asked to "power-cycle the target." This means that you need to remove power from the target and then reconnect it, activating the debugWIRE mode.
 - After the debugger and gdb-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the `setup` function.

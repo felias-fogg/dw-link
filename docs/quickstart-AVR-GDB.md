@@ -123,15 +123,15 @@ Either you use the arduino-cli to compile your sketch (and then I assume you kno
 
 * Load the sketch, you want to debug  (e.g., `dw-link-x.y.z/examples/varblink/varblink.ino`) into the IDE and select `ATtiny25/45/85 (no bootloader)` as the board. 
 * As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the `Sketch` menu, you should now activate `Optimize for Debugging.
-* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder `build/<board-type>/` inside the sketch folder.
+* When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled, and an ELF file (a binary that contains debugging information) is placed into the folder `build/<board-type>/` inside the sketch folder.
 
-You can also use arduino-cli to compile the sketch. Make sure to set the compiler option `-Og`, which makes sure that the compiler optimized for debugging (instead of for space).
+You can also use arduino-cli to compile the sketch. Make sure to set the compiler option `-Og`, which makes sure that the compiler optimizes for debugging (instead of for space).
 
-**Check:** Open terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be in the the sketch folder or in a subdirectory of the `build` folder.
+**Check:** Open a terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be in the sketch folder or in a subdirectory of the `build` folder.
 
 ## Step 7: Debugging
 
-Now, we are ready to debug the sketch on the target chip. Check that the *host*, the computer you are sitting at, is connected to the *hardware debugger*, the Uno, with a USB cable. The hardware debugger should in turn be connected to the *target* chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.
+Now, we are ready to debug the sketch on the target chip. Check that the *host*, the computer you are sitting at, is connected to the *hardware debugger*, the Uno, with a USB cable. The hardware debugger should, in turn, be connected to the *target* chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.
 
 Open a terminal window and change into the folder where the ELF file resides. Then type
 
@@ -164,7 +164,7 @@ This will bring up the message
 *** Please power-cycle target ***
 ```
 
-asking you to switch power to the target off and the on again in order to acxtivate debugWIRE mode. If in repsonse to it, the following message appears
+asking you to switch power to the target off and the on again in order to activate debugWIRE mode. If in response to it, the following message appears
 
 ```
 Connected to ATmega328P
@@ -176,7 +176,7 @@ and the system LED lights up, then you are in business!
 What else could happen?
 
 * If the LED stays dark and you receive the message `/dev/XXXXXXXX: Resource busy`, then some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.
-* If the LED stays dark and you got the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?
+* If the LED stays dark and you get the message `Ignoring packet error, continuing...` when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps the wrong baud rate?
 
 * If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type `monitor info`, which should give you the reason. Probably: Wrong wiring. So check the wiring or maybe try a different MCU.
 
@@ -197,13 +197,13 @@ Transfer rate: 618 bytes/sec, 113 bytes/write.
 
 or something similar. Now, you really can get into it! Here is a short list of commands that are useful:
 
-- **l** - list program text around current point and advances point
+- **l** - list program text around the current point and advances point
 - **l *fn*** - list function *fn* 
 - **b *fn*** - puts a breakpoint at the beginning of function *fn*
-- **b *num*** - puts a breakpoint at line *num* in current file
+- **b *num*** - puts a breakpoint at line *num* in the current file
 - **i b** - list breakpoints
 - **d *num*** - deletes breakpoint number *num*
-- **c** - continues running the program until the next breakpoint or stop by `CTRL-C`
+- **c** - continues running the program until the next breakpoint 
 - **s** - runs the next line of the program
 - **s *num*** - run the next *num* lines of the program
 - **n** - like s, but it does not step into functions
