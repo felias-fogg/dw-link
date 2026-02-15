@@ -269,12 +269,12 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <ul>
 <li>Load the sketch, you want to debug  (e.g., <code>dw-link-x.y.z/examples/varblink/varblink.ino</code>) into the IDE and select <code>ATtiny25/45/85 (no bootloader)</code> as the board. </li>
 <li>As <code>Clock Source</code> choose <code>1 MHz (internal)</code> (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the <code>Sketch</code> menu, you should now activate `Optimize for Debugging.</li>
-<li>When you now select <code>Sketch</code> -&gt; <code>Export compiled Binary</code>, then the sketch will be compiled and an ELF file (a binary that contains debugging information) is placed into the folder <code>build/&lt;board-type&gt;/</code> inside the sketch folder.</li>
+<li>When you now select <code>Sketch</code> -&gt; <code>Export compiled Binary</code>, then the sketch will be compiled, and an ELF file (a binary that contains debugging information) is placed into the folder <code>build/&lt;board-type&gt;/</code> inside the sketch folder.</li>
 </ul>
-<p>You can also use arduino-cli to compile the sketch. Make sure to set the compiler option <code>-Og</code>, which makes sure that the compiler optimized for debugging (instead of for space).</p>
-<p><strong>Check:</strong> Open terminal window and change into the sketch folder. The ELF file <code>&lt;sketchname&gt;.ino.elf</code> should either be in the the sketch folder or in a subdirectory of the <code>build</code> folder.</p>
+<p>You can also use arduino-cli to compile the sketch. Make sure to set the compiler option <code>-Og</code>, which makes sure that the compiler optimizes for debugging (instead of for space).</p>
+<p><strong>Check:</strong> Open a terminal window and change into the sketch folder. The ELF file <code>&lt;sketchname&gt;.ino.elf</code> should either be in the sketch folder or in a subdirectory of the <code>build</code> folder.</p>
 <h2 id="step-7-debugging">Step 7: Debugging</h2>
-<p>Now, we are ready to debug the sketch on the target chip. Check that the <em>host</em>, the computer you are sitting at, is connected to the <em>hardware debugger</em>, the Uno, with a USB cable. The hardware debugger should in turn be connected to the <em>target</em> chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.</p>
+<p>Now, we are ready to debug the sketch on the target chip. Check that the <em>host</em>, the computer you are sitting at, is connected to the <em>hardware debugger</em>, the Uno, with a USB cable. The hardware debugger should, in turn, be connected to the <em>target</em> chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.</p>
 <p>Open a terminal window and change into the folder where the ELF file resides. Then type</p>
 <pre><code>avr-gdb -b 115200 &lt;sketchname&gt;.ino.elf
 </code></pre>
@@ -291,7 +291,7 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <p>This will bring up the message</p>
 <pre><code>*** Please power-cycle target ***
 </code></pre>
-<p>asking you to switch power to the target off and the on again in order to acxtivate debugWIRE mode. If in repsonse to it, the following message appears</p>
+<p>asking you to switch power to the target off and the on again in order to activate debugWIRE mode. If in response to it, the following message appears</p>
 <pre><code>Connected to ATmega328P
 debugWIRE is enabled, bps: 125244
 </code></pre>
@@ -300,7 +300,7 @@ debugWIRE is enabled, bps: 125244
 <ul>
 <li>If the LED stays dark and you receive the message <code>/dev/XXXXXXXX: Resource busy</code>, then some other program is currently accessing the serial port. Perhaps there is still a monitor window open? Close that and try again.</li>
 <li>
-<p>If the LED stays dark and you got the message <code>Ignoring packet error, continuing...</code> when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps, wrong baud rate?</p>
+<p>If the LED stays dark and you get the message <code>Ignoring packet error, continuing...</code> when trying to connect, then the hardware debugger could not be reached over the serial connection. Perhaps the wrong baud rate?</p>
 </li>
 <li>
 <p>If the LED is instead blinking quickly, then the hardware debugger could not connect to the target. Type <code>monitor info</code>, which should give you the reason. Probably: Wrong wiring. So check the wiring or maybe try a different MCU.</p>
@@ -317,13 +317,13 @@ Transfer rate: 618 bytes/sec, 113 bytes/write.
 </code></pre>
 <p>or something similar. Now, you really can get into it! Here is a short list of commands that are useful:</p>
 <ul>
-<li><strong>l</strong> - list program text around current point and advances point</li>
+<li><strong>l</strong> - list program text around the current point and advances point</li>
 <li><strong>l <em>fn</em></strong> - list function <em>fn</em> </li>
 <li><strong>b <em>fn</em></strong> - puts a breakpoint at the beginning of function <em>fn</em></li>
-<li><strong>b <em>num</em></strong> - puts a breakpoint at line <em>num</em> in current file</li>
+<li><strong>b <em>num</em></strong> - puts a breakpoint at line <em>num</em> in the current file</li>
 <li><strong>i b</strong> - list breakpoints</li>
 <li><strong>d <em>num</em></strong> - deletes breakpoint number <em>num</em></li>
-<li><strong>c</strong> - continues running the program until the next breakpoint or stop by <code>CTRL-C</code></li>
+<li><strong>c</strong> - continues running the program until the next breakpoint </li>
 <li><strong>s</strong> - runs the next line of the program</li>
 <li><strong>s <em>num</em></strong> - run the next <em>num</em> lines of the program</li>
 <li><strong>n</strong> - like s, but it does not step into functions</li>
