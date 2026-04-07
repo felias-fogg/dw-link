@@ -32,21 +32,14 @@ Under Windows, you can download a version from Zak's [avr-gcc-build](https://git
 Open the `Preferences` dialog of the Arduino IDE and paste the following URLs into the list of `Additional boards manager URLs`:
 
 ```
-https://downloads.pyavrocd.io/package_debug_enabled_index.json
 https://MCUdude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
 https://MCUdude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 ```
-The first package index will make the following board packages known to the IDE:
-
-- *[Atmel AVR Xplained-minis (Debug enabled)](https://github.com/felias-fogg/avr-xminis-debug-enabled)*, which is a new core only for the three Atmega328/168 Xplained mini boards. It is based on MiniCore (see below), but is heavily tailored towards these development boards. Since these boards have a hardware debugger on board, dw-link is not needed here. 
-
-- *[ATTinyCore (Debug enabled)](https://github.com/felias-fogg/ATTinyCore-debug-enabled)*, which is a fork of ATTinyCore-1.5.2 extended to allow for debugging. Since the advent of TinyCore (see below), this core is deprecated.
-
-The remaining package indices make
+These package indices make
 [*MicroCore*](https://github.com/MCUdude/MicroCore) (ATtin13(a)),
-[*TinyCore*]((https://github.com/MCUdude/TinyCore) (all other classic ATtinys), 
-and [*MiniCore*](https://github.com/MCUdude/MiniCore) (ATmegaX8) known to the IDE. These cores are already debug-enabled.
+[*TinyCore*](https://github.com/MCUdude/TinyCore) (all other classic ATtinys), 
+and [*MiniCore*](https://github.com/MCUdude/MiniCore) (ATmegaX8) known to the IDE. These cores are all debug-enabled.
 
 Then, you need to start the  `Boards Manager`, which you find under `Tools`-->`Board`. Install any of the above cores you want. Note that the packages include tools that might be incompatible with older OS versions. If you encounter problems when starting the debugging software, consult the troubleshooting section on [startup problems](troubleshooting.md#startup-problems).
 
