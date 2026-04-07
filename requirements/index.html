@@ -131,7 +131,7 @@
 <p>If you intend to use dw-link on a board with an MCU different from ATmega328P, you should know that dw-link makes heavy use of the particular hardware features of the ATmega328P and operates close to the limit. I tried it out on the Leonardo and on the Mega2560, but it was not successful. </p>
 <p>The most basic setup is to use the UNO board and connect the cables, as shown in the <a href="../setup/#Fritzing">Fritzing sketch</a> in the <a href="../setup/">hardware setup section</a>. If you want to use the debugger more than once, it may pay off to build a modified ISP cable or to use a prototype shield and put an ISP socket on it. The more luxurious solution is a shield for the UNO with level shifters. All these possibilities are described in the section on how to build <a href="../better/">a better hardware debugger</a>.</p>
 <h2 id="mcus-with-debugwire-interface">MCUs with debugWIRE interface</h2>
-<p>In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family (which includes the ATmega328P) have the debugWIRE interface. Specifically, the following MCUs that are supported by <a href="https://github.com/SpenceKonde/ATTinyCore">ATTinyCore</a>, <a href="https://github.com/MCUdude/MicroCore">MicroCore</a> and/or by <a href="https://github.com/MCUdude/MiniCore">MiniCore</a> can be debugged using this interface:</p>
+<p>In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family (which includes the ATmega328P) have the debugWIRE interface. Specifically, the following MCUs that are supported by <a href="https://github.com/MCUdude/TinyCore">TinyCore</a>, <a href="https://github.com/MCUdude/MicroCore">MicroCore</a>, and/or by <a href="https://github.com/MCUdude/MiniCore">MiniCore</a> can be debugged using this interface:</p>
 <ul>
 <li><strong>ATtiny13</strong></li>
 <li><strong>ATtiny43U</strong></li>
@@ -144,9 +144,9 @@
 <li><strong>ATtiny828</strong></li>
 <li><strong>ATtiny48</strong>, <strong>ATtiny88</strong></li>
 <li><strong>ATtiny1634</strong></li>
-<li><s><strong>ATmega48</strong></s>, <strong>ATmega48A</strong>, <strong>ATmega48PA</strong>, ATmega48PB, </li>
-<li><s><strong>ATmega88</strong></s>, <strong>ATmega88A</strong>, <strong>ATmega88PA</strong>, Atmega88PB, </li>
-<li><strong>ATmega168</strong>, <strong>ATmega168A</strong>, <strong>ATmega168PA</strong>, ATmega168PB, </li>
+<li><s><strong>ATmega48</strong></s>, <strong>ATmega48A</strong>, <strong>ATmega48PA</strong>, <strong>ATmega48PB</strong>, </li>
+<li><s><strong>ATmega88</strong></s>, <strong>ATmega88A</strong>, <strong>ATmega88PA</strong>, <strong>ATmega88PB</strong>, </li>
+<li><strong>ATmega168</strong>, <strong>ATmega168A</strong>, <strong>ATmega168PA</strong>, <strong>ATmega168PB</strong>, </li>
 <li><strong>ATmega328</strong>, <strong>ATmega328P</strong>, <strong>ATmega328PB</strong></li>
 </ul>
 <p>I have tested the debugger on MCUs marked bold. When I tried out the ATmegas that are stroked out, I noticed that they have program counters with some bits stuck at one. For this reason, GDB has problems debugging them. If dw-link discovers stuck-at-one bits, it will report this and refuse to debug such MCUs.</p>

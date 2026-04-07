@@ -129,8 +129,9 @@ brew install avr-gdb
 </code></pre>
 <p>Under Windows, you can download a version from Zak's <a href="https://github.com/ZakKemble/avr-gcc-build">avr-gcc-build</a> repository.</p>
 <h3 id="installing-board-packages-for-the-arduino-ide-2">Installing board packages for the Arduino IDE 2</h3>
-<p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following three URLs into the list of <code>Additional boards manager URLs</code>:</p>
+<p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following URLs into the list of <code>Additional boards manager URLs</code>:</p>
 <pre><code>https://downloads.pyavrocd.io/package_debug_enabled_index.json
+https://MCUdude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
 https://MCUdude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 </code></pre>
@@ -140,10 +141,13 @@ https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 <p><em><a href="https://github.com/felias-fogg/avr-xminis-debug-enabled">Atmel AVR Xplained-minis (Debug enabled)</a></em>, which is a new core only for the three Atmega328/168 Xplained mini boards. It is based on MiniCore (see below), but is heavily tailored towards these development boards. Since these boards have a hardware debugger on board, dw-link is not needed here. </p>
 </li>
 <li>
-<p><em><a href="https://github.com/felias-fogg/ATTinyCore-debug-enabled">ATTinyCore (Debug enabled)</a></em>, which is a fork of ATTinyCore-1.5.2 extended to allow for debugging.</p>
+<p><em><a href="https://github.com/felias-fogg/ATTinyCore-debug-enabled">ATTinyCore (Debug enabled)</a></em>, which is a fork of ATTinyCore-1.5.2 extended to allow for debugging. Since the advent of TinyCore (see below), this core is deprecated.</p>
 </li>
 </ul>
-<p>The remaining two package indices make the <a href="https://github.com/MCUdude/MicroCore"><em>MicroCore</em></a> (ATtin13(a)) and <a href="https://github.com/MCUdude/MiniCore"><em>MiniCore</em></a> (ATmegaX8) known to the IDE. These cores are already debug-enabled.</p>
+<p>The remaining package indices make
+<a href="https://github.com/MCUdude/MicroCore"><em>MicroCore</em></a> (ATtin13(a)),
+[<em>TinyCore</em>]((https://github.com/MCUdude/TinyCore) (all other classic ATtinys), 
+and <a href="https://github.com/MCUdude/MiniCore"><em>MiniCore</em></a> (ATmegaX8) known to the IDE. These cores are already debug-enabled.</p>
 <p>Then, you need to start the  <code>Boards Manager</code>, which you find under <code>Tools</code>--&gt;<code>Board</code>. Install any of the above cores you want. Note that the packages include tools that might be incompatible with older OS versions. If you encounter problems when starting the debugging software, consult the troubleshooting section on <a href="../troubleshooting/#startup-problems">startup problems</a>.</p>
               
             </div>

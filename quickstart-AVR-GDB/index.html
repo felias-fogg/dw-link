@@ -154,16 +154,17 @@
 <h2 id="step-2-install-new-board-manager-files">Step 2: Install new board manager files</h2>
 <p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following <code>Board Manager URLs</code> into the list:</p>
 <pre><code>https://downloads.pyavrocd.io/package_debugging_index.json
+https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
 https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 </code></pre>
-<p>Close the <code>Preference</code> dialog with <code>OK</code>. Now, you can install the cores, <code>ATTinyCore (Debug enabled)</code> ,  <code>MiniCore</code>, and <code>MicroCore</code>.</p>
+<p>Close the <code>Preference</code> dialog with <code>OK</code>. Now, you can install the cores, <code>TinyCore</code> ,  <code>MiniCore</code>, and <code>MicroCore</code> (and more).</p>
 <ul>
 <li>Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>Board Managers</code> ... . This will open the Boards Manager dialog. </li>
-<li>In the search field, type <code>ATTinyCore(Debug enabled)</code> and install the most recent version.</li>
+<li>In the search field, type <code>TinyCore</code> and install the most recent version.</li>
 <li>Afterward, do the same with <code>MiniCore</code> and <code>MicroCore</code>.</li>
 </ul>
-<p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>ATtinyCore (Debug enabled)</code> -&gt; <code>Attiny25/45/85 (no bootloader)</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. </p>
+<p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>TinyCore</code> -&gt; <code>Attiny25/45/85</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. </p>
 <h2 id="step-3-install-dw-link-firmware">Step 3: Install <em>dw-link</em> firmware</h2>
 <p>First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).</p>
 <p>The simplest way to install the firmware is to download an uploader from the Release assets of the <a href="https://github.com/felias-fogg/dw-link">GitHub repo</a>. The uploader should fit your architecture, e.g., <code>dw-uploader-windows-intel64</code> for Windows. Under <em>Linux</em> and <em>macOS</em>, open a terminal window, go to the download folder, and set the executable permission using <code>chmod +x</code>. Afterward, execute the program. Under <em>Windows</em>, it is enough to start the program after downloading by double-clicking on it.</p>
