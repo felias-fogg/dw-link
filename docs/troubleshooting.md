@@ -10,13 +10,13 @@ Maybe, the dw-link probe shield or the auto-reset disabling capacitor is still p
 
 Problems during startup can often be diagnosed when one selects the `gdb-server`  console in the Arduino IDE 2.
 
-### Problem: In the gdb-server console, the session is terminated right after the message that the gdbserver is waiting for a connection
+### Problem: In the gdb-server console, the session is terminated right after the message that the GDB server is waiting for a connection
 
 This is an indication that the avr-gdb program could not be started. One could try to solve the problem by getting hold of an avr-gdb version tailored for one's own operating system and replacing the version in the tools folder. The path to this folder is shown in the green line in the `gdb-server` console. 
 
-### Problem: In the gdb-server console, right after starting the dw-gdbserver (green line), there are a lot of error messages shown
+### Problem: In the gdb-server console, right after starting the GDB server, there are a lot of error messages shown
 
-This could indicate that the dw-gdbserver binary is incompatible with one's operating system. One may try to solve the problem by building one's own binary. If you have Python Version >= 3.10 and have pipx installed, you can download, generate, and install a version of dw-gdbserver that should work on your OS. Execute `pipx install dwgdbserver`, and copy the generated binary (try `pipx list` to locate it on your computer) into the tools folder as shown in the green line in the `gdb-server` console.
+This could indicate that the PyAvrOCD binary is incompatible with one's operating system. One may try to solve the problem by building one's own binary. If you have Python Version >= 3.10 and have pipx installed, you can download, generate, and install a version of PyAvrOCD that should work on your OS. Execute `pipx install PyAvrOCD`, and copy the generated binary (try `pipx list` to locate it on your computer) into the tools folder as shown in the green line in the `gdb-server` console.
 
 ### Problem: It is impossible to connect to the hardware debugger. In the gdb-server console the message "No hardware debugger discovered" is shown 
 
@@ -46,7 +46,7 @@ Depending on the concrete error message, the problem fix varies.
 - *Cannot connect: Lock bits could not be cleared:* This should not happen at all because it is always possible to clear the lock bits by erasing the entire chip.
 - *Cannot connect: PC with stuck-at-one bits*: dw-link tried to connect to an [MCU with stuck-at-one bits in the program counter](requirements.md#mcus-with-debugwire-interface). These MCUs cannot be debugged with GDB. 
 - *Cannot connect: Reset line has a capacitive load*: The message says it all.
-- *MCU type does not match*: The chip connected to the hardware debugger is different from what you announced when starting the debugger through an IDE or by calling dw-gdbserver. 
+- *MCU type does not match*: The chip connected to the hardware debugger is different from what you announced when starting the debugger through an IDE or by calling PyAvrOCD. 
 - *Cannot connect: Target not powered or RESET shortened to GND*: The RESET line is low. Either you forgot to power the target, or there is another (maybe temporary?) reason for it.
 - *Cannot connect for unknown reasons:* This error message should not be shown at all. If it does, please tell me!
 

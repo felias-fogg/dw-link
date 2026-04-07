@@ -95,7 +95,7 @@ If you select the Debug Console, you can type GDB commands in the bottom line. T
 | `monitor` `singlestep` [`safe` \| `interruptible`]           | Single-stepping can be performed in a `safe` way, where single steps are shielded against interrupts. Otherwise, a single step can lead to a jump into the interrupt dispatch table. The `safe` option is the default. |
 | `monitor` `timer` [`run` \| `freeze`]                        | Timers can either be `frozen` when execution is stopped, or they can `run` freely. The latter option is helpful when PWM output is crucial, and it is the default. When the mode is changed, the MCU is reset. |
 | `monitor` `verify` [`enable `\|` disable`]                   | Verify flash after loading each flash page. The default setting is for this option to be `enable`d. |
-| `monitor` `version`                                          | Show version of the gdbserver.                               |
+| `monitor` `version`                                          | Show version of dw-link.                                     |
 
 All commands can, as usual, be abbreviated. For example, `mo d e` is equivalent to `monitor debugwire enable`. If you use a command without an argument, the current setting is printed. All state-changing commands (except `debugwire`) can also be specified as command-line options when invoking PyAvrOCD, e.g., `--verify disable`.
 
