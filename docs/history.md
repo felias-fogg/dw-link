@@ -125,3 +125,7 @@ Initial version
 ### V 5.2
 
 - Adapted to new package indices in the quickstart and installation sections
+
+### V 5.3
+
+- Switched from ATTinyCore to TinyCore

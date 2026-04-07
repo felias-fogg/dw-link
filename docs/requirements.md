@@ -23,7 +23,7 @@ The most basic setup is to use the UNO board and connect the cables, as shown in
 
 ## MCUs with debugWIRE interface
 
-In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family (which includes the ATmega328P) have the debugWIRE interface. Specifically, the following MCUs that are supported by [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore), [MicroCore](https://github.com/MCUdude/MicroCore) and/or by [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
+In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family (which includes the ATmega328P) have the debugWIRE interface. Specifically, the following MCUs that are supported by [TinyCore](https://github.com/MCUdude/TinyCore), [MicroCore](https://github.com/MCUdude/MicroCore), and/or by [MiniCore](https://github.com/MCUdude/MiniCore) can be debugged using this interface:
 
 * __ATtiny13__
 * __ATtiny43U__
@@ -36,9 +36,9 @@ In general, almost all "classic" ATtiny MCUs and the ATmegaX8 MCU family (which 
 * __ATtiny828__
 * __ATtiny48__, __ATtiny88__
 * __ATtiny1634__
-* <s>__ATmega48__</s>, __ATmega48A__, __ATmega48PA__, ATmega48PB, 
-* <s>__ATmega88__</s>, __ATmega88A__, __ATmega88PA__, Atmega88PB, 
-* __ATmega168__, __ATmega168A__, __ATmega168PA__, ATmega168PB, 
+* <s>__ATmega48__</s>, __ATmega48A__, __ATmega48PA__, __ATmega48PB__, 
+* <s>__ATmega88__</s>, __ATmega88A__, __ATmega88PA__, __ATmega88PB__, 
+* __ATmega168__, __ATmega168A__, __ATmega168PA__, __ATmega168PB__, 
 * __ATmega328__, __ATmega328P__, __ATmega328PB__
 
 I have tested the debugger on MCUs marked bold. When I tried out the ATmegas that are stroked out, I noticed that they have program counters with some bits stuck at one. For this reason, GDB has problems debugging them. If dw-link discovers stuck-at-one bits, it will report this and refuse to debug such MCUs.

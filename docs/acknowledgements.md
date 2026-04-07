@@ -8,7 +8,9 @@ First, I would like to thank everyone who made the work described here possible 
 - [tito](https://github.com/tito), who's stk500 implementation I used as a base for the dw-uploader script,
 - [wholder](https://github.com/wholder), who wrote the Uno-based debugger [DebugWireDebuggerProgrammer](https://github.com/wholder/DebugWireDebuggerProgrammer),
 - [jdolinay](https://github.com/jdolinay), who wrote the GDB remote stub for AVRs [avr_debug](https://github.com/jdolinay/avr_debug),
-- [MCUdude](https://github.com/MCUdude), who is the author of [MiniCore](https://github.com/MCUdude/MiniCore) and [MicroCore](https://github.com/MCUdude/MicroCore), and
+- [MCUdude](https://github.com/MCUdude), who is the author of
+[TinyCore](https://github.com/MCUdude/TinyCore),
+[MiniCore](https://github.com/MCUdude/MiniCore), and [MicroCore](https://github.com/MCUdude/MicroCore), and
 - [SpenceKonde](https://github.com/SpenceKonde), who is the author of [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore).
 
 Of course, my thanks go also to everybody else, who contributed to the Arduino project.

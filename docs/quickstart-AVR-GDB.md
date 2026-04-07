@@ -28,17 +28,18 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
-	https://downloads.pyavrocd.io/package_debugging_index.json
+    https://downloads.pyavrocd.io/package_debugging_index.json
+    https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
 	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
-Close the `Preference` dialog with `OK`. Now, you can install the cores, `ATTinyCore (Debug enabled)` ,  `MiniCore`, and `MicroCore`.
+Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCore` ,  `MiniCore`, and `MicroCore` (and more).
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type `ATTinyCore(Debug enabled)` and install the most recent version.
+* In the search field, type `TinyCore` and install the most recent version.
 * Afterward, do the same with `MiniCore` and `MicroCore`.
 
-**Check:** Select `Tools` -> `Board` -> `ATtinyCore (Debug enabled)` -> `Attiny25/45/85 (no bootloader)` . The debug button in the upper row (3rd from the left) is no longer greyed out. 
+**Check:** Select `Tools` -> `Board` -> `TinyCore` -> `Attiny25/45/85` . The debug button in the upper row (3rd from the left) is no longer greyed out. 
 
 ## Step 3: Install *dw-link* firmware
 
