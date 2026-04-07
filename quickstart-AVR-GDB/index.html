@@ -153,8 +153,7 @@
 <p><strong>Check:</strong> Start IDE and check the <code>About Arduino</code>  entry under the <code>Arduino</code> or <code>Help</code> menu for the version number.  It should be &gt;= 2.3.0.</p>
 <h2 id="step-2-install-new-board-manager-files">Step 2: Install new board manager files</h2>
 <p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following <code>Board Manager URLs</code> into the list:</p>
-<pre><code>https://downloads.pyavrocd.io/package_debugging_index.json
-https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
+<pre><code>https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
 https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 </code></pre>
@@ -268,8 +267,8 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <h2 id="step-6-compiling-the-arduino-sketch-for-the-target">Step 6: Compiling the Arduino sketch for the target</h2>
 <p>Either you use the arduino-cli to compile your sketch (and then I assume you know what you are doing), or you use the IDE:</p>
 <ul>
-<li>Load the sketch, you want to debug  (e.g., <code>dw-link-x.y.z/examples/varblink/varblink.ino</code>) into the IDE and select <code>ATtiny25/45/85 (no bootloader)</code> as the board. </li>
-<li>As <code>Clock Source</code> choose <code>1 MHz (internal)</code> (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the <code>Sketch</code> menu, you should now activate `Optimize for Debugging.</li>
+<li>Load the sketch, you want to debug into the IDE and select <code>ATtiny25/45/85</code> as the board. </li>
+<li>As <code>Clock Source</code> choose <code>1 MHz internal oscillator.</code> (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the <code>Sketch</code> menu, you should now activate `Optimize for Debugging.</li>
 <li>When you now select <code>Sketch</code> -&gt; <code>Export compiled Binary</code>, then the sketch will be compiled, and an ELF file (a binary that contains debugging information) is placed into the folder <code>build/&lt;board-type&gt;/</code> inside the sketch folder.</li>
 </ul>
 <p>You can also use arduino-cli to compile the sketch. Make sure to set the compiler option <code>-Og</code>, which makes sure that the compiler optimizes for debugging (instead of for space).</p>
@@ -286,13 +285,14 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <pre><code>Remote debugging using &lt;serial-port&gt; 
 0x00000000 in __vectors ()  
 </code></pre>
+<p>Instead of establishing a serial connection to the hardware debugger, you can also communicate with the hardware debugger over a TCP/IP port using <a href="https://pyavrocd.io">PyAvrOCD</a>, which you would need to install first.</p>
 <p>You are connected to the hardware debugger. Now you need to enable the <a href="https://debugwire.de">debugWIRE</a> mode:</p>
 <pre><code>(gdb) monitor debugWIRE enable
 </code></pre>
 <p>This will bring up the message</p>
 <pre><code>*** Please power-cycle target ***
 </code></pre>
-<p>asking you to switch power to the target off and the on again in order to activate debugWIRE mode. If in response to it, the following message appears</p>
+<p>asking you to switch the power to the target off and then on again in order to activate debugWIRE mode. If, in response to it, the following message appears</p>
 <pre><code>Connected to ATmega328P
 debugWIRE is enabled, bps: 125244
 </code></pre>
