@@ -28,10 +28,9 @@ You probably already have installed the Arduino IDE 2. If not, download and inst
 
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
-    https://downloads.pyavrocd.io/package_debugging_index.json
     https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
-	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
-	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+    https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+    https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
 Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCore` ,  `MiniCore`, and `MicroCore` (and more).
 
@@ -122,8 +121,8 @@ The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The sys
 
 Either you use the arduino-cli to compile your sketch (and then I assume you know what you are doing), or you use the IDE:
 
-* Load the sketch, you want to debug  (e.g., `dw-link-x.y.z/examples/varblink/varblink.ino`) into the IDE and select `ATtiny25/45/85 (no bootloader)` as the board. 
-* As `Clock Source` choose `1 MHz (internal)` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the `Sketch` menu, you should now activate `Optimize for Debugging.
+* Load the sketch, you want to debug into the IDE and select `ATtiny25/45/85` as the board. 
+* As `Clock Source` choose `1 MHz internal oscillator.` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the `Sketch` menu, you should now activate `Optimize for Debugging.
 * When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled, and an ELF file (a binary that contains debugging information) is placed into the folder `build/<board-type>/` inside the sketch folder.
 
 You can also use arduino-cli to compile the sketch. Make sure to set the compiler option `-Og`, which makes sure that the compiler optimizes for debugging (instead of for space).
@@ -153,6 +152,8 @@ Remote debugging using <serial-port>
 0x00000000 in __vectors ()  
 ```
 
+Instead of establishing a serial connection to the hardware debugger, you can also communicate with the hardware debugger over a TCP/IP port using [PyAvrOCD](https://pyavrocd.io), which you would need to install first.
+
 You are connected to the hardware debugger. Now you need to enable the [debugWIRE](https://debugwire.de) mode:
 
 ```
@@ -165,7 +166,7 @@ This will bring up the message
 *** Please power-cycle target ***
 ```
 
-asking you to switch power to the target off and the on again in order to activate debugWIRE mode. If in response to it, the following message appears
+asking you to switch the power to the target off and then on again in order to activate debugWIRE mode. If, in response to it, the following message appears
 
 ```
 Connected to ATmega328P

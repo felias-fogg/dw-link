@@ -25,7 +25,6 @@ You probably already have the Arduino IDE 2 installed. If not, download and inst
 
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
 
-	https://downloads.pyavrocd.io/package_debug_enabled_index.json
 	https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
 	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
@@ -83,20 +82,20 @@ The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The sys
 
 ## Step 5: Start Debugging
 
-- Load the sketch you want to debug  (e.g., `dw-link-x.y.z/examples/varblink/varblink.ino`) into the IDE by choosing `Open...` in the `File` menu. 
+- Load the sketch you want to debug into the IDE by choosing `Open...` in the `File` menu. 
 - Select `Tiny25/45/85` as the board under `Tools` -> `Board` -> `TinyCore`.
-- In the `Tools` menu,  choose `1 MHz (internal)` as the `Clock Source`  (assuming that the ATtiny is as it comes from the factory and no fuse has been changed).
+- In the `Tools` menu,  choose `1 MHz internal osc.` as the `Clock`  (assuming that the ATtiny is as it comes from the factory and no fuse has been changed).
 - In the `Sketch` menu, select `Optimize for Debugging`.
 - Compile the code by clicking the `Verify` button in the upper left corner.  
 - Open the debug panes by clicking the debug symbol (bug with a triangle) in the left sidebar. 
 - Click the debug symbol in the top row to start debugging. This will start the debugger and the debug server. The activities are logged in the `Debug Console` and the `gdb-server` console in the bottom right part of the window. 
 - You will probably be asked to "power-cycle the target." This means that you need to remove power from the target and then reconnect it, activating the debugWIRE mode.
-- After the debugger and gdb-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the `setup` function.
+- After the debugger and gdb-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the internal `main` function.
 - Now, you are in business and can set breakpoints (clicking left of the line number), continue executing, stop the program asynchronously, inspect and change values, and examine different stack frames. To terminate your debugging session, click the red box in the debug row before terminating the debugging session.
 
 ![debug window](pics/ide2-3.png)
 
-Be aware that after finishing the debug session, the MCU is still in debugWIRE mode! You can change that by typing `monitor debugwire disable` in the last line of the `Debug Console`. More information can be found in the [dw-link manual](https://felias-fogg.github.io/dw-link/debugging/).
+Be aware that after finishing the debug session, the MCU is still in debugWIRE mode! You can change that by typing `monitor debugwire disable` in the last line of the `Debug Console`. More information can be found in the [dw-link manual](https://felias-fogg.github.io/dw-link/debugging/) and the [PyAvrOCD manual](https://pyavrocd.io).
 
 ## After debugging has finished
 
