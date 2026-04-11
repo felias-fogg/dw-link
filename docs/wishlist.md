@@ -2,13 +2,13 @@
 
 ##### List of tasks to work on:
 
-* maybe have a variable length break, dependent on the speed of ISP?
+* Maybe have a variable-length break, dependent on the speed of the ISP?
 
-* implement semi-hosting
+* Implement semi-hosting
 
 * Check for output of error routines. Sometimes it does not seem to work
 
-        
+* Refactor so that only basic communication routines run on the UNO and the rest is done by PyAvrOCD
 
 ##### List of tasks done:
 
