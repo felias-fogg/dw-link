@@ -62,7 +62,7 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#installing-avr-gdb">Installing AVR-GDB</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#installing-board-packages-for-the-arduino-ide-2">Installing board packages for the Arduino IDE 2</a>
+    <li class="toctree-l3"><a class="reference internal" href="#installing-debug-enabled-board-packages-for-the-arduino-ide-2">Installing debug-enabled board packages for the Arduino IDE 2</a>
     </li>
         </ul>
     </li>
@@ -117,7 +117,7 @@
 <p>There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. Setting up the software environment is also quite simple, if you either opt for CLI debugging with AVR-GDB or the Arduino IDE 2. For other options, I refer to <a href="https://PyAvrOCD.io">PyAvrOCD</a>.</p>
 <h2 id="firmware-installation">Firmware installation</h2>
 <p>You need to install the dw-link firmware on an UNO. Connect the UNO to your computer and upload the firmware.</p>
-<p>The simplest way is to download an uploader from the Release assets of the GitHub repo. This should fit your architecture, e.g., <code>dw-uploader-windows-intel64</code> for Windows. Under <em>Linux</em> and <em>macOS</em>, open a terminal window, go to the download folder, and set the executable permission using <code>chmod +x</code>. Afterward, execute the program. Under <em>Windows</em>, it is enough to start the program after downloading by double-clicking on it.</p>
+<p>The simplest way is to download an uploader from the <a href="https://github.com/felias-fogg/dw-link/releases/latest">Release assets of the GitHub repo</a>. The name of the uploader should fit your architecture, e.g., <code>dw-uploader-windows-intel64</code> for Windows. Under <em>Linux</em> and <em>macOS</em>, open a terminal window, go to the download folder, and set the executable permission using <code>chmod +x</code>. Afterward, execute the program. Under <em>Windows</em>, it is enough to start the program after downloading by double-clicking on it. Instead of downloading an uploader, you can download the hex-file <code>dw-link.hex</code> and flash it with, e.g., <code>avrdude</code> on the UNO.</p>
 <p>Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch. You can also use PlatformIO for that purpose, because the repo is already in the right format.</p>
 <h2 id="setting-up-the-debugging-software">Setting up the debugging software</h2>
 <p>Finally, you need to install the debugging software on the host. </p>
@@ -128,16 +128,13 @@ brew tap osx-cross/avr
 brew install avr-gdb
 </code></pre>
 <p>Under Windows, you can download a version from Zak's <a href="https://github.com/ZakKemble/avr-gcc-build">avr-gcc-build</a> repository.</p>
-<h3 id="installing-board-packages-for-the-arduino-ide-2">Installing board packages for the Arduino IDE 2</h3>
+<h3 id="installing-debug-enabled-board-packages-for-the-arduino-ide-2">Installing debug-enabled board packages for the Arduino IDE 2</h3>
 <p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following URLs into the list of <code>Additional boards manager URLs</code>:</p>
 <pre><code>https://MCUdude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
 https://MCUdude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 https://MCUdude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
 </code></pre>
-<p>These package indices make
-<a href="https://github.com/MCUdude/MicroCore"><em>MicroCore</em></a> (ATtin13(a)),
-<a href="https://github.com/MCUdude/TinyCore"><em>TinyCore</em></a> (all other classic ATtinys), 
-and <a href="https://github.com/MCUdude/MiniCore"><em>MiniCore</em></a> (ATmegaX8) known to the IDE. These cores are all debug-enabled.</p>
+<p>These package indices make <a href="https://github.com/MCUdude/MicroCore"><em>MicroCore</em></a> (ATtin13(a)), <a href="https://github.com/MCUdude/TinyCore"><em>TinyCore</em></a> (all other classic ATtinys),  and <a href="https://github.com/MCUdude/MiniCore"><em>MiniCore</em></a> (ATmegaX8) known to the IDE. These cores are all debug-enabled.</p>
 <p>Then, you need to start the  <code>Boards Manager</code>, which you find under <code>Tools</code>--&gt;<code>Board</code>. Install any of the above cores you want. Note that the packages include tools that might be incompatible with older OS versions. If you encounter problems when starting the debugging software, consult the troubleshooting section on <a href="../troubleshooting/#startup-problems">startup problems</a>.</p>
               
             </div>
