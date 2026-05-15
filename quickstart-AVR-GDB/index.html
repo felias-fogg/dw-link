@@ -268,10 +268,10 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <p>Either you use the arduino-cli to compile your sketch (and then I assume you know what you are doing), or you use the IDE:</p>
 <ul>
 <li>Load the sketch, you want to debug into the IDE and select <code>ATtiny25/45/85</code> as the board. </li>
-<li>As <code>Clock Source</code> choose <code>1 MHz internal oscillator.</code> (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the <code>Sketch</code> menu, you should now activate `Optimize for Debugging.</li>
+<li>As <code>Clock Source</code> choose <code>1 MHz internal oscillator.</code> (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the <code>Sketch</code> menu, you should now activate <code>Optimize for Debugging</code>.</li>
 <li>When you now select <code>Sketch</code> -&gt; <code>Export compiled Binary</code>, then the sketch will be compiled, and an ELF file (a binary that contains debugging information) is placed into the folder <code>build/&lt;board-type&gt;/</code> inside the sketch folder.</li>
 </ul>
-<p>You can also use arduino-cli to compile the sketch. Make sure to set the compiler option <code>-Og</code>, which makes sure that the compiler optimizes for debugging (instead of for space).</p>
+<p>You can also use arduino-cli to compile the sketch. Use the option <code>--optimize-for-debug</code>, which makes sure that the compiler optimizes for debugging (instead of for space).</p>
 <p><strong>Check:</strong> Open a terminal window and change into the sketch folder. The ELF file <code>&lt;sketchname&gt;.ino.elf</code> should either be in the sketch folder or in a subdirectory of the <code>build</code> folder.</p>
 <h2 id="step-7-debugging">Step 7: Debugging</h2>
 <p>Now, we are ready to debug the sketch on the target chip. Check that the <em>host</em>, the computer you are sitting at, is connected to the <em>hardware debugger</em>, the Uno, with a USB cable. The hardware debugger should, in turn, be connected to the <em>target</em> chip, the ATtiny85, by 6 flying wires as we have prepared it in step 5.</p>
@@ -292,7 +292,7 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <p>This will bring up the message</p>
 <pre><code>*** Please power-cycle target ***
 </code></pre>
-<p>asking you to switch the power to the target off and then on again in order to activate debugWIRE mode. If, in response to it, the following message appears</p>
+<p>asking you to switch the power to the target off and then, after a few seconds, on again in order to activate debugWIRE mode. If, in response to it, the following message appears</p>
 <pre><code>Connected to ATmega328P
 debugWIRE is enabled, bps: 125244
 </code></pre>
