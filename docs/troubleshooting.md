@@ -54,7 +54,7 @@ Depending on the concrete error message, the problem fix varies.
 
 ### Problem: When stopping the program with Ctrl-C (or with the stop button), you get the message *Cannot remove breakpoints because program is no longer writable.*
 
-The reason is most probably that the communication connection to the target system has been lost ([see above](#lost)).
+The reason is most probably that the communication connection to the target system has been lost.
 
 ### Problem: When trying to start execution with the `run` command, GDB stops with an internal error
 

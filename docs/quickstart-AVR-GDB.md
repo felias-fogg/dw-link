@@ -122,10 +122,10 @@ The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The sys
 Either you use the arduino-cli to compile your sketch (and then I assume you know what you are doing), or you use the IDE:
 
 * Load the sketch, you want to debug into the IDE and select `ATtiny25/45/85` as the board. 
-* As `Clock Source` choose `1 MHz internal oscillator.` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the `Sketch` menu, you should now activate `Optimize for Debugging.
+* As `Clock Source` choose `1 MHz internal oscillator.` (assuming that the ATtiny is as it comes from the factory and no fuse has been changed). In the `Sketch` menu, you should now activate `Optimize for Debugging`.
 * When you now select `Sketch` -> `Export compiled Binary`, then the sketch will be compiled, and an ELF file (a binary that contains debugging information) is placed into the folder `build/<board-type>/` inside the sketch folder.
 
-You can also use arduino-cli to compile the sketch. Make sure to set the compiler option `-Og`, which makes sure that the compiler optimizes for debugging (instead of for space).
+You can also use arduino-cli to compile the sketch. Use the option `--optimize-for-debug`, which makes sure that the compiler optimizes for debugging (instead of for space).
 
 **Check:** Open a terminal window and change into the sketch folder. The ELF file `<sketchname>.ino.elf` should either be in the sketch folder or in a subdirectory of the `build` folder.
 
@@ -166,7 +166,7 @@ This will bring up the message
 *** Please power-cycle target ***
 ```
 
-asking you to switch the power to the target off and then on again in order to activate debugWIRE mode. If, in response to it, the following message appears
+asking you to switch the power to the target off and then, after a few seconds, on again in order to activate debugWIRE mode. If, in response to it, the following message appears
 
 ```
 Connected to ATmega328P
