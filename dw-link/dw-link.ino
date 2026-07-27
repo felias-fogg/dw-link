@@ -43,7 +43,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "6.1.0"
+#define VERSION "6.1.1"
 
 // some constants, you may want to change
 // --------------------------------------
@@ -1207,6 +1207,7 @@ void gdbParseMonitorPacket(byte *buf)
     break;
   case MOMCU:
     gdbStoreReqMcu(&cmdbuf[mooptix]);
+    initMonValues(); // initialize default monitor values after receiving required MCU
     ctx.newmonvals = true; // from now on the debugwire option is known to come from the command line
     break;
 #if defined(UNITDW) ||  defined(UNITTG) ||  defined(UNITGDB) ||  defined(UNITALL)

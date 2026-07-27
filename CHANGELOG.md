@@ -1,6 +1,10 @@
 # Changelog for dw-link
 
-## Version 6.1.0
+## Version 6.1.1
+
+- Fix: Initialize default option values right after receiving the required MCU.
+
+## Version 6.1.0 (31-January-2026)
 
 - Changed option value from "o" to "n" for monitor load command.
 - Implemented debugwire CLI option.
