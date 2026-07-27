@@ -3,6 +3,8 @@
 ## Version 6.1.1
 
 - Fix: Initialize default option values right after receiving the required MCU.
+- Fix: SREG/SP are now handeled correctly when simulating two-byte instructions
+- Fix: SREG/SP are stored and read correctly when manipualted by GDB commands
 
 ## Version 6.1.0 (31-January-2026)
 

@@ -1962,6 +1962,12 @@ inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
       reg = (opcode & 0x1F0) >> 4;
       if (addr < 0x20)  // a general register address
 	val = ctx.regs[addr];
+      else if (addr == 0x5d) // SP lsb
+        val = ctx.sp & 0xFF;
+      else if (addr == 0x5e) // SP msb
+        val = (ctx.sp >> 8) & 0xFF;
+      else if (addr == 0x5f) // SREG
+        val = ctx.sreg;
       else
 	val = DWreadSramByte(addr);
       ctx.regs[reg] = val;
@@ -1970,6 +1976,12 @@ inline void simTwoWordInstr(unsigned int opcode, unsigned int addr)
       reg = (opcode & 0x1F0) >> 4;
       if (addr < 0x20)
 	ctx.regs[addr] = ctx.regs[reg];
+      else if (addr == 0x5d) // SP lsb
+        ctx.sp = (ctx.sp & 0xFF00) | ctx.regs[reg];
+      else if (addr == 0x5e) // SP msb
+        ctx.sp = (ctx.sp & 0x00FF) | (((unsigned int)ctx.regs[reg]) << 8);
+      else if (addr == 0x5f) // SREG
+        ctx.sreg = ctx.regs[reg];
       else
 	DWwriteSramByte(addr,ctx.regs[reg]);
       ctx.wpc += 2;
@@ -3253,66 +3265,46 @@ void targetReadFlash(unsigned int addr, byte *mem, unsigned int len)
 
 // read some portion of SRAM into buffer pointed at by *mem
 // skip write-only I/O registers
+// special cases: general regs and SREG+SP
 void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
 {
   unsigned int offset = 0;
-  unsigned int end = addr + len;
   const byte *mask = mcu.maskregs;
-  byte mask_reg = 0;
-  DEBPR(F("targetReadSram start at 0x"));
-  DEBPRF(addr, HEX);
-  DEBPR(F(", length="));
-  DEBLN(len);
-  if (addr > 0xFF) { // if in sram, simply read
-    DEBPR(F("Simple SRAM read starting at 0x"));
-    DEBLNF(addr,HEX);
-    DWreadSramBytes(addr, mem, len);
-    return;
-  }
-  while (addr+offset < 0x20) {
-    DEBPR(F("Reading register 0x"));
-    DEBLNF(addr+offset,HEX);
-    mem[offset] = ctx.regs[addr+offset];
+
+  measureRam();
+
+  while (offset < len) {
+    if (addr + offset > 0xFF)
+      mem[offset] = DWreadSramByte(addr + offset);
+    else if (addr + offset < 0x20)
+      mem[offset] = ctx.regs[addr + offset];
+    else if (addr + offset == 0x5d) 
+      mem[offset] = ctx.sp & 0xFF;
+    else if (addr + offset == 0x5e)
+      mem[offset] = (ctx.sp >> 8) & 0xFF;
+    else if (addr + offset == 0x5f)
+      mem[offset] = ctx.sreg;
+    else {
+      if (writeOnlyReg(addr + offset, mask))
+        mem[offset] = 0;
+      else
+        mem[offset] = DWreadSramByte(addr + offset);
+    }
     offset++;
   }
-  DEBPR(F("Start masked read at 0x"));
-  DEBLNF(addr+offset, HEX);
-  DEBPR(F("End address is 0x"));
-  DEBLNF(end,HEX);
+}
+
+boolean writeOnlyReg(unsigned int addr, const byte *mask)
+{
+  byte mask_reg;
+
+  measureRam();
+  if (addr > 0xFF) return false;
   while ((mask_reg = pgm_read_byte(mask++))) {
-    DEBPR(F("Reading until mask register: 0x"));
-    DEBLNF(mask_reg,HEX);
-    DEBPR(F("Current address: 0x"));
-    DEBLNF(addr+offset,HEX);
-    if (mask_reg >= end || addr + offset >= end) {
-      DEBLN(F("We are done here."));
-      break;
-    }
-    if (mask_reg < addr+offset) {
-      DEBLN(F("Mask reg addr too small, skip!"));
-      continue;
-    }
-    if (addr + offset < mask_reg) {
-      DEBPR(F("Reading starts at: 0x"));
-      DEBPRF(addr+offset, HEX);
-      DEBPR(F(", length="));
-      DEBLN(mask_reg - (addr+offset));
-      DWreadSramBytes(addr + offset, &mem[offset], mask_reg - (addr + offset));
-      offset = offset + mask_reg - (addr+offset);
-    }
-    DEBPR(F("Setting value for masked register at 0x"));
-    DEBPRF(addr+offset, HEX);
-    DEBLN(F(" to 0x00"));
-    mem[offset] = 0x00;
-    offset = mask_reg + 1 - addr;
+    if (mask_reg == addr) return true; 
+    if (mask_reg > addr) return false;
   }
-  DEBPR(F("Done with masked reading. Now from: 0x"));
-  DEBPRF(addr+offset, HEX);
-  DEBPR(F(", length="));
-  DEBLN(len-offset);
-  if (addr + offset < end)
-    DWreadSramBytes(addr+offset, &mem[offset], len-offset);
-  DEBLN(F("Leaving targetSramRead"));
+  return false;
 }
 
 // read some portion of EEPROM
@@ -3465,40 +3457,39 @@ inline void targetFlushFlashProg(void)
 
 // write SRAM chunk
 // skip read-only I/O registers
+// special cases: general regs and SREG+SP
 void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 {
-  measureRam();
   unsigned int offset = 0;
-  unsigned int end = addr + len;
   const byte *mask = mcu.maskregs;
-  byte mask_reg = 0;
 
-  if (addr > 0xFF) { // if in SRAM, simply write
-    while (offset < len) {
-    DWwriteSramByte(addr+offset, mem[offset]);
-    offset++;
-    }
-  }
-  while (addr+offset < 32 && offset < len) { // if addr points to registers, then write to in-memory copy 
-    ctx.regs[addr+offset] = mem[offset];
-    offset++;
-  }
-  while ((mask_reg = pgm_read_byte(mask++))); // read until we are beyond the first 0 in the mask array
-  while ((mask_reg = pgm_read_byte(mask++))) {  // go through all mask regs
-    if (mask_reg >= end || addr + offset >= end)  // we are done in the masked write-loop
-      break;
-    if (mask_reg < addr + offset) // mask_reg too small, go for next one
-      continue;
-    while (addr + offset < mask_reg && offset < len) {
-      DWwriteSramByte(addr+offset, mem[offset]);
-      offset++;
-    }
-    offset++; // skip next address 
-  }
+  measureRam();
+
   while (offset < len) {
-    DWwriteSramByte(addr+offset, mem[offset]);
+    if (addr + offset > 0xFF)
+      DWwriteSramByte(addr + offset, mem[offset]);
+    else if (addr + offset < 0x20)
+      ctx.regs[addr + offset] =  mem[offset];
+    else if (addr + offset == 0x5d) 
+      ctx.sp = (ctx.sp & 0xFF00) | mem[offset];
+    else if (addr + offset == 0x5e)
+      ctx.sp = (ctx.sp & 0x00FF) | (((unsigned int)mem[offset]) << 8);
+    else if (addr + offset == 0x5f)
+      ctx.sreg = mem[offset];
+    else {
+      if (!readOnlyReg(addr + offset, mask))
+        DWwriteSramByte(addr + offset, mem[offset]);
+    }
     offset++;
   }
+}
+
+boolean readOnlyReg(unsigned int addr, const byte *mask)
+{
+  measureRam();
+  if (addr > 0xFF) return false;
+  while (pgm_read_byte(mask++)); // read until we are beyond the first 0 in the mask array
+  return writeOnlyReg(addr, mask); // then it 
 }
 
 // write EEPROM chunk
