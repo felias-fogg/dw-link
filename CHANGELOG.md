@@ -1,6 +1,6 @@
 # Changelog for dw-link
 
-## Version 6.1.1
+## Version 6.1.1 (27-July-2026)
 
 - Fix: Initialize default option values right after receiving the required MCU.
 - Fix: SREG/SP are now handeled correctly when simulating two-byte instructions

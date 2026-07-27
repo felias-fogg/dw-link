@@ -65,6 +65,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Allow node20
+        run: echo "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true" >> $GITHUB_ENV
+        
       - name: Checkout repository
         uses: actions/checkout@v4
 
