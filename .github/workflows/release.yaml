@@ -90,7 +90,7 @@ jobs:
           echo $VERSTRING > VERSION
 
       - name: Download firmware file artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: dw-link.hex
           path: ./dw-uploader/dw-link.hex
@@ -194,37 +194,37 @@ jobs:
           mkdir assets
 
       - name: Download arm64-apple-darwin
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: dw-uploader-arm64-apple-darwin
           path: assets/
 
       - name: Download aarch64-linux-gnu
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: dw-uploader-aarch64-linux-gnu
           path: assets/
 
       - name: Download x86_64-mingw32
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: dw-uploader-x86_64-mingw32
           path: assets/
 
       - name: Download x86_64-apple-darwin
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: dw-uploader-x86_64-apple-darwin
           path: assets/
 
       - name: Download dw-uploader-x86_64-linux-gnu
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: dw-uploader-x86_64-linux-gnu
           path: assets/
 
       - name: Download dw-link.hex
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: dw-link.hex
           path: assets/
