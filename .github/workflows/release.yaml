@@ -96,7 +96,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dw-link.hex
-          path: ./dw-uploader/dw-link.hex
+          path: ./dw-uploader
           
       - name: Install dependencies
         working-directory: ./dw-uploader
@@ -243,4 +243,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: assets/*
-
