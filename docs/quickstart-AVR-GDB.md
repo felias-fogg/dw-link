@@ -20,7 +20,7 @@ Turn your Arduino Uno into a hardware debugger that can be used for embedded deb
 
 ## Step 1: Install Arduino IDE 2 or arduino-cli
 
-You probably already have installed the Arduino IDE 2. If not, download and install it from https://arduino.cc. Alternatively, you can install arduino-cli.
+You probably already have the Arduino IDE 2 installed. If not, download and install it from https://arduino.cc. Alternatively, you can install arduino-cli.
 
 **Check:** Start IDE and check the `About Arduino`  entry under the `Arduino` or `Help` menu for the version number.  It should be >= 2.3.0.
 
@@ -32,7 +32,7 @@ Open the `Preferences` dialog of the Arduino IDE and paste the following `Board 
     https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
     https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 
-Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCore` ,  `MiniCore`, and `MicroCore` (and more).
+Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCore` ,  `MiniCore`, and `MicroCore` .
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
 * In the search field, type `TinyCore` and install the most recent version.
@@ -42,7 +42,7 @@ Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCo
 
 ## Step 3: Install *dw-link* firmware
 
-First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).
+First, connect the UNO to your computer using the USB cable. Make sure that you have permission to access the serial interface (under Linux).
 
 The simplest way to install the firmware is to download an uploader from the Release assets of the [GitHub repo](https://github.com/felias-fogg/dw-link). The uploader should fit your architecture, e.g., `dw-uploader-windows-intel64` for Windows. Under *Linux* and *macOS*, open a terminal window, go to the download folder, and set the executable permission using `chmod +x`. Afterward, execute the program. Under *Windows*, it is enough to start the program after downloading by double-clicking on it.
 
@@ -52,33 +52,11 @@ Alternatively, you can download or clone the dw-link repository and then compile
 
 ## Step 4: Install *avr-gdb* on the host computer
 
-The installation of the board definition files will lead to the download of a recent version of the GDB debug client in the tools section of the respective package. You should be able to copy it to a place in your `PATH`, e.g., `/usr/local/bin`.
+The installation of the board definition files will lead to the download of a recent version of the GDB debug client in the tools section of the respective package. You should be able to copy it to a place in your `PATH`, e.g., `~/.local/bin`.
 
 - **On a Mac:** `~/Library/Arduino15/packages/MiniCore/tools/avrocd-tools/XXX/avr-gdb`
 - **Under Linux**: `~/.arduino15/packages/MiniCore/tools/avrocd-tools/XXX/avr-gdb`
 - **Under Windows:**  `C:\Users\\{username}\AppData\Local\Arduino15\packages\MiniCore\tools\avrocd-tools\XXX\avr-gdb.exe`
-
-If the file is not there, you can install it from other sources, as described below. 
-
-##### On a Mac: 
-
-If you have not done so, you must install the package manager Homebrew first. Go to https://brew.sh/ and follow the instructions. Installing Homebrew can take some considerable time. After that, you can install avr-gdb, the host debug client, by typing the following line into a shell:
-
-```
-brew tap osx-cross/avr && brew install avr-gdb
-```
-
-##### Under Linux:
-
-You can install avr-gdb using the appropriate packet manager. For Debian/Ubuntu, that looks as follows (note that the package is indeed named gdb-avr):
-
-```
-sudo apt-get install gdb-avr 
-```
-
-##### Under Windows:
-
-The easiest way to get hold of avr-gdb is probably to download the avr-gcc toolchain from Zak's blog: https://blog.zakkemble.net/avr-gcc-builds/. Then unzip and copy `/bin/avr-gdb` to some place, e.g., `C:\Progam Files\bin\` . Afterward, you should put this path into the Windows `PATH` variable. This means you type `System` into the search field on the control panel, click on `Advanced Settings`, click on `Environment Variables`, and then add `C:\Progam Files\bin` to the `PATH` environment variable.
 
 **Check:** Open a terminal window and type `avr-gdb`. This should start the debugger, which you can quit by typing `quit`.
 
@@ -233,7 +211,9 @@ First, the dw-link firmware upload may fail. If so, try to use the conventional 
 
 Second, if something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a [troubleshooting section](https://felias-fogg.github.io/dw-link/troubleshooting/) in the dw-link manual, which may be helpful.
 
-The most annoying problem can be that an MCU might not be responsive anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`.  If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
+The most annoying problem can be that an MCU might not be responsive to ISP programming anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. And that is actually as it is intended! 
+
+While a regular exit of the debugger restores the RESET line, the debugger may be terminated without restoring it. An easy cure is to enter the debugger again and leave it regularly (after connecting to the target chip) with the command `quit`.  If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 
 If you think you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues).
 
