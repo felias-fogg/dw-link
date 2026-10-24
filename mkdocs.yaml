@@ -34,6 +34,6 @@ nav:
     - Problems: 'problems.md'
     - Troubleshooting: 'troubleshooting.md'
   - About:
-    - License: 'license-link.md'
+    - License: 'LICENSE.txt'
     - Acknowledgements: 'acknowledgements.md'
     - Document revision history: 'history.md'
