@@ -4,10 +4,7 @@ Before we start the excursion into the world of debugging, some background on th
 
 If you have performed all the above steps, then the setup should look like as in the following picture.
 
-<p align="center">
-<img src="pics/debugger-setup.png" alt="hardware debugger setup" width="70%" />
-</p>
-
+![Debugging Setup](pics/debugger-setup-norsp.png)
 
 Your development machine, the *host*, is connected to the UNO acting as a *hardware debugger* over the usual USB connection. The hardware debugger in turn is connected to the *target system*, whereby the *debugWIRE protocol* is used for communication. Now you can start the [debugging process](https://pyavrocd.io/debugging/).
 
@@ -23,11 +20,7 @@ With respect to the debugWIRE protocol there are basically three states your MCU
 2. The **transitional** **state** is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, to reach the **normal state**. By *power-cycling* (switching the target system off and on again), one reaches the **debugWIRE** **state**.
 3. The **debugWIRE** **state** is the state in which you can use the debugger to control the target system. If you want to return to the **normal** **state**, a particular debugWIRE command leads to the **transitional state**, from which one can reach the **normal state** using ordinary ISP programming by disabling the DWEN fuse.
 
-
-
-
-
-![state-dia](pics/statediag.png)
+![debugWIRE state diagram](pics/statediag.png)
 
 The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you type  the command ```monitor debugwire enable``` . In fact, when using the Arduino IDE 2, this will be done in the background for you. After the hardware debugger has enabled the DWEN fuse, the system LED will flash in a particular pattern, which signals that you should power-cycle the target. Further, in the GDB debugger, a message will be shown that asks you to power-cycle the target system. If the hardware debugger powers the target, it will power-cycle automatically. This transition is only necessary once. The next time, when you start a debugging session, the target system is already in the debugWIRE state and nothing needs to be done. 
 
