@@ -1,7 +1,7 @@
 
 # Installation of firmware and software environment
 
-There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. Setting up the software environment is also quite simple. Check out the [debug software installation guide on PyAvrOCD](https://PyAvrOCD.io/debugging-software/).
+There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. 
 
 ## Firmware installation
 
@@ -11,3 +11,6 @@ The simplest way is to download an uploader from the [Release assets of the GitH
 
 Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch. You can also use PlatformIO for that purpose, because the repo is already in the right format.
 
+## Installation of debugging software
+
+Setting up the debug software environment is also quite simple. Check out the [debug software installation guide on PyAvrOCD](https://PyAvrOCD.io/debugging-software/).

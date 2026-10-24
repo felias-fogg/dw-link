@@ -65,22 +65,25 @@ Further, there should be a pull-up resistor of around 10 kΩ. According to repor
 If your target system is an Arduino UNO R3 or a similar board, you must be aware that there is a capacitor between the ATmega328's RESET pin and the serial chip's DTR pin that implements the auto-reset feature, as shown in the following picture.
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/docs/pics/auto-reset.jpg" width="50%">
+<img src="pics/auto-reset.jpg" width="50%">
 </p>
+
 
 One can disconnect the capacitor by cutting the solder bridge labeled *RESET EN* on the board (see picture), but then you cannot use the automatic reset feature of the Arduino IDE any longer. 
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/docs/pics/cutconn.jpg" width="60%">
+<img src="pics/cutconn.jpg" width="60%">
 </p>
+
 
 A recovery method is to put a bit of soldering  on the bridge or to solder pins to it that can be shortened by a jumper.
 
 On UNO  clones, which have a CH340G chip as the serial interface, there is not such a nice cut-off point. On some of them, it is the C8 capacitor that you have to remove.
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/docs/pics/remove-c8.png" width="60%">
+<img src="pics/remove-c8.png" width="60%">
 </p>
+
 
 Modifications for other Arduino AVR boards are covered on this [webpage](https://debugwire.de/board-modifications/).
 

@@ -43,7 +43,7 @@ If you want to debug an UNO board instead of an ATtiny85, everything said above 
 !!! Warning
     You need to cut the `RESET EN` solder bridge on the target board (see [section on Requirements concerning the target system](requirements.md#requirements-concerning-the-target-system))! 
 
-When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described [in the end of the debugging section](debugging.md#restoring-an-uno-to-its-native-state).
+When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described [the corresponding PyAvrOCD section](https://pyavrocd.io/restore-original-state/).
 
 ## States of the hardware debugger
 
@@ -57,7 +57,7 @@ There are five states the debugger can be in and each is signaled by a different
 * ISP programming (LED is blinking slowly every 0.5 sec), or
 * error, i.e., it is not possible to connect to the target or there is an internal error (LED blinks furiously every 0.1 sec).
 
-If the hardware debugger is in the error state, one should try to find out the reason by typing the command `monitor info` and studying the [error message table](troubleshooting.md#internal-and-fatal-debugger-errors) at the end of the document. Then finish the GDB session, reset the debugger, and restart everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.
+If the hardware debugger is in the error state, finish the GDB session, reset the debugger, and restart everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.
 
-If the problem persists, please check the section on [troubleshooting](troubleshooting.md).
+If the problem persists, please check the PyAvrOCD section on [troubleshooting](https://pyavrocd.io/troubleshooting/).
 

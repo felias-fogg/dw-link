@@ -1,6 +1,6 @@
 # Background
 
-Before we start the excursion into the world of debugging, some background on the [debugWIRE interface](#the-debugwire-interface) is provided, sketching the physical properties of the debugWIRE protocol. With that out of the way, we have a look at what we need on the hardware side.  You need an Arduino UNO (or something equivalent) as the [hardware debugger](requirements.md#the-hardware-debugger) and a [target chip or board that understands debugWIRE](requirements.md#mcus-with-debugwire-interface), i.e., a classic ATtiny or an ATmegaX8. Then, you have to [install the debugger firmware on the UNO](installation.md#firmware-installation) and  [install a software debugging environment](installation.md#setting-up-the-debugging-software). If that is all done, you need to [set up the hardware for a debugging session](setup.md#setting-up-the-hardware).
+Before we start the excursion into the world of debugging, some background on the [debugWIRE interface](#the-debugwire-interface) is provided, sketching the physical properties of the debugWIRE protocol. With that out of the way, we have a look at what we need on the hardware side.  You need an Arduino UNO (or something equivalent) as the [hardware debugger](requirements.md#the-hardware-debugger) and a [target chip or board that understands debugWIRE](requirements.md#mcus-with-debugwire-interface), i.e., a classic ATtiny or an ATmegaX8. Then, you have to [install the debugger firmware on the UNO and tghe debugging software](installation.md). If that is all done, you need to [set up the hardware for a debugging session](setup.md#setting-up-the-hardware).
 
 If you have performed all the above steps, then the setup should look like as in the following picture.
 
@@ -9,15 +9,13 @@ If you have performed all the above steps, then the setup should look like as in
 </p>
 
 
-Your development machine, the *host*, is connected to the UNO acting as a *hardware debugger* over the usual USB connection. The hardware debugger in turn is connected to the *target system*, whereby the *debugWIRE protocol* is used for communication. 
+Your development machine, the *host*, is connected to the UNO acting as a *hardware debugger* over the usual USB connection. The hardware debugger in turn is connected to the *target system*, whereby the *debugWIRE protocol* is used for communication. Now you can start the [debugging process](https://pyavrocd.io/debugging/).
 
-The physical connection between the hardware debugger and the target, as described in the [section about the hardware setup](setup.md#setting-up-the-hardware), is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in the part about [*a better hardware debugger*](better.md). Finally, [possible problems](problems.md) and [troubleshooting](troubleshooting.md) is covered.
-
-And what do you with your hardware debugger once you have debugged all your programs and they work flawlessly? Since version 2.2.0, you can use dw-link also as an STK500 v1 ISP programmer. If you connect to dw-link with 19200 bps and start avrdude, then dw-link becomes an ISP programmer.
+The physical connection between the hardware debugger and the target, as described in the [section about the hardware setup](setup.md#setting-up-the-hardware), is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in the part about [*a better hardware debugger*](better.md). 
 
 ## The debugWIRE interface
 
-The basic idea of debugWIRE is that the RESET line is used as a communication line between the target system (the system you want to debug) and the hardware debugger, which in turn can then communicate with the development machine or host, which runs a debug program such as GDB. The idea of using only a single line that is not used otherwise is very cool because it does not waste any of the other pins for debugging purposes (as does, e.g., the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU. 
+The basic idea of debugWIRE is that the RESET line is used as a communication line between the target system (the system you want to debug) and the hardware debugger, which in turn can then communicate with the development machine or host. The idea of using only a single line that is not used otherwise is very cool because it does not waste any of the other pins for debugging purposes (as does, e.g., the [JTAG interface](https://en.wikipedia.org/wiki/JTAG)). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use [ISP programming](https://en.wikipedia.org/wiki/In-system_programming) to upload new firmware to the MCU or change the fuses of the MCU. 
 
 With respect to the debugWIRE protocol there are basically three states your MCU could be in:
 
