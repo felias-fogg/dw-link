@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Background - dw-link</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../style.css" rel="stylesheet" />
+        <link href="../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Background";
+        var mkdocs_page_input_path = "intro.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> dw-link
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../quickstart/">Quickstart</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Background</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#the-debugwire-interface">The debugWIRE interface</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../requirements/">Hardware requirements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../setup/">Hardware setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../better/">A better hardware debugger</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">About</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../LICENSE.txt">License</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../acknowledgements/">Acknowledgements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../history/">Document revision history</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">dw-link</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Usage</li>
+      <li class="breadcrumb-item active">Background</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/intro.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="background">Background</h1>
+<p>Before we start the excursion into the world of debugging, some background on the <a href="#the-debugwire-interface">debugWIRE interface</a> is provided, sketching the physical properties of the debugWIRE protocol. With that out of the way, we have a look at what we need on the hardware side.  You need an Arduino UNO (or something equivalent) as the <a href="../requirements/#the-hardware-debugger">hardware debugger</a> and a <a href="../requirements/#mcus-with-debugwire-interface">target chip or board that understands debugWIRE</a>, i.e., a classic ATtiny or an ATmegaX8. Then, you have to <a href="../installation/">install the debugger firmware on the UNO and tghe debugging software</a>. If that is all done, you need to <a href="../setup/#setting-up-the-hardware">set up the hardware for a debugging session</a>.</p>
+<p>If you have performed all the above steps, then the setup should look like as in the following picture.</p>
+<p><img alt="Debugging Setup" src="../pics/debugger-setup-norsp.png" /></p>
+<p>Your development machine, the <em>host</em>, is connected to the UNO acting as a <em>hardware debugger</em> over the usual USB connection. The hardware debugger in turn is connected to the <em>target system</em>, whereby the <em>debugWIRE protocol</em> is used for communication. Now you can start the <a href="https://pyavrocd.io/debugging/">debugging process</a>.</p>
+<p>The physical connection between the hardware debugger and the target, as described in the <a href="../setup/#setting-up-the-hardware">section about the hardware setup</a>, is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in the part about <a href="../better/"><em>a better hardware debugger</em></a>. </p>
+<h2 id="the-debugwire-interface">The debugWIRE interface</h2>
+<p>The basic idea of debugWIRE is that the RESET line is used as a communication line between the target system (the system you want to debug) and the hardware debugger, which in turn can then communicate with the development machine or host. The idea of using only a single line that is not used otherwise is very cool because it does not waste any of the other pins for debugging purposes (as does, e.g., the <a href="https://en.wikipedia.org/wiki/JTAG">JTAG interface</a>). However, using the RESET line as a communication channel means, of course, that one cannot use the RESET line to reset the MCU anymore. Furthermore, one cannot any longer use <a href="https://en.wikipedia.org/wiki/In-system_programming">ISP programming</a> to upload new firmware to the MCU or change the fuses of the MCU. </p>
+<p>With respect to the debugWIRE protocol there are basically three states your MCU could be in:</p>
+<ol>
+<li>The <strong>normal</strong> <strong>state</strong> in which the DWEN (debugWIRE enable) <a href="https://microchipdeveloper.com/8avr:avrfuses">fuse</a> is disabled. In this state, you can use ISP programming to change fuses and to upload programs. By enabling the DWEN fuse, one reaches the <strong>transitional</strong> <strong>state</strong>.</li>
+<li>The <strong>transitional</strong> <strong>state</strong> is the state in which the DWEN fuse is enabled. In this state, you could use ISP programming to disable the DWEN fuse again, to reach the <strong>normal state</strong>. By <em>power-cycling</em> (switching the target system off and on again), one reaches the <strong>debugWIRE</strong> <strong>state</strong>.</li>
+<li>The <strong>debugWIRE</strong> <strong>state</strong> is the state in which you can use the debugger to control the target system. If you want to return to the <strong>normal</strong> <strong>state</strong>, a particular debugWIRE command leads to the <strong>transitional state</strong>, from which one can reach the <strong>normal state</strong> using ordinary ISP programming by disabling the DWEN fuse.</li>
+</ol>
+<p><img alt="debugWIRE state diagram" src="../pics/statediag.png" /></p>
+<p>The hardware debugger will take care of bringing you from <em>normal</em> state to <em>debugWIRE</em> state when you type  the command <code>monitor debugwire enable</code> . In fact, when using the Arduino IDE 2, this will be done in the background for you. After the hardware debugger has enabled the DWEN fuse, the system LED will flash in a particular pattern, which signals that you should power-cycle the target. Further, in the GDB debugger, a message will be shown that asks you to power-cycle the target system. If the hardware debugger powers the target, it will power-cycle automatically. This transition is only necessary once. The next time, when you start a debugging session, the target system is already in the debugWIRE state and nothing needs to be done. </p>
+<p>When you are done with debugging and you want to get the target system back into the normal state, you must type the command <code>monitor debugwire disable</code> just before exiting the debugger.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../quickstart/" class="btn btn-neutral float-left" title="Quickstart"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../requirements/" class="btn btn-neutral float-right" title="Hardware requirements">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/felias-fogg/dw-link" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../quickstart/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../requirements/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+      <script src="../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
