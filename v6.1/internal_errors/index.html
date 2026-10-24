@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Internal errors - dw-link</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../style.css" rel="stylesheet" />
+        <link href="../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Internal errors";
+        var mkdocs_page_input_path = "internal_errors.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> dw-link
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Quickstart</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-Arduino-IDE2/">Arduino IDE 2</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../quickstart-AVR-GDB/">AVR-GDB</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../intro/">Background</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../requirements/">Hardware requirements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../setup/">Hardware setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../debugging/">Debugging</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../better/">A better hardware debugger</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../problems/">Problems</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">About</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../license-link/">License</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../acknowledgements/">Acknowledgements</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../history/">Document revision history</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">dw-link</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Internal errors</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/internal_errors.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <p>If the error number is less than 100, then it is a connection error. Try again, perhaps after disconnecting and reconnecting everything. Check wiring. If the error persists, try perhaps with a different MCU.</p>
+<p>Errors above 100 are serious internal debugger errors. If you have encountered such an internal debugger error, then please try to reproduce the problem and tell me how it happened. </p>
+<p>After a reset or a power cycle of the hardware debugger, everything usually works again. If not, you need to unplug everything and put it together again.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Error #</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td>Could not communicate by ISP; check wiring</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>Could not activate debugWIRE</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>MCU type is not supported</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>Lockbits could not be cleared</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>Lockbits are set but not managed by dw-link</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>BOOTRST fuse could not be cleared</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>MCU has a program counter with stuck-at-one bits</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>RESET line has a capacitive load</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>Target not powered or RESET shortened to GND</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td>MCU type does not match</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td>DWEN fuse could not be programmed</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td>DWEN fuse is unprogrammed but not managed by dw-link</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td>EESAVE fuse could not be changed</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td>Unknown connection error</td>
+</tr>
+<tr>
+<td style="text-align: right;">101</td>
+<td>No free slot in breakpoint table</td>
+</tr>
+<tr>
+<td style="text-align: right;">102</td>
+<td>Packet length too large</td>
+</tr>
+<tr>
+<td style="text-align: right;">103</td>
+<td>Wrong memory type</td>
+</tr>
+<tr>
+<td style="text-align: right;">104</td>
+<td>Packet length is negative</td>
+</tr>
+<tr>
+<td style="text-align: right;">105</td>
+<td>Reset operation failed</td>
+</tr>
+<tr>
+<td style="text-align: right;">106</td>
+<td>Memory address in flash read operation does not point to page start</td>
+</tr>
+<tr>
+<td style="text-align: right;">107</td>
+<td>Could not complete flash read operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">108</td>
+<td>Could not complete RAM read operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">109</td>
+<td>Memory address in flash write operation does not point to page start</td>
+</tr>
+<tr>
+<td style="text-align: right;">110</td>
+<td>Could not complete flash page erase operation</td>
+</tr>
+<tr>
+<td style="text-align: right;">111</td>
+<td>Could not load data into the flash buffer for writing</td>
+</tr>
+<tr>
+<td style="text-align: right;">112</td>
+<td>Error when programming flash page from buffer</td>
+</tr>
+<tr>
+<td style="text-align: right;">113</td>
+<td>Error verifying flashed page while loading program</td>
+</tr>
+<tr>
+<td style="text-align: right;">114</td>
+<td>Assignment of hardware breakpoint is inconsistent</td>
+</tr>
+<tr>
+<td style="text-align: right;">115</td>
+<td>BREAK inserted by debugger at a point where a step or execute operation is required</td>
+</tr>
+<tr>
+<td style="text-align: right;">116</td>
+<td>Trying to read flash word at an uneven address</td>
+</tr>
+<tr>
+<td style="text-align: right;">117</td>
+<td>Error when single-stepping</td>
+</tr>
+<tr>
+<td style="text-align: right;">118</td>
+<td>A relevant breakpoint has disappeared</td>
+</tr>
+<tr>
+<td style="text-align: right;">119</td>
+<td>Input buffer overflow</td>
+</tr>
+<tr>
+<td style="text-align: right;">120</td>
+<td>Wrong fuse</td>
+</tr>
+<tr>
+<td style="text-align: right;">121</td>
+<td>Breakpoint update while flash programming is active</td>
+</tr>
+<tr>
+<td style="text-align: right;">122</td>
+<td>Timeout while reading from debugWIRE line</td>
+</tr>
+<tr>
+<td style="text-align: right;">123</td>
+<td>Timeout while reading general register</td>
+</tr>
+<tr>
+<td style="text-align: right;">124</td>
+<td>Timeout while reading IO register</td>
+</tr>
+<tr>
+<td style="text-align: right;">125</td>
+<td>Could not reenable RWW</td>
+</tr>
+<tr>
+<td style="text-align: right;">126</td>
+<td>Failure while reading from EEPROM</td>
+</tr>
+<tr>
+<td style="text-align: right;">127</td>
+<td>Bad interrupt</td>
+</tr>
+<tr>
+<td style="text-align: right;">128</td>
+<td>Inconsistent classification of opcodes in range-stepping</td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/felias-fogg/dw-link" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+      <script src="../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
