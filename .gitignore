@@ -10,3 +10,5 @@
 */dist/*
 opcodes/*
 site/*
+.DS_Store
+Thumbs.db
