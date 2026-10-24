@@ -5,16 +5,12 @@ repo_name: GitHub
 theme:
   name: readthedocs
   locale: en
-  logo: pics/uno-debug2-small.png
+#  logo: pics/uno-debug2-small.png
   include_homepage_in_sidebar: True
   title: dw-link
   author: Bernhard Nebel
   date: 26-Aug-2025
 
-extra:
-  version:
-    provider: mike
-    
 extra_css:
   - style.css
 
