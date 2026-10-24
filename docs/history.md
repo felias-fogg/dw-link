@@ -129,3 +129,11 @@ Initial version
 ### V 5.3
 
 - Switched from ATTinyCore to TinyCore
+
+### V 6.0
+
+- Made it compatible with PyAvrOCD (< v2.0)
+
+### V 7.0
+
+- Refactored dw-link completely. All the debug logic moved into PyAvrOCD.

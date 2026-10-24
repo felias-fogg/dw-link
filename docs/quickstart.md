@@ -1,1 +1,120 @@
-quickstart-Arduino-IDE2.md
+# Quick-start guide: Debugging with the Arduino IDE 2
+
+You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/). 
+
+## What you need
+
+* Computer running Windows, macOS, or Linux (the *host*)
+* Arduino Uno (will become the *hardware debugger*)
+* USB cable 
+* ATtiny85 (or any other classic ATtiny or ATmegaX8) as the *target*
+* In order to connect the hardware debugger to the target, you need:
+    * a breadboard together with
+    * 11 Jumper wires (male-to-male)
+    * 2 LEDs
+    * 3 Resistors (10 kΩ, 220Ω, 220Ω)
+    * 2 Capacitors (100 nF, 10 µF)
+
+## Step 1: Install Arduino IDE 2
+
+You probably already have the Arduino IDE 2 installed. If not, download and install it from https://arduino.cc. 
+
+**Check:** Start the IDE and check the `About Arduino` entry under the `Arduino` or `Help` menu for the version number. It should be >= 2.3.0.
+
+## Step 2: Install new board manager files
+
+Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
+
+	https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
+	https://mcudude.github.io/MiniCore/package_MCUdude_MiniCore_index.json
+	https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
+Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCore` , `MiniCore`, and `MicroCore`. 
+
+* Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
+* In the search field, type `TinyCore` and install the most recent version.
+
+**Check:** Select `Tools` -> `Board` -> `TinyCore` -> `Attiny25/45/85` . The debug button in the upper row (3rd from the left) is no longer greyed out. 
+
+## Step 3: Install *dw-link* firmware on an Uno
+
+First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).
+
+The simplest way to install the firmware is to download an uploader from the Release assets of the [GitHub repo](https://github.com/felias-fogg/dw-link). The uploader should fit your architecture, e.g., `dw-uploader-windows-intel64` for Windows. Under *Linux* and *macOS*, open a terminal window, go to the download folder, and set the executable permission using `chmod +x`. Afterward, execute the program. Under *Windows*, it is enough to start the program after downloading by double-clicking on it.
+
+Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch using the Arduino IDE 2 or arduino-cli.
+
+## Step 4: Hardware setup
+
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the [Hardware setup section](setup.md#debugging-an-uno).
+
+You need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your Uno, turned into a hardware debugger. Note that the notch or dot on the ATtiny is oriented towards the left. 
+
+
+![ATtiny85-debug](pics/attiny85-debug-new.png)
+
+
+Here is a table of all connections to check that you have made all the connections. 
+
+| ATtiny pin#  | Arduino Uno pin | component                                                    |
+| ------------ | --------------- | ------------------------------------------------------------ |
+| 1 (Reset)    | D8              | 10k resistor to Vcc                                          |
+| 2 (D3)       |                 |                                                              |
+| 3 (D4)       |                 | 220 Ω resistor to target (red) LED (+)                       |
+| 4 (GND)      | GND             | red and yellow LED (-), decoupling cap 100 nF, RESET blocking cap of 10µF (-) |
+| 5 (D0, MOSI) | D11             |                                                              |
+| 6 (D1, MISO) | D12             |                                                              |
+| 7 (D2, SCK)  | D13             |                                                              |
+| 8 (Vcc)      | 5V              | 10k resistor, decoupling cap 100 nF                          |
+| &nbsp;       | RESET           | RESET blocking cap of 10 µF (+)                              |
+| &nbsp;       | D7              | 220 Ω to system (yellow) LED (+)                             |
+
+The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The system LED gives you information about the internal state of the debugger: 
+
+1. debugWIRE mode disabled (LED is off),
+2. waiting for power-cycling the target (LED flashes every second for 0.1 sec)
+3. debugWIRE mode enabled (LED is on),
+4. ISP programming (LED is blinking slowly),
+5. error state, i.e., not possible to connect to target or internal error (LED blinks furiously every 0.1 sec).
+
+**Check:** Go through the table above and check every connection. Wrong wiring can often cause hours of useless software debugging!
+
+## Step 5: Start Debugging
+
+- Load the sketch you want to debug into the IDE by choosing `Open...` in the `File` menu. 
+- Select `Tiny25/45/85` as the board under `Tools` -> `Board` -> `TinyCore`.
+- In the `Tools` menu,  choose `1 MHz internal osc.` as the `Clock`  (assuming that the ATtiny is as it comes from the factory and no fuse has been changed).
+- In the `Sketch` menu, select `Optimize for Debugging`.
+- Compile the code by clicking the `Verify` button in the upper left corner.  
+- Open the debug panes by clicking the debug symbol (bug with a triangle) in the left sidebar. 
+- Click the debug symbol in the top row to start debugging. This will start the debugger and the debug server. The activities are logged in the `Debug Console` and the `gdb-server` console in the bottom right part of the window. 
+- You will probably be asked to "power-cycle the target." This means that you need to remove power from the target and then reconnect it, activating the debugWIRE mode.
+- After the debugger and gdb-server have been started, the debugger will start executing the program on the target. Execution will stop at the first line of the internal `main` function.
+- Now, you are in business and can set breakpoints (clicking left of the line number), continue executing, stop the program asynchronously, inspect and change values, and examine different stack frames. To terminate your debugging session, click the red box in the debug row before terminating the debugging session.
+
+![debug window](pics/ide2-3.png)
+
+Be aware that after finishing the debug session, the MCU is still in debugWIRE mode! You can change that by typing `monitor debugwire disable` in the last line of the `Debug Console`. More information can be found in the [dw-link manual](https://felias-fogg.github.io/dw-link/debugging/) and the [PyAvrOCD manual](https://pyavrocd.io).
+
+## After debugging has finished
+
+When you are done with debugging, you probably want to disable the debugWIRE mode again, because in debugWIRE mode, you cannot use the RESET line or ISP programming. This can be accomplished by using the command `monitor debugwire disable` before you leave the debugger. 
+
+So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called `Arduino as ISP`.
+
+If you want a more durable hardware debugging solution, there are some [suggestions](https://felias-fogg.github.io/dw-link/better/) in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link; it costs less than US-$15, and it is able to do much more! 
+
+
+## What can go wrong?
+
+First, the dw-link firmware upload may fail. If so, try to use the conventional way by downloading the latest release version and then compiling and uploading the dw-link sketch.
+
+Second, you might be unable to start debugging because the debug button is greyed out. This happens for all MCUs that the IDE cannot debug. If you think that this is an error, you might need to install the correct board definition files or choose the `Reload Board Data` entry in the `Tools` menu.
+
+Third, the debug server might terminate early. In this case, you should see an error message in the `gdb-server` console. 
+
+If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When strange error messages appear, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a [troubleshooting section](https://felias-fogg.github.io/dw-link/troubleshooting/) in the dw-link manual, which may be helpful. 
+
+The most annoying problem is that an MCU might not be responsive after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. The command `monitor debugwire disable` typed into the last line of the `Debug Console` just before terminating the debugger should restore the RESET line functionality. If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
+
+If you have found a bug, please post it on [issues](https://github.com/felias-fogg/dw-link/issues).
+
