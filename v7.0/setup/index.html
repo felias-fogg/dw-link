@@ -179,7 +179,7 @@
 <p class="admonition-title">Warning</p>
 <p>You need to cut the <code>RESET EN</code> solder bridge on the target board (see <a href="../requirements/#requirements-concerning-the-target-system">section on Requirements concerning the target system</a>)! </p>
 </div>
-<p>When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described <a href="debugging.md#restoring-an-uno-to-its-native-state">in the end of the debugging section</a>.</p>
+<p>When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described <a href="https://pyavrocd.io/restore-original-state/">the corresponding PyAvrOCD section</a>.</p>
 <h2 id="states-of-the-hardware-debugger">States of the hardware debugger</h2>
 <p>We are now good to go and 'only' need to install the additional debugging software on the host. Before we do that, let us have a look, in which states the hardware debugger can be and how it signals that using the system LED.</p>
 <p>There are five states the debugger can be in and each is signaled by a different blink pattern of the system LED:</p>
@@ -190,8 +190,8 @@
 <li>ISP programming (LED is blinking slowly every 0.5 sec), or</li>
 <li>error, i.e., it is not possible to connect to the target or there is an internal error (LED blinks furiously every 0.1 sec).</li>
 </ul>
-<p>If the hardware debugger is in the error state, one should try to find out the reason by typing the command <code>monitor info</code> and studying the <a href="troubleshooting.md#internal-and-fatal-debugger-errors">error message table</a> at the end of the document. Then finish the GDB session, reset the debugger, and restart everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.</p>
-<p>If the problem persists, please check the section on <a href="troubleshooting.md">troubleshooting</a>.</p>
+<p>If the hardware debugger is in the error state, finish the GDB session, reset the debugger, and restart everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.</p>
+<p>If the problem persists, please check the PyAvrOCD section on <a href="https://pyavrocd.io/troubleshooting/">troubleshooting</a>.</p>
               
             </div>
           </div><footer>
