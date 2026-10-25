@@ -1,6 +1,6 @@
 # Quick-start guide: Debugging with the Arduino IDE 2
 
-You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/). If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](https://felias-fogg.github.io/dw-link/quickstart-AVR-GDB/).
+You can turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips under [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/). If you want to debug your classic AVR chips without using Arduino IDE 2, consult the alternative quickstart guide for [AVR-GDB debugging](quickstart-AVR-GDB.md).
 
 ## What you need
 
@@ -95,7 +95,7 @@ The yellow LED is the *system LED*, and the red one is the *ATtiny-LED*. The sys
 
 ![debug window](pics/ide2-3.png)
 
-Be aware that after finishing the debug session, the MCU is still in debugWIRE mode! You can change that by typing `monitor debugwire disable` in the last line of the `Debug Console`. More information can be found in the [dw-link manual](https://felias-fogg.github.io/dw-link/debugging/) and the [PyAvrOCD manual](https://pyavrocd.io).
+Be aware that after finishing the debug session, the MCU is still in debugWIRE mode! You can change that by typing `monitor debugwire disable` in the last line of the `Debug Console`. More information can be found in the [dw-link manual](debugging.md) and the [PyAvrOCD manual](https://pyavrocd.io).
 
 ## After debugging has finished
 
@@ -103,7 +103,7 @@ When you are done with debugging, you probably want to disable the debugWIRE mod
 
 So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called `Arduino as ISP`.
 
-If you want a more durable hardware debugging solution, there are some [suggestions](https://felias-fogg.github.io/dw-link/better/) in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link; it costs less than US-$15, and it is able to do much more! 
+If you want a more durable hardware debugging solution, there are some [suggestions](better.md) in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link; it costs less than US-$15, and it is able to do much more! 
 
 
 ## What can go wrong?
@@ -114,7 +114,7 @@ Second, you might be unable to start debugging because the debug button is greye
 
 Third, the debug server might terminate early. In this case, you should see an error message in the `gdb-server` console. 
 
-If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When strange error messages appear, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a [troubleshooting section](https://felias-fogg.github.io/dw-link/troubleshooting/) in the dw-link manual, which may be helpful. 
+If something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When strange error messages appear, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a [troubleshooting section](troubleshooting.md) in the dw-link manual, which may be helpful. 
 
 The most annoying problem is that an MCU might not be responsive after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. The command `monitor debugwire disable` typed into the last line of the `Debug Console` just before terminating the debugger should restore the RESET line functionality. If this does not help, you may have to use a High-Voltage programmer, such as [RescueAVR](https://www.tindie.com/products/fogg/rescueavr-hv-fuse-programmer-for-avrs/).
 

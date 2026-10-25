@@ -1,6 +1,6 @@
 # Quick-start guide: AVR-GDB debugging
 
-Turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. This quickstart guide explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use the [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/).
+Turn your Arduino Uno into a hardware debugger that can be used for embedded debugging of classic AVR chips in 7 easy steps. This quickstart guide explains how to use the [GNU Debugger GDB](https://www.sourceware.org/gdb/). If you want to use the [Arduino IDE 2](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started-ide-v2/), consult the alternative quickstart guide for [Arduino IDE 2 debugging](quickstart-Arduino-IDE2.md).
 
 ## What you need
 
@@ -62,7 +62,7 @@ The installation of the board definition files will lead to the download of a re
 
 ## Step 5: Hardware setup
 
-This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the [dw-link manual](https://felias-fogg.github.io/dw-link/installation/#debugging-an-uno).
+This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the [dw-link manual](installation.md#debugging-an-uno).
 
 You need to set up the hardware on a breadboard and use six wires to connect the ATtiny to your Uno, turned into a hardware debugger. Note that the notch or dot on the ATtiny is oriented towards the left. 
 
@@ -194,7 +194,7 @@ or something similar. Now, you really can get into it! Here is a short list of c
 - **q** - quits gdb
 - `CTRL-C` while the programming is running stops the execution asynchronously
 
-There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of [`monitor` commands](https://felias-fogg.github.io/dw-link/debugging/#monitor-commands), which are specific to the dw-link debugger, can be found in the dw-link manual.
+There are tons of GDB commands, too many to show here! On the [documentation page of GDB](https://sourceware.org/gdb/current/onlinedocs/), you find an extensive manual and a useful [PDF reference sheet](https://sourceware.org/gdb/current/onlinedocs/refcard.pdf). A list of [`monitor` commands](debugging.md#monitor-commands), which are specific to the dw-link debugger, can be found in the dw-link manual.
 
 ## After debugging
 
@@ -209,7 +209,7 @@ If you want a more durable hardware debugging solution, there are some [suggesti
 
 First, the dw-link firmware upload may fail. If so, try to use the conventional way by downloading the latest release version and then compiling and uploading the dw-link sketch.
 
-Second, if something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a [troubleshooting section](https://felias-fogg.github.io/dw-link/troubleshooting/) in the dw-link manual, which may be helpful.
+Second, if something does not work as advertised, it is often a simple wiring problem. Other possible sources of errors are installation errors, i.e., that a program is not installed at the right place, does not have the proper permissions, the PATH variable is incorrect, or one has installed the wrong board manager files. When some strange error messages show up, it may also indicate that some components have not been installed. Google for the error message! Often, there are hints on how to mitigate the problem. Finally, there is also a [troubleshooting section](troubleshooting.md) in the dw-link manual, which may be helpful.
 
 The most annoying problem can be that an MCU might not be responsive to ISP programming anymore after a debugging session. The reason is that the RESET line, which is used as a communication line during debugging, has not been re-enabled. And that is actually as it is intended! 
 

@@ -15,7 +15,7 @@ This repository contains the following directories:
 
 * [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger,
 * [**dw-uploader**](dw-uploader/): Contains a Python script to flash the debugging firmware onto an Arduino UNO, 
-* [**docs**](docs/): Contains the documentation file for the [manual](https://felias-fogg.github.io/dw-link/),
+* [**docs**](docs/): Contains the documentation file for the [manual](https://felias-fogg.github.io/dw-link/v6.1),
 * [**examples**](examples/): Contains an Arduino sketch for testing purposes,
 * [**pcb**](pcb/): Contains design data (KiCad) for the optional dw-link probe,
 * [**testprobe**](testprobe/): Contains a sketch to be used to run tests on a freshly assembled dw-link probe,
