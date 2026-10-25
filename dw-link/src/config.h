@@ -4,10 +4,17 @@
 #define DWLINK_CONFIG_H
 
 #define VERSION "7.0.0-dev"
+#define VERSION_MAJOR 7       // reported as firmware version in the mkII sign-on
+#define VERSION_MINOR 0
 
 // some constants, you may want to change
 // --------------------------------------
 #define MKII_BPS 19200UL      // a serial JTAGICE mkII starts at this speed (AVR067)
+#ifdef ARDUINO_AVR_ATMEL_ATMEGA328P_XMINI
+#define MAXHOSTBPS 57600UL    // the mEDBG of the xmini cannot do 115200 bps
+#else
+#define MAXHOSTBPS 115200UL   // the fastest PAR_BAUD_RATE the host may ask for
+#endif
 // #define STUCKAT1PC 1       // allow also MCUs that have PCs with stuck-at-1 bits
 // #define HIGHSPEEDDW 1      // allow for DW speed up to 250 kbps
 
