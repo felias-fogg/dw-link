@@ -13,4 +13,4 @@ Alternatively, you can download or clone the dw-link repository and then compile
 
 ## Installation of debugging software
 
-Setting up the debug software environment is also quite simple. Check out the [debug software installation guide on PyAvrOCD](https://PyAvrOCD.io/debugging-software/).
+Setting up the debug software environment is also quite simple. Check out the debug software installation guide in the [PyAvrOCD manual](https://PyAvrOCD.io).

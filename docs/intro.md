@@ -6,7 +6,7 @@ If you have performed all the above steps, then the setup should look like the f
 
 ![Debugging Setup](pics/debugger-setup-norsp.png)
 
-Your development machine, the *host*, is connected to the UNO acting as a *hardware debugger* over the usual USB connection. The hardware debugger in turn is connected to the *target system*, whereby the *debugWIRE protocol* is used for communication. Now you can start the [debugging process](https://pyavrocd.io/debugging/).
+Your development machine, the *host*, is connected to the UNO acting as a *hardware debugger* over the usual USB connection. The hardware debugger in turn is connected to the *target system*, whereby the *debugWIRE protocol* is used for communication. Now you can start the debugging process as sketched in the [PyAvrOCD manual](https://pyavrocd.io).
 
 The physical connection between the hardware debugger and the target, as described in the [section about the hardware setup](setup.md#setting-up-the-hardware), is something that might need some enhancements. Instead of six jumper wires, you may want to have a more durable connection. This is covered in the part about [*a better hardware debugger*](better.md). 
 

@@ -43,7 +43,7 @@ If you want to debug an UNO board instead of an ATtiny85, everything said above 
 !!! Warning
     You need to cut the `RESET EN` solder bridge on the target board (see [section on Requirements concerning the target system](requirements.md#requirements-concerning-the-target-system))! 
 
-When you first activate debugWIRE on the UNO target, the target will be completely erased (including the boot loader), because the lock bits have to be cleared. The steps to restore your UNO to its original state are described [the corresponding PyAvrOCD section](https://pyavrocd.io/restore-original-state/).
+When you first activate debugWIRE on the UNO target, the target will be completely erased (including the bootloader) because the lock bits have to be cleared. The steps to restore your UNO to its original state are described in the corresponding section of the [PyAvrOCD manual](https://pyavrocd.io).
 
 ## States of the hardware debugger
 
@@ -59,5 +59,5 @@ There are five states the debugger can be in and each is signaled by a different
 
 If the hardware debugger is in the error state, finish the GDB session, reset the debugger, and restart everything. I have made the experience that sometimes it is a good idea to disconnect the USB cable and the connection to the target before starting over.
 
-If the problem persists, please check the PyAvrOCD section on [troubleshooting](https://pyavrocd.io/troubleshooting/).
+If the problem persists, please check the [PyAvrOCD](https://pyavrocd.io) section on troubleshooting.
 
