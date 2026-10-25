@@ -43,7 +43,7 @@
 // because relevant input ports are not in the I/O range and therefore the tight timing
 // constraints are not satisfied.
 
-#define VERSION "6.1.1"
+#define VERSION "6.1.2"
 
 // some constants, you may want to change
 // --------------------------------------
