@@ -37,7 +37,11 @@ Taking it one step further, one can take a prototype shield for an UNO, put an I
 
 ## Adapter with level-shifters and switchable power supply
 
-The basic adapter is quite limited. Power-cycling has to be done manually, it cannot interact with 3.3 V systems, and it has a high load on the SCK line (because the UNO LED is driven by this pin) when the ISP mode is disabled. Thus, it would be great to have a board with the following features: 
+The basic adapter is quite limited. Power-cycling has to be done manually; it cannot interact with 3.3 V systems, and it has a high load on the SCK line (because the UNO LED is driven by this pin) when the ISP mode is disabled. 
+
+Before we go any further, let me advise you that buying an [MPLAB SNAP debugger](https://www.microchip.com/en-us/development-tool/pg164100) costs you only between 10 and 20 € and gives you much more power than any do-it-yourself solution could do.
+
+If you are still up for building something by yourself on top of the basic dw-link solution, then the following requirements are probably what you would think of:
 
 * switchable target power supply (supporting power-cycling by the hardware debugger) offering 5-volt and 3.3-volt supply up to 300 mA, 
 * a bidirectional (conditional) level-shifter on the debugWIRE/RESET line,
@@ -47,7 +51,7 @@ The basic adapter is quite limited. Power-cycling has to be done manually, it ca
 
 Such a board does not need to be very complex. The electronic design is minimalistic. It uses just three MOS-FETs, one LED, one voltage regulator, and some passive components. We need to (conditionally) level-shift the RESET line in a bidirectional manner and the SPI lines unidirectionally.  One needs to shift the MISO line from 3.3-5 V up to 5 V, and the MOSI and SCK lines from 5 V down to 3.3-5 V. For the former case, no level shifting is done at all, relying on the fact that the input pins of the hardware debugger recognize a logical one already at  3.0 V. For the RESET line, which is open drain, we rely on the same fact. This means that this hardware debugger cannot deal with systems that use a supply voltage of less than 3 V, though.
 
-For downshifting, we use the output pins of the hardware debugger in an open drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because some possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors that guarantee that the signal level is above 3V on the SCK line, when we supply the board with 5V. These pull-ups will be disabled when no ISP programming is active, giving the target system full control of the two lines. The schematic looks as follows (thanks to **[gwideman](https://github.com/gwideman)** for the reworked schematic).
+For downshifting, we use the output pins of the hardware debugger in an open-drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because some possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors that guarantee that the signal level is above 3V on the SCK line when we supply the board with 5V. These pull-ups will be disabled when no ISP programming is active, giving the target system full control of the two lines. The schematic looks as follows (thanks to **[gwideman](https://github.com/gwideman)** for the reworked schematic).
 
 ![KiCad-Schematic](https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/pcb/schematic.png)
 
@@ -88,4 +92,4 @@ Label | Left | Middle | Right
 **Pullup** | There is **no** pull-up resistor connected to RESET | &nbsp; | A **10 kΩ** pull-up resistor is connected to the RESET line of the target 
 **Auto_DW** | Automatic power-cycling is disabled in the **off** state. |  | Automatic power-cycling when executing `monitor debugwire enable` is enabled in the **on** state. This is the default and *recommended* mode. 
 
-Since the hardware debugger MPLAB SNAP has become cheaper than this kit, I decided to retire the kit, and now recommend to [buy a SNAP](https://www.microchip.com/en-us/development-tool/pg164100). Together with my Python package [PyAvrOCD](https://PyAvrOCD.io), you get the same debugging experience. Furthermore, you will also be able to debug other AVRs than only debugWIRE MCUs.
+Since the hardware debugger MPLAB SNAP has become cheaper than this kit, I decided to retire the kit.
