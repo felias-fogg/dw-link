@@ -734,21 +734,21 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK)
 }
 
 byte saveTIMSK0;
-byte saveUCSR0B;
-// block all irqs but the timer1 interrupt 
-// that is necessary for receiving bytes over the dw line
+// block the timer0 irqs during transfers on the dw line, which needs timer1.
+// The USART irqs stay on: up to 6.1.1, UCSR0B was saved and restored here with
+// ~(RXCIE0|TXCIE0|UDRIE0), which clears bits 0-2 (bit numbers, not masks),
+// so they were never blocked -- but the restore set UDRIE0 again after the
+// TX buffer had run empty in between, and the TX irq then sent the whole
+// 64-byte ring buffer a second time.
 void blockIRQ(void)
 {
   saveTIMSK0 = TIMSK0;
   TIMSK0 = 0;
-  saveUCSR0B = UCSR0B;
-  UCSR0B &= ~(RXCIE0|TXCIE0|UDRIE0);
 }
 
 void unblockIRQ(void)
 {
   TIMSK0 = saveTIMSK0;
-  UCSR0B = saveUCSR0B;
 }
 
   
@@ -1489,8 +1489,8 @@ boolean stuckAtOneOrCap(void)
       gdbReportConnectionProblem(CONNERR_CAPACITIVE_LOAD);
     }
     return true;
-  }
 #endif
+  }
   return false;
 }
 

@@ -1,5 +1,10 @@
 # Changelog for dw-link
 
+## Version 6.1.2 (25-October-2026)
+
+- Fix: blockIRQ/unblockIRQ no longer restore UCSR0B. The mask used bit numbers instead of bit masks, so the USART interrupts were never blocked, and the restore could re-enable the TX interrupt after the buffer had run empty, which then sent the last 64 bytes a second time.
+- Fix: stuckAtOneOrCap did not compile with STUCKAT1PC defined (misplaced brace).
+
 ## Version 6.1.1 (27-July-2026)
 
 - Fix: Initialize default option values right after receiving the required MCU.
