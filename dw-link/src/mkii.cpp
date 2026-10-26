@@ -353,7 +353,7 @@ static unsigned int setParameter(unsigned int len)
       answer = RSP_ILLEGAL_EMULATOR_MODE;
     break;
   case PAR_BAUD_RATE:
-    if (value < 1 || value > 8 || pgm_read_dword(&baudrates[value-1]) > MAXHOSTBPS)
+    if (value < 1 || value > 8) // the host knows what its serial line can do (the xmini's mEDBG: 57600)
       answer = RSP_ILLEGAL_VALUE;
     break;
   case PAR_TIMERS_RUNNING:

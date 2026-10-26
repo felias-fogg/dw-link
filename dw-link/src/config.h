@@ -10,11 +10,6 @@
 // some constants, you may want to change
 // --------------------------------------
 #define MKII_BPS 19200UL      // a serial JTAGICE mkII starts at this speed (AVR067)
-#ifdef ARDUINO_AVR_ATMEL_ATMEGA328P_XMINI
-#define MAXHOSTBPS 57600UL    // the mEDBG of the xmini cannot do 115200 bps
-#else
-#define MAXHOSTBPS 115200UL   // the fastest PAR_BAUD_RATE the host may ask for
-#endif
 
 // these constants should stay undefined for the ordinary user
 // -----------------------------------------------------------
