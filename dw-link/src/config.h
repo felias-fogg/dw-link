@@ -214,6 +214,7 @@ void initOptions(void);
 void reportFatalError(byte, boolean);
 void setSysState(statetype);
 void power(boolean);
+extern boolean poweron; // the target supply (dw-probe shield) is switched on
 boolean targetOffline(void);
 void measureRam(void);
 int freeRam(void);

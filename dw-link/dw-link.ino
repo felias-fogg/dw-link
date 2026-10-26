@@ -63,6 +63,7 @@ context ctx;
 options opt;
 mcutype mcu;
 byte fatalerror = NO_FATAL;
+boolean poweron;
 
 // use LED to signal system state
 // LED off = not connected to target system, ISP connected, or transitional
@@ -292,15 +293,49 @@ void setSysState(statetype newstate)
   //  DEBPR(F("TIMSK0=")); DEBLNF(TIMSK0,BIN);
 }
 
+// switch the target supply of the dw-probe shield (IVSUP low = on). Switched on at once, the
+// capacitors on the target side can pull the Arduino's 5 V down so far that its MCU misbehaves at
+// 16 MHz, still above the brown-out level and thus without a reset (measured on a Uno without the
+// recommended 100 uF across its supply rails: answers lost or garbled). So, with the shield, switch
+// on softly: SOFTSTART_PULSES on-pulses of 1 us, 20 us apart, then permanently on. Between the
+// pulses IVSUP is driven high, which switches the MOSFET off through 220 ohms instead of the 10 kohm
+// pull-up. Measured with a Uno as target and the 100 uF in place: own supply down to 4.28 V when
+// switched hard, 4.87 V with the ramp. The ramp is kept short (~4 ms, ~1.2 V/ms on a large target,
+// within the datasheets' power-on slope rate of 0.01..10 V/ms), so that a target without BOD and
+// with a short start-up delay runs as little as possible at a low supply voltage.
+const unsigned int SOFTSTART_PULSES = 200;
+
 void power(boolean on)
 {
-  //DEBPR(F("Power: ")); DEBLN(on);
-  if (on) {
-    pinMode(IVSUP, OUTPUT);
-    digitalWrite(IVSUP, LOW);
-  } else { // on=false
-    pinMode(IVSUP, INPUT);
+  volatile byte *mode = portModeRegister(digitalPinToPort(IVSUP));
+  volatile byte *out = portOutputRegister(digitalPinToPort(IVSUP));
+  byte mask = digitalPinToBitMask(IVSUP);
+
+  poweron = on;
+  if (!on) {
+    *mode &= ~mask;                // input without pull-up: R5 switches the MOSFET off
+    *out &= ~mask;
+    return;
   }
+  if (ctx.levelshifting) {
+    *out |= mask;                  // output high: off, the gate actively driven
+    *mode |= mask;
+    for (unsigned int n = 0; n < SOFTSTART_PULSES; n++) softPulse(out, mask);
+  }
+  *out &= ~mask;                   // on
+  *mode |= mask;
+}
+
+// one on-pulse of 1 us, then 20 us off
+void softPulse(volatile byte *out, byte mask)
+{
+  byte sreg = SREG;
+  cli();
+  *out &= ~mask;
+  _delay_us(1);
+  *out |= mask;
+  SREG = sreg;
+  _delay_us(20);
 }
 
 // check whether connected

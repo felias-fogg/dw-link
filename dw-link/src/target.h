@@ -12,7 +12,8 @@ extern unsigned int flashpageaddr; // current page to be programmed next
 
 boolean stuckAtOneOrCap(void);
 void setupDW(void);
-boolean autoPowerCycle(void);
+boolean targetPowerSwitchable(void);
+void targetPowerCycle(void);
 boolean targetDWConnect(boolean);
 void targetReadFlashPage(unsigned int);
 unsigned int targetReadFlashWord(unsigned int);

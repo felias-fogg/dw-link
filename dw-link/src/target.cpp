@@ -55,26 +55,24 @@ void setupDW(void)
 #endif
 }
 
-// perform an automatic power cycle
-// do this only if autodw is 'on'
-boolean autoPowerCycle(void)
+// the target supply can be switched: dw-probe shield present and its AUTODW jumper not set to off
+boolean targetPowerSwitchable(void)
 {
 #if !SCOPEDEBUG && !TXODEBUG
   pinMode(AUTODW, INPUT_PULLUP);
-  if (digitalRead(AUTODW) == LOW || digitalRead(SENSEBOARD) == HIGH)
-    return(false);
+  return digitalRead(AUTODW) == HIGH && digitalRead(SENSEBOARD) == LOW;
 #else
-  return(false);
+  return false;
 #endif
+}
+
+// power cycle with the times of v6 (enough for the shield's capacitors); connecting is the caller's job
+void targetPowerCycle(void)
+{
   power(false);
   _delay_ms(700);
   power(true);
   _delay_ms(700);
-  if (targetDWConnect(false)) {
-    setSysState(DWCONN_STATE);
-    return true;
-  }
-  return false;
 }
 
 /****************** target functions *************/
