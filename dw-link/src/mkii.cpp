@@ -10,6 +10,7 @@
 // D3: GO, RUN_TO_ADDR, SINGLE_STEP, RESET, WRITE_PC, EVT_BREAK when the target stops by itself,
 //     and the vendor command EXECUTE_INSTRUCTION. Software breakpoints are planted by the host.
 // D4: SPI emulator mode and ISP_PACKET: dw-link as ISP programmer (avrdude -c jtag2isp).
+//     The vendor parameter TARGET_POWER switches the supply of the dw-probe shield.
 // Everything else is answered with RSP_ILLEGAL_COMMAND.
 #include <avr/eeprom.h>
 #include "config.h"
@@ -75,6 +76,7 @@ const byte PAR_OCD_VTARGET = 0x06;
 const byte PAR_TIMERS_RUNNING = 0x09;
 const byte PAR_MCU_STATE = 0x1A;
 const byte PAR_TARGET_SIGNATURE = 0x1D;
+const byte PAR_TARGET_POWER = 0x70; // dw-link only: GET bit 0 on, bit 1 switchable; SET 0 off, 1 on, 2 cycle
 
 // memory types
 const byte MEMTYPE_SRAM = 0x20; // registers, I/O, extended I/O, SRAM by address
@@ -346,6 +348,20 @@ static unsigned int setParameter(unsigned int len)
   case PAR_TIMERS_RUNNING:
     opt.tmask = (value ? 0xDF : 0xFF);
     break;
+  case PAR_TARGET_POWER:              // ends an ISP or debugWIRE session; the host connects again
+    if (value > 2)
+      answer = RSP_ILLEGAL_VALUE;
+    else if (!targetPowerSwitchable())
+      answer = RSP_FAILED;
+    else if (value != 1 || !poweron) {
+      leaveIsp();
+      if (emulatormode == EMULATOR_MODE_DEBUGWIRE) emulatormode = EMULATOR_MODE_UNKNOWN;
+      mcu.described = false;
+      setSysState(NOTCONN_STATE);
+      if (value == 2) targetPowerCycle();
+      else power(value);
+    }
+    break;
   default:
     answer = RSP_ILLEGAL_PARAMETER;
     break;
@@ -389,6 +405,10 @@ static unsigned int getParameter(void)
     return 3;
   case PAR_TIMERS_RUNNING:
     mkbuf[1] = (opt.tmask == 0xDF ? 1 : 0);
+    mkbuf[0] = RSP_PARAMETER;
+    return 2;
+  case PAR_TARGET_POWER:
+    mkbuf[1] = (poweron ? 0x01 : 0) | (targetPowerSwitchable() ? 0x02 : 0);
     mkbuf[0] = RSP_PARAMETER;
     return 2;
   case PAR_MCU_STATE:
@@ -1023,10 +1043,9 @@ static void ispNextAddr(void)
 // delay given by the host (also for value polling: the delay is the maximum time)
 static byte ispWait(boolean rdybsy, byte delayms)
 {
-  if (rdybsy) {
-    unsigned long start = millis();
-    while (ispSend(0xF0, 0x00, 0x00, 0x00, true) & 0x01)
-      if (millis() - start > 200) return ISP_STATUS_RDY_BSY_TOUT;
+  if (rdybsy) {                    // no millis(): timer 0 interrupts are off
+    for (unsigned int polls = 0; ispSend(0xF0, 0x00, 0x00, 0x00, true) & 0x01; polls++)
+      if (polls >= 2000) return ISP_STATUS_RDY_BSY_TOUT; // at least 0.5 s at the fastest SCK
     return ISP_STATUS_OK;
   }
   while (delayms--) _delay_ms(1);
