@@ -6,6 +6,8 @@
 //
 // D1: sign-on, sign-off, GET_SYNC, parameters, baud rate switch.
 // D2: debugWIRE mode, device descriptor, FORCED_STOP with EVT_BREAK, READ_PC, READ_MEMORY.
+// D3: GO, RUN_TO_ADDR, SINGLE_STEP, RESET, WRITE_PC, EVT_BREAK when the target stops by itself,
+//     and the vendor command EXECUTE_INSTRUCTION. Software breakpoints are planted by the host.
 // Everything else is answered with RSP_ILLEGAL_COMMAND.
 #include <avr/eeprom.h>
 #include "config.h"
@@ -25,8 +27,14 @@ const byte CMND_GET_SIGN_ON = 0x01;
 const byte CMND_SET_PARAMETER = 0x02;
 const byte CMND_GET_PARAMETER = 0x03;
 const byte CMND_READ_MEMORY = 0x05;
+const byte CMND_WRITE_PC = 0x06;
 const byte CMND_READ_PC = 0x07;
+const byte CMND_GO = 0x08;
+const byte CMND_SINGLE_STEP = 0x09;
 const byte CMND_FORCED_STOP = 0x0A;
+const byte CMND_RESET = 0x0B;
+const byte CMND_RUN_TO_ADDR = 0x1C;
+const byte CMND_EXECUTE_INSTRUCTION = 0x70; // dw-link only: execute one instruction on the stopped target
 const byte CMND_SET_DEVICE_DESCRIPTOR = 0x0C;
 const byte CMND_SET_DEVICE_CONTEXT = 0x36; // not in AVR067; avrdude: CMND_SET_XMEGA_PARAMS (see setContext)
 const byte CMND_GET_SYNC = 0x0F;
@@ -50,6 +58,8 @@ const byte RSP_DEBUGWIRE_SYNC_FAILED = 0xAC;
 // events
 const byte EVT_BREAK = 0xE0;
 const byte BREAK_CAUSE_STOP = 0x00; // after stop, step, reset, run to (measured on the mkII)
+const byte BREAK_CAUSE_SWBP = 0x01; // a BREAK instruction, i.e., a software breakpoint (measured)
+const byte RESET_DEBUGWIRE_DISABLE = 0x04; // CMND_RESET flag: leave debugWIRE until the next power cycle
 
 // parameters
 const byte PAR_HW_VERSION = 0x01;
@@ -108,6 +118,14 @@ static unsigned int readMemory(unsigned int len);
 static unsigned int notStopped(void);
 static unsigned long le32(const byte *p);
 static unsigned int currentPc(void);
+static void sendBreakEvent(byte cause);
+static unsigned int resume(unsigned int runto);
+static unsigned int step(void);
+static unsigned int reset(unsigned int len);
+static unsigned int writePc(unsigned int len);
+static unsigned int executeInstruction(unsigned int len);
+static unsigned int notReady(void);
+static void releaseTarget(void);
 
 // a serial mkII starts at 19200 bps; the host switches with PAR_BAUD_RATE (AVR067)
 void mkiiInit(void)
@@ -158,28 +176,46 @@ void mkiiPoll(void)
   sendFrame(seq, mkbuf, answer);
   if (breakevent) {
     breakevent = false;
-    unsigned int pc = currentPc();
-    byte event[6] = { EVT_BREAK, (byte)pc, (byte)(pc >> 8), 0, 0, BREAK_CAUSE_STOP };
-    sendFrame(EVENT_SEQUENCE, event, sizeof(event));
+    sendBreakEvent(BREAK_CAUSE_STOP);
   }
   if (cmd == CMND_SET_PARAMETER && mkbuf[0] == RSP_OK && size > 2 && mkbuf[1] == PAR_BAUD_RATE) {
     Serial.flush(); // the answer still goes out at the old speed
     Serial.begin(pgm_read_dword(&baudrates[arg-1]));
     baudcode = arg;
   } else if (cmd == CMND_SIGN_OFF) {
+    releaseTarget();
     // AVR067 names 19200 only as the power-on setting; going back to it at sign-off is
     // dw-link's choice, so that the next session finds it even without a reopened port
     Serial.flush();
     Serial.begin(MKII_BPS);
     baudcode = 4;
     emulatormode = EMULATOR_MODE_UNKNOWN;
+    mcu.described = false;
+    setSysState(NOTCONN_STATE);
   }
 }
 
-// D0: nothing to tell the host yet; from D3 on, EVT_BREAK
+// the running target has stopped by itself, at a BREAK or at the address of RUN_TO_ADDR: save the
+// registers and tell the host with EVT_BREAK; a BREAK at the PC means a software breakpoint
 void mkiiTargetStopped(void)
 {
+  byte cause = BREAK_CAUSE_STOP;
+
   setSysState(DWCONN_STATE);
+  ctx.saved = false;
+  if (mcu.described) {
+    targetSaveRegisters();
+    if (targetReadFlashWord(ctx.wpc * 2) == BREAKCODE) cause = BREAK_CAUSE_SWBP;
+  }
+  sendBreakEvent(cause);
+}
+
+// EVT_BREAK: the PC (word address) and the cause
+static void sendBreakEvent(byte cause)
+{
+  unsigned int pc = currentPc();
+  byte event[6] = { EVT_BREAK, (byte)pc, (byte)(pc >> 8), 0, 0, cause };
+  sendFrame(EVENT_SEQUENCE, event, sizeof(event));
 }
 
 // CRC of AVR067: reflected CCITT polynomial 0x8408, start value 0xFFFF, no final xor
@@ -245,6 +281,19 @@ static unsigned int dispatch(unsigned int len)
     return forcedStop();
   case CMND_READ_PC:
     return readPc();
+  case CMND_WRITE_PC:
+    return writePc(len);
+  case CMND_GO:
+    return resume(0xFFFF);
+  case CMND_RUN_TO_ADDR:
+    if (len < 5) break;
+    return resume(mkbuf[1] | ((unsigned int)mkbuf[2] << 8));
+  case CMND_SINGLE_STEP:
+    return step();
+  case CMND_RESET:
+    return reset(len);
+  case CMND_EXECUTE_INSTRUCTION:
+    return executeInstruction(len);
   case CMND_READ_MEMORY:
     if (len < 10) break;
     return readMemory(len);
@@ -268,6 +317,7 @@ static unsigned int setParameter(unsigned int len)
     if (value == EMULATOR_MODE_DEBUGWIRE)
       answer = enterDebugWire();
     else if (value == EMULATOR_MODE_UNKNOWN || value == EMULATOR_MODE_SPI) {
+      releaseTarget();
       emulatormode = value;             // D4: SPI
       setSysState(NOTCONN_STATE);
     } else
@@ -661,4 +711,153 @@ static unsigned int readMemory(unsigned int len)
   }
   mkbuf[0] = RSP_MEMORY;
   return 1 + count;
+}
+
+/****************** D3: execution ******************/
+
+// 0 if the target is stopped in debugWIRE mode and its registers can be saved and restored,
+// else the length of the refusal in mkbuf; restoring the registers needs DWDR from the device data
+static unsigned int notReady(void)
+{
+  unsigned int n = notStopped();
+
+  if (n) return n;
+  if (!mcu.described) {
+    mkbuf[0] = RSP_FAILED;
+    return 1;
+  }
+  return 0;
+}
+
+// CMND_GO (runto = 0xFFFF) and CMND_RUN_TO_ADDR (runto = word address, through the one comparator)
+static unsigned int resume(unsigned int runto)
+{
+  unsigned int n = notReady();
+
+  if (n) return n;
+  targetRestoreRegisters();
+  targetContinue(runto);
+  setSysState(RUN_STATE);
+  mkbuf[0] = RSP_OK;
+  return 1;
+}
+
+// CMND_SINGLE_STEP: one instruction, then RSP_OK and EVT_BREAK, as the mkII does it
+static unsigned int step(void)
+{
+  unsigned int n = notReady();
+
+  if (n) return n;
+  targetRestoreRegisters();
+  targetStep();
+  if (!expectBreakAndU()) {
+    ctx.saved = true;                     // the old register contents are still valid
+    mkbuf[0] = RSP_FAILED;
+    return 1;
+  }
+  targetSaveRegisters();
+  breakevent = true;
+  mkbuf[0] = RSP_OK;
+  return 1;
+}
+
+// CMND_RESET: reset the target, which then stops at its reset vector (RSP_OK and EVT_BREAK); with the
+// flag RESET_DEBUGWIRE_DISABLE, leave debugWIRE instead, so that ISP works until the next power cycle
+static unsigned int reset(unsigned int len)
+{
+  byte flags = (len > 1 ? mkbuf[1] : 0x01);
+
+  if (emulatormode != EMULATOR_MODE_DEBUGWIRE || ctx.state == NOTCONN_STATE || ctx.state == ERROR_STATE) {
+    mkbuf[0] = RSP_ILLEGAL_EMULATOR_MODE;
+    return 1;
+  }
+  if (ctx.state == RUN_STATE) {
+    targetBreak();
+    if (!expectUCalibrate()) {
+      mkbuf[0] = RSP_FAILED;
+      return 1;
+    }
+    setSysState(DWCONN_STATE);
+  }
+  if (flags & RESET_DEBUGWIRE_DISABLE) {
+    dw.sendCmd(DW_STOP_CMD);
+    emulatormode = EMULATOR_MODE_UNKNOWN;
+    mcu.described = false;
+    setSysState(NOTCONN_STATE);
+    mkbuf[0] = RSP_OK;
+    return 1;
+  }
+  if (!targetReset()) {
+    mkbuf[0] = RSP_FAILED;
+    return 1;
+  }
+  ctx.saved = false;
+  if (mcu.described) targetSaveRegisters();
+  breakevent = true;
+  mkbuf[0] = RSP_OK;
+  return 1;
+}
+
+// CMND_WRITE_PC: word address
+static unsigned int writePc(unsigned int len)
+{
+  unsigned int n = notReady();
+
+  if (n) return n;
+  if (len < 5) {
+    mkbuf[0] = RSP_FAILED;
+    return 1;
+  }
+  ctx.wpc = mkbuf[1] | ((unsigned int)mkbuf[2] << 8);
+  mkbuf[0] = RSP_OK;
+  return 1;
+}
+
+// is the opcode the first word of a two-word instruction (lds, sts, jmp, call)?
+static boolean twoWordInstr(unsigned int opcode)
+{
+  return ((opcode & ~0x1F0) == 0x9000) || ((opcode & ~0x1F0) == 0x9200) ||
+    ((opcode & 0xFE0E) == 0x940C) || ((opcode & 0xFE0E) == 0x940E);
+}
+
+// CMND_EXECUTE_INSTRUCTION (dw-link only): execute one instruction, given LSB first, on the stopped
+// target, at its current PC, without touching the flash: this is how the host steps over a software
+// breakpoint without removing it. One-word instructions only -- debugWIRE would fetch the second word
+// from the flash -- and no BREAK. The PC and the registers change as the instruction says;
+// there is no event, and interrupts cannot intervene.
+static unsigned int executeInstruction(unsigned int len)
+{
+  unsigned int n = notReady();
+  unsigned int opcode;
+
+  if (n) return n;
+  if (len < 3) {
+    mkbuf[0] = RSP_FAILED;
+    return 1;
+  }
+  opcode = mkbuf[1] | ((unsigned int)mkbuf[2] << 8);
+  if (opcode == BREAKCODE || twoWordInstr(opcode)) {
+    mkbuf[0] = RSP_ILLEGAL_VALUE;
+    return 1;
+  }
+  targetRestoreRegisters();
+  DWexecOffline(opcode);
+  targetSaveRegisters();
+  mkbuf[0] = RSP_OK;
+  return 1;
+}
+
+// at the end of a debugWIRE session (sign-off, or another emulator mode), a stopped target runs on.
+// It cannot stay stopped: memory reads over debugWIRE use the PC register as a counter, so the real
+// PC lives only in ctx.wpc, which a later session -- after dw-link's reset when the port is opened
+// again -- no longer has (measured: it then reads a left-over counter value). dw-link's choice;
+// what the mkII does here is not known.
+static void releaseTarget(void)
+{
+  if (emulatormode != EMULATOR_MODE_DEBUGWIRE || ctx.state != DWCONN_STATE) return;
+  if (ctx.saved)
+    targetRestoreRegisters();
+  else
+    ctx.wpc = DWgetWPc(true);             // no read sequence has run yet: the PC is still intact
+  targetContinue(0xFFFF);                // the caller sets the state: no session watches it any more
 }
