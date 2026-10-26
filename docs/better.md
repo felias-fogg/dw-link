@@ -57,6 +57,8 @@ For downshifting, we use the output pins of the hardware debugger in an open-dra
 
 The pin mapping is a bit different from the basic design described above. The change from the basic mapping is controlled by pin D5, which is tied to GND in order to signal that the more complex pin mapping is used. The additional pins are all in italics. The ones not used on the board are struck out.
 
+If you are building this board, make sure to have an **additional 100 µF cap** between Vcc and GND because otherwise it may happen that the MCU on the UNO board browns out. 
+
 | Arduino pin | ISP pin  | Function                                                     |
 | ----------- | -------- | ------------------------------------------------------------ |
 | <s>D13</s>  | <s>3</s> | <s>SCK</s>                                                   |
