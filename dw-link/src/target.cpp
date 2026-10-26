@@ -175,10 +175,12 @@ void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
 }
 
 // may the I/O location at memory address addr (0x20 and above) be read?
+// Never DWDR, whatever the host's mask says: debugWIRE transfers go through it, and an access
+// to it breaks the transfer (measured: Microchip Studio's mask for the ATtiny1634 allows 0x4E)
 boolean ioReadable(unsigned int addr)
 {
   unsigned int bit = addr - 0x20;
-  if (addr < 0x20 || bit >= sizeof(mcu.readio) * 8) return false;
+  if (addr < 0x20 || bit >= sizeof(mcu.readio) * 8 || addr == mcu.dwdr + 0x20u) return false;
   return (mcu.readio[bit >> 3] >> (bit & 7)) & 1;
 }
 
@@ -350,7 +352,7 @@ void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
       ctx.sp = (ctx.sp & 0x00FF) | (((unsigned int)mem[offset]) << 8);
     else if (addr + offset == 0x5f)
       ctx.sreg = mem[offset];
-    else
+    else if (addr + offset != mcu.dwdr + 0x20u) // DWDR: see ioReadable
       DWwriteSramByte(addr + offset, mem[offset]);
     offset++;
   }
