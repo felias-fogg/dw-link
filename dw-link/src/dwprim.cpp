@@ -282,6 +282,26 @@ void DWwriteSramByte (unsigned int addr, byte val) {
   dw.sendCmd(wrSram, sizeof(wrSram));
 }
 
+// Write len bytes to SRAM address space using an SRAM-based value for <addr>, not an I/O address:
+// the repeating "in r?,DWDR; st Z+,r?" of DWwriteSramByte, with a repeat count for len bytes
+void DWwriteSramBytes (unsigned int addr, const byte *mem, byte len) {
+  unsigned int end = 1 + 2 * (unsigned int)len;
+  byte wrSram[] = {(byte)(0x66&opt.tmask),                           // Set up for read/write
+                   0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
+                   0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
+                   0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
+                   0x20,                                              // Go
+		   (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
+                   0xD0, mcu.stuckat1byte, 0x01,
+                   0xD1, (byte)((end >> 8)+mcu.stuckat1byte), (byte)(end & 0xFF), // repeat count for len bytes
+                   0xC2, 0x04,                                        // Set simulated "in r?,DWDR; st Z+,r?" instructions
+                   0x20};                                             // Go
+  measureRam();
+  DWflushInput();
+  dw.sendCmd(wrSram, sizeof(wrSram));
+  dw.sendCmd(mem, len);
+}
+
 // Write one byte to IO register (via R0)
 void DWwriteIOreg (byte ioreg, byte val)
 {

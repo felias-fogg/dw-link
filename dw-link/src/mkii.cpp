@@ -6,6 +6,7 @@
 //
 // D1: sign-on, sign-off, GET_SYNC, parameters, baud rate switch.
 // D2: debugWIRE mode, device descriptor, FORCED_STOP with EVT_BREAK, READ_PC, READ_MEMORY.
+// D4: WRITE_MEMORY (registers, I/O, SRAM, EEPROM, flash).
 // D3: GO, RUN_TO_ADDR, SINGLE_STEP, RESET, WRITE_PC, EVT_BREAK when the target stops by itself,
 //     and the vendor command EXECUTE_INSTRUCTION. Software breakpoints are planted by the host.
 // Everything else is answered with RSP_ILLEGAL_COMMAND.
@@ -26,6 +27,7 @@ const byte CMND_SIGN_OFF = 0x00;
 const byte CMND_GET_SIGN_ON = 0x01;
 const byte CMND_SET_PARAMETER = 0x02;
 const byte CMND_GET_PARAMETER = 0x03;
+const byte CMND_WRITE_MEMORY = 0x04;
 const byte CMND_READ_MEMORY = 0x05;
 const byte CMND_WRITE_PC = 0x06;
 const byte CMND_READ_PC = 0x07;
@@ -125,6 +127,8 @@ static unsigned int reset(unsigned int len);
 static unsigned int writePc(unsigned int len);
 static unsigned int executeInstruction(unsigned int len);
 static unsigned int notReady(void);
+static unsigned int writeMemory(unsigned int len);
+static void writeFlash(unsigned long addr, const byte *data, unsigned int count);
 static void releaseTarget(void);
 
 // a serial mkII starts at 19200 bps; the host switches with PAR_BAUD_RATE (AVR067)
@@ -297,6 +301,9 @@ static unsigned int dispatch(unsigned int len)
   case CMND_READ_MEMORY:
     if (len < 10) break;
     return readMemory(len);
+  case CMND_WRITE_MEMORY:
+    if (len < 10) break;
+    return writeMemory(len);
   }
   mkbuf[0] = RSP_ILLEGAL_COMMAND;
   return 1;
@@ -531,6 +538,7 @@ static unsigned int setDescriptor(unsigned int len)
 // of the registers
 static byte finishDescription(void)
 {
+  validpg = false;
   if (mcu.pagesz == 0 || mcu.targetpgsz > MAXPAGESIZE || mcu.flashsz == 0) return RSP_FAILED;
   mcu.described = true;
   if (emulatormode == EMULATOR_MODE_DEBUGWIRE && ctx.state == DWCONN_STATE && !ctx.saved) {
@@ -735,6 +743,7 @@ static unsigned int resume(unsigned int runto)
   unsigned int n = notReady();
 
   if (n) return n;
+  validpg = false;                        // the program might change its flash
   targetRestoreRegisters();
   targetContinue(runto);
   setSysState(RUN_STATE);
@@ -748,6 +757,7 @@ static unsigned int step(void)
   unsigned int n = notReady();
 
   if (n) return n;
+  validpg = false;
   targetRestoreRegisters();
   targetStep();
   if (!expectBreakAndU()) {
@@ -840,6 +850,7 @@ static unsigned int executeInstruction(unsigned int len)
     mkbuf[0] = RSP_ILLEGAL_VALUE;
     return 1;
   }
+  validpg = false;
   targetRestoreRegisters();
   DWexecOffline(opcode);
   targetSaveRegisters();
@@ -860,4 +871,68 @@ static void releaseTarget(void)
   else
     ctx.wpc = DWgetWPc(true);             // no read sequence has run yet: the PC is still intact
   targetContinue(0xFFFF);                // the caller sets the state: no session watches it any more
+}
+
+/****************** D4: writes ******************/
+
+// CMND_WRITE_MEMORY: memory type, byte count, start address (byte address), data
+static unsigned int writeMemory(unsigned int len)
+{
+  byte memtype = mkbuf[1];
+  unsigned long count = le32(&mkbuf[2]);
+  unsigned long addr = le32(&mkbuf[6]);
+  unsigned int n = notReady();
+
+  if (n) return n;
+  if (count == 0 || len < 10 + count) {
+    mkbuf[0] = RSP_ILLEGAL_MEMORY_RANGE;
+    return 1;
+  }
+  switch (memtype) {
+  case MEMTYPE_SRAM:
+    if (addr + count > 0x10000UL) {
+      mkbuf[0] = RSP_ILLEGAL_MEMORY_RANGE;
+      return 1;
+    }
+    targetWriteSram(addr, &mkbuf[10], count);
+    break;
+  case MEMTYPE_EEPROM:
+  case MEMTYPE_EEPROM_PAGE:
+    targetWriteEeprom(addr, &mkbuf[10], count);
+    break;
+  case MEMTYPE_SPM:                       // both: the flash, written completely before the answer
+  case MEMTYPE_FLASH_PAGE:
+    if (addr + count > mcu.flashsz) {
+      mkbuf[0] = RSP_ILLEGAL_MEMORY_RANGE;
+      return 1;
+    }
+    writeFlash(addr, &mkbuf[10], count);
+    break;
+  default:
+    mkbuf[0] = RSP_ILLEGAL_MEMORY_TYPE;
+    return 1;
+  }
+  mkbuf[0] = (fatalerror ? RSP_FAILED : RSP_OK);
+  return 1;
+}
+
+// write count bytes to the flash: every block touched (targetpgsz: a page, or four on parts with the
+// 4-page erase) is taken from the cache or the flash, the new bytes are merged in, and the block is
+// written at once -- read-before-write, erase only if needed, verify (targetWriteFlashPage). So a host
+// may write single pages of a 4-page block, as avrdude does; it is only slower than whole blocks.
+static void writeFlash(unsigned long addr, const byte *data, unsigned int count)
+{
+  unsigned int block, from, n, done = 0;
+
+  while (done < count && !fatalerror) {
+    block = (addr + done) & ~(unsigned long)(mcu.targetpgsz - 1);
+    from = (addr + done) - block;
+    n = mcu.targetpgsz - from;
+    if (n > count - done) n = count - done;
+    targetReadFlashPage(block);
+    memcpy(newpage, page, mcu.targetpgsz);
+    memcpy(&newpage[from], &data[done], n);
+    targetWriteFlashPage(block);
+    done += n;
+  }
 }

@@ -338,13 +338,20 @@ void targetFlushFlashProg(void)
 void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 {
   unsigned int offset = 0;
+  unsigned int a, n;
 
   measureRam();
 
   while (offset < len) {
-    if (addr + offset > 0xFF)
-      DWwriteSramByte(addr + offset, mem[offset]);
-    else if (addr + offset < 0x20)
+    a = addr + offset;
+    if (a >= 0x60 && a > mcu.extiotop) { // SRAM: the rest in one go, in blocks of at most 128 bytes
+      n = len - offset;
+      if (n > 128) n = 128;
+      DWwriteSramBytes(a, &mem[offset], n);
+      offset += n;
+      continue;
+    }
+    if (addr + offset < 0x20)
       ctx.regs[addr + offset] =  mem[offset];
     else if (addr + offset == 0x5d) 
       ctx.sp = (ctx.sp & 0xFF00) | mem[offset];
