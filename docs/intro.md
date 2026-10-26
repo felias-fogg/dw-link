@@ -22,7 +22,7 @@ With respect to the debugWIRE protocol there are basically three states your MCU
 
 ![debugWIRE state diagram](pics/statediag.png)
 
-The hardware debugger will take care of bringing you from *normal* state to *debugWIRE* state when you type  the command ```monitor debugwire enable``` . In fact, when using the Arduino IDE 2, this will be done in the background for you. After the hardware debugger has enabled the DWEN fuse, the system LED will flash in a particular pattern, which signals that you should power-cycle the target. Further, in the GDB debugger, a message will be shown that asks you to power-cycle the target system. If the hardware debugger powers the target, it will power-cycle automatically. This transition is only necessary once. The next time, when you start a debugging session, the target system is already in the debugWIRE state and nothing needs to be done. 
+The hardware debugger will take care of bringing you from the *normal* state to the *debugWIRE* state when you type the command ```monitor debugwire enable```. In fact, when using the Arduino IDE 2, this will be done in the background for you. After the hardware debugger has enabled the DWEN fuse, the system LED will flash in a particular pattern, which signals that you should power-cycle the target. Further, in the GDB debugger, a message will be shown that asks you to power-cycle the target system. This transition is only necessary once. The next time, when you start a debugging session, the target system is already in the debugWIRE state, and nothing needs to be done. 
 
 When you are done with debugging and you want to get the target system back into the normal state, you must type the command ```monitor debugwire disable``` just before exiting the debugger.
 
