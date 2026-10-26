@@ -2,6 +2,7 @@
 #include "config.h"
 #include "dwprim.h"
 #include "target.h"
+#include "mcuinfo.h"
 #include "selftest.h"
 
 /*****************************************************************************************************/
@@ -23,8 +24,16 @@ void alltests(void)
   int testnum = 1;
 
   testMessage(PSTR("\ndw-link " VERSION " live tests"), -1);
-  if (!targetDWConnect(false) || stuckAtOneOrCap()) {
+  if (!targetDWConnect(false)) {
     testMessage(PSTR("*** No debugWIRE connection, error: "), fatalerror);
+    return;
+  }
+  if (!setMcuAttr(mcu.sig)) {             // without a host, the device data come from the table
+    testMessage(PSTR("*** MCU not in the table: "), mcu.sig);
+    return;
+  }
+  if (stuckAtOneOrCap()) {                // needs the flash size from the table
+    testMessage(PSTR("*** PC stuck at one or capacitive load, error: "), fatalerror);
     return;
   }
   setupDW();

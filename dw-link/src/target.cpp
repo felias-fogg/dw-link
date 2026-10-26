@@ -1,10 +1,11 @@
 // dw-link -- layer 2: target operations, built on the primitives of layer 1
 #include "config.h"
 #include "dwprim.h"
-#include "mcuinfo.h"
 #include "target.h"
 
 unsigned int hwbp = 0xFFFF; // the one hardware breakpoint (word address)
+static byte sphsave;        // SPH as read at the last save; written back only when changed, since
+                            // on parts without SPH, 0x3E is a reserved I/O address
 
 byte newpage[MAXPAGESIZE]; // one page of flash to program
 byte page[MAXPAGESIZE]; // cached page contents - never overwrite it in the program! 
@@ -49,7 +50,6 @@ void setupDW(void)
   if (mcu.dwdr == 0x1F) { // DWDR address on the ATTiny2313 (and only on that MCU!)
     if (!DWreadRegister(1, true)) { // read register unsuccessful, must be a different address
       mcu.dwdr = 0x27;
-      mcu.maskregs = t4313mask;
     }
   }
 #endif
@@ -89,7 +89,10 @@ boolean targetDWConnect(boolean initialconnect)
   if (doBreak(!initialconnect)) {
     DEBLN(F("targetConnect: doBreak done"));
     sig = DWgetChipId();
-    if (mcu.sig == 0) setMcuAttr(sig);
+    mcu.sig = sig;
+    // the 4-page erase is the one device property that neither the mkII device descriptor
+    // nor the protocol carries (in the EDBG device data: buffers_per_flash_page)
+    mcu.erase4pg = (sig == 0x9215 || sig == 0x9315 || sig == 0x9412); // ATtiny441, 841, 1634
     return true;
   }
   return false;
@@ -134,19 +137,26 @@ void targetReadFlash(unsigned int addr, byte *mem, unsigned int len)
 }
 
 // read some portion of SRAM into buffer pointed at by *mem
-// skip write-only I/O registers
+// as AVR067 describes it: 0x00-0x1F registers, then I/O, extended I/O up to mcu.extiotop,
+// above that SRAM; I/O locations without their bit in the descriptor's read mask read as 0
 // special cases: general regs and SREG+SP
 void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
 {
   unsigned int offset = 0;
-  const byte *mask = mcu.maskregs;
+  unsigned int a, n;
 
   measureRam();
 
   while (offset < len) {
-    if (addr + offset > 0xFF)
-      mem[offset] = DWreadSramByte(addr + offset);
-    else if (addr + offset < 0x20)
+    a = addr + offset;
+    if (a >= 0x60 && a > mcu.extiotop) { // SRAM: the rest in one go, in blocks of at most 128 bytes
+      n = len - offset;
+      if (n > 128) n = 128;
+      DWreadSramBytes(a, &mem[offset], n);
+      offset += n;
+      continue;
+    }
+    if (addr + offset < 0x20)
       mem[offset] = ctx.regs[addr + offset];
     else if (addr + offset == 0x5d) 
       mem[offset] = ctx.sp & 0xFF;
@@ -155,26 +165,21 @@ void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
     else if (addr + offset == 0x5f)
       mem[offset] = ctx.sreg;
     else {
-      if (writeOnlyReg(addr + offset, mask))
-        mem[offset] = 0;
-      else
+      if (ioReadable(addr + offset))
         mem[offset] = DWreadSramByte(addr + offset);
+      else
+        mem[offset] = 0;
     }
     offset++;
   }
 }
 
-boolean writeOnlyReg(unsigned int addr, const byte *mask)
+// may the I/O location at memory address addr (0x20 and above) be read?
+boolean ioReadable(unsigned int addr)
 {
-  byte mask_reg;
-
-  measureRam();
-  if (addr > 0xFF) return false;
-  while ((mask_reg = pgm_read_byte(mask++))) {
-    if (mask_reg == addr) return true; 
-    if (mask_reg > addr) return false;
-  }
-  return false;
+  unsigned int bit = addr - 0x20;
+  if (addr < 0x20 || bit >= sizeof(mcu.readio) * 8) return false;
+  return (mcu.readio[bit >> 3] >> (bit & 7)) & 1;
 }
 
 // read some portion of EEPROM
@@ -325,12 +330,12 @@ void targetFlushFlashProg(void)
 }
 
 // write SRAM chunk
-// skip read-only I/O registers
+// writes to I/O always reach the target, as on the JTAGICE mkII (measured with and without
+// the write bit in the descriptor)
 // special cases: general regs and SREG+SP
 void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 {
   unsigned int offset = 0;
-  const byte *mask = mcu.maskregs;
 
   measureRam();
 
@@ -345,20 +350,10 @@ void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
       ctx.sp = (ctx.sp & 0x00FF) | (((unsigned int)mem[offset]) << 8);
     else if (addr + offset == 0x5f)
       ctx.sreg = mem[offset];
-    else {
-      if (!readOnlyReg(addr + offset, mask))
-        DWwriteSramByte(addr + offset, mem[offset]);
-    }
+    else
+      DWwriteSramByte(addr + offset, mem[offset]);
     offset++;
   }
-}
-
-boolean readOnlyReg(unsigned int addr, const byte *mask)
-{
-  measureRam();
-  if (addr > 0xFF) return false;
-  while (pgm_read_byte(mask++)); // read until we are beyond the first 0 in the mask array
-  return writeOnlyReg(addr, mask); // then it 
 }
 
 // write EEPROM chunk
@@ -385,6 +380,7 @@ void targetInitRegisters(void)
   ctx.sreg = 0;
   ctx.wpc = 0;
   ctx.sp = 0x1234;
+  sphsave = ctx.sp >> 8;
   ctx.saved = true;
 }
 
@@ -398,7 +394,8 @@ void targetSaveRegisters(void)
   DWreadRegisters(&ctx.regs[0]); // now get all GP registers
   ctx.sreg = DWreadIOreg(0x3F);
   ctx.sp = DWreadIOreg(0x3D);
-  if (mcu.ramsz+mcu.rambase >= 256) ctx.sp |= DWreadIOreg(0x3E) << 8;
+  sphsave = DWreadIOreg(0x3E);   // reads 0 where there is no SPH
+  ctx.sp |= sphsave << 8;
   ctx.saved = true;
 }
 
@@ -409,7 +406,7 @@ void targetRestoreRegisters(void)
 
   if (!ctx.saved) return; // if not in saved state, do not restore!
   DWwriteIOreg(0x3D, (ctx.sp&0xFF));
-  if (mcu.ramsz > 256) DWwriteIOreg(0x3E, (ctx.sp>>8)&0xFF);
+  if ((ctx.sp >> 8) != sphsave) DWwriteIOreg(0x3E, (ctx.sp>>8)&0xFF);
   DWwriteIOreg(0x3F, ctx.sreg);
   DWwriteRegisters(&ctx.regs[0]);
   DWsetWPc(ctx.wpc); // must be done last!

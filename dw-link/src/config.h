@@ -178,14 +178,16 @@ struct mcutype {
   unsigned int ramsz;        // SRAM size in bytes
   unsigned int rambase;      // base address of SRAM
   unsigned int eepromsz;     // size of EEPROM in bytes
-  unsigned int flashsz;      // size of flash memory in bytes
+  unsigned long flashsz;     // size of flash memory in bytes
   byte         dwdr;         // address of DWDR register
   unsigned int pagesz;       // page size of flash memory in bytes
   boolean      erase4pg;     // 1 when the MCU has a 4-page erase operation
   unsigned int bootaddr;     // highest address of possible boot section  (0 if no boot support)
   byte         eecr;         // io-reg address of EECR register
   byte         eearh;        // io-reg address of EARL register (0 if none)
-  const byte*  maskregs;     // pointer to write-only mask array and read-only mask array in PROGMEM
+  boolean      described;    // a device descriptor has been received (the self-test sets the fields itself)
+  unsigned int extiotop;     // last extended I/O address (memory address), 0 if none
+  byte         readio[60];   // descriptor: one bit per I/O location from 0x20 on that may be read
   byte         dwenbase;     // base address for dwen
   byte         dwenmask;     // bit mask for DWEN fuse
   byte         bootrstbase;  // base address for BOOTRST fuse
