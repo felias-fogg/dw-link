@@ -9,6 +9,7 @@
 // D4: WRITE_MEMORY (registers, I/O, SRAM, EEPROM, flash).
 // D3: GO, RUN_TO_ADDR, SINGLE_STEP, RESET, WRITE_PC, EVT_BREAK when the target stops by itself,
 //     and the vendor command EXECUTE_INSTRUCTION. Software breakpoints are planted by the host.
+// D4: SPI emulator mode and ISP_PACKET: dw-link as ISP programmer (avrdude -c jtag2isp).
 // Everything else is answered with RSP_ILLEGAL_COMMAND.
 #include <avr/eeprom.h>
 #include "config.h"
@@ -40,6 +41,7 @@ const byte CMND_EXECUTE_INSTRUCTION = 0x70; // dw-link only: execute one instruc
 const byte CMND_SET_DEVICE_DESCRIPTOR = 0x0C;
 const byte CMND_SET_DEVICE_CONTEXT = 0x36; // not in AVR067; avrdude: CMND_SET_XMEGA_PARAMS (see setContext)
 const byte CMND_GET_SYNC = 0x0F;
+const byte CMND_ISP_PACKET = 0x2F;
 
 // responses
 const byte RSP_OK = 0x80;
@@ -47,6 +49,7 @@ const byte RSP_PARAMETER = 0x81;
 const byte RSP_MEMORY = 0x82;
 const byte RSP_PC = 0x84;
 const byte RSP_SIGN_ON = 0x86;
+const byte RSP_SPI_DATA = 0x88;
 const byte RSP_FAILED = 0xA0;
 const byte RSP_ILLEGAL_PARAMETER = 0xA1;
 const byte RSP_ILLEGAL_MEMORY_TYPE = 0xA2;
@@ -130,6 +133,8 @@ static unsigned int notReady(void);
 static unsigned int writeMemory(unsigned int len);
 static void writeFlash(unsigned long addr, const byte *data, unsigned int count);
 static void releaseTarget(void);
+static void leaveIsp(void);
+static unsigned int ispPacket(unsigned int len);
 
 // a serial mkII starts at 19200 bps; the host switches with PAR_BAUD_RATE (AVR067)
 void mkiiInit(void)
@@ -188,6 +193,7 @@ void mkiiPoll(void)
     baudcode = arg;
   } else if (cmd == CMND_SIGN_OFF) {
     releaseTarget();
+    leaveIsp();
     // AVR067 names 19200 only as the power-on setting; going back to it at sign-off is
     // dw-link's choice, so that the next session finds it even without a reopened port
     Serial.flush();
@@ -304,6 +310,8 @@ static unsigned int dispatch(unsigned int len)
   case CMND_WRITE_MEMORY:
     if (len < 10) break;
     return writeMemory(len);
+  case CMND_ISP_PACKET:
+    return ispPacket(len);
   }
   mkbuf[0] = RSP_ILLEGAL_COMMAND;
   return 1;
@@ -321,11 +329,12 @@ static unsigned int setParameter(unsigned int len)
   }
   switch (mkbuf[1]) {
   case PAR_EMULATOR_MODE:
+    leaveIsp();
     if (value == EMULATOR_MODE_DEBUGWIRE)
       answer = enterDebugWire();
     else if (value == EMULATOR_MODE_UNKNOWN || value == EMULATOR_MODE_SPI) {
       releaseTarget();
-      emulatormode = value;             // D4: SPI
+      emulatormode = value;
       setSysState(NOTCONN_STATE);
     } else
       answer = RSP_ILLEGAL_EMULATOR_MODE;
@@ -935,4 +944,242 @@ static void writeFlash(unsigned long addr, const byte *data, unsigned int count)
     targetWriteFlashPage(block);
     done += n;
   }
+}
+
+/****************** D4: ISP packets ******************/
+
+// AVRISP mkII commands (AVR069) and their status values
+const byte ISP_SET_PARAMETER = 0x02;
+const byte ISP_GET_PARAMETER = 0x03;
+const byte ISP_LOAD_ADDRESS = 0x06;
+const byte ISP_ENTER_PROGMODE = 0x10;
+const byte ISP_LEAVE_PROGMODE = 0x11;
+const byte ISP_CHIP_ERASE = 0x12;
+const byte ISP_PROGRAM_FLASH = 0x13;
+const byte ISP_READ_FLASH = 0x14;
+const byte ISP_PROGRAM_EEPROM = 0x15;
+const byte ISP_READ_EEPROM = 0x16;
+const byte ISP_PROGRAM_FUSE = 0x17;
+const byte ISP_READ_FUSE = 0x18;
+const byte ISP_PROGRAM_LOCK = 0x19;
+const byte ISP_READ_LOCK = 0x1A;
+const byte ISP_READ_SIGNATURE = 0x1B;
+const byte ISP_READ_OSCCAL = 0x1C;
+const byte ISP_SPI_MULTI = 0x1D;
+const byte ISP_STATUS_OK = 0x00;
+const byte ISP_STATUS_RDY_BSY_TOUT = 0x81;
+const byte ISP_STATUS_FAILED = 0xC0;
+const byte PARAM_SCK_DURATION = 0x98;
+
+static unsigned long ispaddr;  // LOAD_ADDRESS: word address (flash) or byte address (EEPROM)
+static boolean ispextaddr;     // bit 31 of LOAD_ADDRESS: flash beyond 64K words, 'Load Extended Address'
+static boolean ispextpending;  // the extended address has to be sent before the next flash access
+static boolean ispactive;      // in ISP programming mode
+static byte ispsck = 6;        // PARAM_SCK_DURATION, index into the AVRISP mkII clock table (6 = 125 kHz)
+
+// leave ISP programming mode, if in it: at sign-off and at any change of the emulator mode
+static void leaveIsp(void)
+{
+  if (!ispactive) return;
+  leaveProgramMode();
+  ispactive = false;
+  setSysState(NOTCONN_STATE);
+}
+
+// ISP programming mode. If the target does not answer, it may be in debugWIRE mode, where RESET is
+// no RESET: then switch debugWIRE off until the next power cycle and try again (dw-link's choice;
+// the mkII just fails). The SCK clock is the slower of what the host asked for and what worked.
+static boolean enterIsp(void)
+{
+  ispspeedtype asked = (ispsck <= 6 ? NORMAL_ISP : (ispsck <= 38 ? SLOW_ISP : SUPER_SLOW_ISP));
+  boolean ok = enterProgramMode();
+
+  if (!ok && doBreak()) {
+    dw.sendCmd(DW_STOP_CMD);
+    ok = enterProgramMode();
+  }
+  fatalerror = NO_FATAL;           // a failure is reported to the host by the status
+  if (ok && asked < ctx.ispspeed) ctx.ispspeed = asked;
+  setSysState(ok ? PROG_STATE : NOTCONN_STATE);
+  return ok;
+}
+
+// the next flash access needs the extended address (bits 16..23 of the word address) first
+static void ispSendExtAddr(void)
+{
+  if (ispextaddr && ispextpending) ispSend(0x4D, 0x00, (byte)(ispaddr >> 16), 0x00, true);
+  ispextpending = false;
+}
+
+// after a byte of the flash (high byte) or the EEPROM: next address; the extended address changes
+// every 64K words
+static void ispNextAddr(void)
+{
+  ispaddr++;
+  if ((ispaddr & 0xFFFF) == 0) ispextpending = true;
+}
+
+// end of a programming operation: poll RDY/BSY if the mode asks for it, otherwise wait the full
+// delay given by the host (also for value polling: the delay is the maximum time)
+static byte ispWait(boolean rdybsy, byte delayms)
+{
+  if (rdybsy) {
+    unsigned long start = millis();
+    while (ispSend(0xF0, 0x00, 0x00, 0x00, true) & 0x01)
+      if (millis() - start > 200) return ISP_STATUS_RDY_BSY_TOUT;
+    return ISP_STATUS_OK;
+  }
+  while (delayms--) _delay_ms(1);
+  return ISP_STATUS_OK;
+}
+
+// one 4-byte SPI instruction, return the answer byte at position retaddr (1..4)
+static byte ispInstruction(const byte *instr, byte retaddr)
+{
+  byte answer = 0, b;
+
+  for (byte i = 0; i < 4; i++) {
+    b = ispTransfer(instr[i], true);
+    if (i + 1 == retaddr) answer = b;
+  }
+  return answer;
+}
+
+// PROGRAM_FLASH_ISP, PROGRAM_EEPROM_ISP: byte count (MSB first), mode, delay, cmd1 (load or write
+// a byte), cmd2 (write page), cmd3 (read, for value polling), poll1, poll2, data. Page mode (mode
+// bit 0): load all bytes, then, if mode bit 7 is set, write the page at its start address, waiting
+// as mode bits 4..6 say; word mode: write every byte, waiting as mode bits 1..3 say. In the flash,
+// the bytes alternate between low and high byte (0x08 set in cmd1).
+static byte ispProgram(boolean flash, unsigned int len)
+{
+  const byte *pkt = &mkbuf[3];
+  unsigned int count = ((unsigned int)pkt[1] << 8) | pkt[2];
+  byte mode = pkt[3], delayms = pkt[4];
+  unsigned long start = ispaddr;
+  byte status = ISP_STATUS_OK;
+
+  if (len < 10 + count) return ISP_STATUS_FAILED;
+  for (unsigned int i = 0; i < count && status == ISP_STATUS_OK; i++) {
+    if (flash) ispSendExtAddr();
+    ispSend(pkt[5] | (flash && (i & 1) ? 0x08 : 0), (byte)(ispaddr >> 8), (byte)ispaddr, pkt[10+i], true);
+    if (!(mode & 0x01)) status = ispWait(mode & 0x08, delayms);
+    if (!flash || (i & 1)) ispNextAddr();
+  }
+  if ((mode & 0x81) == 0x81 && status == ISP_STATUS_OK) {
+    ispSend(pkt[6], (byte)(start >> 8), (byte)start, 0x00, true); // still the extended address of start
+    status = ispWait(mode & 0x40, delayms);
+  }
+  return status;
+}
+
+// CMND_ISP_PACKET: the length of the answer the host expects (2 bytes, LSB first; not needed),
+// then an AVRISP mkII command (AVR069). The answer is RSP_SPI_DATA and the AVRISP mkII answer:
+// the command, a status and, depending on the command, data and a second status. With the
+// command, the answer overwrites the packet in mkbuf, never ahead of what is still to be read.
+static unsigned int ispPacket(unsigned int len)
+{
+  byte *pkt = &mkbuf[3];
+  byte *out = &mkbuf[3];          // data after command and status
+  byte cmd = pkt[0];
+  byte status = ISP_STATUS_OK;
+  unsigned int n = 0;             // bytes after the status
+  byte instr[4];
+
+  if (emulatormode != EMULATOR_MODE_SPI) {
+    mkbuf[0] = RSP_ILLEGAL_EMULATOR_MODE;
+    return 1;
+  }
+  if (len < 4) {
+    mkbuf[0] = RSP_FAILED;
+    return 1;
+  }
+  len -= 3;
+  if (!ispactive && cmd != ISP_ENTER_PROGMODE && cmd != ISP_LEAVE_PROGMODE && cmd != ISP_LOAD_ADDRESS &&
+      cmd != ISP_SET_PARAMETER && cmd != ISP_GET_PARAMETER)
+    status = ISP_STATUS_FAILED;
+  else switch (cmd) {
+  case ISP_SET_PARAMETER:         // parameter, value
+    if (len >= 3 && pkt[1] == PARAM_SCK_DURATION) ispsck = pkt[2];
+    else status = ISP_STATUS_FAILED;
+    break;
+  case ISP_GET_PARAMETER:         // parameter
+    if (len >= 2 && pkt[1] == PARAM_SCK_DURATION) out[n++] = ispsck;
+    else status = ISP_STATUS_FAILED;
+    break;
+  case ISP_LOAD_ADDRESS:          // address, MSB first; bit 31: extended address
+    if (len < 5) { status = ISP_STATUS_FAILED; break; }
+    ispaddr = ((unsigned long)(pkt[1] & 0x7F) << 24) | ((unsigned long)pkt[2] << 16) |
+      ((unsigned int)pkt[3] << 8) | pkt[4];
+    ispextaddr = pkt[1] & 0x80;
+    ispextpending = true;
+    break;
+  case ISP_ENTER_PROGMODE:        // timeout, delays, sync loops, poll value and index, instruction: fixed in dw-link
+    if (!ispactive) ispactive = enterIsp();
+    if (!ispactive) status = ISP_STATUS_FAILED;
+    break;
+  case ISP_LEAVE_PROGMODE:        // pre and post delay
+    leaveIsp();
+    break;
+  case ISP_CHIP_ERASE:            // erase delay, poll method (1 = RDY/BSY), instruction
+    if (len < 7) { status = ISP_STATUS_FAILED; break; }
+    ispInstruction(&pkt[3], 4);
+    status = ispWait(pkt[2] == 1, pkt[1]);
+    break;
+  case ISP_PROGRAM_FLASH:
+  case ISP_PROGRAM_EEPROM:
+    if (len < 10) { status = ISP_STATUS_FAILED; break; }
+    status = ispProgram(cmd == ISP_PROGRAM_FLASH, len);
+    break;
+  case ISP_READ_FLASH:            // byte count (MSB first), read instruction
+  case ISP_READ_EEPROM: {
+    if (len < 4) { status = ISP_STATUS_FAILED; break; }
+    unsigned int count = ((unsigned int)pkt[1] << 8) | pkt[2];
+    byte rd = pkt[3];
+    boolean flash = (cmd == ISP_READ_FLASH);
+    if (count + 4 > MKII_MAXBODY) { status = ISP_STATUS_FAILED; break; }
+    for (unsigned int i = 0; i < count; i++) {
+      if (flash) ispSendExtAddr();
+      out[n++] = ispSend(rd | (flash && (i & 1) ? 0x08 : 0), (byte)(ispaddr >> 8), (byte)ispaddr, 0x00, true);
+      if (!flash || (i & 1)) ispNextAddr();
+    }
+    out[n++] = ISP_STATUS_OK;
+    break;
+  }
+  case ISP_PROGRAM_FUSE:          // instruction
+  case ISP_PROGRAM_LOCK:
+    if (len < 5) { status = ISP_STATUS_FAILED; break; }
+    ispInstruction(&pkt[1], 4);
+    _delay_ms(10);                // fuse and lock bits need 4.5 ms (datasheets); the host reads them back
+    out[n++] = ISP_STATUS_OK;
+    break;
+  case ISP_READ_FUSE:             // return address (1..4), instruction
+  case ISP_READ_LOCK:
+  case ISP_READ_SIGNATURE:
+  case ISP_READ_OSCCAL:
+    if (len < 6) { status = ISP_STATUS_FAILED; break; }
+    memcpy(instr, &pkt[2], 4);
+    out[0] = ispInstruction(instr, pkt[1]);
+    out[1] = ISP_STATUS_OK;
+    n = 2;
+    break;
+  case ISP_SPI_MULTI: {           // bytes to send, bytes to receive, first byte received, bytes to send
+    if (len < 4 || len < 4u + pkt[1]) { status = ISP_STATUS_FAILED; break; }
+    byte ntx = pkt[1], nrx = pkt[2], rxstart = pkt[3];
+    unsigned int total = (ntx > rxstart + nrx ? ntx : rxstart + nrx);
+    for (unsigned int i = 0; i < total; i++) {   // out[i - rxstart] lies before pkt[4+i]
+      byte b = ispTransfer(i < ntx ? pkt[4+i] : 0x00, true);
+      if (i >= rxstart && i < (unsigned int)rxstart + nrx) out[n++] = b;
+    }
+    out[n++] = ISP_STATUS_OK;
+    break;
+  }
+  default:
+    status = ISP_STATUS_FAILED;
+    break;
+  }
+  if (status != ISP_STATUS_OK) n = 0;
+  mkbuf[0] = RSP_SPI_DATA;
+  mkbuf[1] = cmd;
+  mkbuf[2] = status;
+  return 3 + n;
 }
