@@ -7,6 +7,7 @@ enum FuseByte { LowFuse=0, HighFuse=1, ExtendedFuse=2 };
 extern dwSerial dw;    // communcation interface to target
 extern long timeoutcnt; // counter for DW read timeouts
 extern long flashcnt;   // number of flash writes
+extern unsigned long speedlimit; // limit for the debugWIRE speed, applied at the next sync
 
 boolean doBreak(boolean doprinterror = true);
 boolean expectUCalibrate(void);

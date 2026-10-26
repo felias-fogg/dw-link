@@ -10,7 +10,7 @@ extern boolean validpg;            // if cached page contents is valid
 extern boolean flashidle;          // flash programming is not active
 extern unsigned int flashpageaddr; // current page to be programmed next
 
-boolean stuckAtOneOrCap(void);
+boolean pcBeyondFlash(void);
 void setupDW(void);
 boolean targetPowerSwitchable(void);
 void targetPowerCycle(void);

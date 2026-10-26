@@ -14,25 +14,14 @@ boolean validpg = false; // if cached page contents is valid
 boolean flashidle; // flash programming is not active
 unsigned int flashpageaddr; // current page to be programmed next
 
-// check for the Stuck-At-1 or cap condition (and report error)
-boolean stuckAtOneOrCap(void)
+// a PC beyond the flash means a capacitive load on RESET (report error). The ATmega48/88 without A
+// have stuck-at-1 PC bits, but the host refuses them before debugWIRE is entered (they tend to be
+// bricked by it); with their signatures here, it is an ATmega48A/88A, which has none.
+boolean pcBeyondFlash(void)
 {
-  mcu.stuckat1byte = 0;
   if (DWgetWPc(false) > (mcu.flashsz>>1)) {
-#if STUCKAT1PC
-    if (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
-      mcu.stuckat1byte = (DWgetWPc(false) & ~((mcu.flashsz>>1)-1))>>8;
-      DEBPR(F("stuckat1byte=")); DEBLNF(mcu.stuckat1byte,HEX);
-      return false;
-    }
-#else
-    if  (mcu.sig == 0x9205 || mcu.sig == 0x930A) {
-      reportFatalError(CONNERR_STUCKAT1_PC, false);
-    } else {
-      reportFatalError(CONNERR_CAPACITIVE_LOAD, false);
-    }
+    reportFatalError(CONNERR_CAPACITIVE_LOAD, false);
     return true;
-#endif
   }
   return false;
 }
@@ -46,19 +35,17 @@ void setupDW(void)
   // Now fix DWDR address if necessary.
   // This is a very special case, where the DWDR address
   // is not uniquely determined by the chip signature.
-#if !defined(NOTINY)
   if (mcu.dwdr == 0x1F) { // DWDR address on the ATTiny2313 (and only on that MCU!)
     if (!DWreadRegister(1, true)) { // read register unsuccessful, must be a different address
       mcu.dwdr = 0x27;
     }
   }
-#endif
 }
 
 // the target supply can be switched: dw-probe shield present and its AUTODW jumper not set to off
 boolean targetPowerSwitchable(void)
 {
-#if !SCOPEDEBUG && !TXODEBUG
+#if !TXODEBUG
   pinMode(AUTODW, INPUT_PULLUP);
   return digitalRead(AUTODW) == HIGH && digitalRead(SENSEBOARD) == LOW;
 #else
@@ -143,7 +130,6 @@ void targetReadSram(unsigned int addr, byte *mem, unsigned int len)
   unsigned int offset = 0;
   unsigned int a, n;
 
-  measureRam();
 
   while (offset < len) {
     a = addr + offset;
@@ -205,7 +191,6 @@ void targetWriteFlashPage(unsigned int addr)
   boolean dirty = true;
 
 
-  measureRam();
 
   //DEBPR(F("Write flash ... "));
   //DEBPRF(addr, HEX);
@@ -299,7 +284,6 @@ void targetWriteFlash(unsigned int addr, byte *mem, unsigned int len)
   unsigned int ix;
   unsigned int newaddr;
   
-  measureRam();
 
   if (len == 0) {
     if (!flashidle) targetWriteFlashPage(flashpageaddr);
@@ -338,7 +322,6 @@ void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
   unsigned int offset = 0;
   unsigned int a, n;
 
-  measureRam();
 
   while (offset < len) {
     a = addr + offset;
@@ -366,7 +349,6 @@ void targetWriteSram(unsigned int addr, byte *mem, unsigned int len)
 // write EEPROM chunk
 void targetWriteEeprom(unsigned int addr, byte *mem, unsigned int len)
 {
-  measureRam();
 
   for (unsigned int i=0; i < len; i++) {
     DWwriteEepromByte(addr+i, mem[i]);
@@ -379,7 +361,6 @@ void targetInitRegisters(void)
   byte a;
   a = 32;	/* in the loop, send R0 thru R31 */
   byte *ptr = &(ctx.regs[31]);
-  measureRam();
 
   do {
     *ptr-- = a;
@@ -394,7 +375,6 @@ void targetInitRegisters(void)
 // read all registers from target and save them
 void targetSaveRegisters(void)
 {
-  measureRam();
 
   if (ctx.saved) return;         // If the regs have been saved, then the machine regs are clobbered, so do not load again!
   ctx.wpc = DWgetWPc(true);      // needs to be done first, because the PC is advanced when executing instrs in the instr reg
@@ -409,7 +389,6 @@ void targetSaveRegisters(void)
 // restore all registers on target (before execution continues)
 void targetRestoreRegisters(void)
 {
-  measureRam();
 
   if (!ctx.saved) return; // if not in saved state, do not restore!
   DWwriteIOreg(0x3D, (ctx.sp&0xFF));
@@ -423,7 +402,6 @@ void targetRestoreRegisters(void)
 // send break in order to stop execution asynchronously
 void targetBreak(void)
 {
-  measureRam();
   dw.sendBreak(); // send the break
 }
 
@@ -432,7 +410,6 @@ void targetBreak(void)
 // otherwise the runto parameter has precedence 
 void targetContinue(unsigned int runto)
 {
-  measureRam();
 
   if (hwbp != 0xFFFF || runto != 0xFFFF) {
     dw.sendCmd((byte)(0x61&opt.tmask));
@@ -447,7 +424,6 @@ void targetContinue(unsigned int runto)
 // make a single step
 void targetStep(void)
 {
-  measureRam();
 
   // DEBPR(F("Single step at (byte address):")); DEBLNF(ctx.wpc*2,HEX);
   // _delay_ms(5);

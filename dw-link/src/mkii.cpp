@@ -11,12 +11,14 @@
 //     and the vendor command EXECUTE_INSTRUCTION. Software breakpoints are planted by the host.
 // D4: SPI emulator mode and ISP_PACKET: dw-link as ISP programmer (avrdude -c jtag2isp).
 //     The vendor parameter TARGET_POWER switches the supply of the dw-probe shield.
+// D4.5: vendor parameters DWLINK_ERROR and DW_SPEED, vendor command SELFTEST.
 // Everything else is answered with RSP_ILLEGAL_COMMAND.
 #include <avr/eeprom.h>
 #include "config.h"
 #include "dwprim.h"
 #include "target.h"
 #include "mkii.h"
+#include "selftest.h"
 
 // framing
 const byte MESSAGE_START = 0x1B;
@@ -39,6 +41,7 @@ const byte CMND_FORCED_STOP = 0x0A;
 const byte CMND_RESET = 0x0B;
 const byte CMND_RUN_TO_ADDR = 0x1C;
 const byte CMND_EXECUTE_INSTRUCTION = 0x70; // dw-link only: execute one instruction on the stopped target
+const byte CMND_SELFTEST = 0x71;            // dw-link only: run the self-test on the stopped target
 const byte CMND_SET_DEVICE_DESCRIPTOR = 0x0C;
 const byte CMND_SET_DEVICE_CONTEXT = 0x36; // not in AVR067; avrdude: CMND_SET_XMEGA_PARAMS (see setContext)
 const byte CMND_GET_SYNC = 0x0F;
@@ -77,6 +80,9 @@ const byte PAR_TIMERS_RUNNING = 0x09;
 const byte PAR_MCU_STATE = 0x1A;
 const byte PAR_TARGET_SIGNATURE = 0x1D;
 const byte PAR_TARGET_POWER = 0x70; // dw-link only: GET bit 0 on, bit 1 switchable; SET 0 off, 1 on, 2 cycle
+const byte PAR_DWLINK_ERROR = 0x71; // dw-link only: GET the number of the last error (config.h), 0 = none
+const byte PAR_DW_SPEED = 0x72;     // dw-link only: SET the debugWIRE speed limit in 10 kbps (1..30), from
+                                    // the next debugWIRE sync on; GET limit, then current speed in bps (4 bytes)
 
 // memory types
 const byte MEMTYPE_SRAM = 0x20; // registers, I/O, extended I/O, SRAM by address
@@ -123,6 +129,7 @@ static unsigned int forcedStop(void);
 static unsigned int readPc(void);
 static unsigned int readMemory(unsigned int len);
 static unsigned int notStopped(void);
+static boolean notConnected(void);
 static unsigned long le32(const byte *p);
 static unsigned int currentPc(void);
 static void sendBreakEvent(byte cause);
@@ -131,6 +138,7 @@ static unsigned int step(void);
 static unsigned int reset(unsigned int len);
 static unsigned int writePc(unsigned int len);
 static unsigned int executeInstruction(unsigned int len);
+static unsigned int selfTestCmd(void);
 static unsigned int notReady(void);
 static unsigned int writeMemory(unsigned int len);
 static void writeFlash(unsigned long addr, const byte *data, unsigned int count);
@@ -203,6 +211,7 @@ void mkiiPoll(void)
     baudcode = 4;
     emulatormode = EMULATOR_MODE_UNKNOWN;
     mcu.described = false;
+    fatalerror = NO_FATAL;
     setSysState(NOTCONN_STATE);
   }
 }
@@ -306,6 +315,8 @@ static unsigned int dispatch(unsigned int len)
     return reset(len);
   case CMND_EXECUTE_INSTRUCTION:
     return executeInstruction(len);
+  case CMND_SELFTEST:
+    return selfTestCmd();
   case CMND_READ_MEMORY:
     if (len < 10) break;
     return readMemory(len);
@@ -347,6 +358,10 @@ static unsigned int setParameter(unsigned int len)
     break;
   case PAR_TIMERS_RUNNING:
     opt.tmask = (value ? 0xDF : 0xFF);
+    break;
+  case PAR_DW_SPEED:
+    if (value < 1 || value > 30) answer = RSP_ILLEGAL_VALUE;
+    else speedlimit = value * 10000UL;
     break;
   case PAR_TARGET_POWER:              // ends an ISP or debugWIRE session; the host connects again
     if (value > 2)
@@ -411,6 +426,15 @@ static unsigned int getParameter(void)
     mkbuf[1] = (poweron ? 0x01 : 0) | (targetPowerSwitchable() ? 0x02 : 0);
     mkbuf[0] = RSP_PARAMETER;
     return 2;
+  case PAR_DWLINK_ERROR:
+    mkbuf[1] = fatalerror;
+    mkbuf[0] = RSP_PARAMETER;
+    return 2;
+  case PAR_DW_SPEED:
+    mkbuf[1] = (byte)(speedlimit / 10000UL);
+    memcpy(&mkbuf[2], &ctx.bps, 4);   // LSB first, like everything in the protocol
+    mkbuf[0] = RSP_PARAMETER;
+    return 6;
   case PAR_MCU_STATE:
     mkbuf[1] = (ctx.state == RUN_STATE ? 1 : (ctx.state == PROG_STATE ? 2 : 0));
     mkbuf[0] = RSP_PARAMETER;
@@ -516,7 +540,7 @@ static byte enterDebugWire(void)
   emulatormode = EMULATOR_MODE_UNKNOWN;
   mcu.described = false;
   if (!targetDWConnect(false)) {
-    fatalerror = NO_FATAL;              // the host learns about it from the answer
+    if (fatalerror == NO_FATAL) fatalerror = CONNERR_NO_DW_REPLY; // the reason, for PAR_DWLINK_ERROR
     setSysState(NOTCONN_STATE);
     return RSP_DEBUGWIRE_SYNC_FAILED;
   }
@@ -571,7 +595,7 @@ static byte finishDescription(void)
   if (mcu.pagesz == 0 || mcu.targetpgsz > MAXPAGESIZE || mcu.flashsz == 0) return RSP_FAILED;
   mcu.described = true;
   if (emulatormode == EMULATOR_MODE_DEBUGWIRE && ctx.state == DWCONN_STATE && !ctx.saved) {
-    if (stuckAtOneOrCap()) {
+    if (pcBeyondFlash()) {
       mcu.described = false;
       return RSP_FAILED;
     }
@@ -641,10 +665,7 @@ static unsigned int setContext(unsigned int len)
 // mkII does it (measured)
 static unsigned int forcedStop(void)
 {
-  if (emulatormode != EMULATOR_MODE_DEBUGWIRE || ctx.state == NOTCONN_STATE || ctx.state == ERROR_STATE) {
-    mkbuf[0] = RSP_ILLEGAL_EMULATOR_MODE;
-    return 1;
-  }
+  if (notConnected()) return 1;
   if (ctx.state == RUN_STATE) {
     targetBreak();
     if (!expectUCalibrate()) {
@@ -660,13 +681,23 @@ static unsigned int forcedStop(void)
   return 1;
 }
 
+// not in debugWIRE mode or not connected: RSP_ILLEGAL_EMULATOR_MODE; after an internal error:
+// RSP_FAILED, and the host reads the number with PAR_DWLINK_ERROR. The answer is put into mkbuf[0].
+static boolean notConnected(void)
+{
+  if (emulatormode != EMULATOR_MODE_DEBUGWIRE || ctx.state == NOTCONN_STATE)
+    mkbuf[0] = RSP_ILLEGAL_EMULATOR_MODE;
+  else if (ctx.state == ERROR_STATE)
+    mkbuf[0] = RSP_FAILED;
+  else
+    return false;
+  return true;
+}
+
 // 0 if the target is in debugWIRE mode and stopped, else the length of the refusal in mkbuf
 static unsigned int notStopped(void)
 {
-  if (emulatormode != EMULATOR_MODE_DEBUGWIRE || ctx.state == NOTCONN_STATE || ctx.state == ERROR_STATE) {
-    mkbuf[0] = RSP_ILLEGAL_EMULATOR_MODE;
-    return 1;
-  }
+  if (notConnected()) return 1;
   if (ctx.state != DWCONN_STATE) {
     mkbuf[0] = RSP_ILLEGAL_MCU_STATE;
     mkbuf[1] = (ctx.state == RUN_STATE ? 1 : 2); // RUNNING, PROGRAMMING
@@ -806,10 +837,7 @@ static unsigned int reset(unsigned int len)
 {
   byte flags = (len > 1 ? mkbuf[1] : 0x01);
 
-  if (emulatormode != EMULATOR_MODE_DEBUGWIRE || ctx.state == NOTCONN_STATE || ctx.state == ERROR_STATE) {
-    mkbuf[0] = RSP_ILLEGAL_EMULATOR_MODE;
-    return 1;
-  }
+  if (notConnected()) return 1;
   if (ctx.state == RUN_STATE) {
     targetBreak();
     if (!expectUCalibrate()) {
@@ -885,6 +913,22 @@ static unsigned int executeInstruction(unsigned int len)
   targetSaveRegisters();
   mkbuf[0] = RSP_OK;
   return 1;
+}
+
+// CMND_SELFTEST (dw-link only): the live tests of layers 1 and 2 (selftest.cpp) on the stopped
+// target, with the device data the host has sent. They overwrite parts of the flash; the target is
+// left stopped after a reset, without an event. Answer: RSP_PARAMETER, the number of tests, and the
+// failed ones as a bit mask, 4 bytes LSB first (bit i: test i+1).
+static unsigned int selfTestCmd(void)
+{
+  unsigned int n = notReady();
+  unsigned long failed;
+
+  if (n) return n;
+  mkbuf[1] = selfTest(failed);
+  memcpy(&mkbuf[2], &failed, 4);
+  mkbuf[0] = RSP_PARAMETER;
+  return 6;
 }
 
 // at the end of a debugWIRE session (sign-off, or another emulator mode), a stopped target runs on.
@@ -1018,7 +1062,8 @@ static boolean enterIsp(void)
     dw.sendCmd(DW_STOP_CMD);
     ok = enterProgramMode();
   }
-  fatalerror = NO_FATAL;           // a failure is reported to the host by the status
+  if (ok) fatalerror = NO_FATAL;   // also forget what the debugWIRE attempt reported
+  else if (fatalerror != CONNERR_NO_TARGET_POWER) fatalerror = CONNERR_NO_ISP_REPLY; // for PAR_DWLINK_ERROR
   if (ok && asked < ctx.ispspeed) ctx.ispspeed = asked;
   setSysState(ok ? PROG_STATE : NOTCONN_STATE);
   return ok;

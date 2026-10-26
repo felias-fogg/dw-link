@@ -1,83 +1,47 @@
-// dw-link -- live tests of layers 1 and 2 on the real target (UNITDW, UNITTG builds)
+// dw-link -- the self-test: live tests of layers 1 and 2 on the connected target, started by the
+// host with the vendor command SELFTEST (mkii.cpp)
 #include "config.h"
 #include "dwprim.h"
 #include "target.h"
-#include "mcuinfo.h"
 #include "selftest.h"
 
-/*****************************************************************************************************/
-/******************************************** Unit tests *********************************************/
-/*****************************************************************************************************/
+static byte testbuf[40];          // test data, and the test code on its way to the target
+static byte testcount;            // tests run so far
+static unsigned long testfailed;  // bit i set: test i+1 failed
 
+static void DWtests(void);
+static void targetTests(void);
+static void setupTestCode(void);
 
-
-/********************************* General setup and reporting functions ******************************/
-#if defined(UNITDW) ||  defined(UNITTG) ||  defined(UNITALL)
-
-byte testbuf[40]; // test data, and the test code on its way to the target
-
-// run all unit tests, once after reset; the target must already be in debugWIRE mode
-// (the results go to the serial line in plain text, at MKII_BPS)
-void alltests(void)
+// start of the SRAM, from the device data the host sent
+static unsigned int rambase(void)
 {
-  int failed = 0;
-  int testnum = 1;
+  return (mcu.extiotop ? mcu.extiotop + 1 : 0x60);
+}
 
-  testMessage(PSTR("\ndw-link " VERSION " live tests"), -1);
-  if (!targetDWConnect(false)) {
-    testMessage(PSTR("*** No debugWIRE connection, error: "), fatalerror);
-    return;
-  }
-  if (!setMcuAttr(mcu.sig)) {             // without a host, the device data come from the table
-    testMessage(PSTR("*** MCU not in the table: "), mcu.sig);
-    return;
-  }
-  if (stuckAtOneOrCap()) {                // needs the flash size from the table
-    testMessage(PSTR("*** PC stuck at one or capacitive load, error: "), fatalerror);
-    return;
-  }
+static void testResult(boolean succ)
+{
+  if (!succ && testcount < 32) testfailed |= 1UL << testcount;
+  testcount++;
+}
+
+// run all tests on the target, which must be stopped in debugWIRE mode with its device data known.
+// They overwrite flash at 0x80, 0x100 and 0x1aa (and the first page of the boot section, if there is
+// one), and leave the target stopped after a reset. Returns the number of tests; failed gets the
+// failed ones as a bit mask (bit i: test i+1).
+byte selfTest(unsigned long &failed)
+{
+  testcount = 0;
+  testfailed = 0;
   setupDW();
-  testMessage(PSTR("MCU signature: "), mcu.sig);
-  testMessage(PSTR("debugWIRE bps: "), ctx.bps);
-#if UNITDW
-  failed += DWtests(testnum);
-#endif
-#if UNITTG
-  failed += targetTests(testnum);
-#endif
-  testSummary(failed);
+  DWtests();
+  targetTests();
+  validpg = false;
+  fatalerror = NO_FATAL;           // the tests provoke errors on purpose
+  setSysState(DWCONN_STATE);
+  failed = testfailed;
+  return testcount;
 }
-
-// give a summary of the test batch
-void testSummary(int failed)
-{
-  if (failed) {
-    testMessage(PSTR("\n... some live tests failed:"), failed);
-  } else {
-    testMessage(PSTR("\n...live tests successfully finished"), -1);
-  }
-}
-
-int testResult(boolean succ)
-{
-  if (succ) {
-    testMessage(PSTR("  -> succeeded"), -1);
-    return 0;
-  } else {
-    testMessage(PSTR("  -> failed ***"), -1);
-    return 1;
-  }
-}
-
-// print a message from PROGMEM, followed by num if num is not negative
-void testMessage(const char pstr[], long num)
-{
-  Serial.print((const __FlashStringHelper *)pstr);
-  if (num >= 0) Serial.print(num);
-  Serial.println();
-}
- 
-
 
 /* Testcode - for checking execution related functions (to loaded into to target memory)
  bADDR  wADDR
@@ -117,11 +81,11 @@ const byte testcode[] PROGMEM = {
  
 
 
-void setupTestCode()
+static void setupTestCode(void)
 {
   // execution related functions: setup test code in target
  memcpy_P(testbuf, testcode, sizeof(testcode));
- if (mcu.rambase == 0x60) { // small ATtinys with only little memory
+ if (rambase() == 0x60) { // small ATtinys with only little memory
    testbuf[12] = 0x60; // use address 0x0060 instead of 0x0100
    testbuf[13] = 0x00;
    testbuf[16] = 0x60;
@@ -134,22 +98,15 @@ void setupTestCode()
 
 /********************************* Target specific tests ******************************************/
 
-int targetTests(int &num) {
-  int failed = 0;
+static void targetTests(void)
+{
   boolean succ;
-  int testnum;
   unsigned int i;
   long lastflashcnt;
 
-  if (targetOffline()) {
-    return 0;
-  }
-
-  if (num >= 1) testnum = num;
-  else testnum = 1;
 
   // write a (target-size) flash page (only check that no fatal error)
-  testMessage(PSTR("targetWriteFlashPage: "), testnum++);
+  // test: targetWriteFlashPage
   const int flashaddr = 0x80;
   fatalerror = NO_FATAL;
   setSysState(DWCONN_STATE);
@@ -160,36 +117,36 @@ int targetTests(int &num) {
   for (i=0; i < mcu.targetpgsz; i++) newpage[i] = i;
   targetWriteFlashPage(flashaddr);
   lastflashcnt = flashcnt;
-  failed += testResult(fatalerror == NO_FATAL);
+  testResult(fatalerror == NO_FATAL);
 
   // write same page again (since cache is valid, should not happen)
-  testMessage(PSTR("targetWriteFlashPage (check vaildpg): "), testnum++);
+  // test: targetWriteFlashPage (check vaildpg)
   fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   targetWriteFlashPage(flashaddr);
-  failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
+  testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
   
   // write same page again (cache valid flag cleared), but since contents is tha same, do not write
-  testMessage(PSTR("targetWriteFlashPage (check contents): "), testnum++);
+  // test: targetWriteFlashPage (check contents)
   fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   validpg = false;
   targetWriteFlashPage(flashaddr);
-  failed += testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
+  testResult(fatalerror == NO_FATAL && lastflashcnt == flashcnt);
 
   // try to write a cache page at an address that is not at a page boundary -> fatal error
-  testMessage(PSTR("targetWriteFlashPage (addr error): "), testnum++);
+  // test: targetWriteFlashPage (addr error)
   fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   targetWriteFlashPage(flashaddr+2);
-  failed += testResult(fatalerror != NO_FATAL && lastflashcnt == flashcnt);
+  testResult(fatalerror != NO_FATAL && lastflashcnt == flashcnt);
 
   // read page (should be done from cache)
-  testMessage(PSTR("targetReadFlashPage (from cache): "), testnum++);
+  // test: targetReadFlashPage (from cache)
   fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   page[0] = 0x11; // mark first cell in order to see whether things get reloaded
   targetReadFlashPage(flashaddr);
-  failed += testResult(fatalerror == NO_FATAL && page[0] == 0x11);
+  testResult(fatalerror == NO_FATAL && page[0] == 0x11);
 
   // read page (force cache to be invalid and read from flash)
-  testMessage(PSTR("targetReadFlashPage: "), testnum++);
+  // test: targetReadFlashPage
   fatalerror = NO_FATAL; setSysState(DWCONN_STATE);
   for (i=0; i < mcu.targetpgsz; i++) page[i] = 0;
   validpg = false;
@@ -198,12 +155,12 @@ int targetTests(int &num) {
   for (i=0; i < mcu.targetpgsz; i++) {
     if (page[i] != i) succ = false;
   }
-  failed += testResult(fatalerror == NO_FATAL && succ);
+  testResult(fatalerror == NO_FATAL && succ);
   fatalerror = NO_FATAL;	
 
   // restore registers (send to target) and save them (read from target)
-  testMessage(PSTR("targetRestoreRegisters/targetSaveRegisters: "), testnum++);
-  unsigned int spinit = mcu.rambase+mcu.ramsz-1;
+  // test: targetRestoreRegisters/targetSaveRegisters
+  unsigned int spinit = rambase() + 0x3F;
   succ = true;
   for (i = 0; i < 32; i++) ctx.regs[i] = i+1;
   ctx.wpc = 0x123;
@@ -225,14 +182,14 @@ int targetTests(int &num) {
     if (ctx.regs[i] != i+1) succ = false;
   }
   //DEBPR(F("wpc/sp/sreg = ")); DEBPRF(ctx.wpc,HEX); DEBPR(F("/")); DEBPRF(ctx.sp,HEX); DEBPR(F("/")); DEBLNF(ctx.sreg,HEX); 
-  failed += testResult(succ);
+  testResult(succ);
 
   // test ergister init procedure
-  testMessage(PSTR("targetInitRegisters: "), testnum++);
+  // test: targetInitRegisters
   targetInitRegisters();
-  failed += testResult(ctx.wpc == 0 && ctx.saved == true); // this is the only requirement!
+  testResult(ctx.wpc == 0 && ctx.saved == true); // this is the only requirement!
 
-  testMessage(PSTR("targetWriteEeprom/targetReadEeprom: "), testnum++);
+  // test: targetWriteEeprom/targetReadEeprom
   DEBLN(F("targetEEPROM"));
   succ = true;
   const int eeaddr = 0x15;
@@ -260,11 +217,11 @@ int targetTests(int &num) {
   DEBLNF(testbuf[3],HEX);
   DEBLNF(testbuf[4],HEX);
   DEBLNF(testbuf[5],HEX);
-  failed += testResult(succ);
+  testResult(succ);
 
-  testMessage(PSTR("targetWriteSram/targetReadSram: "), testnum++);
+  // test: targetWriteSram/targetReadSram
   succ = true;
-  const int ramaddr = mcu.rambase;
+  const int ramaddr = rambase();
   testbuf[0] = 0x31;
   testbuf[1] = 0x46;
   testbuf[2] = 0x68;
@@ -278,7 +235,7 @@ int targetTests(int &num) {
   targetReadSram(ramaddr, testbuf, 3);
   for (i = 0; i <3; i++)
     if (testbuf[i] != 0xFF) succ = false;
-  failed += testResult(succ);
+  testResult(succ);
 
   setupTestCode(); // store testcode to memory
   /* Testcode - for checking execution related functions (to loaded into to target memory)
@@ -300,27 +257,27 @@ int targetTests(int &num) {
   */
 
 
-  testMessage(PSTR("targetStep (ldi r18,0x49): "), testnum++);
+  // test: targetStep (ldi r18,0x49)
   succ = true;
   targetInitRegisters();
   ctx.wpc = 0xd9; // ldi instruction
-  ctx.sp = mcu.ramsz+mcu.rambase-1; // SP to upper limit of RAM
+  ctx.sp = rambase() + 0x3F; // SP into the first 64 bytes of SRAM
   targetRestoreRegisters(); 
   targetStep();
   if (!expectBreakAndU())
     succ = false;
   targetSaveRegisters();
-  failed += testResult(succ && ctx.wpc == 0xda && ctx.regs[18] == 0x49);
+  testResult(succ && ctx.wpc == 0xda && ctx.regs[18] == 0x49);
 
-  testMessage(PSTR("targetStep (rcall): "), testnum++);
+  // test: targetStep (rcall)
   succ = true;
   ctx.wpc = 0xde; // rcall instruction
   targetRestoreRegisters();
   targetStep(); // one step leads to Break+0x55
   if (!expectBreakAndU()) succ = false;  
   targetSaveRegisters();
-  failed += testResult(succ && ctx.wpc == 0xe4);
-  testMessage(PSTR("Test targetContinue/targetBreak: "), testnum++);
+  testResult(succ && ctx.wpc == 0xe4);
+  // test: Test targetContinue/targetBreak
   succ = true;
   hwbp = 0xFFFF;
   targetRestoreRegisters();
@@ -328,9 +285,9 @@ int targetTests(int &num) {
   targetBreak(); // DW responds with 0x55 on break
   if (!expectUCalibrate()) succ = false;
   targetSaveRegisters();
-  failed += testResult(succ && ctx.wpc == 0xd8 && ctx.regs[17] == 0x91);
+  testResult(succ && ctx.wpc == 0xd8 && ctx.regs[17] == 0x91);
 
-  testMessage(PSTR("targetReset: "), testnum++);
+  // test: targetReset
   ctx.sreg= 0xFF; // SREG
   DEBPR(F("SREG before: ")); DEBLNF(ctx.sreg,HEX);
   DEBPR(F("WPC before:  ")); DEBLNF(ctx.wpc,HEX);
@@ -339,43 +296,28 @@ int targetTests(int &num) {
   targetSaveRegisters();
   DEBPR(F("SREG after: ")); DEBLNF(ctx.sreg,HEX);
   DEBPR(F("WPC after:  ")); DEBLNF(ctx.wpc,HEX);
-  failed += testResult((ctx.wpc & 0x7F) == 0 && ctx.sreg == 0); // PC can be set to boot area!
+  testResult((ctx.wpc & 0x7F) == 0 && ctx.sreg == 0); // PC can be set to boot area!
 
-  if (num >= 1) {
-    num = testnum;
-    return failed;
-  } else {
-    testSummary(failed);
-    return 0;
-  }
 }
 
 /********************************* debugWIRE specific tests ******************************************/
 
-int DWtests(int &num)
+static void DWtests(void)
 {
-  int failed = 0;
   boolean succ;
-  int testnum;
   byte temp;
   unsigned int i;
 
-  if (targetOffline()) {
-    return 0;
-  }
-
-  if (num >= 1) testnum = num;
-  else testnum = 1;
 
   // write and read 3 registers
-  testMessage(PSTR("DWwriteRegister/DWreadRegister: "), testnum++);
+  // test: DWwriteRegister/DWreadRegister
   DWwriteRegister(0, 0x55);
   DWwriteRegister(15, 0x9F);
   DWwriteRegister(31, 0xFF);
-  failed += testResult(DWreadRegister(0, false) == 0x55 && DWreadRegister(15, false) == 0x9F && DWreadRegister(31, false) == 0xFF);
+  testResult(DWreadRegister(0, false) == 0x55 && DWreadRegister(15, false) == 0x9F && DWreadRegister(31, false) == 0xFF);
 
   // write registers in one go and read them in one go (much faster than writing/reading individually) 
-  testMessage(PSTR("DWwriteRegisters/DWreadRegisters: "), testnum++);
+  // test: DWwriteRegisters/DWreadRegisters
   for (byte i=0; i < 32; i++) testbuf[i] = i*2+1;
   DWwriteRegisters(testbuf);
   for (byte i=0; i < 32; i++) testbuf[i] = 0;
@@ -387,40 +329,40 @@ int DWtests(int &num)
       break;
     }
   }
-  failed += testResult(succ);
+  testResult(succ);
 
   // write to and read from an IO reg (0x3F = SREG)
-  testMessage(PSTR("DWwriteIOreg/DWreadIOreg: "), testnum++);
+  // test: DWwriteIOreg/DWreadIOreg
   DWwriteIOreg(0x3F, 0x55);
-  failed += testResult(DWreadIOreg(0x3F) == 0x55);
+  testResult(DWreadIOreg(0x3F) == 0x55);
 
   // write into (lower) sram and read it back from corresponding IO reag 
-  testMessage(PSTR("DWwriteSramByte/DWreadIOreg: "), testnum++);
+  // test: DWwriteSramByte/DWreadIOreg
   DWwriteSramByte(0x3F+0x20, 0x1F);
   temp = DWreadIOreg(0x3F);
-  failed += testResult(temp == 0x1F);
+  testResult(temp == 0x1F);
 
   // write into IO reg and read it from the ocrresponding sram addr
-  testMessage(PSTR("DWwriteIOreg/DWreadSramByte: "), testnum++);
+  // test: DWwriteIOreg/DWreadSramByte
   DWwriteIOreg(0x3F, 0xF2);
-  failed += testResult(DWreadSramByte(0x3F+0x20) == 0xF2);
+  testResult(DWreadSramByte(0x3F+0x20) == 0xF2);
 
   // write a number of bytes to sram and read them again byte by byte
-  testMessage(PSTR("DWwriteSramByte/DWreadSramByte: "), testnum++);
-  for (byte i=0; i < 32; i++) DWwriteSramByte(mcu.rambase+i, i+1);
+  // test: DWwriteSramByte/DWreadSramByte
+  for (byte i=0; i < 32; i++) DWwriteSramByte(rambase()+i, i+1);
   succ = true;
   for (byte i=0; i < 32; i++) {
-    if (DWreadSramByte(mcu.rambase+i) != i+1) {
+    if (DWreadSramByte(rambase()+i) != i+1) {
       succ = false;
       break;
     }
   }
-  failed += testResult(succ);
+  testResult(succ);
 
   // sram bulk reading
-  testMessage(PSTR("DWreadSram (bulk): "), testnum++);
+  // test: DWreadSram (bulk)
   for (byte i=0; i < 32; i++) testbuf[i] = 0;
-  DWreadSramBytes(mcu.rambase, testbuf, 32);
+  DWreadSramBytes(rambase(), testbuf, 32);
   succ = true;
   for (byte i=0; i < 32; i++) {
     if (testbuf[i] != i+1) {
@@ -428,27 +370,27 @@ int DWtests(int &num)
       break;
     }
   }
-  failed += testResult(succ);
+  testResult(succ);
 
   // write to EEPROM (addr 0x15) and read from it
-  testMessage(PSTR("DWwriteEepromByte/DWreadEepromByte: "), testnum++);
+  // test: DWwriteEepromByte/DWreadEepromByte
   const int eeaddr = 0x15;
   succ = true;
   DWwriteEepromByte(eeaddr, 0x38);
   if (DWreadEepromByte(eeaddr) != 0x38) succ = false;
   DWwriteEepromByte(eeaddr, 0xFF);
   if (DWreadEepromByte(eeaddr) != 0xFF) succ = false;
-  failed += testResult(succ);
+  testResult(succ);
   
   // erase flash page (check only for errors)
-  testMessage(PSTR("DWeraseFlashPage: "), testnum++);
+  // test: DWeraseFlashPage
   const int flashaddr = 0x100;
   DWeraseFlashPage(flashaddr);
-  failed += testResult(fatalerror == NO_FATAL);
+  testResult(fatalerror == NO_FATAL);
   fatalerror = NO_FATAL;
 
   // read the freshly cleared flash page
-  testMessage(PSTR("DWreadFlash (empty page): "), testnum++);
+  // test: DWreadFlash (empty page)
   for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
   succ = true;
   DWreenableRWW();
@@ -456,18 +398,18 @@ int DWtests(int &num)
   for (i=0; i < mcu.pagesz; i++) {
     if (newpage[i] != 0xFF) succ = false;
   }
-  failed += testResult(succ);
+  testResult(succ);
     
   // program one flash page (only check for error code returns)
-  testMessage(PSTR("DWloadFlashPage/DWprogramFlashPage: "), testnum++);
+  // test: DWloadFlashPage/DWprogramFlashPage
   for (i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
   DWloadFlashPageBuffer(flashaddr, newpage);
   DWprogramFlashPage(flashaddr);
-  failed += testResult(fatalerror == NO_FATAL);
+  testResult(fatalerror == NO_FATAL);
   fatalerror = NO_FATAL;
 
   // now try to read the freshly flashed page
-  testMessage(PSTR("DWreenableRWW/DWreadFlash: "), testnum++);
+  // test: DWreenableRWW/DWreadFlash
   for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
   DEBLN(F("newpage cleared"));
   succ = true;
@@ -481,31 +423,32 @@ int DWtests(int &num)
       succ = false;
     }
   }
-  failed += testResult(succ);
+  testResult(succ);
 
   // if a device with boot sector, try everything immediately after each other in the boot area 
   if (mcu.bootaddr != 0) {
+    unsigned int bootbyte = mcu.bootaddr << 1; // bootaddr is a word address, these take bytes
     for (i=0; i < mcu.pagesz; i++) newpage[i] = 255-i;
-    testMessage(PSTR("DWFlash prog. in boot section: "), testnum++);
-    DWeraseFlashPage(mcu.bootaddr);
+    // test: DWFlash prog. in boot section
+    DWeraseFlashPage(bootbyte);
     succ = (fatalerror == NO_FATAL);
     if (succ) {
       //DEBLN(F("erase successful"));
       DWreenableRWW();
-      DWloadFlashPageBuffer(mcu.bootaddr, newpage);
+      DWloadFlashPageBuffer(bootbyte, newpage);
       succ = (fatalerror == NO_FATAL);
       //for (i=0; i < mcu.pagesz; i++) DEBLN(newpage[i]);
     }
     if (succ) {
       //DEBLN(F("load temp successful"));
-      DWprogramFlashPage(mcu.bootaddr);
+      DWprogramFlashPage(bootbyte);
       succ = (fatalerror == NO_FATAL);
     }
     if (succ) {
       DWreenableRWW();
       DEBLN(F("program successful"));
       for (i=0; i < mcu.pagesz; i++) newpage[i] = 0;
-      DWreadFlash(mcu.bootaddr, newpage, mcu.pagesz);
+      DWreadFlash(bootbyte, newpage, mcu.pagesz);
       for (i=0; i < mcu.pagesz; i++) {
 	DEBLN(newpage[i]);
 	if (newpage[i] != 255-i) {
@@ -514,36 +457,36 @@ int DWtests(int &num)
 	}
       }
     }
-    failed += testResult(succ);
+    testResult(succ);
   }
   fatalerror = NO_FATAL;
 
 
   // get chip id
-  testMessage(PSTR("DWgetChipId: "), testnum++);
-  failed += testResult(mcu.sig != 0 && (DWgetChipId() == mcu.sig ||
+  // test: DWgetChipId
+  testResult(mcu.sig != 0 && (DWgetChipId() == mcu.sig ||
 					(mcu.sig == 0x9514 && DWgetChipId() == 0x950F) || // imposter 328P!
 					(mcu.sig == 0x9406 && DWgetChipId() == 0x940B) || // imposter 168PA!
 					(mcu.sig == 0x930A && DWgetChipId() == 0x930F) || // imposter 88PA!
 					(mcu.sig == 0x9205 && DWgetChipId() == 0x920A))); // imposter 48PA!
   
   // Set/get PC (word address)
-  testMessage(PSTR("DWsetWPc/DWgetWPc: "), testnum++);
+  // test: DWsetWPc/DWgetWPc
   unsigned int pc = 0x3F; 
   DWsetWPc(pc);
   unsigned int newpc = DWgetWPc(true);
   DEBLNF(newpc, HEX);
-  failed += testResult(newpc == pc - 1);
+  testResult(newpc == pc - 1);
 
   /*
   // Set/get hardware breakpoint
-  testMessage(PSTR("Test DWsetWBp/DWgetWBp: "), testnum++);
+  // test: Test DWsetWBp/DWgetWBp
   DWsetWBp(pc);
-  failed += testResult(DWgetWBp() == pc);
+  testResult(DWgetWBp() == pc);
   */
   
   // execute one instruction offline
-  testMessage(PSTR("DWexecOffline (eor r1,r1 at WPC=0x013F): "), testnum++);
+  // test: DWexecOffline (eor r1,r1 at WPC=0x013F)
   DWwriteIOreg(0x3F, 0); // write SREG
   DWwriteRegister(1, 0x55);
   pc = 0x13F;
@@ -554,10 +497,10 @@ int DWtests(int &num)
     if (DWreadRegister(1, false) == 0)  // reg 1 should be zero now
       if (DWreadIOreg(0x3F) == 0x02) // in SREG, only zero bit should be set
 	succ = true;
-  failed += testResult(succ);
+  testResult(succ);
 
   // execute MUL offline
-  testMessage(PSTR("DWexecOffline (mul r16, r16 at WPC=0x013F): "), testnum++);
+  // test: DWexecOffline (mul r16, r16 at WPC=0x013F)
   DWwriteRegister(16, 5);
   DWwriteRegister(1, 0x55);
   DWwriteRegister(0, 0x55);
@@ -567,26 +510,17 @@ int DWtests(int &num)
   succ = false;
   DEBPR(F("reg 1:")); DEBLN(DWreadRegister(1, false));
   DEBPR(F("reg 0:")); DEBLN(DWreadRegister(0, false));
-  DEBLN(mcu.avreplus);
   DEBLNF(newpc,HEX);
   if (pc+1 == newpc) // PC advanced by one, then +1 for break, but this is autmatically subtracted
-    succ = ((DWreadRegister(0, false) == 25 && DWreadRegister(1, false) == 0 && mcu.avreplus) ||
-	    (DWreadRegister(0, false) == 0x55 && DWreadRegister(0, false) == 0x55 && !mcu.avreplus));
-  failed += testResult(succ);
+    succ = ((DWreadRegister(0, false) == 25 && DWreadRegister(1, false) == 0) || // MUL exists (AVRe+)
+	    (DWreadRegister(0, false) == 0x55 && DWreadRegister(1, false) == 0x55));   // or is ignored
+  testResult(succ);
 
   // execute a rjmp instruction offline 
-  testMessage(PSTR("DWexecOffline (rjmp 0x002E at WPC=0x0001): "), testnum++);
+  // test: DWexecOffline (rjmp 0x002E at WPC=0x0001)
   DWsetWPc(0x01);
   DWexecOffline(0xc02C);
-  failed += testResult(DWgetWPc(true) == 0x2E); // = byte addr 0x005C
+  testResult(DWgetWPc(true) == 0x2E); // = byte addr 0x005C
 
   
-  if (num >= 1) {
-    num = testnum;
-    return failed;
-  } else {
-    testSummary(failed);
-    return 0;
-  }
 }
-#endif // some unit tests enabled

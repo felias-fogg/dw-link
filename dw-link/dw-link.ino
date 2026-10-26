@@ -35,7 +35,7 @@
 //   1  src/dwprim                          -- debugWIRE and ISP primitives
 //   2  src/target                          -- target operations
 //   3  src/mkii                            -- the mkII protocol to the host
-// src/selftest holds the live tests of layers 1 and 2 (UNITDW, UNITTG builds).
+// src/selftest holds the live tests of layers 1 and 2, which the host starts (vendor command).
 //
 // You can run it on an UNO, a Nano, or a Pro Mini.
 // For the UNO, I designed a shield with different voltage levels and
@@ -53,11 +53,7 @@
 #include "src/dwprim.h"
 #include "src/target.h"
 #include "src/mkii.h"
-#include "src/selftest.h"
 
-#if FREERAM
-int freeram = 2048; // minimal amount of free memory (only if enabled)
-#endif
 
 context ctx;
 options opt;
@@ -174,19 +170,11 @@ int main(void) {
   power(true); // switch target on
   _delay_ms(50); // let the power state settle
 
-#if SCOPEDEBUG
-  pinMode(DEBTX, OUTPUT); //
-  digitalWrite(DEBTX, LOW); // PD3 on UNO
-#endif
   initSession(); // initialize all critical global variables
   initOptions();
 
   //  DEBLN(F("Now configuereSupply"));
   DEBLN(F("Setup done"));
-#if defined(UNITDW) ||  defined(UNITTG) ||  defined(UNITALL)
-  alltests();
-  initSession();
-#endif
 
   // loop
   while (1) {
@@ -341,32 +329,8 @@ void softPulse(volatile byte *out, byte mask)
 // check whether connected
 boolean targetOffline(void)
 {
-  measureRam();
   if (ctx.state == PWRCYC_STATE || ctx.state == DWCONN_STATE ||
       ctx.state == RUN_STATE || ctx.state == LOAD_STATE) return false;
   return true;
 }
 
-void measureRam(void)
-{
-#if FREERAM 
-  int f = freeRam();
-  // DEBPR(F("RAM: ")); DEBLN(f);
-  freeram = min(f,freeram);
-#endif
-}
-
-int freeRam(void)
-{
-  extern unsigned int __heap_start;
-  extern void *__brkval;
-
-  int free_memory;
-  int stack_here;
-
-  if (__brkval == 0)
-    free_memory = (int) &stack_here - (int) &__heap_start;
-  else
-    free_memory = (int) &stack_here - (int) __brkval; 
-  return (free_memory);
-}

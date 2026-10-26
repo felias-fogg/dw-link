@@ -17,29 +17,25 @@ dwSerial      dw;
 
 // send a break on the RESET line, check for response and calibrate 
 boolean doBreak (boolean doprinterror) {
-  measureRam();
   (void)doprinterror;
 
   DEBLN(F("doBreak"));
   pinMode(DWLINE, INPUT);
   _delay_ms(10);
   ctx.bps = 0; // forget about previous connection
+  if (digitalRead(DWLINE) == LOW) { // RESET low before the break: the target has no power
+    reportFatalError(CONNERR_NO_TARGET_POWER, false);
+    return false;
+  }
   dw.sendBreak(); // send a break
-#if SCOPEDEBUG
-  PORTD|=(1<<PD3);
-  PORTD&=~(1<<PD3);
-#endif
   _delay_us(20);
-#if SCOPEDEBUG
-  PORTD|=(1<<PD3);
-  PORTD&=~(1<<PD3);
-#endif
   if (digitalRead(DWLINE) == LOW) { // should be high by now!
     reportFatalError(CONNERR_CAPACITIVE_LOAD, false);  // if not, we have a capacitive load on the RESET line
     return false;
   }
   if (!expectUCalibrate()) {
     DEBLN(F("No response after break"));
+    reportFatalError(CONNERR_NO_DW_REPLY, false);
     return false;
   }
   //DEBPR(F("Successfully connected with bps: ")); DEBLN(ctx.bps);
@@ -54,7 +50,6 @@ boolean expectUCalibrate(void) {
   int8_t speed;
   unsigned long newbps;
 
-  measureRam();
   blockIRQ();
   newbps = dw.calibrate(); // expect 0x55 and calibrate
   //DEBPR(F("Rsync (1): ")); DEBLN(newbps);
@@ -73,7 +68,6 @@ boolean expectUCalibrate(void) {
     if ((newbps << speed) <= speedlimit) break;
   }
   //DEBPR(F("Set speedexp: ")); DEBLN(speed);
-#if CONSTDWSPEED == 0
   DWsetSpeed(speed);
   ctx.bps = dw.calibrate(); // calibrate again
   unblockIRQ();
@@ -82,9 +76,6 @@ boolean expectUCalibrate(void) {
     //DEBLN(F("Second calibration too slow!"));
     return false; // too slow
   }
-#else
-  ctx.bps = newbps;
-#endif
   dw.begin(ctx.bps);
   return true;
 }
@@ -114,7 +105,6 @@ unsigned int getResponse (byte *data, unsigned int expected) {
   unsigned int idx = 0;
   unsigned long timeout = 0;
  
-  measureRam();
 
   if (dw.overflow())
     reportFatalError(INPUT_OVERLFOW_FATAL, true);
@@ -141,7 +131,6 @@ unsigned int getWordResponse (byte cmd) {
   unsigned int response;
   byte tmp[2];
   byte cmdstr[] =  { cmd };
-  measureRam();
 
   DWflushInput();
   blockIRQ();
@@ -196,7 +185,6 @@ byte inHigh  (byte add, byte reg) {
 // Build low byte of opcode for "in reg,addr" instruction
 byte inLow  (byte add, byte reg) {
   // in reg,addr:  1011 0aar rrrr aaaa
-  measureRam();
 
   return (reg << 4) + (add & 0x0F);
 }
@@ -205,11 +193,10 @@ byte inLow  (byte add, byte reg) {
 void DWwriteRegisters(byte *regs)
 {
   byte wrRegs[] = {(byte)(0x66&opt.tmask),              // read/write
-		   0xD0, mcu.stuckat1byte, 0x00,        // start reg
-		   0xD1, mcu.stuckat1byte, 0x20,        // end reg
+		   0xD0, 0x00, 0x00,        // start reg
+		   0xD1, 0x00, 0x20,        // end reg
 		   0xC2, 0x05,                          // write registers
 		   0x20 };                              // go
-  measureRam();
   dw.sendCmd(wrRegs,  sizeof(wrRegs));
   dw.sendCmd(regs, 32);
 }
@@ -219,7 +206,6 @@ void DWwriteRegister (byte reg, byte val) {
   byte wrReg[] = {(byte)(0x64&opt.tmask),                                  // Set up for single step using loaded instruction
                   0xD2, inHigh(mcu.dwdr, reg), inLow(mcu.dwdr, reg), 0x23, // Build "in reg,DWDR" instruction
                   val};                                                    // Write value to register via DWDR
-  measureRam();
 
   dw.sendCmd(wrReg,  sizeof(wrReg));
 }
@@ -229,10 +215,9 @@ void DWreadRegisters (byte *regs)
 {
   int response;
   byte rdRegs[] = {(byte)(0x66&opt.tmask),
-		   0xD0, mcu.stuckat1byte, 0x00, // start reg
-		   0xD1, mcu.stuckat1byte, 0x20, // end reg
+		   0xD0, 0x00, 0x00, // start reg
+		   0xD1, 0x00, 0x20, // end reg
 		   0xC2, 0x01};                  // read registers
-  measureRam();
   DWflushInput();
   dw.sendCmd(rdRegs,  sizeof(rdRegs));
   blockIRQ();
@@ -250,7 +235,6 @@ byte DWreadRegister (byte reg, bool checkdwdr) {
   byte res = 0;
   byte rdReg[] = {(byte)(0x64&opt.tmask),                               // Set up for single step using loaded instruction
                   0xD2, outHigh(mcu.dwdr, reg), outLow(mcu.dwdr, reg)}; // Build "out DWDR, reg" instruction
-  measureRam();
   DWflushInput();
   dw.sendCmd(rdReg,  sizeof(rdReg));
   blockIRQ();
@@ -267,17 +251,16 @@ byte DWreadRegister (byte reg, bool checkdwdr) {
 // Write one byte to SRAM address space using an SRAM-based value for <addr>, not an I/O address
 void DWwriteSramByte (unsigned int addr, byte val) {
   byte wrSram[] = {(byte)(0x66&opt.tmask),                           // Set up for read/write 
-                   0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
-                   0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
+                   0xD0, 0x00, 0x1E,                      // Set Start Reg number (r30)
+                   0xD1, 0x00, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
 		   (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
-                   0xD0, mcu.stuckat1byte, 0x01,
-                   0xD1, mcu.stuckat1byte, 0x03,
+                   0xD0, 0x00, 0x01,
+                   0xD1, 0x00, 0x03,
                    0xC2, 0x04,                                        // Set simulated "in r?,DWDR; st Z+,r?" instructions
                    0x20,                                              // Go
                    val};
-  measureRam();
   DWflushInput();
   dw.sendCmd(wrSram, sizeof(wrSram));
 }
@@ -287,16 +270,15 @@ void DWwriteSramByte (unsigned int addr, byte val) {
 void DWwriteSramBytes (unsigned int addr, const byte *mem, byte len) {
   unsigned int end = 1 + 2 * (unsigned int)len;
   byte wrSram[] = {(byte)(0x66&opt.tmask),                           // Set up for read/write
-                   0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
-                   0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
+                   0xD0, 0x00, 0x1E,                      // Set Start Reg number (r30)
+                   0xD1, 0x00, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
 		   (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
-                   0xD0, mcu.stuckat1byte, 0x01,
-                   0xD1, (byte)((end >> 8)+mcu.stuckat1byte), (byte)(end & 0xFF), // repeat count for len bytes
+                   0xD0, 0x00, 0x01,
+                   0xD1, (byte)(end >> 8), (byte)(end & 0xFF), // repeat count for len bytes
                    0xC2, 0x04,                                        // Set simulated "in r?,DWDR; st Z+,r?" instructions
                    0x20};                                             // Go
-  measureRam();
   DWflushInput();
   dw.sendCmd(wrSram, sizeof(wrSram));
   dw.sendCmd(mem, len);
@@ -310,7 +292,6 @@ void DWwriteIOreg (byte ioreg, byte val)
 		    val,                                                // load val into r0
 		    0xD2, outHigh(ioreg, 0), outLow(ioreg, 0),          // now store from r0 into ioreg
 		    0x23};
-  measureRam();
   DWflushInput();
   dw.sendCmd(wrIOreg, sizeof(wrIOreg));
 }
@@ -324,15 +305,14 @@ byte DWreadSramByte (unsigned int addr) {
 #else
   unsigned int response;
   byte rdSram[] = {(byte)(0x66&opt.tmask),                            // Set up for read/write 
-                   0xD0, mcu.stuckat1byte, 0x1E,                      // Set Start Reg number (r30)
-                   0xD1, mcu.stuckat1byte, 0x20,                      // Set End Reg number (r31) + 1
+                   0xD0, 0x00, 0x1E,                      // Set Start Reg number (r30)
+                   0xD1, 0x00, 0x20,                      // Set End Reg number (r31) + 1
                    0xC2, 0x05,                                        // Set repeating copy to registers via DWDR
                    0x20,                                              // Go
                    (byte)(addr & 0xFF), (byte)(addr >> 8),            // r31:r30 (Z) = addr
-                   0xD0, mcu.stuckat1byte, 0x00,                                  // 
-                   0xD1, mcu.stuckat1byte, 0x02,                                  // 
+                   0xD0, 0x00, 0x00,                                  // 
+                   0xD1, 0x00, 0x02,                                  // 
                    0xC2, 0x00};                                        // Set simulated "ld r?,Z+; out DWDR,r?" instructions
-  measureRam();
   DWflushInput();
   dw.sendCmd(rdSram, sizeof(rdSram));
   blockIRQ();
@@ -353,7 +333,6 @@ byte DWreadIOreg (byte ioreg)
 		    0xD2, inHigh(ioreg, 0), inLow(ioreg, 0),           // Build "out DWDR, reg" instruction
 		    0x23,
 		    0xD2, outHigh(mcu.dwdr, 0), outLow(mcu.dwdr, 0)};  // Build "out DWDR, 0" instruction
-  measureRam();
   DWflushInput();
   dw.sendCmd(rdIOreg, sizeof(rdIOreg));
   blockIRQ();
@@ -370,15 +349,14 @@ void DWreadSramBytes (unsigned int addr, byte *mem, byte len) {
   unsigned int len2 = len * 2;
   unsigned int rsp;
   byte rdSram[] = {(byte)(0x66&opt.tmask),                          // Set up for read/write using 
-		   0xD0, mcu.stuckat1byte, 0x1E,                    // Set Start Reg number (r30)
-		   0xD1, mcu.stuckat1byte, 0x20,                    // Set End Reg number (r31) + 1
+		   0xD0, 0x00, 0x1E,                    // Set Start Reg number (r30)
+		   0xD1, 0x00, 0x20,                    // Set End Reg number (r31) + 1
 		   0xC2, 0x05,                                      // Set repeating copy to registers via DWDR
 		   0x20,                                            // Go
 		   (byte)(addr & 0xFF), (byte)(addr >> 8),          // r31:r30 (Z) = addr
-		   0xD0, mcu.stuckat1byte, 0x00,                    
-		   0xD1, (byte)((len2 >> 8)+mcu.stuckat1byte), (byte)(len2 & 0xFF),  // Set repeat count = len * 2
+		   0xD0, 0x00, 0x00,                    
+		   0xD1, (byte)(len2 >> 8), (byte)(len2 & 0xFF),  // Set repeat count = len * 2
 		   0xC2, 0x00};                                     // Set simulated "ld r?,Z+; out DWDR,r?" instructions
-  measureRam();
   
   DWflushInput();
   dw.sendCmd(rdSram, sizeof(rdSram));
@@ -394,8 +372,8 @@ byte DWreadEepromByte (unsigned int addr) {
   unsigned int response;
   byte retval;
   byte setRegs[] = {(byte)(0x66&opt.tmask),                                      // Set up for read/write 
-                    0xD0, mcu.stuckat1byte, 0x1C,                                // Set Start Reg number (r28)
-                    0xD1, mcu.stuckat1byte, 0x20,                                // Set End Reg number (r31) + 1
+                    0xD0, 0x00, 0x1C,                                // Set Start Reg number (r28)
+                    0xD1, 0x00, 0x20,                                // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                                  // Set repeating copy to registers via DWDR
                     0x20,                                                        // Go
                     0x01, 0x01, (byte)(addr & 0xFF), (byte)(addr >> 8)};         // Data written into registers r28-r31
@@ -404,7 +382,6 @@ byte DWreadEepromByte (unsigned int addr) {
                     0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,     // out EECR,r28   EERE = 01 (EEPROM Read Enable)
                     0xD2, inHigh(mcu.eedr, 29), inLow(mcu.eedr, 29), 0x23,       // in  r29,EEDR   Read data from EEDR
                     0xD2, outHigh(mcu.dwdr, 29), outLow(mcu.dwdr, 29)};          // out DWDR,r29   Send data back via DWDR reg
-  measureRam();
   
   DWflushInput();
   dw.sendCmd(setRegs, sizeof(setRegs));
@@ -423,8 +400,8 @@ byte DWreadEepromByte (unsigned int addr) {
 //   Write one byte to EEPROM
 void DWwriteEepromByte (unsigned int addr, byte val) {
   byte setRegs[] = {(byte)(0x66&opt.tmask),                                       // Set up for read/write 
-                    0xD0, mcu.stuckat1byte, 0x1C,                                 // Set Start Reg number (r30)
-                    0xD1, mcu.stuckat1byte, 0x20,                                 // Set End Reg number (r31) + 1
+                    0xD0, 0x00, 0x1C,                                 // Set Start Reg number (r30)
+                    0xD1, 0x00, 0x20,                                 // Set End Reg number (r31) + 1
                     0xC2, 0x05,                                                   // Set repeating copy to registers via DWDR
                     0x20,                                                         // Go
                     0x04, 0x02, (byte)(addr & 0xFF), (byte)(addr >> 8)};          // Data written into registers r28-r31
@@ -435,7 +412,6 @@ void DWwriteEepromByte (unsigned int addr, byte val) {
                     0xD2, outHigh(mcu.eedr, 30), outLow(mcu.eedr, 30), 0x23,      // out EEDR,r30   EEDR = data
                     0xD2, outHigh(mcu.eecr, 28), outLow(mcu.eecr, 28), 0x23,      // out EECR,r28   EECR = 04 (EEPROM Master Program Enable)
                     0xD2, outHigh(mcu.eecr, 29), outLow(mcu.eecr, 29), 0x23};     // out EECR,r29   EECR = 02 (EEPROM Program Enable)
-  measureRam();
   dw.sendCmd(setRegs, sizeof(setRegs));
   if (mcu.eearh)                                                                  // if there is a high byte EEAR reg, set it
     dw.sendCmd(doWriteH, sizeof(doWriteH));
@@ -449,15 +425,14 @@ void DWreadFlash(unsigned int addr, byte *mem, unsigned int len) {
   unsigned int rsp;
   unsigned int lenx2 = len * 2;
   byte rdFlash[] = {(byte)(0x66&opt.tmask),                             // Set up for read/write
-		    0xD0, mcu.stuckat1byte, 0x1E,                       // Set Start Reg number (r30)
-		    0xD1, mcu.stuckat1byte, 0x20,                       // Set End Reg number (r31) + 1
+		    0xD0, 0x00, 0x1E,                       // Set Start Reg number (r30)
+		    0xD1, 0x00, 0x20,                       // Set End Reg number (r31) + 1
 		    0xC2, 0x05,                                         // Set repeating copy to registers via DWDR
 		    0x20,                                               // Go
 		    (byte)(addr & 0xFF), (byte)(addr >> 8),             // r31:r30 (Z) = addr
-		    0xD0, mcu.stuckat1byte, 0x00,                       // Set start = 0
-		    0xD1, (byte)((lenx2 >> 8)+mcu.stuckat1byte),(byte)(lenx2),// Set end = repeat count = sizeof(flashBuf) * 2
+		    0xD0, 0x00, 0x00,                       // Set start = 0
+		    0xD1, (byte)(lenx2 >> 8),(byte)(lenx2),// Set end = repeat count = sizeof(flashBuf) * 2
 		    0xC2, 0x02};                                        // Set simulated "lpm r?,Z+; out DWDR,r?" instructions
-  measureRam();
   DWflushInput();
   dw.sendCmd(rdFlash, sizeof(rdFlash));
   blockIRQ();
@@ -476,7 +451,6 @@ void DWeraseFlashPage(unsigned int addr) {
 		    outLow(0x37, 29), 
 		    0x23,  // execute
 		    0xD2, 0x95 , 0xE8 }; // execute SPM
-  measureRam();
   //DEBPR(F("Erase: "));  DEBLNF(addr,HEX);
   
   while (timeout < TIMEOUTMAX) {
@@ -509,7 +483,6 @@ void DWprogramFlashPage(unsigned int addr)
 		   0xD2, 0x95 , 0xE8}; // execute SPM
 
   //DEBLN(F("Program flash page ..."));
-  measureRam();
   flashcnt++;
   while (timeout < TIMEOUTMAX) {
     wait = 1000;
@@ -552,7 +525,6 @@ void DWloadFlashPageBuffer(unsigned int addr, byte *mem)
   };
 
   //DEBLN(F("Load flash page ..."));
-  measureRam();
 
   DWflushInput();
   DWwriteRegister(30, addr & 0xFF); // load Z reg with addr low
@@ -577,7 +549,6 @@ void DWreenableRWW(void)
 		  0x23,                    // execute
 		  0xD2, 0x95, 0xE8, 0x23 }; // spm
 
-  measureRam();
   if (mcu.bootaddr) {
     // DEBLN(F("DWreenableRWW"));
     while ((DWreadSPMCSR() & 0x01) != 0 && --wait) { 
@@ -600,7 +571,6 @@ byte DWreadSPMCSR(void)
 		inHigh(0x37, 30),  // build "in 30, SPMCSR"
 		inLow(0x37, 30),
 		0x23 };             // execute
-  measureRam();
   DWflushInput();
   dw.sendCmd(sc, sizeof(sc));
   return DWreadRegister(30, false);
@@ -610,7 +580,6 @@ unsigned int DWgetWPc (boolean corrected) {
   unsigned int pc = getWordResponse(0xF0);
   // DEBPR(F("Get uncorrected WPC=")); DEBLNF(pc,HEX);
   if (corrected) {
-    pc &= ~(mcu.stuckat1byte<<8);
     pc--;
     // DEBPR(F("Corrected WPC=")); DEBLNF(pc,HEX);
   }
@@ -625,16 +594,16 @@ unsigned int DWgetChipId () {
   return result;
 }
 
-// set PC Reg (word address) - that is set all the bits (including the ones in the stuckat1byte)
+// set PC Reg (word address)
 void DWsetWPc (unsigned int wpcreg) {
   //DEBPR(F("Set WPCReg=")); DEBLNF(wpcreg,HEX);
-  byte cmd[] = {0xD0, (byte)((wpcreg >> 8)+mcu.stuckat1byte), (byte)(wpcreg & 0xFF)};
+  byte cmd[] = {0xD0, (byte)(wpcreg >> 8), (byte)(wpcreg & 0xFF)};
   dw.sendCmd(cmd, sizeof(cmd));
 }
 
 // set hardware breakpoint at word address
 void DWsetWBp (unsigned int wbp) {
-  byte cmd[] = {0xD1, (byte)((wbp >> 8)+mcu.stuckat1byte), (byte)(wbp & 0xFF)};
+  byte cmd[] = {0xD1, (byte)(wbp >> 8), (byte)(wbp & 0xFF)};
   dw.sendCmd(cmd, sizeof(cmd));
 }
 
@@ -643,7 +612,6 @@ void DWsetWBp (unsigned int wbp) {
 void DWexecOffline(unsigned int opcode)
 {
   byte cmd[] = {0xD2, (byte) (opcode >> 8), (byte) (opcode&0xFF), 0x23};
-  measureRam();
 
   //DEBPR(F("Offline exec: "));
   //DEBLNF(opcode,HEX);
@@ -705,7 +673,6 @@ void disableSpiPins (void) {
 }
 
 byte ispTransfer (byte val, boolean slower) {
-  measureRam();
   for (byte ii = 0; ii < 8; ++ii) {
     if (ctx.levelshifting) {
       // pinMode(TMOSI,  (val & 0x80) ? INPUT : OUTPUT);
