@@ -12,6 +12,8 @@
 // D4: SPI emulator mode and ISP_PACKET: dw-link as ISP programmer (avrdude -c jtag2isp).
 //     The vendor parameter TARGET_POWER switches the supply of the dw-probe shield.
 // D4.5: vendor parameters DWLINK_ERROR and DW_SPEED, vendor command SELFTEST.
+//     ENTER_PROGMODE and LEAVE_PROGMODE: answered with RSP_OK and nothing else, as the mkII and
+//     the Dragon do in debugWIRE mode, where avrdude sends them around EEPROM writes.
 // Everything else is answered with RSP_ILLEGAL_COMMAND.
 #include <avr/eeprom.h>
 #include "config.h"
@@ -45,6 +47,8 @@ const byte CMND_SELFTEST = 0x71;            // dw-link only: run the self-test o
 const byte CMND_SET_DEVICE_DESCRIPTOR = 0x0C;
 const byte CMND_SET_DEVICE_CONTEXT = 0x36; // not in AVR067; avrdude: CMND_SET_XMEGA_PARAMS (see setContext)
 const byte CMND_GET_SYNC = 0x0F;
+const byte CMND_ENTER_PROGMODE = 0x14;
+const byte CMND_LEAVE_PROGMODE = 0x15;
 const byte CMND_ISP_PACKET = 0x2F;
 
 // responses
@@ -79,6 +83,7 @@ const byte PAR_OCD_VTARGET = 0x06;
 const byte PAR_TIMERS_RUNNING = 0x09;
 const byte PAR_MCU_STATE = 0x1A;
 const byte PAR_TARGET_SIGNATURE = 0x1D;
+const byte PAR_SOFT_RESET = 0x2D;  // AVR067 rev. D: reset after CMND_SIGN_OFF; 0 = reset, 3 = none
 const byte PAR_TARGET_POWER = 0x70; // dw-link only: GET bit 0 on, bit 1 switchable; SET 0 off, 1 on, 2 cycle
 const byte PAR_DWLINK_ERROR = 0x71; // dw-link only: GET the number of the last error (config.h), 0 = none
 const byte PAR_DW_SPEED = 0x72;     // dw-link only: SET the debugWIRE speed limit in 10 kbps (1..30), from
@@ -110,6 +115,7 @@ byte mkbuf[MKII_MAXBODY]; // body of the received command, then of the answer
 byte serialno[6];
 byte emulatormode = EMULATOR_MODE_UNKNOWN;
 byte baudcode = 4; // 19200
+byte softreset = 3; // PAR_SOFT_RESET: unlike the mkII, dw-link does not reset unless asked to
 boolean breakevent; // an EVT_BREAK follows the answer
 
 static uint16_t crcUpdate(uint16_t crc, byte b);
@@ -207,6 +213,7 @@ void mkiiPoll(void)
     // AVR067 names 19200 only as the power-on setting; going back to it at sign-off is
     // dw-link's choice, so that the next session finds it even without a reopened port
     Serial.flush();
+    if (softreset == 0) dwlrestart(); // the host asked for a reboot of dw-link (WDT reset)
     Serial.begin(MKII_BPS);
     baudcode = 4;
     emulatormode = EMULATOR_MODE_UNKNOWN;
@@ -287,6 +294,8 @@ static unsigned int dispatch(unsigned int len)
     return signOn();
   case CMND_SIGN_OFF:
   case CMND_GET_SYNC:
+  case CMND_ENTER_PROGMODE:      // see the head of this file
+  case CMND_LEAVE_PROGMODE:
     mkbuf[0] = RSP_OK;
     return 1;
   case CMND_SET_PARAMETER:
@@ -362,6 +371,9 @@ static unsigned int setParameter(unsigned int len)
   case PAR_DW_SPEED:
     if (value < 1 || value > 30) answer = RSP_ILLEGAL_VALUE;
     else speedlimit = value * 10000UL;
+    break;
+  case PAR_SOFT_RESET:
+    softreset = value;
     break;
   case PAR_TARGET_POWER:              // ends an ISP or debugWIRE session; the host connects again
     if (value > 2)
