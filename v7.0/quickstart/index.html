@@ -128,7 +128,6 @@
 </ul>
 <h2 id="step-1-install-arduino-ide-2">Step 1: Install Arduino IDE 2</h2>
 <p>You probably already have the Arduino IDE 2 installed. If not, download and install it from https://arduino.cc. </p>
-<p><strong>Check:</strong> Start the IDE and check the <code>About Arduino</code> entry under the <code>Arduino</code> or <code>Help</code> menu for the version number. It should be &gt;= 2.3.0.</p>
 <h2 id="step-2-install-new-board-manager-files">Step 2: Install new board manager files</h2>
 <p>Open the <code>Preferences</code> dialog of the Arduino IDE and paste the following <code>Board Manager URLs</code> into the list:</p>
 <pre><code>https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
@@ -143,7 +142,7 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <p><strong>Check:</strong> Select <code>Tools</code> -&gt; <code>Board</code> -&gt; <code>TinyCore</code> -&gt; <code>Attiny25/45/85</code> . The debug button in the upper row (3rd from the left) is no longer greyed out. </p>
 <h2 id="step-3-install-dw-link-firmware-on-an-uno">Step 3: Install <em>dw-link</em> firmware on an Uno</h2>
 <p>First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).</p>
-<p>The simplest way to install the firmware is to download an uploader from the Release assets of the <a href="https://github.com/felias-fogg/dw-link">GitHub repo</a>. The uploader should fit your architecture, e.g., <code>dw-uploader-windows-intel64</code> for Windows. Under <em>Linux</em> and <em>macOS</em>, open a terminal window, go to the download folder, and set the executable permission using <code>chmod +x</code>. Afterward, execute the program. Under <em>Windows</em>, it is enough to start the program after downloading by double-clicking on it.</p>
+<p>The simplest way to install the firmware is to install the library dw-link using the LIbrary Manager. Then compile and upload the example sketch dw-link (File-&gt;Examples-&gt;dw-link-&gt;dw-link).</p>
 <p>Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch using the Arduino IDE 2 or arduino-cli.</p>
 <h2 id="step-4-hardware-setup">Step 4: Hardware setup</h2>
 <p>This description is for debugging an ATtiny85. However, almost any other classic ATtiny or ATmegaX8 would do. Just be aware that when trying to debug an Arduino Uno board, you need to alter the board physically (cut a solder bridge). How to set up an Uno as a target board is described in the <a href="../setup/#debugging-an-uno">Hardware setup section</a>.</p>
@@ -237,7 +236,7 @@ https://mcudude.github.io/MicroCore/package_MCUdude_MicroCore_index.json
 <p>Be aware that after finishing the debug session, the MCU is still in debugWIRE mode! You can change that by typing <code>monitor debugwire disable</code> on the last line of the <code>Debug Console</code>. More information can be found in the section on debugging in the <a href="https://pyavrocd.io">PyAvrOCD manual</a>.</p>
 <h2 id="after-debugging-has-finished">After debugging has finished</h2>
 <p>When you are done with debugging, you probably want to disable the debugWIRE mode again, because in debugWIRE mode, you cannot use the RESET line or ISP programming. This can be accomplished by using the command <code>monitor debugwire disable</code> before you leave the debugger. </p>
-<p>So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (STK500 v1). In the Arduino IDE, such a programmer is called <code>Arduino as ISP</code>.</p>
+<p>So, after everything has been debugged, what do you do with your newly built hardware debugger? You don't have to throw it away. You can also use it as an ISP programmer (<code>jtag2isp</code>). In the Arduino IDE, such a programmer is called <code>JTAGICE mkII (ISP)</code> or something similar.</p>
 <p>If you want a more durable hardware debugging solution, there are some <a href="../better/">suggestions</a> in the dw-link manual. These days, however, the Microchip debugger MPLAP SNAP might be a better deal. You can use it as a drop-in replacement for dw-link; it costs less than US-$15, and it is able to do much more! </p>
 <h2 id="what-can-go-wrong">What can go wrong?</h2>
 <p>First, the dw-link firmware upload may fail. If so, try to use the conventional way by downloading the latest release version and then compiling and uploading the dw-link sketch.</p>

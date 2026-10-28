@@ -178,6 +178,7 @@
 <p>For downshifting, we use the output pins of the hardware debugger in an open-drain configuration and have pull-up resistors connected to the target supply voltage. These have to be particularly strong because some possible target boards, e.g., the Arduino UNO, use the SCK  line for driving an LED with a series resistor of 1kΩ. For this reason,  we use 680Ω pull-up resistors that guarantee that the signal level is above 3V on the SCK line when we supply the board with 5V. These pull-ups will be disabled when no ISP programming is active, giving the target system full control of the two lines. The schematic looks as follows (thanks to <strong><a href="https://github.com/gwideman">gwideman</a></strong> for the reworked schematic).</p>
 <p><img alt="KiCad-Schematic" src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/pcb/schematic.png" /></p>
 <p>The pin mapping is a bit different from the basic design described above. The change from the basic mapping is controlled by pin D5, which is tied to GND in order to signal that the more complex pin mapping is used. The additional pins are all in italics. The ones not used on the board are struck out.</p>
+<p>If you are building this board, make sure to have an <strong>additional 100 µF cap</strong> between Vcc and GND because otherwise it may happen that the MCU on the UNO board browns out. </p>
 <table>
 <thead>
 <tr>

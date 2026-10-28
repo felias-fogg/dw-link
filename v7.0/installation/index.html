@@ -99,13 +99,12 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="installation-of-firmware-and-software-environment">Installation of firmware and software environment</h1>
-<p>There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. </p>
 <h2 id="firmware-installation">Firmware installation</h2>
-<p>You need to install the dw-link firmware on an UNO. Connect the UNO to your computer and upload the firmware.</p>
-<p>The simplest way is to download an uploader from the <a href="https://github.com/felias-fogg/dw-link/releases/latest">Release assets of the GitHub repo</a>. The name of the uploader should fit your architecture, e.g., <code>dw-uploader-windows-intel64</code> for Windows. Under <em>Linux</em> and <em>macOS</em>, open a terminal window, go to the download folder, and set the executable permission using <code>chmod +x</code>. Afterward, execute the program. Under <em>Windows</em>, it is enough to start the program after downloading by double-clicking on it. Instead of downloading an uploader, you can download the hex-file <code>dw-link.hex</code> and flash it with, e.g., <code>avrdude</code> on the UNO.</p>
-<p>Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch. You can also use PlatformIO for that purpose, because the repo is already in the right format.</p>
+<p>If you work with the Arduino IDE, the simplest way to flash the hardware debugger firmware onto an Arduino UNO is to install the library <strong>dw-link</strong> with the library manager, and then upload the example sketch dw-link (File-&gt;Examples-&gt;dw-link-&gt;dw-link). Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link sketch from the examples folder.</p>
+<p>You can also use PlatformIO for that purpose, because the repo is already in the right format. Download or clone the repository and open it as a PlatformIO project. Now you can build and upload the sketch. </p>
+<p>A final alternative, if you are not into the Arduino IDE or PlatformIO, is to download the hex files of the firmware from the <strong>Releases</strong> tab of the repo. With avrdude or other flashing software, you can install the firmware on the MCU.</p>
 <h2 id="installation-of-debugging-software">Installation of debugging software</h2>
-<p>Setting up the debug software environment is also quite simple. Check out the debug software installation guide in the <a href="https://PyAvrOCD.io">PyAvrOCD manual</a>.</p>
+<p>Setting up the debug software environment is also quite simple. It mainly consist of installing an alternative, debug-enabled Arduino core or a fork of the PlatformIO framework for AVR processors. Check out the debug software installation guide in the <a href="https://PyAvrOCD.io">PyAvrOCD manual</a>.</p>
               
             </div>
           </div><footer>

@@ -14,7 +14,7 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "An Arduino-based debugWIRE debugger: dw-link";
+        var mkdocs_page_name = "An Arduino-based debugWIRE debug probe: dw-link";
         var mkdocs_page_input_path = "index.md";
         var mkdocs_page_url = null;
       </script>
@@ -81,7 +81,7 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
-      <li class="breadcrumb-item active">An Arduino-based debugWIRE debugger: dw-link</li>
+      <li class="breadcrumb-item active">An Arduino-based debugWIRE debug probe: dw-link</li>
     <li class="wy-breadcrumbs-aside">
           <a href="https://github.com/felias-fogg/dw-link/edit/master/docs/index.md" class="icon icon-github"> Edit on GitHub</a>
     </li>
@@ -91,12 +91,11 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="an-arduino-based-debugwire-debugger-dw-link">An Arduino-based debugWIRE debugger: dw-link</h1>
-<p align="center">
-<img src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/docs/pics/uno-debug2.png" width="40%">
-</p>
+                <h1 id="an-arduino-based-debugwire-debug-probe-dw-link">An Arduino-based debugWIRE debug probe: dw-link</h1>
+<p><img alt="" src="pics/uno-debug2.png" /></p>
 <p>You want to debug your Arduino project on an ATmega328P or on a classic ATtiny? For this purpose, you need a <em>hardware debugger</em>. If you do not own such a hardware debugger but would like to try debugging your Arduino project on the chip nevertheless, then <em>dw-link</em> is the right thing for you. It turns an Arduino UNO into a hardware debugger for AVR MCUs which have a debugWIRE debugging interface. <a href="https://pyavrocd.io">PyAvrOCD</a> then provides an interface either to avr-gdb or to IDEs like Arduino IDE 2 or PlatformIO. Check out the <a href="https://quickstart.md">quickstart guide</a>.</p>
 <p>If you are looking for a more durable debugging solution, I recommend <a href="https://www.microchip.com/en-us/development-tool/pg164100">MPLAB SNAP</a> (or any other EDBG-based Microchip debugger). SNAP is a drop-in replacement for dw-link, and it can do much more than dw-link.</p>
+<p>If you used earlier versions of dw-link, note that with version 7, quite a lot has changed. The debug probe does not speak GDB's <em>remote serial protocol</em> any longer, but uses a variant of the mkII protocol to communicate with the GDB server PyAvrOCD. In addition, the packaged programmer no longer uses the STK500v1 protocol, but it is now the ISP programming protocol of the JTAGICE mkII (<code>jtag2isp</code> in avrdude's terminology). The benefit is that it all is more robust now and the debugging logic is concentrated at only one point, namely in PyAvrOCD.</p>
               
             </div>
           </div><footer>
@@ -145,5 +144,5 @@
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-10-25 11:07:02.796175+00:00
+Build Date UTC : 2026-10-28 16:45:23.746074+00:00
 -->
