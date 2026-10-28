@@ -1,4 +1,0 @@
-IntelHex
-pyserial
-progressbar2
-pyinstaller

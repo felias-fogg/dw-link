@@ -19,8 +19,6 @@ You can turn your Arduino Uno into a hardware debugger that can be used for embe
 
 You probably already have the Arduino IDE 2 installed. If not, download and install it from https://arduino.cc. 
 
-**Check:** Start the IDE and check the `About Arduino` entry under the `Arduino` or `Help` menu for the version number. It should be >= 2.3.0.
-
 ## Step 2: Install new board manager files
 
 Open the `Preferences` dialog of the Arduino IDE and paste the following `Board Manager URLs` into the list:
@@ -39,7 +37,7 @@ Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCo
 
 First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).
 
-The simplest way to install the firmware is to download an uploader from the Release assets of the [GitHub repo](https://github.com/felias-fogg/dw-link). The uploader should fit your architecture, e.g., `dw-uploader-windows-intel64` for Windows. Under *Linux* and *macOS*, open a terminal window, go to the download folder, and set the executable permission using `chmod +x`. Afterward, execute the program. Under *Windows*, it is enough to start the program after downloading by double-clicking on it.
+The simplest way to install the firmware is to install the library dw-link using the LIbrary Manager. Then compile and upload the example sketch dw-link (File->Examples->dw-link->dw-link).
 
 Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch using the Arduino IDE 2 or arduino-cli.
 

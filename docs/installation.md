@@ -1,16 +1,14 @@
 
 # Installation of firmware and software environment
 
-There are only a few steps necessary for installing the dw-link firmware on the hardware debugger. 
-
 ## Firmware installation
 
-You need to install the dw-link firmware on an UNO. Connect the UNO to your computer and upload the firmware.
+If you work with the Arduino IDE, the simplest way to flash the hardware debugger firmware onto an Arduino UNO is to install the library **dw-link** with the library manager, and then upload the example sketch dw-link (File->Examples->dw-link->dw-link). Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link sketch from the examples folder.
 
-The simplest way is to download an uploader from the [Release assets of the GitHub repo](https://github.com/felias-fogg/dw-link/releases/latest). The name of the uploader should fit your architecture, e.g., `dw-uploader-windows-intel64` for Windows. Under *Linux* and *macOS*, open a terminal window, go to the download folder, and set the executable permission using `chmod +x`. Afterward, execute the program. Under *Windows*, it is enough to start the program after downloading by double-clicking on it. Instead of downloading an uploader, you can download the hex-file `dw-link.hex` and flash it with, e.g., `avrdude` on the UNO.
+You can also use PlatformIO for that purpose, because the repo is already in the right format. Download or clone the repository and open it as a PlatformIO project. Now you can build and upload the sketch. 
 
-Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch. You can also use PlatformIO for that purpose, because the repo is already in the right format.
+A final alternative, if you are not into the Arduino IDE or PlatformIO, is to download the hex files of the firmware from the **Releases** tab of the repo. With avrdude or other flashing software, you can install the firmware on the MCU.
 
 ## Installation of debugging software
 
-Setting up the debug software environment is also quite simple. Check out the debug software installation guide in the [PyAvrOCD manual](https://PyAvrOCD.io).
+Setting up the debug software environment is also quite simple. It mainly consist of installing an alternative, debug-enabled Arduino core or a fork of the PlatformIO framework for AVR processors. Check out the debug software installation guide in the [PyAvrOCD manual](https://PyAvrOCD.io).

@@ -39,7 +39,7 @@
 //
 // You can run it on an UNO, a Nano, or a Pro Mini.
 // For the UNO, I designed a shield with different voltage levels and
-// level shifters, whichyou can buy on Tindie.
+// level shifters.
 //
 // I thought that the sketch should also work with the Leonardo-like boards
 // and with the Mega board. For the former, I got stuck with the flashtest program.

@@ -7,17 +7,18 @@
 
 ![cover](docs/pics/uno-debug2.png)
 
-This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. It gives you a chance to find out how it feels to debug your Arduino sketch running on an Arduino Uno or an ATtiny board at the source level. Do you want to give it a try? Use the [**Quick-start Guide**](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/) to see if it works for you. 
+This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. It gives you a chance to find out how it feels to use a source-level debugger on an Arduino Uno or an ATtiny board. Do you want to give it a try? Use the [**Quick-start Guide**](https://felias-fogg.github.io/dw-link/quickstart-Arduino-IDE2/) to see if it works for you. 
 
-From version 7 on, the protocol has been changed to move all of the debug logic into [PyAvrOCD](https://pyavrocd.io). If you want to connect GDB to dw-link using only the serial line. You need to fall back to version 6.1.1.
+From version 7 on, the protocol has been changed from [GDB RSP](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html) to a variant of the JTAGICE mkII protocol ([AVR067](https://www.microchip.com/en-us/application-notes/an2587-1)), which implies that you necessarily have to use [PyAvrOCD](https://pyavrocd.io) as a GDB server. If you want to connect GDB to dw-link using only the serial line, you need to fall back to version 6.
 
-This repository contains the following directories:
+This repository, which is organized as an Arduino library, contains the following directories:
 
-* [**dw-link**](dw-link/): Contains the Arduino sketch that turns your Arduino board into a hardware debugger,
-* [**dw-uploader**](dw-uploader/): Contains a Python script to flash the debugging firmware onto an Arduino UNO, 
-* [**docs**](docs/): Contains the documentation file for the [manual](https://felias-fogg.github.io/dw-link/),
-* [**pcb**](pcb/): Contains design data (KiCad) for the optional dw-link probe,
-* [**testprobe**](testprobe/): Contains a sketch to be used to run tests on a freshly assembled dw-link probe.
+* [**src**](src/) contains an empty header file so that it fits the format of a library,
+* [**examples**](examples/) contains the [dw-link](examples/dw-link/) sketch and the [testprobe](examples/testprobe/) sketch, which can be used to to run tests on a freshly assembled dw-link probe,
+* [**docs**](docs/) contains the documentation files for the [manual](https://felias-fogg.github.io/dw-link/),
+* [**extras**](extras/) contains the folder pcb with design data (KiCad) for the optional dw-link probe.
+
+
 
 <sup><sub>The cover picture was designed based on vector graphics by [captainvector at 123RF](https://de.123rf.com/profile_captainvector).</sub></sup>
 

@@ -3,14 +3,11 @@
 ##### List of tasks to work on:
 
 * Maybe have a variable-length break, dependent on the speed of the ISP?
-
 * Implement semi-hosting
 
-* Check for output of error routines. Sometimes it does not seem to work
-
-* Refactor so that only basic communication routines run on the UNO and the rest is done by PyAvrOCD
-
 ##### List of tasks done:
+
+- Refactor so that only basic communication routines run on the UNO and the rest is done by PyAvrOCD
 
 - being able to receive qRcmd commands before the actual debugging starts (would allow to pass pyAvrOCD monitor options to debugger)
 
@@ -78,6 +75,8 @@
 
 
 **List of tasks abandoned**:
+
+- Check for output of error routines. Sometimes it does not seem to work
 
 - Use "blinkmodes.ino" in order to highlight embedded programming, perhaps in a video? Something to be done for PyAvrOCD.
 
