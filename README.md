@@ -7,7 +7,7 @@
 
 ![cover](docs/pics/uno-debug2.png)
 
-This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. It gives you a chance to find out how it feels to use a source-level debugger on an Arduino Uno or an ATtiny board. Do you want to give it a try? Use the the *quick-start guide* of the [dw-link manual](https://felias-fogg.github.io/dw-link/) to see if it works for you. 
+This Arduino sketch turns your Arduino UNO into a hardware debugger for the classic ATtinys and the ATmegaX8s, such as the ATmega328. It gives you a chance to find out how it feels to use a source-level debugger on an Arduino Uno or an ATtiny board. Do you want to give it a try? Use the *quick-start guide* in the [dw-link manual](https://felias-fogg.github.io/dw-link/) to see if it works for you. 
 
 From version 7 on, the protocol has been changed from [GDB RSP](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html) to a variant of the JTAGICE mkII protocol ([AVR067](https://www.microchip.com/en-us/application-notes/an2587-1)), which implies that you necessarily have to use [PyAvrOCD](https://pyavrocd.io) (version >= 2.0.0) as a GDB server. If you want to connect GDB to dw-link using only the serial line, you need to fall back to version 6.
 
