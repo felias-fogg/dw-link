@@ -80,8 +80,6 @@ On UNO  clones, which have a CH340G chip as the serial interface, there is not s
 
 
 
-Modifications for other Arduino AVR boards are covered on this [webpage](https://debugwire.de/board-modifications/).
-
 ## Worst-case scenario 
 
 So, what is the worst-case scenario when using debugWIRE? As described in the [section on debugWIRE](intro.md#the-debugwire-interface), first, the DWEN fuse is programmed using ISP programming. Then, one has to power-cycle to reach the debugWIRE state, where you can communicate with the target over the RESET line. If this kind of communication fails, you cannot put the target back in a state where ISP programming is possible. And the bootloader will not work either because it had to be erased. Your MCU is *bricked*.   

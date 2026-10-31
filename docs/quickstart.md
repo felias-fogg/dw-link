@@ -29,15 +29,13 @@ Open the `Preferences` dialog of the Arduino IDE and paste the following `Board 
 Close the `Preference` dialog with `OK`. Now, you can install the cores, `TinyCore` , `MiniCore`, and `MicroCore`. 
 
 * Select `Tools` -> `Board` -> `Board Managers` ... . This will open the Boards Manager dialog. 
-* In the search field, type `TinyCore` and install the most recent version.
-
-**Check:** Select `Tools` -> `Board` -> `TinyCore` -> `Attiny25/45/85` . The debug button in the upper row (3rd from the left) is no longer greyed out. 
+* In the search field, type `TinyCore` and then install the most recent version.
 
 ## Step 3: Install *dw-link* firmware on an Uno
 
 First, connect the UNO to your computer using the USB cable. Make sure that you have the permission to access the serial interface (under Linux).
 
-The simplest way to install the firmware is to install the library dw-link using the LIbrary Manager. Then compile and upload the example sketch dw-link (File->Examples->dw-link->dw-link).
+The simplest way to install the firmware is to install the library dw-link using the LIbrary Manager. Then compile and upload the example sketch *dw-link* (`File` -> `Examples` ->  `dw-link` -> `dw-link`).
 
 Alternatively, you can download or clone the dw-link repository and then compile and upload the dw-link Arduino sketch using the Arduino IDE 2 or arduino-cli.
 
