@@ -25,6 +25,6 @@ jobs:
 
       - name: Generate firmware
         run: |
-          cd dw-link
+          cd examples/dw-link
           arduino-cli core install arduino:avr
           arduino-cli compile -b arduino:avr:uno dw-link.ino 
