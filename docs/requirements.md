@@ -70,15 +70,13 @@ One can disconnect the capacitor by cutting the solder bridge labeled *RESET EN*
 
 ![](pics/cutconn.jpg)
 
-
-
 A recovery method is to put a bit of soldering  on the bridge or to solder pins to it that can be shortened by a jumper.
 
 On UNO  clones, which have a CH340G chip as the serial interface, there is not such a nice cut-off point. On some of them, it is the C8 capacitor that you have to remove.
 
 ![](pics/remove-c8.png)
 
-
+For other boards, the modifications are similar. Check out the section on *preparing the target board* in the [PyAvrOCD manual](https://pyavrocd.io). 
 
 ## Worst-case scenario 
 
