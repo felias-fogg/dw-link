@@ -19,7 +19,7 @@ jobs:
       - name: Test release against system version
         if: ${{ github.event.release.name != '' }}
         run: |
-          VER=$(grep "#define VERSION" dw-link/dw-link.ino)
+          VER=$(grep '#define VERSION "' examples/dw-link/src/config.h)
           VERSTRING=v${VER#*VERSION \"}
           VERSTRING=${VERSTRING%\"}
           REL_NAME=${{ github.event.release.name }}
@@ -54,7 +54,7 @@ jobs:
 
 
   upload:
-    needs: build-binaries
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

@@ -1,5 +1,18 @@
 # Changelog for dw-link
 
+## Version 7.0.0 (3-November-2026)
+
+- Changed: dw-link no longer speaks GDB's remote serial protocol, but a variant of the JTAGICE mkII protocol (AVR067). It works only together with PyAvrOCD 2.0.0 or later; earlier PyAvrOCD versions need dw-link 6. The GDB layer and the MCU table are gone, the debugging logic now lives in PyAvrOCD.
+- Changed: The built-in programmer uses the ISP protocol of the JTAGICE mkII (`jtag2isp` in avrdude) instead of STK500v1.
+- Changed: The repository is now an Arduino library, the sketch is the example `dw-link`.
+- Added: Vendor commands 0x70 (execute one instruction) and 0x71 (self-test), vendor parameters 0x70 (target power via the dw-probe shield, with soft start), 0x71 (number of the last error) and 0x72 (debugWIRE speed limit).
+- Removed: Compile-time switches.
+
+## Version 6.1.2 (25-October-2026)
+
+- Fix: blockIRQ/unblockIRQ no longer restore UCSR0B. The mask used bit numbers instead of bit masks, so the USART interrupts were never blocked, and the restore could re-enable the TX interrupt after the buffer had run empty, which then sent the last 64 bytes a second time.
+- Fix: stuckAtOneOrCap did not compile with STUCKAT1PC defined (misplaced brace).
+
 ## Version 6.1.1 (27-July-2026)
 
 - Fix: Initialize default option values right after receiving the required MCU.

@@ -3,7 +3,7 @@
 #ifndef DWLINK_CONFIG_H
 #define DWLINK_CONFIG_H
 
-#define VERSION "7.0.0-dev"
+#define VERSION "7.0.0"
 #define VERSION_MAJOR 7       // reported as firmware version in the mkII sign-on
 #define VERSION_MINOR 0
 
