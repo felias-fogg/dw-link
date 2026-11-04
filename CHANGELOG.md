@@ -1,5 +1,10 @@
 # Changelog for dw-link
 
+## Version 7.0.1 (4-November-2026)
+- This is simply another try of registering the library. The first
+  time around, there was apparently some problem when computing the
+  hash value.
+
 ## Version 7.0.0 (3-November-2026)
 
 - Changed: dw-link no longer speaks GDB's remote serial protocol, but a variant of the JTAGICE mkII protocol (AVR067). It works only together with PyAvrOCD 2.0.0 or later; earlier PyAvrOCD versions need dw-link 6. The GDB layer and the MCU table are gone, the debugging logic now lives in PyAvrOCD.
