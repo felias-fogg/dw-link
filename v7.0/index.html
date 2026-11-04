@@ -93,8 +93,8 @@
               
                 <h1 id="an-arduino-based-debugwire-debug-probe-dw-link">An Arduino-based debugWIRE debug probe: dw-link</h1>
 <p><img alt="" src="pics/uno-debug2.png" /></p>
-<p>You want to debug your Arduino project on an ATmega328P or on a classic ATtiny? For this purpose, you need a <em>hardware debugger</em>. If you do not own such a hardware debugger but would like to try debugging your Arduino project on the chip nevertheless, then <em>dw-link</em> is the right thing for you. It turns an Arduino UNO into a hardware debugger for AVR MCUs which have a debugWIRE debugging interface. <a href="https://pyavrocd.io">PyAvrOCD</a> then provides an interface either to avr-gdb or to IDEs like Arduino IDE 2 or PlatformIO. Check out the <a href="https://quickstart.md">quickstart guide</a>.</p>
-<p>If you used earlier versions of dw-link, note that with version 7, quite a lot has changed. The debug probe does not speak GDB's <em>remote serial protocol</em> any longer, but uses a variant of the mkII protocol to communicate with the GDB server PyAvrOCD (version 2 or newer). In addition, the packaged programmer no longer uses the STK500v1 protocol, but the ISP programming protocol of the JTAGICE mkII (<code>jtag2isp</code> in avrdude's terminology). The benefit is that it all is more robust now, flashing is faster, and the debugging logic is concentrated at only one point, namely in PyAvrOCD.</p>
+<p>You want to debug your Arduino project on an ATmega328P or on a classic ATtiny? For this purpose, you need a <em>hardware debugger</em>. If you do not own such a hardware debugger but would like to try debugging your Arduino project on the chip nevertheless, then <em>dw-link</em> is the right thing for you. It turns an Arduino UNO into a hardware debugger for AVR MCUs which have a debugWIRE debugging interface. <a href="https://pyavrocd.io">PyAvrOCD</a> then provides an interface either to avr-gdb or to IDEs like Arduino IDE 2 or PlatformIO. Check out the <a href="quickstart/">quickstart guide</a>.</p>
+<p>If you used earlier versions of dw-link, note that with version 7, quite a lot has changed. The debug probe does not speak GDB's <em>remote serial protocol</em> any longer, but uses a variant of the mkII protocol to communicate with the GDB server PyAvrOCD (version 2 or newer). In addition, the packaged programmer no longer uses the STK500v1 protocol, but the ISP programming protocol of the JTAGICE mkII (<code>jtag2isp</code> in avrdude's terminology). The benefit is that it is all more robust now, and the debugging logic is concentrated at only one point, namely in PyAvrOCD.</p>
 <p>When you are looking for a more durable debugging solution, I recommend <a href="https://www.microchip.com/en-us/development-tool/pg164100">MPLAB SNAP</a>. SNAP is a drop-in replacement for dw-link, and it can do much more.</p>
               
             </div>
@@ -144,5 +144,5 @@
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-11-03 19:43:09.661798+00:00
+Build Date UTC : 2026-11-04 01:19:54.234506+00:00
 -->
