@@ -136,4 +136,4 @@ Initial version
 
 ### V 7.0
 
-- Refactored dw-link completely. All the debug logic moved into PyAvrOCD.
+- Redesigned the dw-link completely. All the debug logic was moved into PyAvrOCD. Dw-link now uses the mkII (AVR067) protocol over the serial line. In addition, installation is now done via the Arduino Library Manager. 
