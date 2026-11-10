@@ -246,14 +246,20 @@ debugWIRE is enabled, bps: 125244
 <p>When you want to restore the target so that it behaves again like an ordinary UNO after a debugging session, you have two options: you can restore it as a MiniCore 328P board or as an original UNO board. The former one is the more attractive alternative in my eyes. Just check out the pages about <a href="https://github.com/MCUdude/MiniCore">MiniCore</a>. Further, the command <code>Burn Bootloader</code> does apparently not work so well with some programmers or debuggers when doing it for the Uno setting. However, the dw-link built-in programmer has no problems. </p>
 <p>In order to restore your board, you need to do the following steps:</p>
 <ol>
-<li>You need the target board to exit the debugWIRE mode. This could be done by typing <code>monitor debugwire disable</code> into the debugger just before exiting. Or it will be done automagically using the built-in programmer mentioned in the following step.</li>
-<li>Now you have to flash the bootloader. Since version 2.2.0, the hardware debugger can also act as a programmer! This means that you leave the whole hardware setup as it was. However, you can, of course, use any other ISP programmer.</li>
-<li>Select <code>Arduino UNO</code> or the <code>ATmega328 board</code> as the target board in the <code>Tools</code> menu, select <code>AVR ISP</code> as the Programmer, choose the correct serial port, and use  <code>Burn Bootloader</code> from the <code>Tools</code> menu. This will revert the MCU to its normal state (if it is still in debugWARE state) and will restore the fuses, the bootloader, and the lock bits to their original state. </li>
-<li>Reestablish the <code>RESET EN</code> connection by putting a solder blob on the connection or soldering pins to the connections that can be shortened using a jumper, as shown in the following picture. It does not look pretty, but it does its job. After that, your UNO is as good as new. Note that in the future, code uploading should be done by choosing the type of board you used when executing the <code>Burn Bootloader</code> command.</li>
+<li>
+<p>You need the target board to exit the debugWIRE mode. This could be done by typing <code>monitor debugwire disable</code> into the debugger just before exiting. Or it will be done automagically using the built-in programmer mentioned in the following step.</p>
+</li>
+<li>
+<p>Now you have to flash the bootloader. Since version 2.2.0, the hardware debugger can also act as a programmer! This means that you leave the whole hardware setup as it was. However, you can, of course, use any other ISP programmer.</p>
+</li>
+<li>
+<p>Select <code>Arduino UNO</code> or the <code>ATmega328 board</code> as the target board in the <code>Tools</code> menu, select <code>AVR ISP</code> as the Programmer, choose the correct serial port, and use  <code>Burn Bootloader</code> from the <code>Tools</code> menu. This will revert the MCU to its normal state (if it is still in debugWARE state) and will restore the fuses, the bootloader, and the lock bits to their original state. </p>
+</li>
+<li>
+<p>Reestablish the <code>RESET EN</code> connection by putting a solder blob on the connection or soldering pins to the connections that can be shortened using a jumper, as shown in the following picture. It does not look pretty, but it does its job. After that, your UNO is as good as new. Note that in the future, code uploading should be done by choosing the type of board you used when executing the <code>Burn Bootloader</code> command.</p>
+</li>
 </ol>
-<p align="center">
-<img src="https://raw.githubusercontent.com/felias-fogg/dw-link/refs/heads/master/docs/pics/pins+jumper.JPG" width="60%">
-</p>
+<p><img alt="" src="../pics/pins%2Bjumper.JPG" /></p>
               
             </div>
           </div><footer>
