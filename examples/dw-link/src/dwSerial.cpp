@@ -25,7 +25,8 @@ void dwSerial::sendBreak(void)
   enable(false);
   //  PORTD &= ~_BV(ICBIT); // TEST -- needs to be removed!
   ICDDR |= _BV(ICBIT); // switch pin to output (which is always low)
-  _delay_ms(400); // enough for 30 bps
+  _delay_ms(10); // a break has to outlast a character: 10 ms is enough down to 1000 bps (128 kHz
+                 // target clock); the recommended minimum of 1 MHz gives 7800 bps, i.e. 1.3 ms
   ICDDR &= ~_BV(ICBIT); // and switch it back to being an input
 }
 

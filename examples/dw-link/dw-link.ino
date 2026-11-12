@@ -182,13 +182,20 @@ int main(void) {
       mkiiPoll();
     } else if (ctx.state == RUN_STATE) {
       if (dw.available()) {
+	// A running target sends nothing; when it stops, it sends a break (0x00) and then 0x55.
+	// So anything on the line means it has stopped, even if the input capture was delayed
+	// (e.g., by UART interrupts) and read something else than 0x00 or missed the 0x55.
 	byte cc = dw.read();
-	if (cc == 0x0) { // break sent by target
-	  if (expectUCalibrate()) {
-	    DEBLN(F("Execution stopped"));
-	    _delay_us(5); // avoid conflicts on the line
-	    mkiiTargetStopped();
-	  }
+	boolean synced = (cc == 0x0 && expectUCalibrate());
+	if (!synced) { // reception disturbed: the target has stopped, so a break of our own
+	  while (dw.available()) dw.read(); // makes it send 0x55 again
+	  targetBreak();
+	  synced = expectUCalibrate();
+	}
+	if (synced) {
+	  DEBLN(F("Execution stopped"));
+	  _delay_us(5); // avoid conflicts on the line
+	  mkiiTargetStopped();
 	}
       }
     }

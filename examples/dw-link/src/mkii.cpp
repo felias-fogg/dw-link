@@ -117,6 +117,8 @@ byte emulatormode = EMULATOR_MODE_UNKNOWN;
 byte baudcode = 4; // 19200
 byte softreset = 3; // PAR_SOFT_RESET: unlike the mkII, dw-link does not reset unless asked to
 boolean breakevent; // an EVT_BREAK follows the answer
+boolean continuepending; // GO/RUN_TO_ADDR: the target is started after the answer has gone out
+unsigned int pendingrunto; // and this is where it runs to (0xFFFF: no address)
 
 static uint16_t crcUpdate(uint16_t crc, byte b);
 static int readByte(void);
@@ -199,6 +201,12 @@ void mkiiPoll(void)
   byte arg = (size > 2 ? mkbuf[2] : 0);
   unsigned int answer = dispatch(size);
   sendFrame(seq, mkbuf, answer);
+  if (continuepending) {                  // GO/RUN_TO_ADDR, see resume
+    continuepending = false;
+    Serial.flush();                       // no UART interrupts any more while the target runs off
+    targetContinue(pendingrunto);
+    setSysState(RUN_STATE);
+  }
   if (breakevent) {
     breakevent = false;
     sendBreakEvent(BREAK_CAUSE_STOP);
@@ -817,8 +825,13 @@ static unsigned int resume(unsigned int runto)
   if (n) return n;
   validpg = false;                        // the program might change its flash
   targetRestoreRegisters();
-  targetContinue(runto);
-  setSysState(RUN_STATE);
+  // RSP_OK goes out before the target runs, which is a slight abuse: the command has been accepted,
+  // but is carried out only after the answer. A target that stops at once (e.g., at a breakpoint
+  // in an interrupt routine that is already pending) would otherwise send its break while the
+  // UART interrupts of the answer delay the input capture, and the stop would be missed. So
+  // mkiiPoll starts the target after sendFrame and Serial.flush.
+  pendingrunto = runto;
+  continuepending = true;
   mkbuf[0] = RSP_OK;
   return 1;
 }
