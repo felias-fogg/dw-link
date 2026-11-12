@@ -381,7 +381,8 @@ void targetSaveRegisters(void)
   DWreadRegisters(&ctx.regs[0]); // now get all GP registers
   ctx.sreg = DWreadIOreg(0x3F);
   ctx.sp = DWreadIOreg(0x3D);
-  sphsave = DWreadIOreg(0x3E);   // reads 0 where there is no SPH
+  sphsave = (ioReadable(0x5E) ? DWreadIOreg(0x3E) : 0); // where there is no SPH, the host masks it,
+                                 // as the mkII and the Dragon honour it (the t2313 delivers garbage there)
   ctx.sp |= sphsave << 8;
   ctx.saved = true;
 }
